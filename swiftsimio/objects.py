@@ -16,6 +16,8 @@ from swiftsimio import metadata
 import h5py
 import unyt
 
+from datetime import datetime
+
 
 class SWIFTUnits(object):
     """
@@ -53,7 +55,7 @@ class SWIFTUnits(object):
             l=self.units["Unit length in cgs (U_L)"],
             t=self.units["Unit time in cgs (U_t)"],
             I=self.units["Unit current in cgs (U_I)"],
-            T=self.units["Unit temperature in cgs (U_T)"]
+            T=self.units["Unit temperature in cgs (U_T)"],
         )
 
         for ptype, units in unit_fields.items():
@@ -63,8 +65,65 @@ class SWIFTUnits(object):
 
 
 class SWIFTMetadata(object):
-    def __init__(self):
-        pass
+    """
+    Loads all metadata (apart from Units, those are handled by SWIFTUnits)
+    into dictionaries. This also does some extra parsing on some well-used
+    metadata.
+    """
+
+    def __init__(self, filename):
+        self.filename = filename
+
+        self.get_metadata()
+
+        self.postprocess_header()
+
+        return
+
+    def get_metadata(self):
+        """
+        Loads the metadata as specified in metadata.metadata_fields.
+        """
+
+        with h5py.File(self.filename, "r") as handle:
+            for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
+                try:
+                    setattr(self, name, dict(handle[field].attrs))
+                except KeyError:
+                    setattr(self, name, None)
+
+        return
+
+    def postprocess_header(self):
+        """
+        Some minor postprocessing on the header to local variables.
+        """
+
+        # These are just read straight in to variables
+        for field, name in metadata.metadata_fields.header_unpack_variables.items():
+            setattr(self, name, self.header[field])
+
+        # These must be unpacked as they are stored as length-1 arrays
+        for field, name in metadata.metadata_fields.header_unpack_single_float.items():
+            setattr(self, name, self.header[field][0])
+
+        # These are special cases, sorry!
+        # Date and time of snapshot dump
+        try:
+            self.snapshot_date = datetime.strptime(
+                self.header["Snapshot date"].decode("utf-8"), "%c"
+            )
+        except KeyError:
+            # Old file
+            pass
+
+        # Store these separately
+        self.n_gas = self.num_part[0]
+        self.n_dark_matter = (self.num_part[1],)
+        self.n_stars = self.num_part[4]
+        self.n_black_holes = self.num_part[5]
+
+        return
 
 
 def generate_getter(filename, name: str, field: str, unit):
@@ -86,9 +145,7 @@ def generate_getter(filename, name: str, field: str, unit):
         else:
             with h5py.File(filename, "r") as handle:
                 try:
-                    setattr(self, f"_{name}",
-                        unyt.unyt_array(handle[field][...], unit)
-                    )
+                    setattr(self, f"_{name}", unyt.unyt_array(handle[field][...], unit))
                 except KeyError:
                     print(f"Could not read {field}")
                     return None
@@ -182,8 +239,11 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits):
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
     unit_system = getattr(units, particle_name)
 
-    ThisDataset = type(f"{particle_nice_name}Dataset", __SWIFTParticleDataset.__bases__, dict(__SWIFTParticleDataset.__dict__))
-
+    ThisDataset = type(
+        f"{particle_nice_name}Dataset",
+        __SWIFTParticleDataset.__bases__,
+        dict(__SWIFTParticleDataset.__dict__),
+    )
 
     for field_name, name in getattr(metadata.particle_fields, particle_name).items():
         unit = unit_system[name]
@@ -206,6 +266,26 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits):
 
 
 class SWIFTDataset(object):
+    """
+    A collection object for the above three:
+
+    + SWIFTUnits,
+    + SWIFTMetadata,
+    + SWIFTParticleDataset
+    
+    This object, in essence, completely represents a SWIFT snapshot. You can access
+    the different particles as follows:
+
+    + SWIFTDataset.gas.particle_ids
+    + SWIFTDataset.dark_matter.masses
+    + SWIFTDataset.gas.smoothing_lengths
+    
+    These arrays all have units that are determined by the unit system in the file.
+
+    The unit system is available as SWIFTDataset.units and the metadata as
+    SWIFTDataset.metadata.
+    """
+
     def __init__(self, filename):
         self.filename = filename
 
@@ -230,7 +310,7 @@ class SWIFTDataset(object):
         but you can call this function again if you mess things up.
         """
 
-        self.metadata = SWIFTMetadata()
+        self.metadata = SWIFTMetadata(self.filename)
 
         return
 

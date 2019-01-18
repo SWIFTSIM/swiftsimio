@@ -20,20 +20,15 @@ def generate_units(m, l, t, I, T):
     units respectively.
     """
 
-    shared = {
-        "coordinates": l,
-        "masses": m,
-        "particle_ids": None,
-        "velocities": l / t
-    }
+    shared = {"coordinates": l, "masses": m, "particle_ids": None, "velocities": l / t}
 
     gas = {
-        "density": m / (l**3),
-        "entropy": m * l**2 / (t**2 * T),
-        "internal_energy": m * l**2 / (t**2),
+        "density": m / (l ** 3),
+        "entropy": m * l ** 2 / (t ** 2 * T),
+        "internal_energy": m * l ** 2 / (t ** 2),
         "smoothing_length": l,
-        "pressure": m / (l * t**2),
-        **shared
+        "pressure": m / (l * t ** 2),
+        **shared,
     }
 
     dark_matter = {**shared}
@@ -46,5 +41,5 @@ def generate_units(m, l, t, I, T):
         "gas": gas,
         "dark_matter": dark_matter,
         "stars": stars,
-        "black_holes": black_holes
+        "black_holes": black_holes,
     }
