@@ -111,7 +111,7 @@ class SWIFTMetadata(object):
         # Date and time of snapshot dump
         try:
             self.snapshot_date = datetime.strptime(
-                self.header["Snapshot date"].decode("utf-8"), "%c"
+                self.header["Snapshot date"].decode("utf-8"), "%c\n"
             )
         except KeyError:
             # Old file
@@ -210,11 +210,22 @@ class __SWIFTParticleDataset(object):
         """
         Generates the empty properties that will be accessed through the
         setter and getters. We initially set all of the _{name} values
-        to None.
+        to None. If it doesn't _exist_ in the file, we do not create the
+        variable.
         """
 
+        existing_fields = []
+
+        with h5py.File(self.filename, "r") as handle:
+            particle_handle = f"PartType{self.particle_type}"
+            if particle_handle in handle:
+                for key, name in getattr(metadata.particle_fields, self.particle_name).items():
+                    if key in handle[particle_handle]:
+                        existing_fields.append(name)
+
         for name in getattr(metadata.particle_fields, self.particle_name).values():
-            setattr(self, f"_{name}", None)
+            if name in existing_fields:
+                setattr(self, f"_{name}", None)
 
         return
 
@@ -245,7 +256,19 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits):
         dict(__SWIFTParticleDataset.__dict__),
     )
 
+    existing_fields = []
+
+    with h5py.File(filename, "r") as handle:
+        particle_handle = f"PartType{particle_type}"
+        if particle_handle in handle:
+            for key, name in getattr(metadata.particle_fields, particle_name).items():
+                if key in handle[particle_handle]:
+                    existing_fields.append(name)
+
     for field_name, name in getattr(metadata.particle_fields, particle_name).items():
+        if not name in existing_fields:
+            continue
+
         unit = unit_system[name]
 
         setattr(
