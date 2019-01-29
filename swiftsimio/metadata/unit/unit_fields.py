@@ -61,7 +61,14 @@ def generate_units(m, l, t, I, T):
 
     dark_matter = {**shared}
 
-    stars = {**shared, **baryon}
+    stars = {
+        "birth_density": m / (l ** 3),
+        "birth_time": t,
+        "initial_masses": m,
+        "new_star_flag": None,
+        **shared,
+        **baryon,
+    }
 
     black_holes = {**shared}
 
