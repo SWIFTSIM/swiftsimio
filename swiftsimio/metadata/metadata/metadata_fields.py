@@ -6,6 +6,7 @@ metadata_fields_to_read = {
     "Code": "code",
     "Cosmology": "cosmology",
     "Header": "header",
+    "GravityScheme": "gravity_scheme",
     "HydroScheme": "hydro_scheme",
     "InternalCodeUnits": "internal_code_units",
     "Parameters": "parameters",
