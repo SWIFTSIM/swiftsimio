@@ -45,7 +45,7 @@ def generate_units(m, l, t, I, T):
         "smoothing_length": l,
         "pressure": m / (l * t ** 2),
         "diffusion": None,
-        "SFR": m / t,
+        "sfr": m / t,
         "temperature": T,
         "viscosity": None,
         "specific_sfr": 1 / t,
