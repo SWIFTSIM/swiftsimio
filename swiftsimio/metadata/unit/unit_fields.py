@@ -20,7 +20,13 @@ def generate_units(m, l, t, I, T):
     units respectively.
     """
 
-    shared = {"coordinates": l, "masses": m, "particle_ids": None, "velocities": l / t}
+    shared = {
+        "coordinates": l,
+        "masses": m,
+        "particle_ids": None,
+        "velocities": l / t,
+        "potential": l * l / (t * t),
+    }
 
     baryon = {
         "element_abundance": None,
