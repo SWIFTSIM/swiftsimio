@@ -3,10 +3,10 @@ Contains the metadata for all of the snapshots, such as the
 information contained in each snapshot that may be read.
 """
 
-import swiftsimio.metadata.particle_types as particle_types
-import swiftsimio.metadata.particle_fields as particle_fields
+from .particle import particle_types
+from .particle import particle_fields
 
-import swiftsimio.metadata.unit_types as unit_types
-import swiftsimio.metadata.unit_fields as unit_fields
+from .unit import unit_types
+from .unit import unit_fields
 
-import swiftsimio.metadata.metadata_fields as metadata_fields
+from .metadata import metadata_fields
