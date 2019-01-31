@@ -3,3 +3,8 @@ env/*
 
 # Compiled files
 *__pycache__*
+
+# Packaging files
+build/*
+dist/*
+swiftsimio.egg-info
