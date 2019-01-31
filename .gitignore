@@ -1,2 +1,5 @@
-*.pyc
-*__pycache__/*
+# Python environment.
+env/*
+
+# Compiled files
+*__pycache__*
