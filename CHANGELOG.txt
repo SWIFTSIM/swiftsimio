@@ -1,0 +1,13 @@
+SWIFTsimIO Changelog
+====================
+
+v 0.1.0
+-------
+
+The first version of the code includes the following:
+
++ Basic reader functionality implemented
++ `unyt` arrays used for reading data
++ Data read dynamically from snapshot
++ Some basic parsing of header information
++ EAGLE chemistry reader included.
