@@ -10,7 +10,7 @@ setuptools.setup(
     url="https://gitlab.cosma.dur.ac.uk/jborrow/SWIFTsimIO",
     author="Josh Borrow",
     author_email="joshua.borrow@durham.ac.uk",
-    packages=["swiftsimio"],
+    packages=setuptools.find_packages(),
     long_description=long_description,
     long_description_content_type='text/markdown',
     zip_safe=False,
