@@ -78,3 +78,25 @@ def generate_units(m, l, t, I, T):
         "stars": stars,
         "black_holes": black_holes,
     }
+
+
+def generate_dimensions():
+    """
+    Gets the dimensions for the above.
+    """
+
+    units = generate_units(g, cm, s, statA, K)
+
+    dimensions = {}
+
+    for particle_type, particle_type_units in units.items():
+        dimensions[particle_type] = {}
+        
+        for unit_name, unit in particle_type_units.items():
+            try:
+                dimensions[particle_type][unit_name] = unit.dimensions
+            except AttributeError:
+                # Units that have "none" dimensions
+                dimensions[particle_type][unit_name] = 1
+
+    return dimensions
