@@ -1,6 +1,12 @@
 SWIFTsimIO Changelog
 ====================
 
+
+v 0.1.2
+-------
+
+Fixed a minor packaging bug.
+
 v 0.1.1
 -------
 
