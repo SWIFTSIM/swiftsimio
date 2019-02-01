@@ -12,11 +12,16 @@ setuptools.setup(
     author_email="joshua.borrow@durham.ac.uk",
     packages=["swiftsimio"],
     long_description=long_description,
+    long_description_content_type='text/markdown',
     zip_safe=False,
         classifiers=[
         "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
         "Operating System :: OS Independent",
     ],
+    install_requires=[
+        'unyt',
+        'h5py'
+    ]
 )
 
