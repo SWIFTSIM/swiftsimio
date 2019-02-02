@@ -321,13 +321,15 @@ class SWIFTWriterDataset(object):
         base = self.unit_system.base_units
 
         def get_conversion(type):
-            return base[type].get_conversion_factor(cgs_base[type])[0]
+            # We use the array because this is how swift outputs it, as a length
+            # 1 array (rather than as a single float).
+            return np.array([base[type].get_conversion_factor(cgs_base[type])[0]])
 
         attrs = {
             "Unit mass in cgs (U_M)": get_conversion(dim.mass),
             "Unit length in cgs (U_L)": get_conversion(dim.length),
             "Unit time in cgs (U_t)": get_conversion(dim.time),
-            "Unit current in cgs (U_I)": 1,
+            "Unit current in cgs (U_I)": np.array([1.0]),
             "Unit temperature in cgs (U_T)": get_conversion(dim.temperature),
         }
 
