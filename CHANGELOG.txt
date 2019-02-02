@@ -2,6 +2,17 @@ SWIFTsimIO Changelog
 ====================
 
 
+v 0.2.0
+-------
+
+First writer update:
+
++ Implements writer functionality. This allows for an object-oriented API to be
+  used to create SWIFT IC files.
++ Compatibility changes in the reader to work with self-generated initial
+  conditions files.
++ Minor bugfixes.
+
 v 0.1.2
 -------
 
