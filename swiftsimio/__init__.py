@@ -1,4 +1,5 @@
 from .reader import *
+from .writer import SWIFTWriterDataset
 
 import swiftsimio.metadata as metadata
 
@@ -11,3 +12,6 @@ def load(filename) -> SWIFTDataset:
     """
 
     return SWIFTDataset(filename)
+
+# Rename this object to something simpler.
+Writer = SWIFTWriterDataset
