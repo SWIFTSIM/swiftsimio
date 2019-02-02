@@ -4,6 +4,7 @@ Contains functions and objects for creating SWIFT datasets.
 
 import unyt
 import h5py
+import numpy as np
 
 from typing import Union, List
 from functools import reduce
@@ -106,7 +107,13 @@ class __SWIFTWriterParticleDataset(object):
         Writes the particle group's required properties to file.
         """
 
-        raise NotImplementedError
+        particle_group = file_handle.create_group(self.particle_handle)
+
+        for name, output_handle in getattr(metadata.required_fields, self.particle_name).keys():
+            particle_group.create_dataset(
+                output_handle,
+                data=getattr(self, name)
+            )
 
         return
 
@@ -257,7 +264,12 @@ class SWIFTWriterDataset(object):
         (Re-)generates all particle IDs for groups with names in names_to_write.
         """
 
-        raise NotImplementedError
+        numbers_of_particles = [getattr(self, name).n_part for name in names_to_write]
+        already_used = 0
+
+        for number, name in zip(numbers_of_particles, names_to_write):
+            getattr(self, name).particle_ids = np.arange(already_used, number + already_used)
+            already_used += number
 
         return
 
