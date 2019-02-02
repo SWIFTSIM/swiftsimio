@@ -102,17 +102,23 @@ class __SWIFTWriterParticleDataset(object):
         return True
 
 
-    def write_particle_group(self, file_handle: h5py.File):
+    def write_particle_group(self, file_handle: h5py.File, compress: bool):
         """
         Writes the particle group's required properties to file.
         """
 
         particle_group = file_handle.create_group(self.particle_handle)
 
-        for name, output_handle in getattr(metadata.required_fields, self.particle_name).keys():
+        if compress:
+            compression = "gzip"
+        else:
+            compression = None
+
+        for name, output_handle in getattr(metadata.required_fields, self.particle_name).items():
             particle_group.create_dataset(
                 output_handle,
-                data=getattr(self, name)
+                data=getattr(self, name),
+                compression=compression
             )
 
         return
@@ -151,6 +157,8 @@ def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, s
                     )
             else:
                 raise TypeError("You must provide quantities as unyt arrays.")
+        else:
+            setattr(self, f"_{name}", unyt.unyt_array(value, None))
 
         return
 
@@ -344,7 +352,7 @@ class SWIFTWriterDataset(object):
             if not this_dataset.check_empty():
                 if this_dataset.check_consistent():
                     names_to_write.append(name)
-                    generate_ids = generate_ids and this_dataset.requires_particle_ids_before_write
+                    generate_ids = generate_ids or this_dataset.requires_particle_ids_before_write
 
 
         if generate_ids:
@@ -357,6 +365,6 @@ class SWIFTWriterDataset(object):
             self._write_units(handle)
 
             for name in names_to_write:
-                getattr(self, name).write_particle_group(handle)
+                getattr(self, name).write_particle_group(handle, compress=self.compress)
 
         return
