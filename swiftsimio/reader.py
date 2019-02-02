@@ -101,11 +101,19 @@ class SWIFTMetadata(object):
 
         # These are just read straight in to variables
         for field, name in metadata.metadata_fields.header_unpack_variables.items():
-            setattr(self, name, self.header[field])
+            try:
+                setattr(self, name, self.header[field])
+            except KeyError:
+                # Must not be present, just skip it
+                continue
 
         # These must be unpacked as they are stored as length-1 arrays
         for field, name in metadata.metadata_fields.header_unpack_single_float.items():
-            setattr(self, name, self.header[field][0])
+            try:
+                setattr(self, name, self.header[field][0])
+            except KeyError:
+                # Must not be present, just skip it
+                continue
 
         # These are special cases, sorry!
         # Date and time of snapshot dump
