@@ -55,6 +55,7 @@ def generate_units(m, l, t, I, T):
         "temperature": T,
         "viscosity": None,
         "specific_sfr": 1 / t,
+        "material_id": None,
         **shared,
         **baryon,
     }
