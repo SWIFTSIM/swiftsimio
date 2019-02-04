@@ -133,6 +133,66 @@ class SWIFTMetadata(object):
 
         return
 
+    @property
+    def code_info(self):
+        """
+        Gets a nicely printed set of code information with:
+
+        Name Version
+        Git Revision (Git Branch)
+        Git Date
+        """
+
+        def get_string(x):
+            return self.code[x].decode('utf-8')
+        
+        output = (
+            f"{get_string('Code')} {get_string('Code Version')}\n"
+            f"{get_string('Git Revision')} ({get_string('Git Branch')})\n"
+            f"{get_string('Git Date')}"
+        )
+
+        return output
+
+    @property
+    def compiler_info(self):
+        """
+        Gets information about the compiler and formats it in a string like:
+
+        Compiler Name (Compiler Version)
+        MPI library
+        """
+
+        def get_string(x):
+            return self.code[x].decode('utf-8')
+
+        output = (
+            f"{get_string('Compiler Name')} ({get_string('Compiler Version')})\n"
+            f"{get_string('MPI library')}"
+        )
+
+        return output
+        
+    @property
+    def library_info(self):
+        """
+        Gets information about the libraries used and formats it as:
+
+        FFTW vFFTW library version
+        GSL vGSL library version
+        HDF5 vHDF5 library version
+        """
+
+        def get_string(x):
+            return self.code[f"{x} library version"].decode('utf-8')
+
+        output = (
+            f"FFTW v{get_string('FFTW')}\n"
+            f"GSL v{get_string('GSL')}\n"
+            f"HDF5 v{get_string('HDF5')}"
+        )
+
+        return output
 
 def generate_getter(filename, name: str, field: str, unit):
     """
