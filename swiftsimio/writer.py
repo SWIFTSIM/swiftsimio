@@ -65,7 +65,6 @@ class __SWIFTWriterParticleDataset(object):
 
         return True
 
-
     def check_consistent(self) -> bool:
         """
         Checks the following:
@@ -101,7 +100,6 @@ class __SWIFTWriterParticleDataset(object):
 
         return True
 
-
     def write_particle_group(self, file_handle: h5py.File, compress: bool):
         """
         Writes the particle group's required properties to file.
@@ -114,15 +112,14 @@ class __SWIFTWriterParticleDataset(object):
         else:
             compression = None
 
-        for name, output_handle in getattr(metadata.required_fields, self.particle_name).items():
+        for name, output_handle in getattr(
+            metadata.required_fields, self.particle_name
+        ).items():
             particle_group.create_dataset(
-                output_handle,
-                data=getattr(self, name),
-                compression=compression
+                output_handle, data=getattr(self, name), compression=compression
             )
 
         return
-
 
 
 def generate_getter(name: str):
@@ -233,11 +230,12 @@ class SWIFTWriterDataset(object):
     + All required arrays for SWIFT to start
     + Required metadata (all automatic, apart from those required by __init__)
     """
+
     def __init__(
         self,
         unit_system: Union[unyt.UnitSystem, str],
         box_size: Union[list, float],
-        compress=True
+        compress=True,
     ):
         """
         Requires a unit system, either one from unyt or a string describing a
@@ -255,18 +253,12 @@ class SWIFTWriterDataset(object):
 
         return
 
-    
     def create_particle_datasets(self):
         for number, name in metadata.particle_types.particle_name_underscores.items():
-            setattr(
-                self,
-                name,
-                generate_dataset(self.unit_system, number)
-            )
+            setattr(self, name, generate_dataset(self.unit_system, number))
 
         return
 
-    
     def _generate_ids(self, names_to_write: List):
         """
         (Re-)generates all particle IDs for groups with names in names_to_write.
@@ -276,11 +268,12 @@ class SWIFTWriterDataset(object):
         already_used = 0
 
         for number, name in zip(numbers_of_particles, names_to_write):
-            getattr(self, name).particle_ids = np.arange(already_used, number + already_used)
+            getattr(self, name).particle_ids = np.arange(
+                already_used, number + already_used
+            )
             already_used += number
 
         return
-
 
     def _write_metadata(self, handle: h5py.File, names_to_write: List):
         """
@@ -288,7 +281,7 @@ class SWIFTWriterDataset(object):
         and the information in the particle groups.
         """
 
-        number_of_particles = [0]*6
+        number_of_particles = [0] * 6
 
         for number, name in metadata.particle_types.particle_name_underscores.items():
             if name in names_to_write:
@@ -297,8 +290,8 @@ class SWIFTWriterDataset(object):
         attrs = {
             "BoxSize": self.box_size,
             "NumPart_Total": number_of_particles,
-            "NumPart_Total_HighWord": [0]*6,
-            "Flag_Entropy_ICs": 0
+            "NumPart_Total_HighWord": [0] * 6,
+            "Flag_Entropy_ICs": 0,
         }
 
         header = handle.create_group("Header")
@@ -307,7 +300,6 @@ class SWIFTWriterDataset(object):
             header.attrs.create(name, value)
 
         return
-
 
     def _write_units(self, handle: h5py.File):
         """
@@ -354,14 +346,15 @@ class SWIFTWriterDataset(object):
             if not this_dataset.check_empty():
                 if this_dataset.check_consistent():
                     names_to_write.append(name)
-                    generate_ids = generate_ids or this_dataset.requires_particle_ids_before_write
-
+                    generate_ids = (
+                        generate_ids or this_dataset.requires_particle_ids_before_write
+                    )
 
         if generate_ids:
             self._generate_ids(names_to_write)
 
         # Now we do the hard part
-        with h5py.File(filename, "w") as handle:        
+        with h5py.File(filename, "w") as handle:
             self._write_metadata(handle, names_to_write)
 
             self._write_units(handle)

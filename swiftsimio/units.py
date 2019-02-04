@@ -12,8 +12,5 @@ with
 import unyt
 
 cosmo_units = unyt.UnitSystem(
-    "cosmological",
-    unyt.Mpc,
-    1e10 * unyt.msun,
-    unyt.s * unyt.Mpc / unyt.km
+    "cosmological", unyt.Mpc, 1e10 * unyt.msun, unyt.s * unyt.Mpc / unyt.km
 )

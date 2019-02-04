@@ -144,8 +144,8 @@ class SWIFTMetadata(object):
         """
 
         def get_string(x):
-            return self.code[x].decode('utf-8')
-        
+            return self.code[x].decode("utf-8")
+
         output = (
             f"{get_string('Code')} ({get_string('Git Branch')})\n"
             f"{get_string('Git Revision')}\n"
@@ -164,7 +164,7 @@ class SWIFTMetadata(object):
         """
 
         def get_string(x):
-            return self.code[x].decode('utf-8')
+            return self.code[x].decode("utf-8")
 
         output = (
             f"{get_string('Compiler Name')} ({get_string('Compiler Version')})\n"
@@ -172,7 +172,7 @@ class SWIFTMetadata(object):
         )
 
         return output
-        
+
     @property
     def library_info(self):
         """
@@ -184,7 +184,7 @@ class SWIFTMetadata(object):
         """
 
         def get_string(x):
-            return self.code[f"{x} library version"].decode('utf-8')
+            return self.code[f"{x} library version"].decode("utf-8")
 
         output = (
             f"FFTW v{get_string('FFTW')}\n"
@@ -212,7 +212,7 @@ class SWIFTMetadata(object):
             return int(self.hydro_scheme[x][0])
 
         def get_string(x):
-            return self.hydro_scheme[x].decode('utf-8')
+            return self.hydro_scheme[x].decode("utf-8")
 
         output = (
             f"{get_string('Scheme')}\n"
@@ -239,7 +239,7 @@ class SWIFTMetadata(object):
             return "{:4.2f}".format(self.hydro_scheme[x][0])
 
         def get_string(x):
-            return self.hydro_scheme[x].decode('utf-8')
+            return self.hydro_scheme[x].decode("utf-8")
 
         output = (
             f"{get_string('Viscosity Model')}\n"
@@ -251,8 +251,6 @@ class SWIFTMetadata(object):
         )
 
         return output
-
-    
 
 
 def generate_getter(filename, name: str, field: str, unit):
@@ -348,7 +346,9 @@ class __SWIFTParticleDataset(object):
         with h5py.File(self.filename, "r") as handle:
             particle_handle = f"PartType{self.particle_type}"
             if particle_handle in handle:
-                for key, name in getattr(metadata.particle_fields, self.particle_name).items():
+                for key, name in getattr(
+                    metadata.particle_fields, self.particle_name
+                ).items():
                     if key in handle[particle_handle]:
                         existing_fields.append(name)
 
