@@ -2,6 +2,22 @@ SWIFTsimIO Changelog
 ====================
 
 
+v 0.2.1
+-------
+
+Documentation update!
+
++ Includes significantly more documentation for how to create initial conditions
+  files with `swiftsimio`.
++ Minor bugfixes throughout.
++ Added `swiftsimio.validate_file` to validate your dataset is a SWIFT output
+  file before reading.
++ Added a number of metadata properties to the reader for pretty-printing code
+  information: `compiler_info`, `library_info`, `hydro_info`, `viscosity_info`,
+  `code_info`
++ Added ability to automatically generate smoothing lengths for gas datasets
+  in the writer.
+
 v 0.2.0
 -------
 
