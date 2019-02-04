@@ -138,8 +138,8 @@ class SWIFTMetadata(object):
         """
         Gets a nicely printed set of code information with:
 
-        Name Version
-        Git Revision (Git Branch)
+        Name (Git Branch)
+        Git Revision
         Git Date
         """
 
@@ -147,8 +147,8 @@ class SWIFTMetadata(object):
             return self.code[x].decode('utf-8')
         
         output = (
-            f"{get_string('Code')} {get_string('Code Version')}\n"
-            f"{get_string('Git Revision')} ({get_string('Git Branch')})\n"
+            f"{get_string('Code')} ({get_string('Git Branch')})\n"
+            f"{get_string('Git Revision')}\n"
             f"{get_string('Git Date')}"
         )
 
@@ -193,6 +193,67 @@ class SWIFTMetadata(object):
         )
 
         return output
+
+    @property
+    def hydro_info(self):
+        r"""
+        Grabs information about the hydro scheme and formats it nicely:
+
+        Scheme
+        Kernel function in DimensionD
+        $\eta$ = Kernel eta (Kernel target N_ngb $N_{ngb}$)
+        $C_{\rm CFL}$ = CFL parameter
+        """
+
+        def get_float(x):
+            return "{:4.2f}".format(self.hydro_scheme[x][0])
+
+        def get_int(x):
+            return int(self.hydro_scheme[x][0])
+
+        def get_string(x):
+            return self.hydro_scheme[x].decode('utf-8')
+
+        output = (
+            f"{get_string('Scheme')}\n"
+            f"{get_string('Kernel function')} in {get_int('Dimension')}D\n"
+            f"$\eta$ = {get_float('Kernel eta')} "
+            rf"({get_float('Kernel target N_ngb')} $N_{{ngb}}$)"
+            "\n"
+            rf"$C_{{\rm CFL}}$ = {get_float('CFL parameter')}"
+        )
+
+        return output
+
+    @property
+    def viscosity_info(self):
+        """
+        Pretty-prints some information about the viscosity scheme.
+
+        Viscosity Model
+        $\alpha_{V, 0}$ = Alpha viscosity, $\ell_V$ = Viscosity decay length [internal units], $\beta_V$ = Beta viscosity
+        Alpha viscosity (min) < $\alpha_V$ < Alpha viscosity (max)
+        """
+
+        def get_float(x):
+            return "{:4.2f}".format(self.hydro_scheme[x][0])
+
+        def get_string(x):
+            return self.hydro_scheme[x].decode('utf-8')
+
+        output = (
+            f"{get_string('Viscosity Model')}\n"
+            rf"$\alpha_{{V, 0}}$ = {get_float('Alpha viscosity')}, "
+            rf"$\ell_V$ = {get_float('Viscosity decay length [internal units]')}, "
+            rf"$\beta_V$ = {get_float('Beta viscosity')}"
+            "\n"
+            rf"{get_float('Alpha viscosity (min)')} < $\alpha_V$ < {get_float('Alpha viscosity (max)')}"
+        )
+
+        return output
+
+    
+
 
 def generate_getter(filename, name: str, field: str, unit):
     """
