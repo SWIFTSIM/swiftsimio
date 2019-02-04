@@ -37,6 +37,7 @@ gas = {
     "Temperature": "temperature",
     "Viscosity": "viscosity",
     "sSFR": "specific_sfr",
+    "MaterialID": "material_id",
     **shared,
     **baryon,
 }
