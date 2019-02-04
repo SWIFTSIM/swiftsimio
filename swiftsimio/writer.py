@@ -1,5 +1,9 @@
 """
 Contains functions and objects for creating SWIFT datasets.
+
+Essentially all you want to do is use SWIFTWriterDataset and fill the attributes
+that are required for each particle type. More information is available in the
+README.
 """
 
 import unyt
@@ -99,6 +103,29 @@ class __SWIFTWriterParticleDataset(object):
         self.n_part = sizes[0]
 
         return True
+
+    def generate_smoothing_lengths(self, boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity], dimension: int):
+        """
+        Automatically generates the smoothing lengths as 2 * the mean interparticle separation.
+
+        This only works for a uniform boxsize (i.e. one that has the same length in all dimensions).
+        If boxsize is a list, we just use the 0th member.
+        """
+
+        try:
+            boxsize = boxsize[0]
+        except IndexError:
+            boxsize = boxsize
+
+        n_part = self.coordinates.shape[0]
+        mips = boxsize / (n_part ** (1.0 / dimension))
+
+        smoothing_lengths = mips * np.ones(n_part, dtype=float)
+
+        self.smoothing_length = smoothing_lengths
+
+        return
+
 
     def write_particle_group(self, file_handle: h5py.File, compress: bool):
         """
@@ -234,20 +261,38 @@ class SWIFTWriterDataset(object):
     def __init__(
         self,
         unit_system: Union[unyt.UnitSystem, str],
-        box_size: Union[list, float],
+        box_size: Union[list, unyt.unyt_quantity],
+        dimension=3,
         compress=True,
     ):
         """
         Requires a unit system, either one from unyt or a string describing a
         built-in system, for things to be written to file using.
 
-        Box size is also required, and the compress option (to compress the
-        hdf5 dataset) is also required.
+        Box size is also required (and must have associated units through
+        unyt), and the compress option (to compress the hdf5 dataset) is also
+        available. If you are generating initial conditions for a dimensionality
+        other than 3, you will want to set the (integer) dimension parameter.
         """
 
-        self.unit_system = unit_system
-        self.box_size = box_size
+        if isinstance(unit_system, str):
+            self.unit_system = unyt.unit_systems.unit_system_registry[unit_system]
+        else:
+            self.unit_system = unit_system
+
+        # Validate the boxsize and convert to our units.
+        try:
+            for x in box_size:
+                x.convert_to_base(self.unit_system)
+            self.box_size = box_size
+        except TypeError:
+            # This is just a single number (i.e. uniform in all dimensions)
+            box_size.convert_to_base(self.unit_system)
+            self.box_size = box_size
+
+        self.dimension = dimension
         self.compress = compress
+
 
         self.create_particle_datasets()
 
@@ -292,6 +337,7 @@ class SWIFTWriterDataset(object):
             "NumPart_Total": number_of_particles,
             "NumPart_Total_HighWord": [0] * 6,
             "Flag_Entropy_ICs": 0,
+            "Dimension": np.array([self.dimension])
         }
 
         header = handle.create_group("Header")

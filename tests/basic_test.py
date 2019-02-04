@@ -3,7 +3,7 @@ Basic integration test!
 """
 
 from swiftsimio import load
-from swiftsimio.writer import SWIFTWriterDataset
+from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
 
 import unyt
@@ -15,20 +15,32 @@ def test_write():
     """
     Creates a sample dataset.
     """
-    x = SWIFTWriterDataset(cosmo_units, 100)
+    # Box is 100 Mpc
+    boxsize = 100 * unyt.Mpc
 
+    # Generate object. cosmo_units corresponds to default Gadget-oid units
+    # of 10^10 Msun, Mpc, and km/s
+    x = Writer("galactic", boxsize)
+
+    # 32^3 particles.
     n_p = 32**3
 
-    x.gas.coordinates = unyt.unyt_array(100*np.random.rand(n_p*3).reshape(n_p, 3), unyt.kpc*1000)
+    # Randomly spaced coordinates from 0, 100 Mpc in each direction
+    x.gas.coordinates = np.random.rand(n_p, 3) * (100 * unyt.Mpc)
 
-    x.gas.velocities = unyt.unyt_array(np.random.rand(n_p*3).reshape(n_p, 3), unyt.km / unyt.s)
+    # Random velocities from 0 to 1 km/s
+    x.gas.velocities = np.random.rand(n_p, 3) * (unyt.km / unyt.s)
 
-    x.gas.smoothing_length = unyt.unyt_array(np.ones(n_p, dtype=float) * 100 / (n_p**(1/3)), unyt.kpc*1000)
+    # Generate uniform masses as 10^6 solar masses for each particle
+    x.gas.masses = np.ones(n_p, dtype=float) * (1e6 * unyt.msun)
 
-    x.gas.masses = unyt.unyt_array(np.ones(n_p, dtype=float)*1e6, unyt.msun)
+    # Generate internal energy corresponding to 10^4 K
+    x.gas.internal_energy = np.ones(n_p, dtype=float) * (1e4 * unyt.kb * unyt.K)
 
-    x.gas.internal_energy = unyt.unyt_array(np.ones(n_p, dtype=float)*1e-19, unyt.J)
-    
+    # Generate initial guess for smoothing lengths based on MIPS
+    x.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+
+    # If IDs are not present, this automatically generates    
     x.write("test.hdf5")
 
 
