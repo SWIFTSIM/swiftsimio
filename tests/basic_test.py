@@ -35,7 +35,7 @@ def test_write():
     x.gas.masses = np.ones(n_p, dtype=float) * (1e6 * unyt.msun)
 
     # Generate internal energy corresponding to 10^4 K
-    x.gas.internal_energy = np.ones(n_p, dtype=float) * (1e4 * unyt.kb * unyt.K)
+    x.gas.internal_energy = np.ones(n_p, dtype=float) * (1e4 * unyt.kb * unyt.K) / (1e6 * unyt.msun)
 
     # Generate initial guess for smoothing lengths based on MIPS
     x.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
