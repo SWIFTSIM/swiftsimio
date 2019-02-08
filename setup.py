@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="swiftsimio",
-    version="0.2.1",
+    version="0.2.2",
     description="SWIFTsim (swift.dur.ac.uk) i/o routines for python.",
     url="https://gitlab.cosma.dur.ac.uk/jborrow/SWIFTsimIO",
     author="Josh Borrow",

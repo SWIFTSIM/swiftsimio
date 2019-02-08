@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.2.2
+-------
+
+Minor bugfixes and improvements:
+
++ Added the MaterialID field
++ Changed internal energy units to be correct (energy per unit mass).
 
 v 0.2.1
 -------
