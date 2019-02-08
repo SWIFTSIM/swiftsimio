@@ -7,6 +7,7 @@ v 0.2.3
 Backwards-compatibility update:
 
 + Write "NumFilesPerSnapshot", "NumPart_ThisFile", and "MassTable" to snapshots.
++ Added ability to write extra items to the header.
 
 v 0.2.2
 -------

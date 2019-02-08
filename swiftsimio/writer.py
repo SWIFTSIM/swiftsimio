@@ -256,6 +256,9 @@ class SWIFTWriterDataset(object):
     + Fully consistent unit system
     + All required arrays for SWIFT to start
     + Required metadata (all automatic, apart from those required by __init__)
+
+    extra_header should be a dictionary containing extra things to write to the
+    header.
     """
 
     def __init__(
@@ -264,6 +267,7 @@ class SWIFTWriterDataset(object):
         box_size: Union[list, unyt.unyt_quantity],
         dimension=3,
         compress=True,
+        extra_header: Union[None, dict]=None
     ):
         """
         Requires a unit system, either one from unyt or a string describing a
@@ -293,6 +297,7 @@ class SWIFTWriterDataset(object):
         self.dimension = dimension
         self.compress = compress
 
+        self.extra_header = extra_header
 
         self.create_particle_datasets()
 
@@ -345,6 +350,9 @@ class SWIFTWriterDataset(object):
             "NumPart_ThisFile": number_of_particles,
             "MassTable": mass_table,
         }
+
+        if self.extra_header is not None:
+            attrs = {**attrs, **self.extra_header}
 
         header = handle.create_group("Header")
 
