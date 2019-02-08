@@ -332,7 +332,7 @@ class SWIFTWriterDataset(object):
         for number, name in metadata.particle_types.particle_name_underscores.items():
             if name in names_to_write:
                 number_of_particles[number] = getattr(self, name).n_part
-                mass_table[number] = getattr(self, name).mass[0]
+                mass_table[number] = getattr(self, name).masses[0]
 
         attrs = {
             "BoxSize": self.box_size,
