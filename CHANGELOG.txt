@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.2.3
+-------
+
+Backwards-compatibility update:
+
++ Write "NumFilesPerSnapshot", "NumPart_ThisFile", and "MassTable" to snapshots.
+
 v 0.2.2
 -------
 

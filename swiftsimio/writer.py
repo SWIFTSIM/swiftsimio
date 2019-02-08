@@ -327,17 +327,23 @@ class SWIFTWriterDataset(object):
         """
 
         number_of_particles = [0] * 6
+        mass_table = [0.0] * 6
 
         for number, name in metadata.particle_types.particle_name_underscores.items():
             if name in names_to_write:
                 number_of_particles[number] = getattr(self, name).n_part
+                mass_table[number] = getattr(self, name).mass[0]
 
         attrs = {
             "BoxSize": self.box_size,
             "NumPart_Total": number_of_particles,
             "NumPart_Total_HighWord": [0] * 6,
             "Flag_Entropy_ICs": 0,
-            "Dimension": np.array([self.dimension])
+            "Dimension": np.array([self.dimension]),
+            # LEGACY but required for Gadget readers
+            "NumFilesPerSnapshot": 1,
+            "NumPart_ThisFile": number_of_particles,
+            "MassTable": mass_table,
         }
 
         header = handle.create_group("Header")
