@@ -15,6 +15,7 @@ from swiftsimio import metadata
 
 import h5py
 import unyt
+import numpy as np
 
 from datetime import datetime
 
@@ -22,6 +23,19 @@ from datetime import datetime
 class SWIFTUnits(object):
     """
     Generates a unyt system that can then be used with the SWIFT data.
+
+    You are probably looking for the following attributes:
+
+    + SWIFTUnits.mass
+    + SWIFTUnits.length
+    + SWIFTUnits.time
+    + SWIFTUnits.current
+    + SWIFTUnits.temperature
+
+    That give the unit mass, length, time, current, and temperature as
+    unyt unit variables in simulation units. I.e. you can take any value
+    that you get out of the code and multiply it by the appropriate values
+    to get it 'unyt-ified' with the correct units.
     """
 
     def __init__(self, filename):
@@ -44,6 +58,13 @@ class SWIFTUnits(object):
                 name: value[0] * metadata.unit_types.unit_names_to_unyt[name]
                 for name, value in handle["Units"].attrs.items()
             }
+
+        # We now unpack this into variables.
+        self.mass = self.units["Unit mass in cgs (U_M)"]
+        self.length = self.units["Unit length in cgs (U_L)"]
+        self.time = self.units["Unit time in cgs (U_t)"]
+        self.current = self.units["Unit current in cgs (U_I)"]
+        self.temperature = self.units["Unit temperature in cgs (U_T)"]
 
     def generate_units(self):
         """
@@ -127,11 +148,19 @@ class SWIFTMetadata(object):
 
         # Store these separately
         self.n_gas = self.num_part[0]
-        self.n_dark_matter = (self.num_part[1],)
+        self.n_dark_matter = self.num_part[1]
         self.n_stars = self.num_part[4]
         self.n_black_holes = self.num_part[5]
 
         return
+
+    @property
+    def present_particle_types(self):
+        """
+        The particle types that are present in the file.
+        """
+
+        return np.where(np.array(self.num_part) != 0)[0]
 
     @property
     def code_info(self):
