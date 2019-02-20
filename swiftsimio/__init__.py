@@ -1,5 +1,6 @@
 from .reader import *
 from .writer import SWIFTWriterDataset
+from .masks import SWIFTMask
 
 import swiftsimio.metadata as metadata
 
