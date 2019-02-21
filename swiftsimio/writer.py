@@ -104,7 +104,11 @@ class __SWIFTWriterParticleDataset(object):
 
         return True
 
-    def generate_smoothing_lengths(self, boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity], dimension: int):
+    def generate_smoothing_lengths(
+        self,
+        boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity],
+        dimension: int,
+    ):
         """
         Automatically generates the smoothing lengths as 2 * the mean interparticle separation.
 
@@ -125,7 +129,6 @@ class __SWIFTWriterParticleDataset(object):
         self.smoothing_length = smoothing_lengths
 
         return
-
 
     def write_particle_group(self, file_handle: h5py.File, compress: bool):
         """
@@ -267,7 +270,7 @@ class SWIFTWriterDataset(object):
         box_size: Union[list, unyt.unyt_quantity],
         dimension=3,
         compress=True,
-        extra_header: Union[None, dict]=None
+        extra_header: Union[None, dict] = None,
     ):
         """
         Requires a unit system, either one from unyt or a string describing a

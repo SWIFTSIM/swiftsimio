@@ -19,6 +19,8 @@ import numpy as np
 
 from datetime import datetime
 
+from typing import Union
+
 
 class SWIFTUnits(object):
     """
@@ -163,6 +165,17 @@ class SWIFTMetadata(object):
         return np.where(np.array(self.num_part) != 0)[0]
 
     @property
+    def present_particle_names(self):
+        """
+        The particle _names_ that are present in the simulation.
+        """
+
+        return [
+            metadata.particle_types.particle_name_underscores[x]
+            for x in self.present_particle_types
+        ]
+
+    @property
     def code_info(self):
         """
         Gets a nicely printed set of code information with:
@@ -282,7 +295,7 @@ class SWIFTMetadata(object):
         return output
 
 
-def generate_getter(filename, name: str, field: str, unit):
+def generate_getter(filename, name: str, field: str, unit, mask: Union[None, np.array]):
     """
     Generates a function that:
 
@@ -301,7 +314,14 @@ def generate_getter(filename, name: str, field: str, unit):
         else:
             with h5py.File(filename, "r") as handle:
                 try:
-                    setattr(self, f"_{name}", unyt.unyt_array(handle[field][...], unit))
+                    if mask is not None:
+                        setattr(
+                            self, f"_{name}", unyt.unyt_array(handle[field][mask], unit)
+                        )
+                    else:
+                        setattr(
+                            self, f"_{name}", unyt.unyt_array(handle[field][...], unit)
+                        )
                 except KeyError:
                     print(f"Could not read {field}")
                     return None
@@ -388,7 +408,7 @@ class __SWIFTParticleDataset(object):
         return
 
 
-def generate_dataset(filename, particle_type: int, units: SWIFTUnits):
+def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
     particle type given.
@@ -429,12 +449,21 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits):
 
         unit = unit_system[name]
 
+        if mask is not None:
+            mask_array = getattr(mask, particle_name)
+        else:
+            mask_array = None
+
         setattr(
             ThisDataset,
             name,
             property(
                 generate_getter(
-                    filename, name, f"PartType{particle_type}/{field_name}", unit=unit
+                    filename,
+                    name,
+                    f"PartType{particle_type}/{field_name}",
+                    unit=unit,
+                    mask=mask_array,
                 ),
                 generate_setter(name),
                 generate_deleter(name),
@@ -467,13 +496,15 @@ class SWIFTDataset(object):
     SWIFTDataset.metadata.
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, mask=None):
         self.filename = filename
+        self.mask = mask
 
         self.get_units()
         self.get_metadata()
         self.create_particle_datasets()
-        pass
+
+        return
 
     def get_units(self):
         """
@@ -506,6 +537,10 @@ class SWIFTDataset(object):
             self.get_units()
 
         for ptype, name in metadata.particle_types.particle_name_underscores.items():
-            setattr(self, name, generate_dataset(self.filename, ptype, self.units))
+            setattr(
+                self,
+                name,
+                generate_dataset(self.filename, ptype, self.units, self.mask),
+            )
 
         return

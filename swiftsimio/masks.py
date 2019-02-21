@@ -38,10 +38,9 @@ class SWIFTMask(object):
         types.
         """
 
-        for ptype in self.metadata.present_particle_types:
-            pname = metadata.particle_types.particle_name_underscores[ptype]
+        for ptype in self.metadata.present_particle_names:
             setattr(
-                self, pname, np.ones(getattr(self.metadata, f"n_{pname}"), dtype=bool)
+                self, ptype, np.ones(getattr(self.metadata, f"n_{ptype}"), dtype=bool)
             )
 
         return
@@ -67,13 +66,14 @@ class SWIFTMask(object):
                 ]
             )
 
-            for ptype in self.metadata.present_particle_types:
-                name = metadata.particle_types.particle_name_underscores[ptype]
-
-                self.counts[name] = handle["Cells"]["Counts"][f"PartType{ptype}"][
+            for ptype, pname in zip(
+                self.metadata.present_particle_types,
+                self.metadata.present_particle_names,
+            ):
+                self.counts[pname] = handle["Cells"]["Counts"][f"PartType{ptype}"][
                     non_empty_mask
                 ]
-                self.offsets[name] = handle["Cells"]["Offsets"][f"PartType{ptype}"][
+                self.offsets[pname] = handle["Cells"]["Offsets"][f"PartType{ptype}"][
                     non_empty_mask
                 ]
 
@@ -111,6 +111,7 @@ class SWIFTMask(object):
             quantity
         ]
         unit = getattr(metadata.unit_fields, ptype)[quantity]
+        # We use the type and not the number because it is far easier for users to understand.
         particle_number = {
             v: k for k, v in metadata.particle_types.particle_name_underscores.items()
         }[ptype]
@@ -223,8 +224,28 @@ class SWIFTMask(object):
 
         cell_mask = self._generate_cell_mask(restrict)
 
-        for ptype in self.metadata.present_particle_types:
-            pname = metadata.particle_types.particle_name_underscores[ptype]
-            self._update_spatial_mask(restrict, pname, cell_mask)
+        for ptype in self.metadata.present_particle_names:
+            self._update_spatial_mask(restrict, ptype, cell_mask)
+
+        return
+
+    def convert_masks_to_integer(self):
+        """
+        Converts the masks to integer masks so that they take up less space.
+        
+        This is non-reversible. It is also not required, but can help save space
+        on highly constrained machines before you start reading in the data.
+
+        If you don't know what you are doing please don't use this.
+        """
+
+        for ptype in self.metadata.present_particle_names:
+            setattr(
+                self,
+                ptype,
+                np.where(getattr(self, ptype))[
+                    0
+                ].tolist(),  # Because it nests things in a list for some reason.
+            )
 
         return
