@@ -7,24 +7,17 @@ shared = {
     "coordinates": "Coordinates",
     "particle_ids": "ParticleIDs",
     "velocities": "Velocities",
-    "masses": "Masses"
+    "masses": "Masses",
 }
 
 gas = {
     "smoothing_length": "SmoothingLength",
     "internal_energy": "InternalEnergy",
-    **shared
+    **shared,
 }
 
-dark_matter = {
-    **shared
-}
+dark_matter = {**shared}
 
-stars = {
-    **shared
-}
+stars = {**shared}
 
-black_holes = {
-    **shared
-}
-
+black_holes = {**shared}

@@ -20,6 +20,7 @@ def validate_file(filename):
 
     return True
 
+
 def mask(filename) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
@@ -30,6 +31,7 @@ def mask(filename) -> SWIFTMask:
     units = SWIFTUnits(filename)
 
     return SWIFTMask(metadata=metadata, units=units)
+
 
 def load(filename, mask=None) -> SWIFTDataset:
     """

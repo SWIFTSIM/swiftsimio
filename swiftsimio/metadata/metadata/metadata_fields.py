@@ -25,6 +25,7 @@ header_unpack_variables = {
     "MassTable": "mass_table",
 }
 
+
 def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
     """
     Generates the unit dictionaries with the:
@@ -35,10 +36,7 @@ def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
     """
 
     # Do not include those items that do not have units.
-    units = {
-        "boxsize": l,
-        "mass_table": m
-    }
+    units = {"boxsize": l, "mass_table": m}
 
     return units
 
@@ -56,6 +54,7 @@ header_unpack_single_float = {
     "Scale-factor": "a",
 }
 
+
 def generate_units_header_unpack_single_float(m, l, t, I, T) -> dict:
     """
     Generate the unit dictionaries with the:
@@ -65,9 +64,6 @@ def generate_units_header_unpack_single_float(m, l, t, I, T) -> dict:
     units respectively.
     """
 
-    units = {
-        "time": t,
-        "t": t,
-    }
+    units = {"time": t, "t": t}
 
     return units

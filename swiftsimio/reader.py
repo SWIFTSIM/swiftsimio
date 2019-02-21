@@ -74,11 +74,7 @@ class SWIFTUnits(object):
         """
 
         unit_fields = metadata.unit_fields.generate_units(
-            m=self.mass,
-            l=self.length,
-            t=self.time,
-            I=self.current,
-            T=self.temperature,
+            m=self.mass, l=self.length, t=self.time, I=self.current, T=self.temperature
         )
 
         for ptype, units in unit_fields.items():
@@ -135,7 +131,11 @@ class SWIFTMetadata(object):
         for field, name in metadata.metadata_fields.header_unpack_variables.items():
             try:
                 if name in header_unpack_variables_units.keys():
-                    setattr(self, name, self.header[field] * header_unpack_variables_units[name])
+                    setattr(
+                        self,
+                        name,
+                        self.header[field] * header_unpack_variables_units[name],
+                    )
                 else:
                     # Must not have any units! Oh well.
                     setattr(self, name, self.header[field])
@@ -156,7 +156,11 @@ class SWIFTMetadata(object):
         for field, name in metadata.metadata_fields.header_unpack_single_float.items():
             try:
                 if name in header_unpack_float_units.keys():
-                    setattr(self, name, self.header[field][0] * header_unpack_float_units[name])
+                    setattr(
+                        self,
+                        name,
+                        self.header[field][0] * header_unpack_float_units[name],
+                    )
                 else:
                     setattr(self, name, self.header[field][0])
             except KeyError:

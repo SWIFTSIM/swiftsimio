@@ -17,7 +17,7 @@ class SWIFTMask(object):
     Pass in the SWIFTMetadata.
     """
 
-    def __init__(self, metadata: SWIFTMetadata, units: SWIFTUnits):
+    def __init__(self, metadata: SWIFTMetadata):
         """
         Takes the SWIFT metadata and enables individual property-by-property masking
         when reading from snapshots. Please note that when masking like this
@@ -26,7 +26,7 @@ class SWIFTMask(object):
         """
 
         self.metadata = metadata
-        self.units = units
+        self.units = metadata.units
 
         self._unpack_cell_metadata()
 

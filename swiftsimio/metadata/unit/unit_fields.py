@@ -92,7 +92,7 @@ def generate_dimensions():
 
     for particle_type, particle_type_units in units.items():
         dimensions[particle_type] = {}
-        
+
         for unit_name, unit in particle_type_units.items():
             try:
                 dimensions[particle_type][unit_name] = unit.dimensions
