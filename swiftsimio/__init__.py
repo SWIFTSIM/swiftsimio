@@ -20,13 +20,23 @@ def validate_file(filename):
 
     return True
 
+def mask(filename) -> SWIFTMask:
+    """
+    Sets up a masking object for you to use with the correct units and
+    metadata available.
+    """
 
-def load(filename) -> SWIFTDataset:
+    metadata = SWIFTMetadata(filename)
+    units = SWIFTUnits(filename)
+
+    return SWIFTMask(metadata=metadata, units=units)
+
+def load(filename, mask=None) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
     """
 
-    return SWIFTDataset(filename)
+    return SWIFTDataset(filename, mask=mask)
 
 
 # Rename this object to something simpler.
