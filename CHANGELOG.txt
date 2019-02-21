@@ -1,6 +1,16 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.0
+-------
+
+The masking update:
+
++ Added masking object and functions (both spatial and property-based).
++ Added units to relevant unpacked header variables.
++ Added nicer API to access (base) units.
++ Added `present_particle_types property` to metadata.
+
 v 0.2.3
 -------
 
