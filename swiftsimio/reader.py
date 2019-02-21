@@ -74,11 +74,11 @@ class SWIFTUnits(object):
         """
 
         unit_fields = metadata.unit_fields.generate_units(
-            m=self.units["Unit mass in cgs (U_M)"],
-            l=self.units["Unit length in cgs (U_L)"],
-            t=self.units["Unit time in cgs (U_t)"],
-            I=self.units["Unit current in cgs (U_I)"],
-            T=self.units["Unit temperature in cgs (U_T)"],
+            m=self.mass,
+            l=self.length,
+            t=self.time,
+            I=self.current,
+            T=self.temperature,
         )
 
         for ptype, units in unit_fields.items():
@@ -94,8 +94,9 @@ class SWIFTMetadata(object):
     metadata.
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, units: SWIFTUnits):
         self.filename = filename
+        self.units = units
 
         self.get_metadata()
 
@@ -123,17 +124,41 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
+        header_unpack_variables_units = metadata.metadata_fields.generate_units_header_unpack_variables(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
+        )
+
         for field, name in metadata.metadata_fields.header_unpack_variables.items():
             try:
-                setattr(self, name, self.header[field])
+                if name in header_unpack_variables_units.keys():
+                    setattr(self, name, self.header[field] * header_unpack_variables_units[name])
+                else:
+                    # Must not have any units! Oh well.
+                    setattr(self, name, self.header[field])
             except KeyError:
                 # Must not be present, just skip it
                 continue
 
         # These must be unpacked as they are stored as length-1 arrays
+
+        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
+        )
+
         for field, name in metadata.metadata_fields.header_unpack_single_float.items():
             try:
-                setattr(self, name, self.header[field][0])
+                if name in header_unpack_float_units.keys():
+                    setattr(self, name, self.header[field][0] * header_unpack_float_units[name])
+                else:
+                    setattr(self, name, self.header[field][0])
             except KeyError:
                 # Must not be present, just skip it
                 continue
@@ -522,7 +547,7 @@ class SWIFTDataset(object):
         but you can call this function again if you mess things up.
         """
 
-        self.metadata = SWIFTMetadata(self.filename)
+        self.metadata = SWIFTMetadata(self.filename, self.units)
 
         return
 

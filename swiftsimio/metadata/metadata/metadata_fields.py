@@ -25,6 +25,24 @@ header_unpack_variables = {
     "MassTable": "mass_table",
 }
 
+def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
+    """
+    Generates the unit dictionaries with the:
+
+    mass, length, time, current, and temperature
+
+    units respectively.
+    """
+
+    # Do not include those items that do not have units.
+    units = {
+        "boxsize": l,
+        "mass_table": m
+    }
+
+    return units
+
+
 # These are the same as above, but they are stored in the snapshots as length
 # one arrays. These values will be unpacked, i.e. they will be set as
 # self.y = self.header[x][0].
@@ -37,3 +55,19 @@ header_unpack_single_float = {
     "Scale-factor": "scale_factor",
     "Scale-factor": "a",
 }
+
+def generate_units_header_unpack_single_float(m, l, t, I, T) -> dict:
+    """
+    Generate the unit dictionaries with the:
+
+    mass, length, time, current, and temperature
+
+    units respectively.
+    """
+
+    units = {
+        "time": t,
+        "t": t,
+    }
+
+    return units
