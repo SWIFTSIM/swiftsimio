@@ -110,16 +110,24 @@ class SWIFTMask(object):
         handle = {v: k for k, v in getattr(metadata.particle_fields, ptype).items()}[
             quantity
         ]
-        unit = getattr(metadata.unit_fields, ptype)[quantity]
+        unit = getattr(self.units, ptype)[quantity]
         # We use the type and not the number because it is far easier for users to understand.
         particle_number = {
             v: k for k, v in metadata.particle_types.particle_name_underscores.items()
         }[ptype]
         # Load in the relevant data.
 
-        with h5py.File(self.metadata.filename, "r") as handle:
-            data = data[f"PartType{particle_number}/{handle}"][current_mask]
-            data *= unit
+        with h5py.File(self.metadata.filename, "r") as file:
+            # Surprisingly this is faster than just using the boolean
+            # indexing because h5py has slow indexing routines.
+            data = (
+                np.take(
+                    file[f"PartType{particle_number}/{handle}"],
+                    np.where(current_mask)[0],
+                    axis=0,
+                )
+                * unit
+            )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
 
@@ -243,9 +251,8 @@ class SWIFTMask(object):
             setattr(
                 self,
                 ptype,
-                np.where(getattr(self, ptype))[
-                    0
-                ].tolist(),  # Because it nests things in a list for some reason.
+                # Because it nests things in a list for some reason.
+                np.where(getattr(self, ptype))[0],
             )
 
         return

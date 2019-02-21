@@ -1,6 +1,15 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.1
+-------
+
+The masking performance update:
+
++ Use `np.take` with integer masks instead of boolean masks for significantly
+  improved performance.
++ Major bugfixes to the spatial matching code.
+
 v 0.3.0
 -------
 

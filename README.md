@@ -142,3 +142,34 @@ _not_ allow values over 2^31, i.e. you need to ensure that your
 provided values (with units) when _written_ to the file are safe to 
 be interpreted as (single-precision) floats. The only exception to
 this is coordinates which are stored in double precision.
+
+
+Ahead-of-time Masking
+---------------------
+
+SWIFT snapshots contain cell metadata that allow us to spatially mask the
+data ahead of time. `swiftsimio` provides a number of objects that help with
+this. See the example below.
+
+```python
+import swiftsimio as sw
+
+# This creates and sets up the masking object.
+mask = sw.mask("/path/to/swift/snapshot")
+
+# This ahead-of-time creates a spatial mask based on the cell metadata.
+mask.constrain_spatial([[0.2 * mask.metadata.boxsize[0], 0.7 * mask.metadata.boxsize[0]], None, None])
+
+# Now, just for fun, we also constrain the density between 0.4 g/cm^3 and 0.8. This reads in
+# the relevant data in the region, and tests it element-by-element.
+density_units = mask.units.mass / mask.units.length**3
+mask.constrain_mask("gas", "density", 0.4 * density_units, 0.8 * density_units)
+
+# Now we can grab the actual data object. This includes the mask as a parameter.
+data = sw.load("/Users/josh/Documents/swiftsim-add-anarchy/examples/SodShock_3D/sodShock_0001.hdf5", mask=mask)
+```
+
+When the attributes of this data object are accessed, transparently _only_ the ones that 
+belong to the masked region (in both density and spatial) are read. I.e. if I ask for the
+temperature of particles, it will recieve an array containing temperatures of particles
+that lie in the region [0.2, 0.7] and have a density between 0.4 and 0.8 g/cm^3.

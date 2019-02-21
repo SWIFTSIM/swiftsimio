@@ -27,10 +27,10 @@ def mask(filename) -> SWIFTMask:
     metadata available.
     """
 
-    metadata = SWIFTMetadata(filename)
     units = SWIFTUnits(filename)
+    metadata = SWIFTMetadata(filename, units)
 
-    return SWIFTMask(metadata=metadata, units=units)
+    return SWIFTMask(metadata=metadata)
 
 
 def load(filename, mask=None) -> SWIFTDataset:
