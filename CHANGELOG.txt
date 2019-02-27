@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.2
+-------
+
+ANARCHY update:
+
++ Added diffusion and viscosity coefficients to the reading metadata
+
 v 0.3.1
 -------
 
