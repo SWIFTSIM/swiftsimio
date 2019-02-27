@@ -38,6 +38,8 @@ gas = {
     "Viscosity": "viscosity",
     "sSFR": "specific_sfr",
     "MaterialID": "material_id",
+    "Diffusion": "diffusion",
+    "Viscosity": "viscosity",
     **shared,
     **baryon,
 }
