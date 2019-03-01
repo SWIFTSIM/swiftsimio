@@ -561,7 +561,7 @@ class SWIFTDataset(object):
         self.mask = mask
 
         if mask is not None:
-            self.mask.convert_masks_to_integer()
+            self.mask.convert_masks_to_ranges()
 
         self.get_units()
         self.get_metadata()
