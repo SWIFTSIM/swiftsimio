@@ -22,16 +22,22 @@ def validate_file(filename):
     return True
 
 
-def mask(filename) -> SWIFTMask:
+def mask(filename, spatial_only=True) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
     metadata available.
+
+    If you are only planning on using this as a spatial mask, ensure
+    that spatial_only remains true. If you requrie the use of the
+    constrain_mask function, then you will need to use the (considerably
+    more expensive, ~bytes per particle instead of ~bytes per cell
+    spatial_only=False version).
     """
 
     units = SWIFTUnits(filename)
     metadata = SWIFTMetadata(filename, units)
 
-    return SWIFTMask(metadata=metadata)
+    return SWIFTMask(metadata=metadata, spatial_only=spatial_only)
 
 
 def load(filename, mask=None) -> SWIFTDataset:
