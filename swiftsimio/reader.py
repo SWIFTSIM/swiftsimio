@@ -12,6 +12,7 @@ This file contains four major objects:
 """
 
 from swiftsimio import metadata
+from swiftsimio.accelerated import read_ranges_from_file
 
 import h5py
 import unyt
@@ -346,7 +347,7 @@ class SWIFTMetadata(object):
         return output
 
 
-def generate_getter(filename, name: str, field: str, unit, mask: Union[None, np.array]):
+def generate_getter(filename, name: str, field: str, unit, mask: Union[None, np.ndarray], mask_size: int):
     """
     Generates a function that:
 
@@ -369,7 +370,10 @@ def generate_getter(filename, name: str, field: str, unit, mask: Union[None, np.
                         setattr(
                             self,
                             f"_{name}",
-                            unyt.unyt_array(handle[field][mask], unit),
+                            unyt.unyt_array(
+                                read_ranges_from_file(handle[field], mask, output_size=mask_size, output_type=handle[field][0].dtype),
+                                unit
+                            ),
                         )
                     else:
                         setattr(
@@ -504,8 +508,10 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
 
         if mask is not None:
             mask_array = getattr(mask, particle_name)
+            mask_size = getattr(mask, f"{particle_name}_size")
         else:
             mask_array = None
+            mask_size = -1
 
         setattr(
             ThisDataset,
@@ -517,6 +523,7 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
                     f"PartType{particle_type}/{field_name}",
                     unit=unit,
                     mask=mask_array,
+                    mask_size=mask_size
                 ),
                 generate_setter(name),
                 generate_deleter(name),

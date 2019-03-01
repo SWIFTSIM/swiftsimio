@@ -10,6 +10,8 @@ import numpy as np
 
 from swiftsimio import metadata, SWIFTMetadata, SWIFTUnits
 
+from swiftsimio.accelerated import ranges_from_array
+
 
 class SWIFTMask(object):
     """
@@ -237,9 +239,9 @@ class SWIFTMask(object):
 
         return
 
-    def convert_masks_to_integer(self):
+    def convert_masks_to_ranges(self):
         """
-        Converts the masks to integer masks so that they take up less space.
+        Converts the masks to range masks so that they take up less space.
         
         This is non-reversible. It is also not required, but can help save space
         on highly constrained machines before you start reading in the data.
@@ -253,6 +255,19 @@ class SWIFTMask(object):
                 ptype,
                 # Because it nests things in a list for some reason.
                 np.where(getattr(self, ptype))[0],
+            )
+
+            setattr(
+                self,
+                f"{ptype}_size",
+                getattr(self, ptype).size
+            )
+
+        for ptype in self.metadata.present_particle_names:
+            setattr(
+                self,
+                ptype,
+                ranges_from_array(getattr(self, ptype)),
             )
 
         return
