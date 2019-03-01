@@ -205,7 +205,9 @@ class SWIFTMask(object):
             counts = self.counts[ptype][cell_mask]
             offsets = self.offsets[ptype][cell_mask]
 
-            this_mask = [[c, c + o - 1] for c, o in zip(counts, offsets)]
+            this_mask = [
+                [o, c+o-1] for c, o in zip(counts, offsets)
+            ]
 
             setattr(self, ptype, np.array(this_mask))
             setattr(self, f"{ptype}_size", np.sum(counts))
