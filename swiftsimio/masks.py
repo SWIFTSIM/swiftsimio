@@ -202,8 +202,8 @@ class SWIFTMask(object):
         """
 
         if self.spatial_only:
-            counts = self.counts[ptype]
-            offsets = self.offsets[ptype]
+            counts = self.counts[ptype][cell_mask]
+            offsets = self.offsets[ptype][cell_mask]
 
             this_mask = [
                 [c, c+o-1] for c, o in zip(counts, offsets)
