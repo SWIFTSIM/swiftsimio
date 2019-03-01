@@ -51,7 +51,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     start = array[0]
     stop = array[0]
-    
+
     for value in array[1:]:
         if value != stop + 1:
             output.append([start, stop])
@@ -66,7 +66,9 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     return np.array(output)
 
 
-def read_ranges_from_file(handle: Dataset, ranges: np.ndarray, output_shape: Tuple, output_type=np.float64) -> np.array:
+def read_ranges_from_file(
+    handle: Dataset, ranges: np.ndarray, output_shape: Tuple, output_type=np.float64
+) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
     ranges_from_array, and reads only those ranges from the file.
@@ -84,7 +86,9 @@ def read_ranges_from_file(handle: Dataset, ranges: np.ndarray, output_shape: Tup
         # Because we read inclusively
         size_of_range = (range[1] + 1) - range[0]
 
-        output[already_read : size_of_range + already_read] = handle[range[0] : range[1] + 1]
+        output[already_read : size_of_range + already_read] = handle[
+            range[0] : range[1] + 1
+        ]
 
         already_read += size_of_range
 
@@ -104,4 +108,3 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
     ranges = ranges_from_array(mask_array)
 
     return read_ranges_from_file(handle, ranges, output_size, output_type)
-

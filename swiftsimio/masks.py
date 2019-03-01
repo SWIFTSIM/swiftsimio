@@ -205,9 +205,7 @@ class SWIFTMask(object):
             counts = self.counts[ptype][cell_mask]
             offsets = self.offsets[ptype][cell_mask]
 
-            this_mask = [
-                [c, c+o-1] for c, o in zip(counts, offsets)
-            ]
+            this_mask = [[c, c + o - 1] for c, o in zip(counts, offsets)]
 
             setattr(self, ptype, np.array(this_mask))
             setattr(self, f"{ptype}_size", np.sum(counts))
@@ -218,7 +216,6 @@ class SWIFTMask(object):
 
             # We must do the whole boolean mask business.
             this_mask = getattr(self, ptype)
-
 
             for count, offset in zip(counts, offsets):
                 this_mask[offset : count + offset] = False
@@ -280,17 +277,9 @@ class SWIFTMask(object):
                     np.where(getattr(self, ptype))[0],
                 )
 
-                setattr(
-                    self,
-                    f"{ptype}_size",
-                    getattr(self, ptype).size
-                )
+                setattr(self, f"{ptype}_size", getattr(self, ptype).size)
 
             for ptype in self.metadata.present_particle_names:
-                setattr(
-                    self,
-                    ptype,
-                    ranges_from_array(getattr(self, ptype)),
-                )
+                setattr(self, ptype, ranges_from_array(getattr(self, ptype)))
 
         return

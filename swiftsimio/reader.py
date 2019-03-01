@@ -347,7 +347,9 @@ class SWIFTMetadata(object):
         return output
 
 
-def generate_getter(filename, name: str, field: str, unit, mask: Union[None, np.ndarray], mask_size: int):
+def generate_getter(
+    filename, name: str, field: str, unit, mask: Union[None, np.ndarray], mask_size: int
+):
     """
     Generates a function that:
 
@@ -377,14 +379,23 @@ def generate_getter(filename, name: str, field: str, unit, mask: Union[None, np.
                         if output_size != 1:
                             output_shape = (mask_size, output_size)
                         else:
-                            output_shape = (mask_size)
+                            output_shape = mask_size
+
+                        import pdb
+
+                        pdb.set_trace()
 
                         setattr(
                             self,
                             f"_{name}",
                             unyt.unyt_array(
-                                read_ranges_from_file(handle[field], mask, output_shape=output_shape, output_type=output_type),
-                                unit
+                                read_ranges_from_file(
+                                    handle[field],
+                                    mask,
+                                    output_shape=output_shape,
+                                    output_type=output_type,
+                                ),
+                                unit,
                             ),
                         )
                     else:
@@ -535,7 +546,7 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
                     f"PartType{particle_type}/{field_name}",
                     unit=unit,
                     mask=mask_array,
-                    mask_size=mask_size
+                    mask_size=mask_size,
                 ),
                 generate_setter(name),
                 generate_deleter(name),
