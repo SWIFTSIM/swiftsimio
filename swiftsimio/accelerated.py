@@ -6,6 +6,8 @@ import numpy as np
 
 from h5py._hl.dataset import Dataset
 
+from typing import Tuple
+
 try:
     from numba import jit
 except ImportError:
@@ -64,7 +66,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     return np.array(output)
 
 
-def read_ranges_from_file(handle: Dataset, ranges: np.ndarray, output_size: int, output_type=np.float64) -> np.array:
+def read_ranges_from_file(handle: Dataset, ranges: np.ndarray, output_shape: Tuple, output_type=np.float64) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
     ranges_from_array, and reads only those ranges from the file.
@@ -73,7 +75,7 @@ def read_ranges_from_file(handle: Dataset, ranges: np.ndarray, output_size: int,
     to do this ourself in this kind of gross way.
     """
 
-    output = np.empty(output_size, dtype=output_type)
+    output = np.empty(output_shape, dtype=output_type)
     already_read = 0
 
     # Cannot do pythonic loop because numba cannot jit that

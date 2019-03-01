@@ -36,7 +36,7 @@ class SWIFTMask(object):
 
     def _generate_empty_masks(self):
         """
-        Generates the empty (i.e. all True) masks for all available particle
+        Generates the empty (i.e. all False) masks for all available particle
         types.
         """
 
@@ -183,31 +183,20 @@ class SWIFTMask(object):
 
     def _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array):
         """
-        Generates the mask for the _particles_ of all types. Not for user
-        use.
-
-        Uses the cell metadata to create a spatial mask. Restrict is a 3 length
-        list that contains length two arrays giving the lower and upper bounds
-        for that axis, e.g.
-
-        restrict = [
-            [0.5, 0.7],
-            [0.1, 0.9],
-            [0.0, 0.1]
-        ]
-
-        These values must have units associated with them.
+        Updates the mask for ptype usnig the cell mask. We actually overwrite
+        all non-used cells with False, rather than the inverse, as we assume
+        initially that we want to write all particles in, and we want to
+        respect other masks that may have been applied to the data.
         """
 
-        counts = self.counts[ptype][cell_mask]
-        offsets = self.offsets[ptype][cell_mask]
+        counts = self.counts[ptype][~cell_mask]
+        offsets = self.offsets[ptype][~cell_mask]
 
-        mask = np.zeros_like(getattr(self, ptype))
+        this_mask = getattr(self, ptype)
+
 
         for count, offset in zip(counts, offsets):
-            mask[offset : count + offset] = True
-
-        setattr(self, ptype, np.logical_and.reduce([mask, getattr(self, ptype)]))
+            this_mask[offset : count + offset] = False
 
         return
 
@@ -249,6 +238,7 @@ class SWIFTMask(object):
         If you don't know what you are doing please don't use this.
         """
 
+
         for ptype in self.metadata.present_particle_names:
             setattr(
                 self,
@@ -262,6 +252,7 @@ class SWIFTMask(object):
                 f"{ptype}_size",
                 getattr(self, ptype).size
             )
+
 
         for ptype in self.metadata.present_particle_names:
             setattr(

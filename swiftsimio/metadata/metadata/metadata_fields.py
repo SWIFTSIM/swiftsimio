@@ -21,7 +21,7 @@ metadata_fields_to_read = {
 # things in the same namespace!
 header_unpack_variables = {
     "BoxSize": "boxsize",
-    "NumPart_Total": "num_part",
+    "NumPart_ThisFile": "num_part",
     "MassTable": "mass_table",
 }
 

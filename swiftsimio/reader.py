@@ -367,11 +367,23 @@ def generate_getter(filename, name: str, field: str, unit, mask: Union[None, np.
             with h5py.File(filename, "r") as handle:
                 try:
                     if mask is not None:
+                        # First, need to claculate data shape (which may be
+                        # non-trivial), so we read in the first value
+                        first_value = handle[field][0]
+
+                        output_type = first_value.dtype
+                        output_size = first_value.size
+
+                        if output_size != 1:
+                            output_shape = (mask_size, output_size)
+                        else:
+                            output_shape = (mask_size)
+
                         setattr(
                             self,
                             f"_{name}",
                             unyt.unyt_array(
-                                read_ranges_from_file(handle[field], mask, output_size=mask_size, output_type=handle[field][0].dtype),
+                                read_ranges_from_file(handle[field], mask, output_shape=output_shape, output_type=output_type),
                                 unit
                             ),
                         )
