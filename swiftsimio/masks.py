@@ -210,6 +210,7 @@ class SWIFTMask(object):
             ]
 
             setattr(self, ptype, np.array(this_mask))
+            setattr(self, f"{ptype}_size", np.sum(counts))
 
         else:
             counts = self.counts[ptype][~cell_mask]
