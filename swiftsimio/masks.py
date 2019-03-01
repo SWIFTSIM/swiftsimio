@@ -19,20 +19,27 @@ class SWIFTMask(object):
     Pass in the SWIFTMetadata.
     """
 
-    def __init__(self, metadata: SWIFTMetadata):
+    def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
         """
         Takes the SWIFT metadata and enables individual property-by-property masking
         when reading from snapshots. Please note that when masking like this
         order-in-file is not preserved, i.e. the 7th particle may not be the
         7th particle in the file.
+
+        spatial_only is a very powerful property. If True (the default), you can
+        only constrain spatially. However, this is significantly faster and
+        considerably more memory efficient (~ bytes per cell, rather than ~ bytes
+        per particle).
         """
 
         self.metadata = metadata
         self.units = metadata.units
+        self.spatial_only = True
 
         self._unpack_cell_metadata()
 
-        self._generate_empty_masks()
+        if not spatial_only:
+            self._generate_empty_masks()
 
     def _generate_empty_masks(self):
         """
@@ -106,6 +113,11 @@ class SWIFTMask(object):
 
         Note that the quantities must have units attached.
         """
+
+        if self.spatial_only:
+            print("You cannot constrain a mask if spatial_only=True")
+            print("Please re-initialise the SWIFTMask object with spatial_only=False")
+            return
 
         current_mask = getattr(self, ptype)
 
@@ -189,14 +201,26 @@ class SWIFTMask(object):
         respect other masks that may have been applied to the data.
         """
 
-        counts = self.counts[ptype][~cell_mask]
-        offsets = self.offsets[ptype][~cell_mask]
+        if self.spatial_only:
+            counts = self.counts[ptype]
+            offsets = self.offsets[ptype]
 
-        this_mask = getattr(self, ptype)
+            this_mask = [
+                [c, c+o-1] for c, o in zip(counts, offsets)
+            ]
+
+            setattr(self, ptype, np.array(this_mask))
+
+        else:
+            counts = self.counts[ptype][~cell_mask]
+            offsets = self.offsets[ptype][~cell_mask]
+
+            # We must do the whole boolean mask business.
+            this_mask = getattr(self, ptype)
 
 
-        for count, offset in zip(counts, offsets):
-            this_mask[offset : count + offset] = False
+            for count, offset in zip(counts, offsets):
+                this_mask[offset : count + offset] = False
 
         return
 
@@ -238,27 +262,34 @@ class SWIFTMask(object):
         If you don't know what you are doing please don't use this.
         """
 
+        if self.spatial_only:
+            # We are already done!
+            return
+        else:
+            # We must do the whole boolean mask stuff. To do that, we
+            # First, convert each boolean mask into an integer mask
+            # Use the accelerate.ranges_from_array function to convert
+            # This into a set of ranges.
 
-        for ptype in self.metadata.present_particle_names:
-            setattr(
-                self,
-                ptype,
-                # Because it nests things in a list for some reason.
-                np.where(getattr(self, ptype))[0],
-            )
+            for ptype in self.metadata.present_particle_names:
+                setattr(
+                    self,
+                    ptype,
+                    # Because it nests things in a list for some reason.
+                    np.where(getattr(self, ptype))[0],
+                )
 
-            setattr(
-                self,
-                f"{ptype}_size",
-                getattr(self, ptype).size
-            )
+                setattr(
+                    self,
+                    f"{ptype}_size",
+                    getattr(self, ptype).size
+                )
 
-
-        for ptype in self.metadata.present_particle_names:
-            setattr(
-                self,
-                ptype,
-                ranges_from_array(getattr(self, ptype)),
-            )
+            for ptype in self.metadata.present_particle_names:
+                setattr(
+                    self,
+                    ptype,
+                    ranges_from_array(getattr(self, ptype)),
+                )
 
         return
