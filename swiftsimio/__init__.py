@@ -3,6 +3,7 @@ from .writer import SWIFTWriterDataset
 from .masks import SWIFTMask
 
 import swiftsimio.metadata as metadata
+import swiftsimio.accelerated as accelerated
 
 name = "swiftsimio"
 
