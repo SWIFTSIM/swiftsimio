@@ -46,7 +46,7 @@ class cosmo_factor:
         """
         The a-factor for the unit, e.g. for density this is 1 / a**3.
         """
-        return self.expr.subs({"a", self.scale_factor})
+        return self.expr.subs(a, self.scale_factor)
 
     @property
     def redshift(self):
