@@ -132,7 +132,7 @@ class cosmo_array(unyt_array):
         if self.comoving:
             return
         else:
-            self.d *= self.cosmo_factor.a_factor
+            self.units *= self.cosmo_factor.a_factor
             self.comoving = True
 
     def convert_to_physical(self) -> None:
@@ -140,7 +140,7 @@ class cosmo_array(unyt_array):
         Convert the internal data to be in physical units.
         """
         if self.comoving:
-            self.d /= self.cosmo_factor.a_factor
+            self.units /= self.cosmo_factor.a_factor
             self.comoving = False
         else:
             return
@@ -149,7 +149,7 @@ class cosmo_array(unyt_array):
         """
         Returns a copy of the data in physical units.
         """
-        copied_data = self.in_units(self.units)
+        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_physical()
 
         return copied_data        
@@ -158,7 +158,7 @@ class cosmo_array(unyt_array):
         """
         Returns a copy of the data in comoving units.
         """
-        copied_data = self.in_units(self.units)
+        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_comoving()
 
         return copied_data        
