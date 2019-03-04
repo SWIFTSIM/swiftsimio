@@ -44,7 +44,7 @@ def generate_cosmology(scale_factor: float, gamma: float):
     }
 
     gas = {
-        "denisty": cosmo_factory(a**(-3)),
+        "density": cosmo_factory(a**(-3)),
         "entropy": no_cosmology,
         "internal_energy": cosmo_factory(a**(-3.0 * (gamma - 1))),
         "smoothing_length": cosmo_factory(a),

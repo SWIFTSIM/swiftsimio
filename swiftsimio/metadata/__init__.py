@@ -11,4 +11,6 @@ from .unit import unit_fields
 
 from .metadata import metadata_fields
 
+from .cosmology import cosmology_fields
+
 from .writer import required_fields

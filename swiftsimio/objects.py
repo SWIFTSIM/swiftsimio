@@ -112,14 +112,7 @@ class cosmo_array(unyt_array):
         """
         Our version of the __init__. We also call the super().
         """
-        super().__init__(
-            self,
-            input_array,
-            input_units=input_units,
-            registry=registry,
-            dtype=dtype,
-            bypass_validation=bypass_validation,
-        )
+        super().__init__()
 
         self.cosmo_factor = cosmo_factor
         self.comoving = comoving

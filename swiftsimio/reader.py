@@ -13,6 +13,7 @@ This file contains four major objects:
 
 from swiftsimio import metadata
 from swiftsimio.accelerated import read_ranges_from_file
+from swiftsimio.objects import cosmo_array, cosmo_factor
 
 import h5py
 import unyt
@@ -154,6 +155,13 @@ class SWIFTMetadata(object):
             T=self.units.temperature,
         )
 
+        try:
+            self.a = self.scale_factor
+        except AttributeError:
+            # These must always be present for the intialisation of cosmology properties
+            self.a = 1.0
+            self.scale_factor = 1.0
+
         for field, name in metadata.metadata_fields.header_unpack_single_float.items():
             try:
                 if name in header_unpack_float_units.keys():
@@ -183,6 +191,13 @@ class SWIFTMetadata(object):
         self.n_dark_matter = self.num_part[1]
         self.n_stars = self.num_part[4]
         self.n_black_holes = self.num_part[5]
+
+        # Need to unpack the gas gamma for cosmology
+        try:
+            self.gas_gamma = self.hydro_scheme["Adiabatic index"]
+        except (KeyError, TypeError):
+            print("Could not find gas gamma, assuming 5./3.")
+            self.gas_gamma = 5. / 3.
 
         return
 
@@ -289,7 +304,7 @@ class SWIFTMetadata(object):
         output = (
             f"{get_string('Scheme')}\n"
             f"{get_string('Kernel function')} in {get_int('Dimension')}D\n"
-            f"$\eta$ = {get_float('Kernel eta')} "
+            rf"$\eta$ = {get_float('Kernel eta')} "
             rf"({get_float('Kernel target N_ngb')} $N_{{ngb}}$)"
             "\n"
             rf"$C_{{\rm CFL}}$ = {get_float('CFL parameter')}"
@@ -299,7 +314,7 @@ class SWIFTMetadata(object):
 
     @property
     def viscosity_info(self):
-        """
+        r"""
         Pretty-prints some information about the viscosity scheme.
 
         Viscosity Model
@@ -348,7 +363,7 @@ class SWIFTMetadata(object):
 
 
 def generate_getter(
-    filename, name: str, field: str, unit, mask: Union[None, np.ndarray], mask_size: int
+    filename, name: str, field: str, unit, mask: Union[None, np.ndarray], mask_size: int, cosmo_factor: cosmo_factor
 ):
     """
     Generates a function that:
@@ -388,7 +403,7 @@ def generate_getter(
                         setattr(
                             self,
                             f"_{name}",
-                            unyt.unyt_array(
+                            cosmo_array(
                                 read_ranges_from_file(
                                     handle[field],
                                     mask,
@@ -396,11 +411,12 @@ def generate_getter(
                                     output_type=output_type,
                                 ),
                                 unit,
+                                cosmo_factor=cosmo_factor
                             ),
                         )
                     else:
                         setattr(
-                            self, f"_{name}", unyt.unyt_array(handle[field][...], unit)
+                            self, f"_{name}", cosmo_array(handle[field][...], unit, cosmo_factor=cosmo_factor)
                         )
                 except KeyError:
                     print(f"Could not read {field}")
@@ -488,7 +504,7 @@ class __SWIFTParticleDataset(object):
         return
 
 
-def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
+def generate_dataset(filename, particle_type: int, file_metadata: SWIFTMetadata, mask):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
     particle type given.
@@ -506,7 +522,8 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
 
     particle_name = metadata.particle_types.particle_name_underscores[particle_type]
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
-    unit_system = getattr(units, particle_name)
+    unit_system = getattr(file_metadata.units, particle_name)
+    cosmology_system = metadata.cosmology.cosmology_fields.generate_cosmology(file_metadata.a, file_metadata.gas_gamma)
 
     ThisDataset = type(
         f"{particle_nice_name}Dataset",
@@ -528,6 +545,7 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
             continue
 
         unit = unit_system[name]
+        cosmo_factor = cosmology_system[particle_name][name]
 
         if mask is not None:
             mask_array = getattr(mask, particle_name)
@@ -547,13 +565,14 @@ def generate_dataset(filename, particle_type: int, units: SWIFTUnits, mask):
                     unit=unit,
                     mask=mask_array,
                     mask_size=mask_size,
+                    cosmo_factor=cosmo_factor
                 ),
                 generate_setter(name),
                 generate_deleter(name),
             ),
         )
 
-    empty_dataset = ThisDataset(filename, particle_type, units)
+    empty_dataset = ThisDataset(filename, particle_type, file_metadata.units)
 
     return empty_dataset
 
@@ -626,7 +645,7 @@ class SWIFTDataset(object):
             setattr(
                 self,
                 name,
-                generate_dataset(self.filename, ptype, self.units, self.mask),
+                generate_dataset(self.filename, ptype, self.metadata, self.mask),
             )
 
         return

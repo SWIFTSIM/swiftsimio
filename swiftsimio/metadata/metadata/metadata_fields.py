@@ -51,7 +51,6 @@ header_unpack_single_float = {
     "Redshift": "redshift",
     "Redshift": "z",
     "Scale-factor": "scale_factor",
-    "Scale-factor": "a",
 }
 
 
