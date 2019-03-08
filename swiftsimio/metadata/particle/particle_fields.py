@@ -14,6 +14,7 @@ baryon = {
     "ElementAbundance": "element_abundance",
     "Maximal Temperature": "maximal_temperature",
     "Maximal Temperature scale-factor": "maximal_temperature_scale_factor",
+    "Maximal Temperature time": "maximal_temperature_time";
     "IronMassFracFromSNIa": "iron_mass_frac_from_sn1a",
     "MetalMassFracFromAGB": "metal_mass_frac_from_agb",
     "MetalMassFracFromSNII": "metal_mass_frac_from_snii",
@@ -48,9 +49,8 @@ dark_matter = {**shared}
 
 stars = {
     "BirthDensity": "birth_density",
-    "Birth_time": "birth_time",
-    "Initial_Masses": "initial_masses",
-    "NewStarFlag": "new_star_flag",
+    "BirthTime": "birth_time",
+    "InitialMasses": "initial_masses",
     **shared,
     **baryon,
 }
