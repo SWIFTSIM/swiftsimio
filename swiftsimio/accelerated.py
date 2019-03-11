@@ -12,12 +12,15 @@ try:
     from numba import jit
 except ImportError:
     print(
-        "You do not have numba installed. Please consider installing"
-        "if you are going to be indexing large arrays"
+        "You do not have numba installed. Please consider installing "
+        "if you are going to be indexing large arrays "
+        "(pip install numba)"
     )
 
-    def jit(func, *args, **kwargs):
-        return func
+    def jit(*args, **kwargs):
+        def x(func):
+            return func
+        return x
 
 
 @jit(nopython=True)

@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.4
+-------
+
+Major bugfixes:
+
++ Fake jit decorator was incorrectly called in accelerate.py
++ Incorrect metadata
+
 v 0.3.3
 -------
 
