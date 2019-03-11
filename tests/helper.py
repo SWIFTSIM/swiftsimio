@@ -32,6 +32,8 @@ def requires(filename):
 
     if ret != 0:
         Warning(f"Unable to download file at {filename}")
+        # It wrote an empty file, kill it.
+        subprocess.call(["rm", file_location])
 
         def dont_call_test(func):
             def empty(*args, **kwargs):
