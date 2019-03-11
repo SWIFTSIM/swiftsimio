@@ -8,3 +8,6 @@ env/*
 build/*
 dist/*
 swiftsimio.egg-info
+
+# Test data
+test_data/*
