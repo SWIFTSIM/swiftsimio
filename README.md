@@ -1,6 +1,8 @@
 SWIFTsimIO
 ==========
 
+[![Build Status](https://travis-ci.com/SWIFTSIM/swiftsimio.svg?branch=master)](https://travis-ci.com/SWIFTSIM/swiftsimio)
+
 The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used widely. There
 exists many ways of reading the data from SWIFT, which outputs HDF5 files. These range
 from reading directly using `h5py` to using a complex system such as `yt`; however these
