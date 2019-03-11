@@ -32,6 +32,7 @@ def generate_units(m, l, t, I, T):
         "element_abundance": None,
         "maximal_temperature": T,
         "maximal_temperature_scale_factor": None,
+        "maximal_temperature_time": t,
         "iron_mass_frac_from_sn1a": None,
         "metal_mass_frac_from_agb": None,
         "metal_mass_frac_from_snii": None,
