@@ -31,6 +31,7 @@ def generate_cosmology(scale_factor: float, gamma: float):
         "element_abundance": no_cosmology,
         "maximal_temperature": no_cosmology,
         "maximal_temperature_scale_factor": no_cosmology,
+        "maximal_temperature_time": no_cosmology,
         "iron_mass_frac_from_sn1a": no_cosmology,
         "metal_mass_frac_from_agb": no_cosmology,
         "metal_mass_frac_from_snii": no_cosmology,
