@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.3
+-------
+
+Star formation update:
+
++ Includes some new names for fields that have changed recently in
+  the star formation code in SWIFT.
+
 v 0.3.2
 -------
 
