@@ -155,23 +155,30 @@ class SWIFTMetadata(object):
             T=self.units.temperature,
         )
 
-        try:
-            self.a = self.scale_factor
-        except AttributeError:
-            # These must always be present for the intialisation of cosmology properties
-            self.a = 1.0
-            self.scale_factor = 1.0
-
-        for field, name in metadata.metadata_fields.header_unpack_single_float.items():
+        for field, names in metadata.metadata_fields.header_unpack_single_float.items():
             try:
-                if name in header_unpack_float_units.keys():
-                    setattr(
-                        self,
-                        name,
-                        self.header[field][0] * header_unpack_float_units[name],
-                    )
+                if isinstance(names, list):
+                    # Sometimes we store a list in case we have multiple names, for example
+                    # Redshift -> metadata.redshift AND metadata.z. Can't just do the iteration
+                    # because we may loop over the letters in the string.
+                    for variable in names:
+                        if variable in header_unpack_float_units.keys():
+                            # We have an associated unit!
+                            unit = header_unpack_variables_units[variable]
+                            setattr(self, variable, self.header[field][0] * unit)
+                        else:
+                            # No unit
+                            setattr(self, variable, self.header[field][0])
                 else:
-                    setattr(self, name, self.header[field][0])
+                    # We can just check for the unit and set the attribute
+                    variable = names
+                    if variable in header_unpack_float_units.keys():
+                        # We have an associated unit!
+                        unit = header_unpack_variables_units[variable]
+                        setattr(self, variable, self.header[field][0] * unit)
+                    else:
+                        # No unit
+                        setattr(self, variable, self.header[field][0])
             except KeyError:
                 # Must not be present, just skip it
                 continue
@@ -198,6 +205,13 @@ class SWIFTMetadata(object):
         except (KeyError, TypeError):
             print("Could not find gas gamma, assuming 5./3.")
             self.gas_gamma = 5. / 3.
+
+        try:
+            self.a = self.scale_factor
+        except AttributeError:
+            # These must always be present for the initialisation of cosmology properties
+            self.a = 1.0
+            self.scale_factor = 1.0
 
         return
 
