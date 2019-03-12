@@ -20,6 +20,7 @@ except ImportError:
     def jit(*args, **kwargs):
         def x(func):
             return func
+
         return x
 
 

@@ -204,7 +204,7 @@ class SWIFTMetadata(object):
             self.gas_gamma = self.hydro_scheme["Adiabatic index"]
         except (KeyError, TypeError):
             print("Could not find gas gamma, assuming 5./3.")
-            self.gas_gamma = 5. / 3.
+            self.gas_gamma = 5.0 / 3.0
 
         try:
             self.a = self.scale_factor
@@ -377,7 +377,13 @@ class SWIFTMetadata(object):
 
 
 def generate_getter(
-    filename, name: str, field: str, unit, mask: Union[None, np.ndarray], mask_size: int, cosmo_factor: cosmo_factor
+    filename,
+    name: str,
+    field: str,
+    unit,
+    mask: Union[None, np.ndarray],
+    mask_size: int,
+    cosmo_factor: cosmo_factor,
 ):
     """
     Generates a function that:
@@ -425,12 +431,16 @@ def generate_getter(
                                     output_type=output_type,
                                 ),
                                 unit,
-                                cosmo_factor=cosmo_factor
+                                cosmo_factor=cosmo_factor,
                             ),
                         )
                     else:
                         setattr(
-                            self, f"_{name}", cosmo_array(handle[field][...], unit, cosmo_factor=cosmo_factor)
+                            self,
+                            f"_{name}",
+                            cosmo_array(
+                                handle[field][...], unit, cosmo_factor=cosmo_factor
+                            ),
                         )
                 except KeyError:
                     print(f"Could not read {field}")
@@ -537,7 +547,9 @@ def generate_dataset(filename, particle_type: int, file_metadata: SWIFTMetadata,
     particle_name = metadata.particle_types.particle_name_underscores[particle_type]
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
     unit_system = getattr(file_metadata.units, particle_name)
-    cosmology_system = metadata.cosmology.cosmology_fields.generate_cosmology(file_metadata.a, file_metadata.gas_gamma)
+    cosmology_system = metadata.cosmology.cosmology_fields.generate_cosmology(
+        file_metadata.a, file_metadata.gas_gamma
+    )
 
     ThisDataset = type(
         f"{particle_nice_name}Dataset",
@@ -579,7 +591,7 @@ def generate_dataset(filename, particle_type: int, file_metadata: SWIFTMetadata,
                     unit=unit,
                     mask=mask_array,
                     mask_size=mask_size,
-                    cosmo_factor=cosmo_factor
+                    cosmo_factor=cosmo_factor,
                 ),
                 generate_setter(name),
                 generate_deleter(name),

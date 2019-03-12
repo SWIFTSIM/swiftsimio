@@ -4,6 +4,7 @@ Metadata for the cosmology fields.
 
 from swiftsimio.objects import cosmo_factor, a
 
+
 def generate_cosmology(scale_factor: float, gamma: float):
     """
     Generates the cosmology dictionaries with the
@@ -21,10 +22,10 @@ def generate_cosmology(scale_factor: float, gamma: float):
 
     shared = {
         "coordinates": cosmo_factory(a),
-        "masses": no_cosmology, 
+        "masses": no_cosmology,
         "particle_ids": no_cosmology,
         "velocities": UNKNOWN,
-        "potential": UNKNOWN
+        "potential": UNKNOWN,
     }
 
     baryon = {
@@ -40,16 +41,16 @@ def generate_cosmology(scale_factor: float, gamma: float):
         "smoothed_element_abundance": no_cosmology,
         "smoothed_iron_mass_frac_from_sn1a": no_cosmology,
         "smoothed_metallicity": no_cosmology,
-        "total_mass_from_agb": no_cosmology, 
+        "total_mass_from_agb": no_cosmology,
         "total_mass_from_snii": no_cosmology,
     }
 
     gas = {
-        "density": cosmo_factory(a**(-3)),
+        "density": cosmo_factory(a ** (-3)),
         "entropy": no_cosmology,
-        "internal_energy": cosmo_factory(a**(-3.0 * (gamma - 1))),
+        "internal_energy": cosmo_factory(a ** (-3.0 * (gamma - 1))),
         "smoothing_length": cosmo_factory(a),
-        "pressure": cosmo_factory(a**(-3.0 * gamma)),
+        "pressure": cosmo_factory(a ** (-3.0 * gamma)),
         "diffusion": no_cosmology,
         "sfr": no_cosmology,
         "temperature": no_cosmology,

@@ -8,6 +8,7 @@ import os
 webstorage_location = "http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/"
 test_data_location = "test_data/"
 
+
 def requires(filename):
     """
     Use this as a decorator around tests that require data.
@@ -23,12 +24,9 @@ def requires(filename):
         ret = 0
     else:
         # Download it!
-        ret = subprocess.call([
-            "wget",
-            f"{webstorage_location}{filename}",
-            "-O",
-            file_location
-        ])
+        ret = subprocess.call(
+            ["wget", f"{webstorage_location}{filename}", "-O", file_location]
+        )
 
     if ret != 0:
         Warning(f"Unable to download file at {filename}")
@@ -50,6 +48,7 @@ def requires(filename):
             def final_test():
                 # Whack the path on there for good measure.
                 return func(f"{test_data_location}{filename}")
+
             return final_test
 
         return do_call_test

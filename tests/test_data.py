@@ -8,6 +8,7 @@ be read in.
 from tests.helper import requires
 from swiftsimio import load
 
+
 @requires("cosmological_volume.hdf5")
 def test_cosmology_metadata(filename):
     """
@@ -32,12 +33,7 @@ def test_fields_present(filename):
 
     data = load(filename)
 
-    shared = [
-        "coordinates",
-        "masses",
-        "particle_ids",
-        "velocities",
-    ]
+    shared = ["coordinates", "masses", "particle_ids", "velocities"]
 
     baryon = [
         "element_abundance",
@@ -52,11 +48,11 @@ def test_fields_present(filename):
         "smoothed_iron_mass_frac_from_sn1a",
         "smoothed_metallicity",
         "total_mass_from_agb",
-        "total_mass_from_snii"
+        "total_mass_from_snii",
     ]
 
     to_test = {
-        "gas" : [
+        "gas": [
             "density",
             "entropy",
             "internal_energy",
@@ -68,8 +64,10 @@ def test_fields_present(filename):
             "viscosity",
             "diffusion",
             "viscosity",
-        ] + baryon + shared,
-        "dark_matter" : shared
+        ]
+        + baryon
+        + shared,
+        "dark_matter": shared,
     }
 
     for ptype, properties in to_test.items():
