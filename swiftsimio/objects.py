@@ -12,6 +12,7 @@ import sympy
 # The scale factor!
 a = sympy.symbols("a")
 
+
 class cosmo_factor:
     """
     Cosmology factor. This takes two arguments, one which takes the expected
@@ -107,7 +108,7 @@ class cosmo_array(unyt_array):
         dtype=None,
         bypass_validation=False,
         cosmo_factor: Union[cosmo_factor, None] = None,
-        comoving: bool = True
+        comoving: bool = True,
     ):
         """
         Our version of the __init__. We also call the super().
@@ -123,7 +124,7 @@ class cosmo_array(unyt_array):
         else:
             comoving_str = "(Physical)"
 
-        return super().__str__() + ' ' + comoving_str
+        return super().__str__() + " " + comoving_str
 
     def convert_to_comoving(self) -> None:
         """
@@ -152,7 +153,7 @@ class cosmo_array(unyt_array):
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_physical()
 
-        return copied_data        
+        return copied_data
 
     def to_comoving(self):
         """
@@ -161,4 +162,4 @@ class cosmo_array(unyt_array):
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_comoving()
 
-        return copied_data        
+        return copied_data

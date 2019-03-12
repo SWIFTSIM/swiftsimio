@@ -45,11 +45,9 @@ def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
 # one arrays. These values will be unpacked, i.e. they will be set as
 # self.y = self.header[x][0].
 header_unpack_single_float = {
-    "Time": "time",
-    "Time": "t",
+    "Time": ["time", "t"],
     "Dimension": "dimension",
-    "Redshift": "redshift",
-    "Redshift": "z",
+    "Redshift": ["redshift", "z"],
     "Scale-factor": "scale_factor",
 }
 

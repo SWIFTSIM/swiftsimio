@@ -4,6 +4,7 @@ Tests some known good states with the metadata.
 
 from swiftsimio import metadata
 
+
 def test_same_contents():
     """
     Tests that there are the same arrays in each of the following:

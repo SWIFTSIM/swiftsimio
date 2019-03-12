@@ -2,7 +2,11 @@
 Tests for the accelerated functions.
 """
 
-from swiftsimio.accelerated import ranges_from_array, read_ranges_from_file, index_dataset
+from swiftsimio.accelerated import (
+    ranges_from_array,
+    read_ranges_from_file,
+    index_dataset,
+)
 
 import numpy as np
 import h5py
@@ -21,6 +25,7 @@ def test_ranges_from_array():
 
     return
 
+
 def test_ranges_from_array_non_contiguous():
     """
     Tests the ranges from array funciton with no contiguous input.
@@ -28,7 +33,9 @@ def test_ranges_from_array_non_contiguous():
 
     my_array = np.array([77, 34483, 234582, 123412341324], dtype=int)
 
-    out = np.array([[77, 77], [34483, 34483], [234582, 234582], [123412341324, 123412341324]])
+    out = np.array(
+        [[77, 77], [34483, 34483], [234582, 234582], [123412341324, 123412341324]]
+    )
 
     assert (ranges_from_array(my_array) == out).all()
 
@@ -44,9 +51,7 @@ def test_read_ranges_from_file():
     output_size = 3 + 11 + 1
     output_type = type(data[0])
 
-    out = np.array(
-        [77, 78, 79, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 204]
-    )
+    out = np.array([77, 78, 79, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 204])
 
     assert (out == read_ranges_from_file(data, ranges, output_size, output_type)).all()
 
@@ -59,7 +64,7 @@ def test_index_dataset():
 
     data = np.arange(1000)
     mask = np.unique(np.random.randint(0, 1000, 100))
-    
+
     true = data[mask]
 
     assert (index_dataset(data, mask) == true).all()
@@ -71,7 +76,7 @@ def test_index_dataset_h5py():
     """
 
     # This creates an in-memory file
-    file = h5py.File(name='f1', driver='core', backing_store=False)
+    file = h5py.File(name="f1", driver="core", backing_store=False)
 
     data = np.arange(100000)
     mask = np.unique(np.random.randint(0, 100000, 10000))

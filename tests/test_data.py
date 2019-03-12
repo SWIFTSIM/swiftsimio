@@ -8,6 +8,7 @@ be read in.
 from tests.helper import requires
 from swiftsimio import load
 
+
 @requires("cosmological_volume.hdf5")
 def test_cosmology_metadata(filename):
     """
@@ -32,19 +33,12 @@ def test_fields_present(filename):
 
     data = load(filename)
 
-    shared = [
-        "coordinates",
-        "masses",
-        "particle_ids",
-        "velocities",
-        "potential",
-    ]
+    shared = ["coordinates", "masses", "particle_ids", "velocities"]
 
     baryon = [
         "element_abundance",
         "maximal_temperature",
         "maximal_temperature_scale_factor",
-        "maximal_temperature_time",
         "iron_mass_frac_from_sn1a",
         "metal_mass_frac_from_agb",
         "metal_mass_frac_from_snii",
@@ -54,11 +48,11 @@ def test_fields_present(filename):
         "smoothed_iron_mass_frac_from_sn1a",
         "smoothed_metallicity",
         "total_mass_from_agb",
-        "total_mass_from_snii"
+        "total_mass_from_snii",
     ]
 
     to_test = {
-        "gas" : [
+        "gas": [
             "density",
             "entropy",
             "internal_energy",
@@ -68,20 +62,15 @@ def test_fields_present(filename):
             "sfr",
             "temperature",
             "viscosity",
-            "specific_sfr",
-            "material_id",
             "diffusion",
             "viscosity",
-        ] + baryon + shared,
-        "stars" : [
-            "birth_density",
-            "birth_time",
-            "initial_masses",
-        ] + baryon + shared,
-        "dark_matter" : shared
+        ]
+        + baryon
+        + shared,
+        "dark_matter": shared,
     }
 
-    for ptype, properties in to_test.values():
+    for ptype, properties in to_test.items():
         field = getattr(data, ptype)
         for property in properties:
             _ = getattr(field, property)
