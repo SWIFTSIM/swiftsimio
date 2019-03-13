@@ -11,3 +11,7 @@ swiftsimio.egg-info
 
 # Test data
 test_data/*
+
+# Code coverage
+htmlcov/*
+.coverage
