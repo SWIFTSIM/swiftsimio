@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.6
+-------
+
+Urgent bugfix release:
+
++ Fixed incorrect parsing of dual-purpose metadata.
+
 v 0.3.5
 -------
 
