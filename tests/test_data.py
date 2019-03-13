@@ -17,12 +17,12 @@ def test_cosmology_metadata(filename):
 
     data = load(filename)
 
- 
     assert data.metadata.a == data.metadata.scale_factor
 
     assert data.metadata.a == 1.0 / (1.0 + data.metadata.redshift)
 
     return
+
 
 @requires("cosmological_volume.hdf5")
 def test_time_metadata(filename):
