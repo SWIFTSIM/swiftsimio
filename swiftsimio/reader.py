@@ -164,7 +164,7 @@ class SWIFTMetadata(object):
                     for variable in names:
                         if variable in header_unpack_float_units.keys():
                             # We have an associated unit!
-                            unit = header_unpack_variables_units[variable]
+                            unit = header_unpack_float_units[variable]
                             setattr(self, variable, self.header[field][0] * unit)
                         else:
                             # No unit
@@ -174,7 +174,7 @@ class SWIFTMetadata(object):
                     variable = names
                     if variable in header_unpack_float_units.keys():
                         # We have an associated unit!
-                        unit = header_unpack_variables_units[variable]
+                        unit = header_unpack_float_units[variable]
                         setattr(self, variable, self.header[field][0] * unit)
                     else:
                         # No unit

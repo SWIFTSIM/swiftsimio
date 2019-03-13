@@ -17,9 +17,25 @@ def test_cosmology_metadata(filename):
 
     data = load(filename)
 
+ 
     assert data.metadata.a == data.metadata.scale_factor
 
     assert data.metadata.a == 1.0 / (1.0 + data.metadata.redshift)
+
+    return
+
+@requires("cosmological_volume.hdf5")
+def test_time_metadata(filename):
+    """
+    This tests the time metadata and also tests the ability to include two items at once from
+    the same header attribute.
+    """
+
+    data = load(filename)
+
+    assert data.metadata.z == data.metadata.redshift
+
+    assert data.metadata.t == data.metadata.time
 
     return
 
