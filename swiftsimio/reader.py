@@ -366,7 +366,7 @@ class SWIFTMetadata(object):
             return "{:4.2f}".format(self.hydro_scheme[x][0])
 
         output = (
-            rf"$\alpha_{V, 0}$ = {get_float('Diffusion alpha')},"
+            rf"$\alpha_{{V, 0}}$ = {get_float('Diffusion alpha')},"
             rf"$\beta_V$ = {get_float('Diffusion beta')}"
             "\n"
             rf"${get_float('Diffusion alpha (min)')} < "
