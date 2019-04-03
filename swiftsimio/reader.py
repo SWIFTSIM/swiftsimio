@@ -358,19 +358,19 @@ class SWIFTMetadata(object):
         """
         Pretty-prints some information about the diffusion scheme.
 
-        $\alpha_{V, 0}$ = Diffusion alpha, $\beta_V$ = Diffusion beta
-        Diffusion alpha (min) < $\alpha_V$ < Diffusion alpha (max)
+        $\alpha_{D, 0}$ = Diffusion alpha, $\beta_D$ = Diffusion beta
+        Diffusion alpha (min) < $\alpha_D$ < Diffusion alpha (max)
         """
 
         def get_float(x):
             return "{:4.2f}".format(self.hydro_scheme[x][0])
 
         output = (
-            rf"$\alpha_{{V, 0}}$ = {get_float('Diffusion alpha')}, "
-            rf"$\beta_V$ = {get_float('Diffusion beta')}"
+            rf"$\alpha_{{D, 0}}$ = {get_float('Diffusion alpha')}, "
+            rf"$\beta_D$ = {get_float('Diffusion beta')}"
             "\n"
             rf"${get_float('Diffusion alpha (min)')} < "
-            rf"\alpha_V < {get_float('Diffusion alpha (max)')}$"
+            rf"\alpha_D < {get_float('Diffusion alpha (max)')}$"
         )
 
         return output

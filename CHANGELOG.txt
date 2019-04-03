@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.7
+-------
+
+Cooling release:
+
++ Added RadiatedEnergy -> radiated_energy field.
++ Fixes some issues with information from the diffusion.
+
 v 0.3.6
 -------
 
