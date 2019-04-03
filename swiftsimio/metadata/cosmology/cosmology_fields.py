@@ -59,6 +59,7 @@ def generate_cosmology(scale_factor: float, gamma: float):
         "material_id": no_cosmology,
         "diffusion": no_cosmology,
         "viscosity": no_cosmology,
+        "radiated_energy": no_cosmolgy,
         **shared,
         **baryon,
     }

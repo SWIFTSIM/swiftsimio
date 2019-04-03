@@ -41,6 +41,7 @@ gas = {
     "MaterialID": "material_id",
     "Diffusion": "diffusion",
     "Viscosity": "viscosity",
+    "RadiatedEnergy": "radiated_energy",
     **shared,
     **baryon,
 }
