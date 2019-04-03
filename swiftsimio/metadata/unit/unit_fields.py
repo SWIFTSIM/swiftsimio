@@ -59,7 +59,7 @@ def generate_units(m, l, t, I, T):
         "material_id": None,
         "diffusion": None,
         "viscosity": None,
-        "radiated_energy": (l / t) ** 2,
+        "radiated_energy": m * (l / t) ** 2,
         **shared,
         **baryon,
     }
