@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.3.8
+-------
+
+Dependency release:
+
++ Explicitly makes `unyt<2.0.0` an install requirement.
+
 v 0.3.7
 -------
 
