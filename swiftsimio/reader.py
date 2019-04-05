@@ -21,7 +21,7 @@ import numpy as np
 
 from datetime import datetime
 
-from typing import Union
+from typing import Union, Callable
 
 
 class SWIFTUnits(object):
@@ -42,9 +42,9 @@ class SWIFTUnits(object):
     to get it 'unyt-ified' with the correct units.
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename, generate_unit_func=metadata.unit_fields.generate_units):
         self.filename = filename
-
+        self.generate_unit_func = generate_unit_func
         self.get_unit_dictionary()
         self.generate_units()
 
@@ -75,7 +75,7 @@ class SWIFTUnits(object):
         Creates the unyt system to use to reduce data.
         """
 
-        unit_fields = metadata.unit_fields.generate_units(
+        unit_fields = self.generate_unit_func(
             m=self.mass, l=self.length, t=self.time, I=self.current, T=self.temperature
         )
 
@@ -528,7 +528,9 @@ class __SWIFTParticleDataset(object):
         return
 
 
-def generate_dataset(filename, particle_type: int, file_metadata: SWIFTMetadata, mask):
+def generate_dataset(filename, particle_type: int, file_metadata: SWIFTMetadata, mask,
+                     generate_cosmology_func: Callable[...,dict] = 
+                     metadata.cosmology.cosmology_fields.generate_cosmology):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
     particle type given.
@@ -547,7 +549,7 @@ def generate_dataset(filename, particle_type: int, file_metadata: SWIFTMetadata,
     particle_name = metadata.particle_types.particle_name_underscores[particle_type]
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
     unit_system = getattr(file_metadata.units, particle_name)
-    cosmology_system = metadata.cosmology.cosmology_fields.generate_cosmology(
+    cosmology_system = generate_cosmology_func(
         file_metadata.a, file_metadata.gas_gamma
     )
 
@@ -624,10 +626,12 @@ class SWIFTDataset(object):
     SWIFTDataset.metadata.
     """
 
-    def __init__(self, filename, mask=None):
+    def __init__(self, filename, mask=None, generate_unit_func=metadata.unit_fields.generate_units,
+                 generate_cosmology_func=metadata.cosmology.cosmology_fields.generate_cosmology):
         self.filename = filename
         self.mask = mask
-
+        self.generate_unit_func = generate_unit_func
+        self.generate_cosmology_func = generate_cosmology_func
         if mask is not None:
             self.mask.convert_masks_to_ranges()
 
@@ -643,7 +647,7 @@ class SWIFTDataset(object):
         but you can call this function again if you mess things up.
         """
 
-        self.units = SWIFTUnits(self.filename)
+        self.units = SWIFTUnits(self.filename, generate_unit_func=self.generate_unit_func)
 
         return
 
@@ -671,7 +675,8 @@ class SWIFTDataset(object):
             setattr(
                 self,
                 name,
-                generate_dataset(self.filename, ptype, self.metadata, self.mask),
+                generate_dataset(self.filename, ptype, self.metadata, self.mask, 
+                    self.generate_cosmology_func),
             )
 
         return

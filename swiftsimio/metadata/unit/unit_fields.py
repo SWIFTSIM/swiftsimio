@@ -84,12 +84,12 @@ def generate_units(m, l, t, I, T):
     }
 
 
-def generate_dimensions():
+def generate_dimensions(generate_unit_func = generate_units):
     """
     Gets the dimensions for the above.
     """
 
-    units = generate_units(g, cm, s, statA, K)
+    units = generate_unit_func(g, cm, s, statA, K)
 
     dimensions = {}
 
