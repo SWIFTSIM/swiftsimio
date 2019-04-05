@@ -9,6 +9,7 @@ because we don't know the units ahead of time.
 """
 
 from unyt import g, cm, s, statA, K
+from typing import Callable
 
 
 def generate_units(m, l, t, I, T):
@@ -84,7 +85,7 @@ def generate_units(m, l, t, I, T):
     }
 
 
-def generate_dimensions(generate_unit_func = generate_units):
+def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units):
     """
     Gets the dimensions for the above.
     """

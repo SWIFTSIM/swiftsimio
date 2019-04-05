@@ -207,8 +207,13 @@ def generate_deleter(name: str):
     return deleter
 
 
-def generate_dataset(unit_system: Union[unyt.UnitSystem, str], particle_type: int, 
-     unit_fields_generate_units: Callable[...,dict] = metadata.unit_fields.generate_units):
+def generate_dataset(
+    unit_system: Union[unyt.UnitSystem, str],
+    particle_type: int,
+    unit_fields_generate_units: Callable[
+        ..., dict
+    ] = metadata.unit_fields.generate_units,
+):
     """
     Generates a SWIFTWriterParticleDataset _class_ that corresponds to the
     particle type given.
@@ -272,7 +277,9 @@ class SWIFTWriterDataset(object):
         dimension=3,
         compress=True,
         extra_header: Union[None, dict] = None,
-        unit_fields_generate_units: Callable[...,dict] = metadata.unit_fields.generate_units,
+        unit_fields_generate_units: Callable[
+            ..., dict
+        ] = metadata.unit_fields.generate_units,
     ):
         """
         Requires a unit system, either one from unyt or a string describing a
@@ -310,8 +317,13 @@ class SWIFTWriterDataset(object):
 
     def create_particle_datasets(self):
         for number, name in metadata.particle_types.particle_name_underscores.items():
-            setattr(self, name, generate_dataset(self.unit_system, number, 
-                    self.unit_fields_generate_units))
+            setattr(
+                self,
+                name,
+                generate_dataset(
+                    self.unit_system, number, self.unit_fields_generate_units
+                ),
+            )
 
         return
 
@@ -336,7 +348,7 @@ class SWIFTWriterDataset(object):
         Writes metadata to file based on the information passed to the object
         and the information in the particle groups.
         """
-        part_types = max(metadata.particle.particle_name_underscores.keys())+1
+        part_types = max(metadata.particle.particle_name_underscores.keys()) + 1
         number_of_particles = [0] * part_types
         mass_table = [0.0] * part_types
 
