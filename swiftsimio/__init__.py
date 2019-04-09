@@ -41,12 +41,22 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
     return SWIFTMask(metadata=metadata, spatial_only=spatial_only)
 
 
-def load(filename, mask=None) -> SWIFTDataset:
+def load(
+    filename,
+    mask=None,
+    generate_unit_func=metadata.unit_fields.generate_units,
+    generate_cosmology_func=metadata.cosmology.cosmology_fields.generate_cosmology,
+) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
     """
 
-    return SWIFTDataset(filename, mask=mask)
+    return SWIFTDataset(
+        filename,
+        mask=mask,
+        generate_unit_func=generate_unit_func,
+        generate_cosmology_func=generate_cosmology_func,
+    )
 
 
 # Rename this object to something simpler.
