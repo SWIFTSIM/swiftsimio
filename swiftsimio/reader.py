@@ -150,6 +150,15 @@ class SWIFTMetadata(object):
                 # Must not be present, just skip it
                 continue
 
+        # These must be unpacked as 'real' strings (i.e. converted to utf-8)
+
+        for field, name in metadata.metadata_fields.header_unpack_string.items():
+            try:
+                setattr(self, name, self.header[field])
+            except KeyError:
+                # Must not be present, just skip it
+                continue
+
         # These must be unpacked as they are stored as length-1 arrays
 
         header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(

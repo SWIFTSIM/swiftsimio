@@ -1,8 +1,7 @@
 """
 Test for extra particle types.
 """
-import swiftsimio as sw
-from swiftsimio import load
+from swiftsimio import load, metadata
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
 import swiftsimio.metadata.particle as swp
@@ -83,7 +82,7 @@ def test_write():
     unit_system = unyt.UnitSystem(
         name="default", length_unit=unyt.cm, mass_unit=unyt.g, time_unit=unyt.s
     )
-    #Specify a new type in the metadata - currently done by editing the dictionaries directly.
+    # Specify a new type in the metadata - currently done by editing the dictionaries directly.
     swp.particle_name_underscores[6] = "extratype"
     swp.particle_name_class[6] = "Extratype"
     swp.particle_name_text[6] = "Extratype"
@@ -118,9 +117,9 @@ def test_read():
 
     swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw.shared}
 
-    sw.metadata.particle_fields.extratype = {**sw.metadata.particle_fields.gas}
+    metadata.particle_fields.extratype = {**metadata.particle_fields.gas}
 
-    data = sw.load(
+    data = load(
         "extra_test.hdf5",
         generate_unit_func=generate_units,
         generate_cosmology_func=generate_cosmology,

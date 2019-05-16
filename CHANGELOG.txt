@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.4.0
+-------
+
+User-defined particle types update!
+
++ Allows for user defined particle types through an API
++ Adds the RunName field.
+
 v 0.3.8
 -------
 

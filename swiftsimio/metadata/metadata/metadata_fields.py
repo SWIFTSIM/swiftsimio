@@ -41,6 +41,11 @@ def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
     return units
 
 
+# These are the same as above, but they are extracted as real python strings
+# instead of bytecode characters.
+header_unpack_string = {"RunName": "run_name"}
+
+
 # These are the same as above, but they are stored in the snapshots as length
 # one arrays. These values will be unpacked, i.e. they will be set as
 # self.y = self.header[x][0].
