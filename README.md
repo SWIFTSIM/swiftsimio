@@ -175,3 +175,75 @@ When the attributes of this data object are accessed, transparently _only_ the o
 belong to the masked region (in both density and spatial) are read. I.e. if I ask for the
 temperature of particles, it will recieve an array containing temperatures of particles
 that lie in the region [0.2, 0.7] and have a density between 0.4 and 0.8 g/cm^3.
+
+
+User-defined particle types
+---------------------------
+
+It is now possible to add user-defined particle types using generator functions through an
+API in the `load()` function:
+
+```python
+import swiftsimio as sw
+import swiftsimio.metadata.particle as swp
+import swiftsimio.metadata.writer.required_fields as swmw
+import swiftsimio.metadata.unit.unit_fields as swuf
+import swiftsimio.metadata.cosmology as swcf
+from swiftsimio.objects import cosmo_factor, a
+
+def cosmo_factory(a_dependence):
+    return cosmo_factor(a_dependence, scale_factor)
+
+
+def generate_units(m, l, t, I, T):
+    """
+    Generates the units for a non-standard scheme.
+
+    Needs to return a dictionary of dictionaries:
+
+    {
+        "particle_type_name" : {
+            "field_name": m * m / l * T,
+            ...
+        },
+        ...
+    }
+    """
+
+    return ...
+
+
+def generate_cosmology(scale_factor: float, gamma: float):
+    """
+    Generates the cosmology a-factors for a non-standard scheme.
+
+    Needs to return a dictionary of dictionaries:
+
+    {
+        "particle_type_name" : {
+            "field_name": cosmo_factory(a*a*a),
+            ...
+        },
+        ...
+    }
+    """
+
+    return ...
+
+
+swp.particle_name_underscores[6] = "extratype"
+swp.particle_name_class[6] = "Extratype"
+swp.particle_name_text[6] = "Extratype"
+
+swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw.shared}
+
+sw.metadata.particle_fields.extratype = {**sw.metadata.particle_fields.gas}
+
+data = sw.load(
+    "extra_test.hdf5",
+    generate_unit_func=generate_units,
+    generate_cosmology_func=generate_cosmology,
+)
+```
+
+This feature is not ideal and will likely be changed in the future.
