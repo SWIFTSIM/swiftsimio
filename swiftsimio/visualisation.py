@@ -156,11 +156,7 @@ def project_gas_pixel_grid(
     x, y, _ = data.gas.coordinates.value.T
     hsml = data.gas.smoothing_length.value
 
-    x /= box_x
-    y /= box_y
-    hsml /= box_x
-
-    image = scatter(x, y, m, hsml, resolution)
+    image = scatter(x / box_x, y / box_y, m, hsml / box_x, resolution)
 
     return image
 
