@@ -7,7 +7,7 @@ from typing import Union
 from numpy import float32, int32, zeros, array, arange, sqrt, max, ndarray, ones
 from swiftsimio import SWIFTDataset
 
-from accelerated import jit
+from swiftsimio.accelerated import jit
 
 kernel_gamma = 1.778002
 kernel_constant = 80.0 * 3.14159 / 7.0
