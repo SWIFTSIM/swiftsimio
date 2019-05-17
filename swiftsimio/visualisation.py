@@ -11,6 +11,7 @@ from swiftsimio.accelerated import jit
 
 kernel_gamma = 1.778002
 kernel_constant = 80.0 * 3.14159 / 7.0
+zero_int32 = int32(0)
 
 
 @jit(nopython=True, fastmath=True)
@@ -43,7 +44,7 @@ def kernel(r: Union[float, float32], h: Union[float, float32]):
 
 
 @jit(nopython=True)
-def pair_max(a: int32, b: int32):
+def pair_max(a: int32, b: int32) -> int32:
     if a > b:
         return a
     else:
@@ -51,7 +52,7 @@ def pair_max(a: int32, b: int32):
 
 
 @jit(nopython=True)
-def pair_min(a: int32, b: int32):
+def pair_min(a: int32, b: int32) -> int32:
     if a < b:
         return a
     else:
@@ -103,7 +104,7 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
 
             # Now we loop over the square of cells that the kernel lives in
             for cell_x in range(
-                max(int32(0), particle_cell_x - cells_spanned),
+                pair_max(zero_int32, particle_cell_x - cells_spanned),
                 min(particle_cell_x + cells_spanned, maximal_array_index),
             ):
                 # The distance in x to our new favourite cell -- remember that our x, y
@@ -111,7 +112,7 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
                 distance_x = float32(cell_x) * pixel_width - x_pos
                 distance_x_2 = distance_x * distance_x
                 for cell_y in range(
-                    max(int32(0), particle_cell_y - cells_spanned),
+                    pair_max(zero_int32, particle_cell_y - cells_spanned),
                     min(particle_cell_y + cells_spanned, maximal_array_index),
                 ):
                     distance_y = float32(cell_y) * pixel_width - y_pos
@@ -129,7 +130,7 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
 def project_gas_pixel_grid(
     data: SWIFTDataset, resolution: int, project: Union[str, None] = "masses"
 ):
-    """
+    r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return:
         \bar{T} = \sum_j T_j W_{ij}
@@ -167,7 +168,7 @@ def project_gas_pixel_grid(
 def project_gas(
     data: SWIFTDataset, resolution: int, project: Union[str, None] = "masses"
 ):
-    """
+    r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return:
         \bar{T} = \sum_j T_j W_{ij}
