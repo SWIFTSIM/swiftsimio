@@ -5,7 +5,7 @@ if it is available.
 
 from typing import Union
 from numpy import float32, int32, zeros, array, arange, sqrt, max, ndarray, ones
-from swiftsimio import load, SWIFTDataset
+from swiftsimio import SWIFTDataset
 
 from accelerated import jit
 
