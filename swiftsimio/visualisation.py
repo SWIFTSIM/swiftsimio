@@ -127,7 +127,7 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
 
 
 def project_gas_pixel_grid(
-    data: SWIFTDataset, resolution: int, project: Union[str, None] = "mass"
+    data: SWIFTDataset, resolution: int, project: Union[str, None] = "masses"
 ):
     """
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -165,7 +165,7 @@ def project_gas_pixel_grid(
 
 
 def project_gas(
-    data: SWIFTDataset, resolution: int, project: Union[str, None] = "mass"
+    data: SWIFTDataset, resolution: int, project: Union[str, None] = "masses"
 ):
     """
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
