@@ -150,11 +150,11 @@ def project_gas_pixel_grid(
     else:
         m = getattr(data.gas, project).value
 
-    box_x, box_y, _ = data.metadata.boxsize.value
+    box_x, box_y, _ = data.metadata.boxsize
 
     # Let's just hope that the box is square otherwise we're probably SOL
-    x, y, _ = data.gas.coordinates.value.T
-    hsml = data.gas.smoothing_length.value
+    x, y, _ = data.gas.coordinates.T
+    hsml = data.gas.smoothing_length
 
     image = scatter(x / box_x, y / box_y, m, hsml / box_x, resolution)
 
