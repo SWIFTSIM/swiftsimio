@@ -74,7 +74,7 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
     """
     # Output array for our image
     image = zeros((res, res), dtype=float32)
-    maximal_array_index = int32(res - 1)
+    maximal_array_index = int32(res)
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
@@ -104,7 +104,10 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
 
             # Now we loop over the square of cells that the kernel lives in
             for cell_x in range(
+                # Ensure that the lowest x value is 0, otherwise we'll segfault
                 pair_max(zero_int32, particle_cell_x - cells_spanned),
+                # Ensure that the highest x value lies within the array bounds,
+                # otherwise we'll segfault (oops).
                 min(particle_cell_x + cells_spanned, maximal_array_index),
             ):
                 # The distance in x to our new favourite cell -- remember that our x, y
