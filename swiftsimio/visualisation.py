@@ -4,7 +4,8 @@ if it is available.
 """
 
 from typing import Union
-from numpy import float32, int32, zeros, array, arange, sqrt, max, ndarray, ones
+from math import sqrt
+from numpy import float32, int32, zeros, array, arange, max, ndarray, ones
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit
@@ -60,7 +61,7 @@ def pair_min(a: int32, b: int32) -> int32:
 
 
 @jit(nopython=True, fastmath=True)
-def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
+def scatter(x: float32, y: float32, m: float32, h: float32, res: int) -> ndarray:
     """
     Creates a scatter plot of:
 
@@ -105,7 +106,7 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
             # Now we loop over the square of cells that the kernel lives in
             for cell_x in range(
                 # Ensure that the lowest x value is 0, otherwise we'll segfault
-                pair_max(zero_int32, particle_cell_x - cells_spanned),
+                pair_max(0, particle_cell_x - cells_spanned),
                 # Ensure that the highest x value lies within the array bounds,
                 # otherwise we'll segfault (oops).
                 min(particle_cell_x + cells_spanned, maximal_array_index),
@@ -115,7 +116,7 @@ def scatter(x: array, y: array, m: array, h: array, res: int) -> ndarray:
                 distance_x = float32(cell_x) * pixel_width - x_pos
                 distance_x_2 = distance_x * distance_x
                 for cell_y in range(
-                    pair_max(zero_int32, particle_cell_y - cells_spanned),
+                    pair_max(0, particle_cell_y - cells_spanned),
                     min(particle_cell_y + cells_spanned, maximal_array_index),
                 ):
                     distance_y = float32(cell_y) * pixel_width - y_pos
