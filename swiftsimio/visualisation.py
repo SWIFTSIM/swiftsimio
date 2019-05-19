@@ -5,7 +5,7 @@ if it is available.
 
 from typing import Union
 from math import sqrt
-from numpy import float32, int32, zeros, array, arange, ndarray, ones
+from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit
@@ -60,7 +60,7 @@ def pair_min(a: int32, b: int32) -> int32:
 
 
 @jit(nopython=True, fastmath=True)
-def scatter(x: float32, y: float32, m: float32, h: float32, res: int) -> ndarray:
+def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
     """
     Creates a scatter plot of:
 
@@ -85,6 +85,9 @@ def scatter(x: float32, y: float32, m: float32, h: float32, res: int) -> ndarray
     float_res = float32(res)
     pixel_width = 1.0 / float_res
 
+    # We need this for combining with the x_pos and y_pos variables.
+    float_res_64 = float64(res)
+
     # If the kernel width is smaller than this, we drop to just PIC method
     drop_to_single_cell = pixel_width * 0.5
 
@@ -92,7 +95,8 @@ def scatter(x: float32, y: float32, m: float32, h: float32, res: int) -> ndarray
     inverse_cell_area = res * res
 
     for x_pos, y_pos, mass, hsml in zip(x, y, m, h):
-        # Calculate the cell that this particle
+        # Calculate the cell that this particle; use the 64 bit version of the
+        # resolution as this is the same type as the positions
         particle_cell_x = int32(float_res * x_pos)
         particle_cell_y = int32(float_res * y_pos)
 
@@ -115,14 +119,14 @@ def scatter(x: float32, y: float32, m: float32, h: float32, res: int) -> ndarray
                 min(particle_cell_x + cells_spanned, maximal_array_index),
             ):
                 # The distance in x to our new favourite cell -- remember that our x, y
-                # are all in a box of [0, 1].
-                distance_x = float32(cell_x) * pixel_width - x_pos
+                # are all in a box of [0, 1]; calculate the distance to the cell centre
+                distance_x = (float32(cell_x) + 0.5) * pixel_width - x_pos
                 distance_x_2 = distance_x * distance_x
                 for cell_y in range(
                     pair_max(0, particle_cell_y - cells_spanned),
                     min(particle_cell_y + cells_spanned, maximal_array_index),
                 ):
-                    distance_y = float32(cell_y) * pixel_width - y_pos
+                    distance_y = (float32(cell_y) + 0.5) * pixel_width - y_pos
                     distance_y_2 = distance_y * distance_y
 
                     r = sqrt(distance_x_2 + distance_y_2)

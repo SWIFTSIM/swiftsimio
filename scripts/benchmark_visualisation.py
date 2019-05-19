@@ -6,7 +6,7 @@ complete this task on a 2018 Macbook Pro with a
 """
 
 from swiftsimio.visualisation import scatter
-from numpy import ones_like, array, float32
+from numpy import ones_like, array, float32, float64
 from numpy.random import rand, seed
 from time import time
 
@@ -16,8 +16,8 @@ res = 1024
 seed(1234)
 
 print("Generating particles")
-x = rand(number_of_particles).astype(float32)
-y = rand(number_of_particles).astype(float32)
+x = rand(number_of_particles).astype(float64)
+y = rand(number_of_particles).astype(float64)
 h = rand(number_of_particles).astype(float32) * 0.2
 m = ones_like(h)
 print("Finished generating particles")
@@ -25,8 +25,8 @@ print("Finished generating particles")
 print("Compiling")
 t = time()
 scatter(
-    array([0.0], dtype=float32),
-    array([0.0], dtype=float32),
+    array([0.0], dtype=float64),
+    array([0.0], dtype=float64),
     array([1.0], dtype=float32),
     array([0.01], dtype=float32),
     128,
