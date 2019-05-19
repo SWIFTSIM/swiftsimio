@@ -1,3 +1,10 @@
+"""
+A short benchmarking script. As of 19th May 2019,
+our visualisation takes approximately 21 seconds to
+complete this task on a 2018 Macbook Pro with a
+2.7 GhZ i7.
+"""
+
 from swiftsimio.visualisation import scatter
 from numpy import ones_like, array, float32
 from numpy.random import rand, seed
@@ -30,10 +37,6 @@ print("Scattering")
 t = time()
 image = scatter(x, y, m, h, res)
 print(f"Took {time() - t} to scatter.")
-
-from matplotlib.pyplot import imsave
-
-imsave("test_image.png", image)
 
 try:
     from sphviewer import QuickView
