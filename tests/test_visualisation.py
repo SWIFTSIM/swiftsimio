@@ -1,5 +1,9 @@
 from swiftsimio.visualisation import scatter
-from matplotlib.pyplot import imsave
+
+try:
+    from matplotlib.pyplot import imsave
+except:
+    pass
 
 
 def test_scatter(save=False):
