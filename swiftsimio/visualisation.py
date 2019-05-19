@@ -12,7 +12,6 @@ from swiftsimio.accelerated import jit
 
 kernel_gamma = 1.778002
 kernel_constant = 80.0 * 3.14159 / 7.0
-zero_int32 = int32(0)
 
 
 @jit(nopython=True, fastmath=True)
@@ -24,8 +23,8 @@ def kernel(r: Union[float, float32], h: Union[float, float32]):
     Give it a radius and a smoothing length, and it returns the
     contribution to the density.
     """
-    H = h * kernel_gamma
-    ratio = r / H
+    inverse_H = 1.0 / (h * kernel_gamma)
+    ratio = r * inverse_H
 
     kernel = 0.0
 
@@ -39,9 +38,9 @@ def kernel(r: Union[float, float32], h: Union[float, float32]):
         else:
             kernel += -1.0 * ratio_3 + 3.0 * ratio_2 - 3.0 * ratio + 1.0
 
-    kernel *= kernel_constant
+        kernel *= kernel_constant * inverse_H * inverse_H
 
-    return kernel / (H * H)
+    return kernel
 
 
 @jit(nopython=True)
