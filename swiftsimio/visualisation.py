@@ -15,15 +15,16 @@ kernel_constant = 80.0 * 3.14159 / 7.0
 
 
 @jit(nopython=True, fastmath=True)
-def kernel(r: Union[float, float32], h: Union[float, float32]):
+def kernel(r: Union[float, float32], H: Union[float, float32]):
     """
     Kernel implementation for swiftsimio. This is the Wendland-C2
     kernel as shown in Denhen & Aly (2012).
 
-    Give it a radius and a smoothing length, and it returns the
-    contribution to the density.
+    Give it a radius and a kernel width (i.e. not a smoothing length, but the
+    radius of compact support) and it returns the contribution to the
+    density.
     """
-    inverse_H = 1.0 / (h * kernel_gamma)
+    inverse_H = 1.0 / H
     ratio = r * inverse_H
 
     kernel = 0.0
@@ -131,7 +132,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
 
                     r = sqrt(distance_x_2 + distance_y_2)
 
-                    kernel_eval = kernel(r, hsml)
+                    kernel_eval = kernel(r, kernel_width)
 
                     image[cell_x, cell_y] += mass * kernel_eval
 
