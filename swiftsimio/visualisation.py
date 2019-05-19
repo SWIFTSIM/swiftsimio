@@ -5,7 +5,7 @@ if it is available.
 
 from typing import Union
 from math import sqrt
-from numpy import float32, int32, zeros, array, arange, max, ndarray, ones
+from numpy import float32, int32, zeros, array, arange, ndarray, ones
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit
@@ -71,6 +71,10 @@ def scatter(x: float32, y: float32, m: float32, h: float32, res: int) -> ndarray
     + res: the number of pixels.
     
     This ignores boundary effects.
+
+    Note that explicitly defining the types in this function allows
+    for a 25-50% performance improvement. In our testing, using numpy
+    floats and integers is also an improvement over using the numba ones.
     """
     # Output array for our image
     image = zeros((res, res), dtype=float32)
