@@ -97,8 +97,8 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     for x_pos, y_pos, mass, hsml in zip(x, y, m, h):
         # Calculate the cell that this particle; use the 64 bit version of the
         # resolution as this is the same type as the positions
-        particle_cell_x = int32(float_res * x_pos)
-        particle_cell_y = int32(float_res * y_pos)
+        particle_cell_x = int32(float_res_64 * x_pos)
+        particle_cell_y = int32(float_res_64 * y_pos)
 
         # SWIFT stores hsml as the FWHM.
         kernel_width = kernel_gamma * hsml
@@ -120,13 +120,13 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
             ):
                 # The distance in x to our new favourite cell -- remember that our x, y
                 # are all in a box of [0, 1]; calculate the distance to the cell centre
-                distance_x = (float32(cell_x) + 0.5) * pixel_width - x_pos
+                distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(x_pos)
                 distance_x_2 = distance_x * distance_x
                 for cell_y in range(
                     pair_max(0, particle_cell_y - cells_spanned),
                     min(particle_cell_y + cells_spanned, maximal_array_index),
                 ):
-                    distance_y = (float32(cell_y) + 0.5) * pixel_width - y_pos
+                    distance_y = (float32(cell_y) + 0.5) * pixel_width - float32(y_pos)
                     distance_y_2 = distance_y * distance_y
 
                     r = sqrt(distance_x_2 + distance_y_2)
