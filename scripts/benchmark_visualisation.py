@@ -34,3 +34,28 @@ print(f"Took {time() - t} to scatter.")
 from matplotlib.pyplot import imsave
 
 imsave("test_image.png", image)
+
+try:
+    from sphviewer import QuickView
+
+    print("Comparing with pySPHViewer")
+    coordinates = np.zeros((number_of_particles, 3))
+    coordinates[:, 0] = x
+    coordinates[:, 1] = y
+    h = 1.778_002 * h  # The kernel_gamma we use.
+
+    t = time()
+    qv = QuickView(
+        coordinates,
+        hsml=h,
+        mass=m,
+        x_size=res,
+        y_size=res,
+        r="infinity",
+        plot=False,
+        logscale=False,
+    ).get_image()
+    print(f"pySPHViewer took {time() - t} on the same problem.")
+
+except:
+    print("pySPHViewer not available for comparison")
