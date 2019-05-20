@@ -6,7 +6,7 @@ complete this task on a 2018 Macbook Pro with a
 """
 
 from swiftsimio.visualisation import scatter
-from numpy import ones_like, array, float32, float64
+from numpy import ones_like, array, float32, float64, zeros
 from numpy.random import rand, seed
 from time import time
 
@@ -36,13 +36,19 @@ print(f"Took {time() - t} to compile.")
 print("Scattering")
 t = time()
 image = scatter(x, y, m, h, res)
-print(f"Took {time() - t} to scatter.")
+dt_us = time() - t
+print(f"Took {dt_us} to scatter.")
 
 try:
-    from sphviewer import QuickView
+    from sphviewer.tools import QuickView
+    import os
+
+    os.environ["MKL_NUM_THREADS"] = "1"
+    os.environ["NUMEXPR_NUM_THREADS"] = "1"
+    os.environ["OMP_NUM_THREADS"] = "1"
 
     print("Comparing with pySPHViewer")
-    coordinates = np.zeros((number_of_particles, 3))
+    coordinates = zeros((number_of_particles, 3))
     coordinates[:, 0] = x
     coordinates[:, 1] = y
     h = 1.778_002 * h  # The kernel_gamma we use.
@@ -58,7 +64,16 @@ try:
         plot=False,
         logscale=False,
     ).get_image()
-    print(f"pySPHViewer took {time() - t} on the same problem.")
+    dt_pysphviewer = time() - t
+    print(f"pySPHViewer took {dt_pysphviewer} on the same problem.")
+    print(f"Note that pySPHViewer is running in single-threaded mode.")
+
+    ratio = dt_us / dt_pysphviewer
+
+    if ratio < 1.0:
+        print(f"That makes us {1 / ratio} x faster 😀 ")
+    else:
+        print(f"That makes pySphviewer {ratio} x faster 😔")
 
 except:
     print("pySPHViewer not available for comparison")
