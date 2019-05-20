@@ -44,22 +44,6 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
     return kernel
 
 
-@jit(nopython=True)
-def pair_max(a: int32, b: int32) -> int32:
-    if a > b:
-        return a
-    else:
-        return b
-
-
-@jit(nopython=True)
-def pair_min(a: int32, b: int32) -> int32:
-    if a < b:
-        return a
-    else:
-        return b
-
-
 @jit(nopython=True, fastmath=True)
 def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
     """
@@ -114,7 +98,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
             # Now we loop over the square of cells that the kernel lives in
             for cell_x in range(
                 # Ensure that the lowest x value is 0, otherwise we'll segfault
-                pair_max(0, particle_cell_x - cells_spanned),
+                max(0, particle_cell_x - cells_spanned),
                 # Ensure that the highest x value lies within the array bounds,
                 # otherwise we'll segfault (oops).
                 min(particle_cell_x + cells_spanned, maximal_array_index),
@@ -124,7 +108,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
                 distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(x_pos)
                 distance_x_2 = distance_x * distance_x
                 for cell_y in range(
-                    pair_max(0, particle_cell_y - cells_spanned),
+                    max(0, particle_cell_y - cells_spanned),
                     min(particle_cell_y + cells_spanned, maximal_array_index),
                 ):
                     distance_y = (float32(cell_y) + 0.5) * pixel_width - float32(y_pos)
