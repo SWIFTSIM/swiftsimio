@@ -247,3 +247,53 @@ data = sw.load(
 ```
 
 This feature is not ideal and will likely be changed in the future.
+
+Image Creation
+--------------
+
+`swiftsimio` provides some very basic visualisation software that is designed
+to create projections of the entire box along the z-axis, with x and y representing
+the final square. Note that it only currently supports square boxes. These are
+accelerated with `numba`, and we do not suggest using these routines unless you have it
+installed.
+
+You can do the following:
+
+```python
+from swiftsimio import load
+from swiftsimio.visualisation import project_gas
+
+data = load("my_snapshot_0000.hdf5")
+# This creates a grid that has units K / Mpc^2, and can be transformed like
+# any other unyt quantity
+temperature_map = project_gas(data, resolution=1024, project="temperature")
+
+from matplotlib.pyplot import imsave
+from matplotlib.colors import LogNorm
+
+# There is huge dynamic range usually in temperature, so log nomalize it before
+# saving.
+imsave("temperature_map.png", LogNorm()(temperature_map.value), cmap="twilight")
+```
+
+It's also possible to create videos in a fairly straightforward way:
+```python
+from swiftsimio import load
+from swiftsimio.visualisation import project_gas_pixel_grid
+
+# project_gas_pixel_grid does not perform the unit calculation.
+
+from p_tqdm import p_map
+
+def load_and_make_image(number):
+    filename = f"snapshot_{number:04d}.hdf5"
+    data = load(filename)
+    image = project_gas_pixel_grid(data, 1024, "temperature")
+
+    return image
+
+# Make frames in parallel (reading also parallel!)
+frames = p_map(load_and_make_image, range(0, 120))
+
+#... You can do your funcAnimation stuff here now you have the frames.
+```

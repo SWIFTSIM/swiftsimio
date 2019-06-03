@@ -1,6 +1,15 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.5.0
+-------
+
+Basic image-creation functionality!
+
++ Added some (super fast) routines to make projections of the whole box. This is
+  only useful for simple projections of the whole box and is not thread parallel.
+  In particular, it's useful for making movies.
+
 v 0.4.0
 -------
 

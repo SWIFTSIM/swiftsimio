@@ -181,4 +181,3 @@ def project_gas(
         units *= getattr(data.gas, project).units
 
     return image * units
-
