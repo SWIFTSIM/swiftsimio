@@ -5,6 +5,7 @@ from .masks import SWIFTMask
 import swiftsimio.metadata as metadata
 import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
+import swiftsimio.visualisation as visualisation
 
 name = "swiftsimio"
 
