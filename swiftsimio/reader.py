@@ -430,10 +430,6 @@ def generate_getter(
                         else:
                             output_shape = mask_size
 
-                        import pdb
-
-                        pdb.set_trace()
-
                         setattr(
                             self,
                             f"_{name}",
@@ -666,6 +662,14 @@ class SWIFTDataset(object):
         self.create_particle_datasets()
 
         return
+
+    def __str__(self):
+        """
+        Prints out some more useful information, rather than just
+        the memory location.
+        """
+
+        return f"SWIFT dataset at {filename}."
 
     def get_units(self):
         """
