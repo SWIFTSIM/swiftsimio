@@ -9,18 +9,21 @@ import swiftsimio.metadata.writer.required_fields as swmw
 import swiftsimio.metadata.unit.unit_fields as swuf
 import swiftsimio.metadata.cosmology as swcf
 
-
 import unyt
 import numpy as np
 
 import os
 
+from copy import deepcopy
+
 
 def generate_units(m, l, t, I, T):
     """
-       This function is used to override the inbuilt swiftsimio generate_units function from
+    This function is used to override the inbuilt swiftsimio generate_units function from
+    metadata.unit.unit_fields. This allows the specification of a new particle type and 
        metadata.unit.unit_fields. This allows the specification of a new particle type and 
-       the values and types associated with that type.
+    metadata.unit.unit_fields. This allows the specification of a new particle type and 
+    the values and types associated with that type.
     """
     dict_out = swuf.generate_units(m, l, t, I, T)
 
@@ -52,10 +55,10 @@ def generate_units(m, l, t, I, T):
 
 def generate_cosmology(scale_factor: float, gamma: float):
     """
-        This function is used to override the inbuilt swiftsimio generate_cosmology function
-        from metadata.cosmology. This allows the specification of a new particle type and 
-        affects how the type is influenced by cosmology. Required only for reading in new
-        particle types.
+    This function is used to override the inbuilt swiftsimio generate_cosmology function
+    from metadata.cosmology. This allows the specification of a new particle type and 
+    affects how the type is influenced by cosmology. Required only for reading in new
+    particle types.
     """
     from swiftsimio.objects import cosmo_factor, a
 
@@ -75,14 +78,15 @@ def generate_cosmology(scale_factor: float, gamma: float):
 
 def test_write():
     """
-        Tests whether swiftsimio can handle a new particle type. If the test doesn't crash
-        this is a success.
+    Tests whether swiftsimio can handle a new particle type. If the test doesn't crash
+    this is a success.
     """
     # Use default units, i.e. cm, grams, seconds, Ampere, Kelvin
     unit_system = unyt.UnitSystem(
         name="default", length_unit=unyt.cm, mass_unit=unyt.g, time_unit=unyt.s
     )
     # Specify a new type in the metadata - currently done by editing the dictionaries directly.
+    # TODO: Remove this terrible way of setting up different particle types.
     swp.particle_name_underscores[6] = "extratype"
     swp.particle_name_class[6] = "Extratype"
     swp.particle_name_text[6] = "Extratype"
@@ -105,11 +109,16 @@ def test_write():
 
     x.write("extra_test.hdf5")
 
+    # Clean up these global variables we screwed around with...
+    swp.particle_name_underscores.pop(6)
+    swp.particle_name_class.pop(6)
+    swp.particle_name_text.pop(6)
+
 
 def test_read():
     """
-        Tests whether swiftsimio can handle a new particle type. Has a few asserts to check the
-        data is read in correctly.
+    Tests whether swiftsimio can handle a new particle type. Has a few asserts to check the
+    data is read in correctly.
     """
     swp.particle_name_underscores[6] = "extratype"
     swp.particle_name_class[6] = "Extratype"
@@ -127,4 +136,11 @@ def test_read():
 
     for i in range(0, 10):
         assert data.extratype.coordinates.value[i][0] == float(i)
+
     os.remove("extra_test.hdf5")
+
+    # Clean up these global variables we screwed around with...
+    swp.particle_name_underscores.pop(6)
+    swp.particle_name_class.pop(6)
+    swp.particle_name_text.pop(6)
+
