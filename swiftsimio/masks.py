@@ -34,7 +34,7 @@ class SWIFTMask(object):
 
         self.metadata = metadata
         self.units = metadata.units
-        self.spatial_only = True
+        self.spatial_only = spatial_only
 
         self._unpack_cell_metadata()
 
@@ -65,30 +65,15 @@ class SWIFTMask(object):
         self.counts = {}
         self.offsets = {}
 
-        # First find the non-empty cells.
-
         with h5py.File(self.metadata.filename, "r") as handle:
-            non_empty_mask = np.logical_and.reduce(
-                [
-                    handle["Cells"]["Counts"][f"PartType{ptype}"][...] != 0
-                    for ptype in self.metadata.present_particle_types
-                ]
-            )
-
             for ptype, pname in zip(
                 self.metadata.present_particle_types,
                 self.metadata.present_particle_names,
             ):
-                self.counts[pname] = handle["Cells"]["Counts"][f"PartType{ptype}"][
-                    non_empty_mask
-                ]
-                self.offsets[pname] = handle["Cells"]["Offsets"][f"PartType{ptype}"][
-                    non_empty_mask
-                ]
+                self.counts[pname] = handle["Cells"]["Counts"][f"PartType{ptype}"][:]
+                self.offsets[pname] = handle["Cells"]["Offsets"][f"PartType{ptype}"][:]
 
-            self.centers = (
-                handle["Cells"]["Centres"][non_empty_mask, :] * self.units.length
-            )
+            self.centers = handle["Cells"]["Centres"][:] * self.units.length
 
             # Note that we cannot assume that these are cubic, unfortunately.
             self.cell_size = (
@@ -195,7 +180,7 @@ class SWIFTMask(object):
 
     def _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array):
         """
-        Updates the mask for ptype usnig the cell mask. We actually overwrite
+        Updates the mask for ptype using the cell mask. We actually overwrite
         all non-used cells with False, rather than the inverse, as we assume
         initially that we want to write all particles in, and we want to
         respect other masks that may have been applied to the data.
