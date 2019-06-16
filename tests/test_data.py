@@ -98,7 +98,7 @@ def test_fields_present(filename):
     return
 
 
-@requires("comsological_volume.hdf5")
+@requires("cosmological_volume.hdf5")
 def test_reading_select_region_metadata(filename):
     """
     Tests reading select regions of the volume.
@@ -106,14 +106,11 @@ def test_reading_select_region_metadata(filename):
 
     full_data = load(filename)
 
-    # Mask off the lower bottom corner of the volume.
+    # Mask off the centre of the volume.
     mask_region = mask(filename, spatial_only=True)
 
     restrict = array(
-        [
-            [0.0, 0.0, 0.0] * full_data.metadata.boxsize.units,
-            full_data.metadata.boxsize * 0.5,
-        ]
+        [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
@@ -130,10 +127,20 @@ def test_reading_select_region_metadata(filename):
         ]
     )
 
+    # We also need to repeat for the thing we just selected; the cells only give
+    # us an _approximate_ selection!
+    selected_subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(selected_data.gas.coordinates.T, restrict)
+        ]
+    )
+
     hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
 
-    assert (hand_selected_coordinates == selected_coordinates).all()
-
+    assert (
+        hand_selected_coordinates == selected_coordinates[selected_subset_mask]
+    ).all()
     return
 
 
@@ -145,14 +152,11 @@ def test_reading_select_region_metadata_not_spatial_only(filename):
 
     full_data = load(filename)
 
-    # Mask off the lower bottom corner of the volume.
+    # Mask off the centre of the volume.
     mask_region = mask(filename, spatial_only=False)
 
     restrict = array(
-        [
-            [0.0, 0.0, 0.0] * full_data.metadata.boxsize.units,
-            full_data.metadata.boxsize * 0.5,
-        ]
+        [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
@@ -161,7 +165,7 @@ def test_reading_select_region_metadata_not_spatial_only(filename):
 
     selected_coordinates = selected_data.gas.coordinates
 
-    # Now need to repeat teh selection by hand:
+    # Now need to repeat the selection by hand:
     subset_mask = logical_and.reduce(
         [
             logical_and(x > y_lower, x < y_upper)
@@ -169,8 +173,19 @@ def test_reading_select_region_metadata_not_spatial_only(filename):
         ]
     )
 
+    # We also need to repeat for the thing we just selected; the cells only give
+    # us an _approximate_ selection!
+    selected_subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(selected_data.gas.coordinates.T, restrict)
+        ]
+    )
+
     hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
 
-    assert (hand_selected_coordinates == selected_coordinates).all()
+    assert (
+        hand_selected_coordinates == selected_coordinates[selected_subset_mask]
+    ).all()
 
     return
