@@ -6,7 +6,10 @@ be read in.
 """
 
 from tests.helper import requires
-from swiftsimio import load
+from swiftsimio import load, mask
+
+from unyt import unyt_array as array
+from numpy import logical_and
 
 
 @requires("cosmological_volume.hdf5")
@@ -92,4 +95,82 @@ def test_fields_present(filename):
             _ = getattr(field, property)
 
     # If we didn't crash out, we gucci.
+    return
+
+
+@requires("comsological_volume.hdf5")
+def test_reading_select_region_metadata(filename):
+    """
+    Tests reading select regions of the volume.
+    """
+
+    full_data = load(filename)
+
+    # Mask off the lower bottom corner of the volume.
+    mask_region = mask(filename, spatial_only=True)
+
+    restrict = array(
+        [
+            [0.0, 0.0, 0.0] * full_data.metadata.boxsize.units,
+            full_data.metadata.boxsize * 0.5,
+        ]
+    ).T
+
+    mask_region.constrain_spatial(restrict=restrict)
+
+    selected_data = load(filename, mask=mask_region)
+
+    selected_coordinates = selected_data.gas.coordinates
+
+    # Now need to repeat teh selection by hand:
+    subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
+        ]
+    )
+
+    hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
+
+    assert (hand_selected_coordinates == selected_coordinates).all()
+
+    return
+
+
+@requires("cosmological_volume.hdf5")
+def test_reading_select_region_metadata_not_spatial_only(filename):
+    """
+    The same as test_reading_select_region_metadata but for spatial_only=False.
+    """
+
+    full_data = load(filename)
+
+    # Mask off the lower bottom corner of the volume.
+    mask_region = mask(filename, spatial_only=False)
+
+    restrict = array(
+        [
+            [0.0, 0.0, 0.0] * full_data.metadata.boxsize.units,
+            full_data.metadata.boxsize * 0.5,
+        ]
+    ).T
+
+    mask_region.constrain_spatial(restrict=restrict)
+
+    selected_data = load(filename, mask=mask_region)
+
+    selected_coordinates = selected_data.gas.coordinates
+
+    # Now need to repeat teh selection by hand:
+    subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
+        ]
+    )
+
+    hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
+
+    assert (hand_selected_coordinates == selected_coordinates).all()
+
     return
