@@ -271,7 +271,7 @@ temperature_map = project_gas(data, resolution=1024, project="temperature")
 from matplotlib.pyplot import imsave
 from matplotlib.colors import LogNorm
 
-# There is huge dynamic range usually in temperature, so log nomalize it before
+# There is huge dynamic range usually in temperature, so log normalize it before
 # saving.
 imsave("temperature_map.png", LogNorm()(temperature_map.value), cmap="twilight")
 ```
@@ -296,4 +296,24 @@ def load_and_make_image(number):
 frames = p_map(load_and_make_image, range(0, 120))
 
 #... You can do your funcAnimation stuff here now you have the frames.
+```
+
+
+It is also possible to create _slice_ plots, rather than projections.
+```
+from swiftsimio import load
+from swiftsimio.visualisation import slice_gas
+
+data = load("my_snapshot_0000.hdf5")
+# This creates a grid that has units K / Mpc^3, and can be transformed like
+# any other unyt quantity. The slice variable gives where we want to slice through
+# as a function of the box-size, so here we slice through the centre of the box.
+temperature_map = slice_gas(data, slice=0.5, resolution=1024, project="temperature")
+
+from matplotlib.pyplot import imsave
+from matplotlib.colors import LogNorm
+
+# There is huge dynamic range usually in temperature, so log normalize it before
+# saving.
+imsave("temperature_map.png", LogNorm()(temperature_map.value), cmap="twilight")
 ```
