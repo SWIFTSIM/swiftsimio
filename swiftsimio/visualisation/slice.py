@@ -131,3 +131,80 @@ def slice_scatter(
                 image[cell_x, cell_y] += mass * kernel_eval
 
     return image
+
+
+def slice_gas_pixel_grid(
+    data: SWIFTDataset,
+    resolution: int,
+    slice: float,
+    project: Union[str, None] = "masses",
+):
+    r"""
+    Creates a 2D slice of a SWIFT dataset, projected by the "project"
+    variable (e.g. if project is Temperature, we return:
+        \bar{T} = \sum_j T_j W_{ij}
+    ).
+
+    The 'slice' is given in the z direction as a ratio of the boxsize.
+    
+    Default projection variable is mass. If it is None, then we don't
+    weight.
+
+    Creates a resolution x resolution array and returns it, without appropriate
+    units.
+    """
+
+    if slice > 1.0 or slice < 0.0:
+        raise ValueError("Please enter a slice value between 0.0 and 1.0 in slice_gas.")
+
+    number_of_gas_particles = data.gas.particle_ids.size
+
+    if project is None:
+        m = ones(number_of_gas_particles, dtype=float32)
+    else:
+        m = getattr(data.gas, project).value
+
+    box_x, box_y, box_z = data.metadata.boxsize
+
+    # Let's just hope that the box is square otherwise we're probably SOL
+    x, y, z = data.gas.coordinates.T
+    hsml = data.gas.smoothing_length
+
+    image = slice_scatter(
+        x / box_x, y / box_y, z / box_z, m, hsml / box_x, slice, resolution
+    )
+
+    return image
+
+
+def slice_gas(
+    data: SWIFTDataset,
+    resolution: int,
+    slice: float,
+    project: Union[str, None] = "masses",
+):
+    r"""
+    Creates a 2D projection of a SWIFT dataset, projected by the "project"
+    variable (e.g. if project is Temperature, we return:
+        \bar{T} = \sum_j T_j W_{ij}
+    ).
+    
+    The 'slice' is given in the z direction as a ratio of the boxsize.
+
+    Default projection variable is mass. If it is None, then we don't
+    weight.
+
+    Creates a resolution x resolution array and returns it, with appropriate
+    units.
+    """
+
+    image = slice_gas_pixel_grid(data, resolution, slice, project)
+
+    units = 1.0 / (
+        data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
+    )
+
+    if project is not None:
+        units *= getattr(data.gas, project).units
+
+    return image * units
