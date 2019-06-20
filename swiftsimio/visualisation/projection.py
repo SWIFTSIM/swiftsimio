@@ -176,7 +176,7 @@ def project_gas(
 
     image = project_gas_pixel_grid(data, resolution, project)
 
-    units = 1.0 / data.metadata.boxsize[0] * data.metadata.boxsize[1]
+    units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
 
     if project is not None:
         units *= getattr(data.gas, project).units
