@@ -10,8 +10,9 @@ from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit
 
-kernel_gamma = 1.778002
-kernel_constant = 80.0 * 3.14159 / 7.0
+# Taken from Dehnen & Aly 2012
+kernel_gamma = 1.897367
+kernel_constant = 7.0 / 3.14159
 
 
 @jit(nopython=True, fastmath=True)
