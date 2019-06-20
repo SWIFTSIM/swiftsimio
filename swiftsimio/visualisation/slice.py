@@ -83,12 +83,6 @@ def slice_scatter(
     # We need this for combining with the x_pos and y_pos variables.
     float_res_64 = float64(res)
 
-    # If the kernel width is smaller than this, we drop to just PIC method
-    drop_to_single_cell = pixel_width * 0.5
-
-    # Pre-calculate this constant for use with the above
-    inverse_cell_area = res * res
-
     for x_pos, y_pos, z_pos, mass, hsml in zip(x, y, z, m, h):
         # Calculate the cell that this particle lives above; use 64 bits
         # resolution as this is the same type as the positions
@@ -101,6 +95,10 @@ def slice_scatter(
 
         # SWIFT stores hsml as the FWHM.
         kernel_width = kernel_gamma * hsml
+
+        if distance_z_2 > (kernel_width * kernel_width):
+            # We have no overlap, we can skip this particle.
+            continue
 
         # The number of cells that this kernel spans
         cells_spanned = int32(1.0 + kernel_width * float_res)
