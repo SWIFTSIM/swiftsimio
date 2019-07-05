@@ -66,6 +66,10 @@ def generate_cosmology(scale_factor: float, gamma: float):
 
     dark_matter = {**shared}
 
+    boundary = {**shared}
+
+    second_boundary = {**shared}
+
     stars = {
         "birth_density": gas["density"],
         "birth_time": no_cosmology,
@@ -79,6 +83,8 @@ def generate_cosmology(scale_factor: float, gamma: float):
     return {
         "gas": gas,
         "dark_matter": dark_matter,
+        "boundary": boundary,
+        "second_boundary": second_boundary,
         "stars": stars,
         "black_holes": black_holes,
     }

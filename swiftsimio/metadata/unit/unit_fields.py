@@ -67,6 +67,10 @@ def generate_units(m, l, t, I, T):
 
     dark_matter = {**shared}
 
+    boundary = {**shared}
+
+    second_boundary = {**shared}
+
     stars = {
         "birth_density": m / (l ** 3),
         "birth_time": t,
@@ -80,6 +84,8 @@ def generate_units(m, l, t, I, T):
     return {
         "gas": gas,
         "dark_matter": dark_matter,
+        "boundary": boundary,
+        "second_boundary": second_boundary,
         "stars": stars,
         "black_holes": black_holes,
     }

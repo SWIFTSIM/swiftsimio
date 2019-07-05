@@ -48,6 +48,10 @@ gas = {
 
 dark_matter = {**shared}
 
+boundary = {**shared}
+
+second_boundary = {**shared}
+
 stars = {
     "BirthDensity": "birth_density",
     "BirthTime": "birth_time",

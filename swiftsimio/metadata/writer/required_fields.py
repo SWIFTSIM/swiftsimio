@@ -18,6 +18,10 @@ gas = {
 
 dark_matter = {**shared}
 
+boundary = {**shared}
+
+second_boundary = {**shared}
+
 stars = {**shared}
 
 black_holes = {**shared}
