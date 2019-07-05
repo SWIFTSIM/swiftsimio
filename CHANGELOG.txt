@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.7.0
+-------
+
+Added extra boundary particles!
+
++ Two new particle types, `boundary` and `second_boundary`, for zoom-in simulations.
+
 v 0.6.0
 -------
 
