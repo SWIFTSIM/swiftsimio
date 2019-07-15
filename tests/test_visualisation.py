@@ -1,4 +1,5 @@
-from swiftsimio.visualisation import scatter, slice
+from swiftsimio.visualisation import scatter, slice, volume_render
+
 
 try:
     from matplotlib.pyplot import imsave
@@ -30,5 +31,18 @@ def test_slice(save=False):
 
     if save:
         imsave("test_image_creation.png", image)
+
+    return
+
+
+def test_volume_render():
+    image = volume_render.scatter(
+        [0.0, 1.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 0.0, 1.0],
+        [1.0, 1.0, 1.0],
+        [0.2, 0.2, 0.2],
+        256,
+    )
 
     return
