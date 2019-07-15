@@ -49,7 +49,7 @@ def scatter(
     drop_to_single_cell = pixel_width * 0.5
 
     # Pre-calculate this constant for use with the above
-    inverse_cell_area = res * res
+    inverse_cell_volume = res * res * res
 
     for x_pos, y_pos, z_pos, mass, hsml in zip(x, y, z, m, h):
         # Calculate the cell that this particle; use the 64 bit version of the
@@ -64,7 +64,7 @@ def scatter(
         if kernel_width < drop_to_single_cell:
             # Easygame, gg
             image[particle_cell_x, particle_cell_y, particle_cell_z] += (
-                mass * inverse_cell_area
+                mass * inverse_cell_volume
             )
         else:
             # The number of cells that this kernel spans

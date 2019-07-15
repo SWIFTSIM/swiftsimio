@@ -11,7 +11,7 @@ from swiftsimio.accelerated import jit
 
 # Taken from Dehnen & Aly 2012
 kernel_gamma = 1.936492
-kernel_constant = 21.0 / (2.0 * 3.14159)
+kernel_constant = 21.0 * 0.31830988618379067154 / 2.0
 
 
 @jit(nopython=True, fastmath=True)
@@ -30,16 +30,13 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
     kernel = 0.0
 
     if ratio < 1.0:
-        ratio_2 = ratio * ratio
-        ratio_3 = ratio_2 * ratio
+        one_minus_ratio = 1.0 - ratio
+        one_minus_ratio_2 = one_minus_ratio * one_minus_ratio
+        one_minus_ratio_4 = one_minus_ratio_2 * one_minus_ratio_2
 
-        if ratio < 0.5:
-            kernel += 3.0 * ratio_3 - 3.0 * ratio_2 + 0.5
+        kernel = max(one_minus_ratio_4 * (1.0 + 4.0 * ratio), 0.0)
 
-        else:
-            kernel += -1.0 * ratio_3 + 3.0 * ratio_2 - 3.0 * ratio + 1.0
-
-        kernel *= kernel_constant * inverse_H * inverse_H
+        kernel *= kernel_constant * inverse_H * inverse_H * inverse_H
 
     return kernel
 
