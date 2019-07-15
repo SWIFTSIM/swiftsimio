@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 0.8.0
+-------
+
+Adds volume rendering (BETA)!
+
++ Adds a new (hidden) volume render mode, in `visualisation.volume_render`
++ Bugfixes for kernel implementations.
+
 v 0.7.0
 -------
 
