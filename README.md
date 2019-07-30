@@ -253,7 +253,7 @@ frames = p_map(load_and_make_image, range(0, 120))
 
 
 It is also possible to create _slice_ plots, rather than projections.
-```
+```python
 from swiftsimio import load
 from swiftsimio.visualisation import slice_gas
 
