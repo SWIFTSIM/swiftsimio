@@ -1,6 +1,17 @@
 SWIFTsimIO Changelog
 ====================
 
+v 1.0.0
+-------
+
+Major breaking changes ahead!
+
+This update adds:
+
++ Metadata directly copied out of the snapshots
++ Ability to add new particle fields without needing to update `swiftsimio`
++ Breaks backwards compatiblity with older versions of SWIFT (require v>0.9.0)
+
 v 0.8.0
 -------
 
