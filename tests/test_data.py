@@ -8,8 +8,11 @@ be read in.
 from tests.helper import requires
 from swiftsimio import load, mask
 
+import h5py
+
 from unyt import unyt_array as array
-from numpy import logical_and
+from numpy import logical_and, isclose
+from numpy import array as numpy_array
 
 
 @requires("cosmological_volume.hdf5")
@@ -44,10 +47,10 @@ def test_time_metadata(filename):
 
 
 @requires("cosmological_volume.hdf5")
-def test_fields_present(filename):
+def test_units(filename):
     """
-    Tests that all EAGLE-related fields are present in the cosmological
-    volume example and that they match with what's in swiftsimio.
+    Tests that these fields have the same units within SWIFTsimIO as they
+    do in the SWIFT code itself.
     """
 
     data = load(filename)
@@ -82,8 +85,28 @@ def test_fields_present(filename):
 
     for ptype, properties in to_test.items():
         field = getattr(data, ptype)
+
+        # Now need to extract the particle paths in the original hdf5 file
+        # for comparison...
+        paths = numpy_array(field.particle_metadata.field_paths)
+        names = numpy_array(field.particle_metadata.field_names)
+
         for property in properties:
-            _ = getattr(field, property)
+            # Read the 0th element, and compare in CGS units.
+            our_units = getattr(field, property)[0]
+
+            our_units.convert_to_cgs()
+
+            # Find the path in the HDF5 for our linked dataset
+            path = paths[names == property][0]
+
+            with h5py.File(filename, "r") as handle:
+                swift_units = handle[path].attrs[
+                    "Conversion factor to CGS (not including cosmological corrections)"
+                ][0]
+                swift_units *= handle[path][0]
+
+            assert isclose(swift_units, our_units.value).all()
 
     # If we didn't crash out, we gucci.
     return
