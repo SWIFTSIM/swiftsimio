@@ -180,73 +180,26 @@ that lie in the region [0.2, 0.7] and have a density between 0.4 and 0.8 g/cm^3.
 User-defined particle types
 ---------------------------
 
-It is now possible to add user-defined particle types using generator functions through an
-API in the `load()` function:
+It is now possible to add user-defined particle types that are not already present in the
+`swiftsimio` metadata. All you need to do is specify the three names (see below) and then
+the particle datasets that you have provided in SWIFT will be automatically read.
 
 ```python
 import swiftsimio as sw
 import swiftsimio.metadata.particle as swp
-import swiftsimio.metadata.writer.required_fields as swmw
-import swiftsimio.metadata.unit.unit_fields as swuf
-import swiftsimio.metadata.cosmology as swcf
 from swiftsimio.objects import cosmo_factor, a
-
-def cosmo_factory(a_dependence):
-    return cosmo_factor(a_dependence, scale_factor)
-
-
-def generate_units(m, l, t, I, T):
-    """
-    Generates the units for a non-standard scheme.
-
-    Needs to return a dictionary of dictionaries:
-
-    {
-        "particle_type_name" : {
-            "field_name": m * m / l * T,
-            ...
-        },
-        ...
-    }
-    """
-
-    return ...
-
-
-def generate_cosmology(scale_factor: float, gamma: float):
-    """
-    Generates the cosmology a-factors for a non-standard scheme.
-
-    Needs to return a dictionary of dictionaries:
-
-    {
-        "particle_type_name" : {
-            "field_name": cosmo_factory(a*a*a),
-            ...
-        },
-        ...
-    }
-    """
-
-    return ...
-
 
 swp.particle_name_underscores[6] = "extratype"
 swp.particle_name_class[6] = "Extratype"
 swp.particle_name_text[6] = "Extratype"
 
-swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw.shared}
-
-sw.metadata.particle_fields.extratype = {**sw.metadata.particle_fields.gas}
-
 data = sw.load(
     "extra_test.hdf5",
-    generate_unit_func=generate_units,
-    generate_cosmology_func=generate_cosmology,
 )
 ```
+Previously, there was a generator function API that performed this task; this has now been
+removed (last version was v0.8.0).
 
-This feature is not ideal and will likely be changed in the future.
 
 Image Creation
 --------------
