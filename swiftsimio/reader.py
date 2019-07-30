@@ -363,11 +363,13 @@ class SWIFTMetadata(object):
 
             metadata.<type>_properties
 
-        This contains three arrays,
+        This contains five arrays,
 
-            metadata.<type>_properties.fields
-            metadata.<type>_properties.units
-            metadata.<type>_properties.cosmology
+            metadata.<type>_properties.field_names
+            metadata.<type>_properties.field_paths
+            metadata.<type>_properties.field_units
+            metadata.<type>_properties.field_cosmologies
+            metadata.<type>_properties.field_descriptions
 
         As well as some more information about the particle type.
         """
