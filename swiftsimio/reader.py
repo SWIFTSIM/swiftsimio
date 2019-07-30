@@ -557,6 +557,7 @@ def generate_getter(
     mask: Union[None, np.ndarray],
     mask_size: int,
     cosmo_factor: cosmo_factor,
+    description: str,
 ):
     """
     Generates a function that:
@@ -601,6 +602,7 @@ def generate_getter(
                                 ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
+                                description=description,
                             ),
                         )
                     else:
@@ -608,7 +610,10 @@ def generate_getter(
                             self,
                             f"_{name}",
                             cosmo_array(
-                                handle[field][...], unit, cosmo_factor=cosmo_factor
+                                handle[field][...],
+                                unit,
+                                cosmo_factor=cosmo_factor,
+                                description=description,
                             ),
                         )
                 except KeyError:
@@ -730,8 +735,11 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     field_names = particle_metadata.field_names
     field_cosmologies = particle_metadata.field_cosmologies
     field_units = particle_metadata.field_units
+    field_descriptions = particle_metadata.field_descriptions
 
-    dataset_iterator = zip(field_paths, field_names, field_cosmologies, field_units)
+    dataset_iterator = zip(
+        field_paths, field_names, field_cosmologies, field_units, field_descriptions
+    )
 
     # This 'nice' piece of code ensures that our datasets have different _types_
     # for different particle types.
@@ -741,7 +749,13 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
         dict(__SWIFTParticleDataset.__dict__),
     )
 
-    for field_path, field_name, field_cosmology, field_unit in dataset_iterator:
+    for (
+        field_path,
+        field_name,
+        field_cosmology,
+        field_unit,
+        field_description,
+    ) in dataset_iterator:
         setattr(
             ThisDataset,
             field_name,
@@ -754,6 +768,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
                     mask=mask_array,
                     mask_size=mask_size,
                     cosmo_factor=field_cosmology,
+                    description=field_description,
                 ),
                 generate_setter(field_name),
                 generate_deleter(field_name),
