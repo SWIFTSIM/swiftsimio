@@ -55,34 +55,25 @@ def test_fields_present(filename):
     shared = ["coordinates", "masses", "particle_ids", "velocities"]
 
     baryon = [
-        "element_abundance",
-        "maximal_temperature",
-        "maximal_temperature_scale_factor",
-        "iron_mass_frac_from_sn1a",
-        "metal_mass_frac_from_agb",
-        "metal_mass_frac_from_snii",
-        "metal_mass_frac_from_sn1a",
-        "metallicity",
-        "smoothed_element_abundance",
-        "smoothed_iron_mass_frac_from_sn1a",
-        "smoothed_metallicity",
-        "total_mass_from_agb",
-        "total_mass_from_snii",
+        "maximal_temperatures",
+        "maximal_temperature_scale_factors",
+        "iron_mass_fractions_from_snia",
+        "metal_mass_fractions_from_agb",
+        "metal_mass_fractions_from_snii",
+        "metal_mass_fractions_from_snia",
+        "smoothed_element_mass_fractions",
+        "smoothed_iron_mass_fractions_from_snia",
+        "smoothed_metal_mass_fractions",
     ]
 
     to_test = {
         "gas": [
-            "density",
-            "entropy",
-            "internal_energy",
-            "smoothing_length",
-            "pressure",
-            "diffusion",
-            "sfr",
-            "temperature",
-            "viscosity",
-            "diffusion",
-            "viscosity",
+            "densities",
+            "entropies",
+            "internal_energies",
+            "smoothing_lengths",
+            "pressures",
+            "temperatures",
         ]
         + baryon
         + shared,
