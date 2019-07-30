@@ -4,6 +4,8 @@ Metadata for the cosmology fields.
 
 from swiftsimio.objects import cosmo_factor, a
 
+# DEPRECATED: This information is now directly read out of the snapshots.
+
 
 def generate_cosmology(scale_factor: float, gamma: float):
     """
