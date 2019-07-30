@@ -12,6 +12,10 @@ from unyt import g, cm, s, statA, K
 from typing import Callable
 
 
+# DEPRECATED: This should not be used any more by real code as we now
+# read anything directly out of the snapshots.
+
+
 def generate_units(m, l, t, I, T):
     """
     Generates the unit dictionaries with the:

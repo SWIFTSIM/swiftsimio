@@ -13,11 +13,13 @@ This file contains four major objects:
 
 from swiftsimio import metadata
 from swiftsimio.accelerated import read_ranges_from_file
-from swiftsimio.objects import cosmo_array, cosmo_factor
+from swiftsimio.objects import cosmo_array, cosmo_factor, a
 
+import re
 import h5py
 import unyt
 import numpy as np
+
 
 from datetime import datetime
 
@@ -42,16 +44,10 @@ class SWIFTUnits(object):
     to get it 'unyt-ified' with the correct units.
     """
 
-    def __init__(
-        self,
-        filename,
-        generate_unit_func: Callable[..., dict] = metadata.unit_fields.generate_units,
-    ):
+    def __init__(self, filename):
         self.filename = filename
-        self.generate_unit_func = generate_unit_func
 
         self.get_unit_dictionary()
-        self.generate_units()
 
         return
 
@@ -75,17 +71,147 @@ class SWIFTUnits(object):
         self.current = self.units["Unit current in cgs (U_I)"]
         self.temperature = self.units["Unit temperature in cgs (U_T)"]
 
-    def generate_units(self):
+
+class SWIFTParticleTypeMetadata(object):
+    """
+    Object that contains the metadata for one particle type. This, for, instance,
+    could be part type 0, or 'gas'. This will load in the names of all particle datasets,
+    their units, and their cosmology, and present them for use in the actual
+    i/o routines.
+    """
+
+    def __init__(
+        self,
+        particle_type: int,
+        particle_name: str,
+        units: SWIFTUnits,
+        scale_factor: float,
+    ):
+        self.particle_type = particle_type
+        self.particle_name = particle_name
+        self.units = units
+        self.scale_factor = scale_factor
+
+        self.filename = units.filename
+
+        self.load_metadata()
+
+        return
+
+    def __str__(self):
+        return f"Metadata class for PartType{self.particle_type} ({self.particle_name})"
+
+    def load_metadata(self):
         """
-        Creates the unyt system to use to reduce data.
+        Workhorse function, loads the requried metadata.
         """
 
-        unit_fields = self.generate_unit_func(
-            m=self.mass, l=self.length, t=self.time, I=self.current, T=self.temperature
-        )
+        self.load_field_names()
+        self.load_field_units()
+        self.load_field_descriptions()
+        self.load_cosmology()
 
-        for ptype, units in unit_fields.items():
-            setattr(self, ptype, units)
+    def load_field_names(self):
+        """
+        Loads in only the field names (including dealing with recursion).
+        """
+
+        # regular expression for camel case to snake case
+        # https://stackoverflow.com/a/1176023
+        def convert(name):
+            return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_paths = [
+                f"PartType{self.particle_type}/{item}"
+                for item in handle[f"PartType{self.particle_type}"].keys()
+            ]
+
+            self.field_names = [
+                convert(item) for item in handle[f"PartType{self.particle_type}"].keys()
+            ]
+
+        return
+
+    def load_field_units(self):
+        """
+        Loads in the units from each dataset.
+        """
+
+        unit_dict = {
+            "I": self.units.current,
+            "L": self.units.length,
+            "M": self.units.mass,
+            "T": self.units.temperature,
+            "t": self.units.time,
+        }
+
+        def get_units(unit_attribute):
+            units = 1.0
+
+            for exponent, unit in unit_dict.items():
+                # We store the 'unit exponent' in the SWIFT metadata. This corresponds
+                # to the power we need to raise each unit to, to return the correct units
+                try:
+                    # Need to check if the exponent is 0 manually because of float precision
+                    unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
+                    if unit_exponent != 0.0:
+                        units *= unit ** unit_exponent
+                except KeyError:
+                    # Can't load that data!
+                    # We should probably warn the user here...
+                    pass
+
+            # Deal with case where we _really_ have a dimensionless quantity
+            if units == 1.0:
+                units = None
+
+            return units
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_units = [get_units(handle[x].attrs) for x in self.field_paths]
+
+        return
+
+    def load_field_descriptions(self):
+        """
+        Loads in the text descriptions of the fields for each dataset.
+        """
+
+        def get_desc(dataset):
+            try:
+                description = dataset.attrs["Description"].decode("utf-8")
+            except KeyError:
+                # Can't load description!
+                description = "No description available"
+
+            return description
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_descriptions = [get_desc(handle[x]) for x in self.field_paths]
+
+        return
+
+    def load_cosmology(self):
+        """
+        Loads in the field cosmologies.
+        """
+
+        current_scale_factor = self.scale_factor
+
+        def get_cosmo(dataset):
+            try:
+                cosmo_exponent = dataset.attrs["a-scale exponent"][0]
+            except:
+                # Can't load, 'graceful' fallback.
+                cosmo_exponent = 0.0
+
+            a_factor_this_dataset = a ** cosmo_exponent
+
+            return cosmo_factor(a_factor_this_dataset, current_scale_factor)
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_cosmologies = [get_cosmo(handle[x]) for x in self.field_paths]
 
         return
 
@@ -104,6 +230,8 @@ class SWIFTMetadata(object):
         self.get_metadata()
 
         self.postprocess_header()
+
+        self.load_particle_types()
 
         return
 
@@ -226,6 +354,39 @@ class SWIFTMetadata(object):
             # These must always be present for the initialisation of cosmology properties
             self.a = 1.0
             self.scale_factor = 1.0
+
+        return
+
+    def load_particle_types(self):
+        """
+        Loads the particle types and metadata into objects:
+
+            metadata.<type>_properties
+
+        This contains five arrays,
+
+            metadata.<type>_properties.field_names
+            metadata.<type>_properties.field_paths
+            metadata.<type>_properties.field_units
+            metadata.<type>_properties.field_cosmologies
+            metadata.<type>_properties.field_descriptions
+
+        As well as some more information about the particle type.
+        """
+
+        for particle_type, particle_name in zip(
+            self.present_particle_types, self.present_particle_names
+        ):
+            setattr(
+                self,
+                f"{particle_name}_properties",
+                SWIFTParticleTypeMetadata(
+                    particle_type=particle_type,
+                    particle_name=particle_name,
+                    units=self.units,
+                    scale_factor=self.scale_factor,
+                ),
+            )
 
         return
 
@@ -398,6 +559,7 @@ def generate_getter(
     mask: Union[None, np.ndarray],
     mask_size: int,
     cosmo_factor: cosmo_factor,
+    description: str,
 ):
     """
     Generates a function that:
@@ -442,6 +604,7 @@ def generate_getter(
                                 ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
+                                description=description,
                             ),
                         )
                     else:
@@ -449,7 +612,10 @@ def generate_getter(
                             self,
                             f"_{name}",
                             cosmo_array(
-                                handle[field][...], unit, cosmo_factor=cosmo_factor
+                                handle[field][...],
+                                unit,
+                                cosmo_factor=cosmo_factor,
+                                description=description,
                             ),
                         )
                 except KeyError:
@@ -495,22 +661,22 @@ class __SWIFTParticleDataset(object):
     with properties by generate_dataset.
     """
 
-    def __init__(self, filename, particle_type: int, units: SWIFTUnits):
+    def __init__(self, particle_metadata: SWIFTParticleTypeMetadata):
         """
         This function primarily calls the generate_getters_for_particle_types
         function to ensure that we are reading correctly.
         """
-        self.filename = filename
+        self.filename = particle_metadata.filename
+        self.units = particle_metadata.units
 
-        self.particle_type = particle_type
-        self.particle_name = self.particle_type_to_name(particle_type)
+        self.particle_type = particle_metadata.particle_type
+        self.particle_name = particle_metadata.particle_name
+
+        self.particle_metadata = particle_metadata
 
         self.generate_empty_properties()
 
         return
-
-    def particle_type_to_name(self, particle_type: int):
-        return metadata.particle_types.particle_name_underscores[particle_type]
 
     def generate_empty_properties(self):
         """
@@ -520,33 +686,24 @@ class __SWIFTParticleDataset(object):
         variable.
         """
 
-        existing_fields = []
-
         with h5py.File(self.filename, "r") as handle:
-            particle_handle = f"PartType{self.particle_type}"
-            if particle_handle in handle:
-                for key, name in getattr(
-                    metadata.particle_fields, self.particle_name
-                ).items():
-                    if key in handle[particle_handle]:
-                        existing_fields.append(name)
-
-        for name in getattr(metadata.particle_fields, self.particle_name).values():
-            if name in existing_fields:
-                setattr(self, f"_{name}", None)
+            for field_name, field_path in zip(
+                self.particle_metadata.field_names, self.particle_metadata.field_paths
+            ):
+                if field_path in handle:
+                    setattr(self, f"_{field_name}", None)
+                else:
+                    raise AttributeError(
+                        (
+                            f"Cannot find attribute {field_path} in file although"
+                            "it was present when searching initially."
+                        )
+                    )
 
         return
 
 
-def generate_dataset(
-    filename,
-    particle_type: int,
-    file_metadata: SWIFTMetadata,
-    mask,
-    generate_cosmology_func: Callable[
-        ..., dict
-    ] = metadata.cosmology.cosmology_fields.generate_cosmology,
-):
+def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
     particle type given.
@@ -562,59 +719,65 @@ def generate_dataset(
     the name is, for example, coordinates.
     """
 
-    particle_name = metadata.particle_types.particle_name_underscores[particle_type]
+    filename = particle_metadata.filename
+    particle_type = particle_metadata.particle_type
+    particle_name = particle_metadata.particle_name
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
-    unit_system = getattr(file_metadata.units, particle_name)
-    cosmology_system = generate_cosmology_func(file_metadata.a, file_metadata.gas_gamma)
 
+    # Mask is an object that contains all masks for all possible datasets.
+    if mask is not None:
+        mask_array = getattr(mask, particle_name)
+        mask_size = getattr(mask, f"{particle_name}_size")
+    else:
+        mask_array = None
+        mask_size = -1
+
+    # Set up an iterator for us to loop over for all fields
+    field_paths = particle_metadata.field_paths
+    field_names = particle_metadata.field_names
+    field_cosmologies = particle_metadata.field_cosmologies
+    field_units = particle_metadata.field_units
+    field_descriptions = particle_metadata.field_descriptions
+
+    dataset_iterator = zip(
+        field_paths, field_names, field_cosmologies, field_units, field_descriptions
+    )
+
+    # This 'nice' piece of code ensures that our datasets have different _types_
+    # for different particle types.
     ThisDataset = type(
         f"{particle_nice_name}Dataset",
         __SWIFTParticleDataset.__bases__,
         dict(__SWIFTParticleDataset.__dict__),
     )
 
-    existing_fields = []
-
-    with h5py.File(filename, "r") as handle:
-        particle_handle = f"PartType{particle_type}"
-        if particle_handle in handle:
-            for key, name in getattr(metadata.particle_fields, particle_name).items():
-                if key in handle[particle_handle]:
-                    existing_fields.append(name)
-
-    for field_name, name in getattr(metadata.particle_fields, particle_name).items():
-        if not name in existing_fields:
-            continue
-
-        unit = unit_system[name]
-        cosmo_factor = cosmology_system[particle_name][name]
-
-        if mask is not None:
-            mask_array = getattr(mask, particle_name)
-            mask_size = getattr(mask, f"{particle_name}_size")
-        else:
-            mask_array = None
-            mask_size = -1
-
+    for (
+        field_path,
+        field_name,
+        field_cosmology,
+        field_unit,
+        field_description,
+    ) in dataset_iterator:
         setattr(
             ThisDataset,
-            name,
+            field_name,
             property(
                 generate_getter(
                     filename,
-                    name,
-                    f"PartType{particle_type}/{field_name}",
-                    unit=unit,
+                    field_name,
+                    field_path,
+                    unit=field_unit,
                     mask=mask_array,
                     mask_size=mask_size,
-                    cosmo_factor=cosmo_factor,
+                    cosmo_factor=field_cosmology,
+                    description=field_description,
                 ),
-                generate_setter(name),
-                generate_deleter(name),
+                generate_setter(field_name),
+                generate_deleter(field_name),
             ),
         )
 
-    empty_dataset = ThisDataset(filename, particle_type, file_metadata.units)
+    empty_dataset = ThisDataset(particle_metadata)
 
     return empty_dataset
 
@@ -640,19 +803,9 @@ class SWIFTDataset(object):
     SWIFTDataset.metadata.
     """
 
-    def __init__(
-        self,
-        filename,
-        mask=None,
-        generate_unit_func: Callable[..., dict] = metadata.unit_fields.generate_units,
-        generate_cosmology_func: Callable[
-            ..., dict
-        ] = metadata.cosmology.cosmology_fields.generate_cosmology,
-    ):
+    def __init__(self, filename, mask=None):
         self.filename = filename
         self.mask = mask
-        self.generate_unit_func = generate_unit_func
-        self.generate_cosmology_func = generate_cosmology_func
 
         if mask is not None:
             self.mask.convert_masks_to_ranges()
@@ -669,7 +822,7 @@ class SWIFTDataset(object):
         the memory location.
         """
 
-        return f"SWIFT dataset at {filename}."
+        return f"SWIFT dataset at {self.filename}."
 
     def get_units(self):
         """
@@ -677,9 +830,7 @@ class SWIFTDataset(object):
         but you can call this function again if you mess things up.
         """
 
-        self.units = SWIFTUnits(
-            self.filename, generate_unit_func=self.generate_unit_func
-        )
+        self.units = SWIFTUnits(self.filename)
 
         return
 
@@ -700,20 +851,17 @@ class SWIFTDataset(object):
         accessed using their underscore names, e.g. gas.
         """
 
-        if not hasattr(self, "units"):
-            self.get_units()
+        if not hasattr(self, "metadata"):
+            self.get_metadata()
 
-        for ptype, name in metadata.particle_types.particle_name_underscores.items():
+        for particle_name in self.metadata.present_particle_names:
             setattr(
                 self,
-                name,
+                particle_name,
                 generate_dataset(
-                    self.filename,
-                    ptype,
-                    self.metadata,
-                    self.mask,
-                    self.generate_cosmology_func,
+                    getattr(self.metadata, f"{particle_name}_properties"), self.mask
                 ),
             )
 
         return
+

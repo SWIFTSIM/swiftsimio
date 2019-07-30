@@ -128,11 +128,7 @@ def test_read():
 
     metadata.particle_fields.extratype = {**metadata.particle_fields.gas}
 
-    data = load(
-        "extra_test.hdf5",
-        generate_unit_func=generate_units,
-        generate_cosmology_func=generate_cosmology,
-    )
+    data = load("extra_test.hdf5")
 
     for i in range(0, 10):
         assert data.extratype.coordinates.value[i][0] == float(i)
@@ -143,4 +139,3 @@ def test_read():
     swp.particle_name_underscores.pop(6)
     swp.particle_name_class.pop(6)
     swp.particle_name_text.pop(6)
-

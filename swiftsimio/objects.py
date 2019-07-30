@@ -108,6 +108,7 @@ class cosmo_array(unyt_array):
         dtype=None,
         bypass_validation=False,
         cosmo_factor: Union[cosmo_factor, None] = None,
+        description: str = "",
         comoving: bool = True,
     ):
         """
@@ -117,6 +118,7 @@ class cosmo_array(unyt_array):
 
         self.cosmo_factor = cosmo_factor
         self.comoving = comoving
+        self.description = description
 
     def __str__(self):
         if self.comoving:
@@ -126,40 +128,42 @@ class cosmo_array(unyt_array):
 
         return super().__str__() + " " + comoving_str
 
-    def convert_to_comoving(self) -> None:
-        """
-        Convert the internal data to be in comoving units.
-        """
-        if self.comoving:
-            return
-        else:
-            self.units *= self.cosmo_factor.a_factor
-            self.comoving = True
+    # TODO: Fix this API. At the moment, it doesn't work.
 
-    def convert_to_physical(self) -> None:
-        """
-        Convert the internal data to be in physical units.
-        """
-        if self.comoving:
-            self.units /= self.cosmo_factor.a_factor
-            self.comoving = False
-        else:
-            return
+    # def convert_to_comoving(self) -> None:
+    #     """
+    #     Convert the internal data to be in comoving units.
+    #     """
+    #     if self.comoving:
+    #         return
+    #     else:
+    #         self.units *= self.cosmo_factor.a_factor
+    #         self.comoving = True
 
-    def to_physical(self):
-        """
-        Returns a copy of the data in physical units.
-        """
-        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
-        copied_data.convert_to_physical()
+    # def convert_to_physical(self) -> None:
+    #     """
+    #     Convert the internal data to be in physical units.
+    #     """
+    #     if self.comoving:
+    #         self.units /= self.cosmo_factor.a_factor
+    #         self.comoving = False
+    #     else:
+    #         return
 
-        return copied_data
+    # def to_physical(self):
+    #     """
+    #     Returns a copy of the data in physical units.
+    #     """
+    #     copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
+    #     copied_data.convert_to_physical()
 
-    def to_comoving(self):
-        """
-        Returns a copy of the data in comoving units.
-        """
-        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
-        copied_data.convert_to_comoving()
+    #     return copied_data
 
-        return copied_data
+    # def to_comoving(self):
+    #     """
+    #     Returns a copy of the data in comoving units.
+    #     """
+    #     copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
+    #     copied_data.convert_to_comoving()
+
+    #     return copied_data
