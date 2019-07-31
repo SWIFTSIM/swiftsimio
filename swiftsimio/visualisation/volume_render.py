@@ -133,7 +133,7 @@ def render_gas_voxel_grid(
 
     # Let's just hope that the box is square otherwise we're probably SOL
     x, y, z = data.gas.coordinates.T
-    hsml = data.gas.smoothing_length
+    hsml = data.gas.smoothing_lengths
 
     image = scatter(x / box_x, y / box_y, z / box_z, m, hsml / box_x, resolution)
 
