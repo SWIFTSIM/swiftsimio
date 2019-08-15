@@ -1,6 +1,15 @@
 SWIFTsimIO Changelog
 ====================
 
+v 1.0.1
+-------
+
+Temperature bugfix
+
++ A check in the code for dimensionless quantities was accidentally picking up temperatures as also
+  being dimensionless. This is now fixed.
+
+
 v 1.0.0
 -------
 
