@@ -162,8 +162,12 @@ class SWIFTParticleTypeMetadata(object):
                     # We should probably warn the user here...
                     pass
 
-            # Deal with case where we _really_ have a dimensionless quantity
-            if units == 1.0:
+            # Deal with case where we _really_ have a dimensionless quantity. Comparing with
+            # 1.0 doesn't work, beacause in these cases unyt reverts to a floating point
+            # comparison.
+            try:
+                units.units
+            except AttributeError:
                 units = None
 
             return units

@@ -11,6 +11,7 @@ from swiftsimio import load, mask
 import h5py
 
 from unyt import unyt_array as array
+from unyt import K
 from numpy import logical_and, isclose
 from numpy import array as numpy_array
 
@@ -42,6 +43,19 @@ def test_time_metadata(filename):
     assert data.metadata.z == data.metadata.redshift
 
     assert data.metadata.t == data.metadata.time
+
+    return
+
+
+@requires("cosmological_volume.hdf5")
+def test_temperature_units(filename):
+    """
+    This tests checks if we correctly read in temperature units. Based on a past bug, to make
+    sure we never break this again.
+    """
+
+    data = load(filename)
+    data.gas.temperatures.convert_to_units(K)
 
     return
 
