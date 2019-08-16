@@ -37,8 +37,6 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
 
         kernel = max(one_minus_ratio_4 * (1.0 + 4.0 * ratio), 0.0)
 
-        kernel *= kernel_constant * inverse_H * inverse_H * inverse_H
-
         kernel *= kernel_constant * inverse_H * inverse_H
 
     return kernel

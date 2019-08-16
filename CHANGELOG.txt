@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 1.0.2
+-------
+
+Visualisation bugfix
+
++ A botched merge left some incorrect code in visualisation. This is now fixed.
+
 v 1.0.1
 -------
 
