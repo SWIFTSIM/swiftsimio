@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 1.0.3
+-------
+
+Boundary particles bugfix
+
++ Fixes a bug preventing snapshots that include boundary particles from being used
+  with cell masking.
+
 v 1.0.2
 -------
 
