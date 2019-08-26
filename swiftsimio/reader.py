@@ -339,13 +339,12 @@ class SWIFTMetadata(object):
             # Old file
             pass
 
-        # Store these separately
-        self.n_gas = self.num_part[0]
-        self.n_dark_matter = self.num_part[1]
-        self.n_boundary = self.num_part[2]
-        self.n_second_boundary = self.num_part[3]
-        self.n_stars = self.num_part[4]
-        self.n_black_holes = self.num_part[5]
+        # Store these separately as self.n_gas = number of gas particles for example
+        for (
+            part_number,
+            part_name,
+        ) in metadata.particle_types.particle_name_underscores.items():
+            setattr(self, f"n_{part_name}", self.num_part[part_number])
 
         # Need to unpack the gas gamma for cosmology
         try:
