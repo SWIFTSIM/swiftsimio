@@ -7,7 +7,7 @@ from math import sqrt
 from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones
 from swiftsimio import SWIFTDataset
 
-from swiftsimio.accelerated import jit
+from swiftsimio.accelerated import jit, prange, NUM_THREADS
 
 # Taken from Dehnen & Aly 2012
 kernel_gamma = 1.936492
@@ -128,11 +128,57 @@ def slice_scatter(
     return image
 
 
+@jit(nopython=True, fastmath=True, parallel=True)
+def slice_scatter_parallel(
+    x: float64,
+    y: float64,
+    z: float64,
+    m: float32,
+    h: float32,
+    z_slice: float64,
+    res: int,
+) -> ndarray:
+    """
+    Same as scatter, but executes in parallel! This is actually trivial,
+    we just make NUM_THREADS images and add them together at the end.
+    """
+
+    number_of_particles = x.size
+    core_particles = number_of_particles // NUM_THREADS
+
+    output = zeros((res, res), dtype=float32)
+
+    for thread in prange(NUM_THREADS):
+        # Left edge is easy, just start at 0 and go to 'final'
+        left_edge = thread * core_particles
+
+        # Right edge is harder in case of left over particles...
+        right_edge = thread + 1
+
+        if right_edge == NUM_THREADS:
+            right_edge = number_of_particles
+        else:
+            right_edge *= core_particles
+
+        output += slice_scatter(
+            x=x[left_edge:right_edge],
+            y=y[left_edge:right_edge],
+            z=z[left_edge:right_edge],
+            m=m[left_edge:right_edge],
+            h=h[left_edge:right_edge],
+            z_slice=z_slice,
+            res=res,
+        )
+
+    return output
+
+
 def slice_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
     slice: float,
     project: Union[str, None] = "masses",
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D slice of a SWIFT dataset, projected by the "project"
@@ -147,6 +193,10 @@ def slice_gas_pixel_grid(
 
     Creates a resolution x resolution array and returns it, without appropriate
     units.
+
+    The final argument, parallel, is used to determine if we will create the image
+    in parallel. This defaults to False, but can speed up the creation of large
+    images significantly.
     """
 
     if slice > 1.0 or slice < 0.0:
@@ -165,9 +215,14 @@ def slice_gas_pixel_grid(
     x, y, z = data.gas.coordinates.T
     hsml = data.gas.smoothing_lengths
 
-    image = slice_scatter(
-        x / box_x, y / box_y, z / box_z, m, hsml / box_x, slice, resolution
-    )
+    if parallel:
+        image = slice_scatter_parallel(
+            x / box_x, y / box_y, z / box_z, m, hsml / box_x, slice, resolution
+        )
+    else:
+        image = slice_scatter(
+            x / box_x, y / box_y, z / box_z, m, hsml / box_x, slice, resolution
+        )
 
     return image
 
@@ -177,6 +232,7 @@ def slice_gas(
     resolution: int,
     slice: float,
     project: Union[str, None] = "masses",
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -191,9 +247,13 @@ def slice_gas(
 
     Creates a resolution x resolution array and returns it, with appropriate
     units.
+
+    The final argument, parallel, is used to determine if we will create the image
+    in parallel. This defaults to False, but can speed up the creation of large
+    images significantly.
     """
 
-    image = slice_gas_pixel_grid(data, resolution, slice, project)
+    image = slice_gas_pixel_grid(data, resolution, slice, project, parallel)
 
     units = 1.0 / (
         data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]

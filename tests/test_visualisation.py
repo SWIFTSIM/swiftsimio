@@ -1,5 +1,6 @@
 from swiftsimio.visualisation import scatter, slice, volume_render
 from swiftsimio.visualisation.projection import scatter_parallel
+from swiftsimio.visualisation.slice import slice_scatter_parallel
 
 import numpy as np
 
@@ -69,6 +70,52 @@ def test_slice(save=False):
 
     if save:
         imsave("test_image_creation.png", image)
+
+    return
+
+
+def test_slice_parallel(save=False):
+    """
+    Asserts that we create the same image with the parallel version of the code
+    as with the serial version.
+    """
+
+    number_of_parts = 1000
+    h_max = np.float32(0.05)
+    z_slice = 0.5
+    resolution = 256
+
+    coordinates = (
+        np.random.rand(3 * number_of_parts)
+        .reshape((3, number_of_parts))
+        .astype(np.float64)
+    )
+    hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
+    masses = np.ones(number_of_parts, dtype=np.float32)
+
+    image = slice(
+        coordinates[0],
+        coordinates[1],
+        coordinates[2],
+        masses,
+        hsml,
+        z_slice,
+        resolution,
+    )
+    image_par = slice_scatter_parallel(
+        coordinates[0],
+        coordinates[1],
+        coordinates[2],
+        masses,
+        hsml,
+        z_slice,
+        resolution,
+    )
+
+    if save:
+        imsave("test_image_creation.png", image)
+
+    assert np.isclose(image, image_par).all()
 
     return
 
