@@ -8,7 +8,7 @@ from math import sqrt
 from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones
 from swiftsimio import SWIFTDataset
 
-from swiftsimio.accelerated import jit
+from swiftsimio.accelerated import jit, NUM_THREADS, prange
 
 # Taken from Dehnen & Aly 2012
 kernel_gamma = 1.897367
@@ -121,8 +121,48 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     return image
 
 
+@jit(nopython=True, fastmath=True, parallel=True)
+def scatter_parallel(
+    x: float64, y: float64, m: float32, h: float32, res: int
+) -> ndarray:
+    """
+    Same as scatter, but executes in parallel! This is actually trivial,
+    we just make NUM_THREADS images and add them together at the end.
+    """
+
+    number_of_particles = x.size
+    core_particles = number_of_particles // NUM_THREADS
+
+    output = zeros((res, res), dtype=float32)
+
+    for thread in prange(NUM_THREADS):
+        # Left edge is easy, just start at 0 and go to 'final'
+        left_edge = thread * core_particles
+
+        # Right edge is harder in case of left over particles...
+        right_edge = thread + 1
+
+        if right_edge == NUM_THREADS:
+            right_edge = number_of_particles
+        else:
+            right_edge *= core_particles
+
+        output += scatter(
+            x=x[left_edge:right_edge],
+            y=y[left_edge:right_edge],
+            m=m[left_edge:right_edge],
+            h=h[left_edge:right_edge],
+            res=res,
+        )
+
+    return output
+
+
 def project_gas_pixel_grid(
-    data: SWIFTDataset, resolution: int, project: Union[str, None] = "masses"
+    data: SWIFTDataset,
+    resolution: int,
+    project: Union[str, None] = "masses",
+    parallel=False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -135,6 +175,10 @@ def project_gas_pixel_grid(
 
     Creates a resolution x resolution array and returns it, without appropriate
     units.
+
+    The final argument, parallel, is used to determine if we will create the image
+    in parallel. This defaults to False, but can speed up the creation of large
+    images significantly.
     """
 
     number_of_gas_particles = data.gas.particle_ids.size
@@ -154,13 +198,19 @@ def project_gas_pixel_grid(
         # Backwards compatibility
         hsml = data.gas.smoothing_length
 
-    image = scatter(x / box_x, y / box_y, m, hsml / box_x, resolution)
+    if parallel:
+        image = scatter_parallel(x / box_x, y / box_y, m, hsml / box_x, resolution)
+    else:
+        image = scatter(x / box_x, y / box_y, m, hsml / box_x, resolution)
 
     return image
 
 
 def project_gas(
-    data: SWIFTDataset, resolution: int, project: Union[str, None] = "masses"
+    data: SWIFTDataset,
+    resolution: int,
+    project: Union[str, None] = "masses",
+    parallel=False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -173,9 +223,13 @@ def project_gas(
 
     Creates a resolution x resolution array and returns it, with appropriate
     units.
+
+    The final argument, parallel, is used to determine if we will create the image
+    in parallel. This defaults to False, but can speed up the creation of large
+    images significantly.
     """
 
-    image = project_gas_pixel_grid(data, resolution, project)
+    image = project_gas_pixel_grid(data, resolution, project, parallel)
 
     units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
 

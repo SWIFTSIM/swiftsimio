@@ -9,7 +9,8 @@ from h5py._hl.dataset import Dataset
 from typing import Tuple
 
 try:
-    from numba import jit
+    from numba import jit, prange
+    from numba.config import NUMBA_NUM_THREADS as NUM_THREADS
 except ImportError:
     print(
         "You do not have numba installed. Please consider installing "
@@ -22,6 +23,9 @@ except ImportError:
             return func
 
         return x
+
+    prange = range
+    NUM_THREADS = 1
 
 
 @jit(nopython=True)
