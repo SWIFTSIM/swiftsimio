@@ -14,7 +14,7 @@ try:
 except ImportError:
     print(
         "You do not have numba installed. Please consider installing "
-        "if you are going to be indexing large arrays "
+        "if you are going to be doing visualisation or indexing large arrays "
         "(pip install numba)"
     )
 
