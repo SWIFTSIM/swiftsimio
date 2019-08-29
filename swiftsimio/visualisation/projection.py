@@ -162,7 +162,7 @@ def project_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
     project: Union[str, None] = "masses",
-    parallel=False,
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -210,7 +210,7 @@ def project_gas(
     data: SWIFTDataset,
     resolution: int,
     project: Union[str, None] = "masses",
-    parallel=False,
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"

@@ -148,7 +148,7 @@ def render_gas_voxel_grid(
     data: SWIFTDataset,
     resolution: int,
     project: Union[str, None] = "masses",
-    parallel=False,
+    parallel: bool = False,
 ):
     r"""
     Creates a 3D projection of a SWIFT dataset, projected by the "project"
@@ -194,7 +194,7 @@ def render_gas(
     data: SWIFTDataset,
     resolution: int,
     project: Union[str, None] = "masses",
-    parallel=False,
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
