@@ -12,7 +12,7 @@ import h5py
 
 from unyt import unyt_array as array
 from unyt import K
-from numpy import logical_and, isclose
+from numpy import logical_and, isclose, float64
 from numpy import array as numpy_array
 
 
@@ -107,7 +107,8 @@ def test_units(filename):
 
         for property in properties:
             # Read the 0th element, and compare in CGS units.
-            our_units = getattr(field, property)[0]
+            # We need to use doubles here as sometimes we can overflow!
+            our_units = getattr(field, property).astype(float64)[0]
 
             our_units.convert_to_cgs()
 

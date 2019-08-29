@@ -3,19 +3,20 @@ SWIFTsimIO
 
 [![Build Status](https://travis-ci.com/SWIFTSIM/swiftsimio.svg?branch=master)](https://travis-ci.com/SWIFTSIM/swiftsimio)
 
-The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used widely. There
-exists many ways of reading the data from SWIFT, which outputs HDF5 files. These range
-from reading directly using `h5py` to using a complex system such as `yt`; however these
-either are unsatisfactory (e.g. a lack of unit information in reading HDF5), or too
-complex for most use-cases. This (thin) wrapper provides an object-oriented API to read
-(dynamically) data from SWIFT.
+The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used
+widely. There exists many ways of reading the data from SWIFT, which outputs
+HDF5 files. These range from reading directly using `h5py` to using a complex
+system such as `yt`; however these either are unsatisfactory (e.g. a lack of
+unit information in reading HDF5), or too complex for most use-cases. This
+(thin) wrapper provides an object-oriented API to read (dynamically) data
+from SWIFT.
 
 
 Requirements
 ------------
 
-This requires `python3.6.0` or higher. No effort will be made to support python versions
-below this. Please update your systems.
+This requires `python3.6.0` or higher. No effort will be made to support
+python versions below this. Please update your systems.
 
 ### Python packages
 
@@ -70,12 +71,13 @@ Writing datasets
 ----------------
 
 Writing datasets that are valid for consumption for cosmological codes can be
-difficult, especially when considering how to best use units. SWIFT uses a different
-set of internal units (specified in your parameter file) that does not necessarily need
-to be the same set of units that initial conditions are specified in. Nevertheless,
-it is important to ensure that units in the initial conditions are all _consistent_
-with each other. To facilitate this, we use `unyt` arrays. The below example generates
-randomly placed gas particles with uniform densities.
+difficult, especially when considering how to best use units. SWIFT uses a
+different set of internal units (specified in your parameter file) that does
+not necessarily need to be the same set of units that initial conditions are
+specified in. Nevertheless, it is important to ensure that units in the
+initial conditions are all _consistent_ with each other. To facilitate this,
+we use `unyt` arrays. The below example generates randomly placed gas
+particles with uniform densities.
 
 ```python
 from swiftsimio import Writer
@@ -180,9 +182,10 @@ that lie in the region [0.2, 0.7] and have a density between 0.4 and 0.8 g/cm^3.
 User-defined particle types
 ---------------------------
 
-It is now possible to add user-defined particle types that are not already present in the
-`swiftsimio` metadata. All you need to do is specify the three names (see below) and then
-the particle datasets that you have provided in SWIFT will be automatically read.
+It is now possible to add user-defined particle types that are not already
+present in the `swiftsimio` metadata. All you need to do is specify the three
+names (see below) and then the particle datasets that you have provided in
+SWIFT will be automatically read.
 
 ```python
 import swiftsimio as sw
@@ -205,10 +208,12 @@ Image Creation
 --------------
 
 `swiftsimio` provides some very basic visualisation software that is designed
-to create projections of the entire box along the z-axis, with x and y representing
-the final square. Note that it only currently supports square boxes. These are
-accelerated with `numba`, and we do not suggest using these routines unless you have it
-installed.
+to create projections of the entire box along the z-axis, with x and y
+representing the final square. Note that it only currently supports square
+boxes. These are accelerated with `numba`, and we do not suggest using these
+routines unless you have it installed. Finally, you can use parallel versions
+of these functions (by default they run in serial) by passing the argument
+`parallel=True`.
 
 You can do the following:
 

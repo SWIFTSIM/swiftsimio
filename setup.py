@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="swiftsimio",
-    version="1.0.3",
+    version="1.1.0",
     description="SWIFTsim (swift.dur.ac.uk) i/o routines for python.",
     url="https://github.com/swiftsim/swiftsimio",
     author="Josh Borrow",
@@ -16,8 +16,9 @@ setuptools.setup(
     zip_safe=False,
     classifiers=[
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
         "Operating System :: OS Independent",
     ],
-    install_requires=["numpy", "unyt<2.0.0", "h5py"],
+    install_requires=["numpy", "unyt>=2.3.0", "h5py"],
 )

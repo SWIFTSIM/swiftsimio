@@ -1,6 +1,16 @@
 SWIFTsimIO Changelog
 ====================
 
+v 1.1.0
+-------
+
+The parallel update!
+
++ Adds parallel visualisation routines for all projection, slice, and volume
+  rendering options. This can be activated by using the `parallel=True` argument.
++ Upgraded to `unyt` version 2.3.0 or above. This allows us to stay on track with
+  `unyt` as previously we required an older version.
+
 v 1.0.3
 -------
 
