@@ -80,7 +80,7 @@ class cosmo_array(unyt_array):
     def __new__(
         self,
         input_array,
-        input_units,
+        units,
         registry=None,
         dtype=None,
         bypass_validation=False,
@@ -93,7 +93,7 @@ class cosmo_array(unyt_array):
         obj = super().__new__(
             self,
             input_array,
-            input_units=input_units,
+            units=units,
             registry=registry,
             dtype=dtype,
             bypass_validation=bypass_validation,
@@ -103,7 +103,7 @@ class cosmo_array(unyt_array):
     def __init__(
         self,
         input_array,
-        input_units,
+        units,
         registry=None,
         dtype=None,
         bypass_validation=False,

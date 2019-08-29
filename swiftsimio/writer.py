@@ -391,9 +391,15 @@ class SWIFTWriterDataset(object):
         base = self.unit_system.base_units
 
         def get_conversion(type):
+            # We need to find the correct unit (which is now stored as a sympy value,
+            # why?!) and convert it to an unyt unit.
+            our_unit = unyt.unit_object.Unit(base[type])
+            cgs_unit = unyt.unit_object.Unit(cgs_base[type])
+            conversion_factor = our_unit.get_conversion_factor(cgs_unit)[0]
+
             # We use the array because this is how swift outputs it, as a length
             # 1 array (rather than as a single float).
-            return np.array([base[type].get_conversion_factor(cgs_base[type])[0]])
+            return np.array([conversion_factor])
 
         attrs = {
             "Unit mass in cgs (U_M)": get_conversion(dim.mass),
