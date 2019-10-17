@@ -4,3 +4,4 @@ unyt<2.0.0
 pytest
 black
 py-sphviewer
+matplotlib
