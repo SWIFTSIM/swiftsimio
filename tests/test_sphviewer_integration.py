@@ -8,8 +8,11 @@ from swiftsimio.visualisation.sphviewer import SPHViewerWrapper
 
 from unyt import unyt_array as array
 
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+except (ImportError, ModuleNotFoundError):
+    pass
 
 
 @requires("cosmological_volume.hdf5")

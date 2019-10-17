@@ -17,7 +17,7 @@ try:
     import sphviewer as viewer
 
     SPHVIEWER_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     SPHVIEWER_AVAILABLE = False
 
 
@@ -25,7 +25,7 @@ try:
     from scipy.spatial import cKDTree as KDTree
 
     TREE_AVAILABLE = True
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     TREE_AVAILABLE = False
 
 
