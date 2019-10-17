@@ -1,6 +1,15 @@
 SWIFTsimIO Changelog
 ====================
 
+v 1.2.0
+-------
+
+The `py-sphviewer` integration update!
+
++ Adds a new sub-module, `swiftsimio.visualisation.sphviewer`, that
+  provides inter-operability with py-sphviewer.
+
+
 v 1.1.0
 -------
 
