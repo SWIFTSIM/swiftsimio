@@ -72,154 +72,6 @@ class SWIFTUnits(object):
         self.temperature = self.units["Unit temperature in cgs (U_T)"]
 
 
-class SWIFTParticleTypeMetadata(object):
-    """
-    Object that contains the metadata for one particle type. This, for, instance,
-    could be part type 0, or 'gas'. This will load in the names of all particle datasets,
-    their units, and their cosmology, and present them for use in the actual
-    i/o routines.
-    """
-
-    def __init__(
-        self,
-        particle_type: int,
-        particle_name: str,
-        units: SWIFTUnits,
-        scale_factor: float,
-    ):
-        self.particle_type = particle_type
-        self.particle_name = particle_name
-        self.units = units
-        self.scale_factor = scale_factor
-
-        self.filename = units.filename
-
-        self.load_metadata()
-
-        return
-
-    def __str__(self):
-        return f"Metadata class for PartType{self.particle_type} ({self.particle_name})"
-
-    def load_metadata(self):
-        """
-        Workhorse function, loads the requried metadata.
-        """
-
-        self.load_field_names()
-        self.load_field_units()
-        self.load_field_descriptions()
-        self.load_cosmology()
-
-    def load_field_names(self):
-        """
-        Loads in only the field names (including dealing with recursion).
-        """
-
-        # regular expression for camel case to snake case
-        # https://stackoverflow.com/a/1176023
-        def convert(name):
-            return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
-
-        with h5py.File(self.filename, "r") as handle:
-            self.field_paths = [
-                f"PartType{self.particle_type}/{item}"
-                for item in handle[f"PartType{self.particle_type}"].keys()
-            ]
-
-            self.field_names = [
-                convert(item) for item in handle[f"PartType{self.particle_type}"].keys()
-            ]
-
-        return
-
-    def load_field_units(self):
-        """
-        Loads in the units from each dataset.
-        """
-
-        unit_dict = {
-            "I": self.units.current,
-            "L": self.units.length,
-            "M": self.units.mass,
-            "T": self.units.temperature,
-            "t": self.units.time,
-        }
-
-        def get_units(unit_attribute):
-            units = 1.0
-
-            for exponent, unit in unit_dict.items():
-                # We store the 'unit exponent' in the SWIFT metadata. This corresponds
-                # to the power we need to raise each unit to, to return the correct units
-                try:
-                    # Need to check if the exponent is 0 manually because of float precision
-                    unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
-                    if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
-                except KeyError:
-                    # Can't load that data!
-                    # We should probably warn the user here...
-                    pass
-
-            # Deal with case where we _really_ have a dimensionless quantity. Comparing with
-            # 1.0 doesn't work, beacause in these cases unyt reverts to a floating point
-            # comparison.
-            try:
-                units.units
-            except AttributeError:
-                units = None
-
-            return units
-
-        with h5py.File(self.filename, "r") as handle:
-            self.field_units = [get_units(handle[x].attrs) for x in self.field_paths]
-
-        return
-
-    def load_field_descriptions(self):
-        """
-        Loads in the text descriptions of the fields for each dataset.
-        """
-
-        def get_desc(dataset):
-            try:
-                description = dataset.attrs["Description"].decode("utf-8")
-            except KeyError:
-                # Can't load description!
-                description = "No description available"
-
-            return description
-
-        with h5py.File(self.filename, "r") as handle:
-            self.field_descriptions = [get_desc(handle[x]) for x in self.field_paths]
-
-        return
-
-    def load_cosmology(self):
-        """
-        Loads in the field cosmologies.
-        """
-
-        current_scale_factor = self.scale_factor
-
-        def get_cosmo(dataset):
-            try:
-                cosmo_exponent = dataset.attrs["a-scale exponent"][0]
-            except:
-                # Can't load, 'graceful' fallback.
-                cosmo_exponent = 0.0
-
-            a_factor_this_dataset = a ** cosmo_exponent
-
-            return cosmo_factor(a_factor_this_dataset, current_scale_factor)
-
-        with h5py.File(self.filename, "r") as handle:
-            self.field_cosmologies = [get_cosmo(handle[x]) for x in self.field_paths]
-
-        return
-
-
 class SWIFTMetadata(object):
     """
     Loads all metadata (apart from Units, those are handled by SWIFTUnits)
@@ -388,7 +240,7 @@ class SWIFTMetadata(object):
                 SWIFTParticleTypeMetadata(
                     particle_type=particle_type,
                     particle_name=particle_name,
-                    units=self.units,
+                    metadata=self,
                     scale_factor=self.scale_factor,
                 ),
             )
@@ -556,6 +408,155 @@ class SWIFTMetadata(object):
         return output
 
 
+class SWIFTParticleTypeMetadata(object):
+    """
+    Object that contains the metadata for one particle type. This, for, instance,
+    could be part type 0, or 'gas'. This will load in the names of all particle datasets,
+    their units, and their cosmology, and present them for use in the actual
+    i/o routines.
+    """
+
+    def __init__(
+        self,
+        particle_type: int,
+        particle_name: str,
+        metadata: SWIFTMetadata,
+        scale_factor: float,
+    ):
+        self.particle_type = particle_type
+        self.particle_name = particle_name
+        self.metadata = metadata
+        self.units = metadata.units
+        self.scale_factor = scale_factor
+
+        self.filename = metadata.filename
+
+        self.load_metadata()
+
+        return
+
+    def __str__(self):
+        return f"Metadata class for PartType{self.particle_type} ({self.particle_name})"
+
+    def load_metadata(self):
+        """
+        Workhorse function, loads the requried metadata.
+        """
+
+        self.load_field_names()
+        self.load_field_units()
+        self.load_field_descriptions()
+        self.load_cosmology()
+
+    def load_field_names(self):
+        """
+        Loads in only the field names (including dealing with recursion).
+        """
+
+        # regular expression for camel case to snake case
+        # https://stackoverflow.com/a/1176023
+        def convert(name):
+            return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_paths = [
+                f"PartType{self.particle_type}/{item}"
+                for item in handle[f"PartType{self.particle_type}"].keys()
+            ]
+
+            self.field_names = [
+                convert(item) for item in handle[f"PartType{self.particle_type}"].keys()
+            ]
+
+        return
+
+    def load_field_units(self):
+        """
+        Loads in the units from each dataset.
+        """
+
+        unit_dict = {
+            "I": self.units.current,
+            "L": self.units.length,
+            "M": self.units.mass,
+            "T": self.units.temperature,
+            "t": self.units.time,
+        }
+
+        def get_units(unit_attribute):
+            units = 1.0
+
+            for exponent, unit in unit_dict.items():
+                # We store the 'unit exponent' in the SWIFT metadata. This corresponds
+                # to the power we need to raise each unit to, to return the correct units
+                try:
+                    # Need to check if the exponent is 0 manually because of float precision
+                    unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
+                    if unit_exponent != 0.0:
+                        units *= unit ** unit_exponent
+                except KeyError:
+                    # Can't load that data!
+                    # We should probably warn the user here...
+                    pass
+
+            # Deal with case where we _really_ have a dimensionless quantity. Comparing with
+            # 1.0 doesn't work, beacause in these cases unyt reverts to a floating point
+            # comparison.
+            try:
+                units.units
+            except AttributeError:
+                units = None
+
+            return units
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_units = [get_units(handle[x].attrs) for x in self.field_paths]
+
+        return
+
+    def load_field_descriptions(self):
+        """
+        Loads in the text descriptions of the fields for each dataset.
+        """
+
+        def get_desc(dataset):
+            try:
+                description = dataset.attrs["Description"].decode("utf-8")
+            except KeyError:
+                # Can't load description!
+                description = "No description available"
+
+            return description
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_descriptions = [get_desc(handle[x]) for x in self.field_paths]
+
+        return
+
+    def load_cosmology(self):
+        """
+        Loads in the field cosmologies.
+        """
+
+        current_scale_factor = self.scale_factor
+
+        def get_cosmo(dataset):
+            try:
+                cosmo_exponent = dataset.attrs["a-scale exponent"][0]
+            except:
+                # Can't load, 'graceful' fallback.
+                cosmo_exponent = 0.0
+
+            a_factor_this_dataset = a ** cosmo_exponent
+
+            return cosmo_factor(a_factor_this_dataset, current_scale_factor)
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_cosmologies = [get_cosmo(handle[x]) for x in self.field_paths]
+
+        return
+
+
 def generate_getter(
     filename,
     name: str,
@@ -678,6 +679,7 @@ class __SWIFTParticleDataset(object):
         self.particle_name = particle_metadata.particle_name
 
         self.particle_metadata = particle_metadata
+        self.metadata = particle_metadata.metadata
 
         self.generate_empty_properties()
 
