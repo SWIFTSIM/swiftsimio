@@ -79,6 +79,7 @@ def generate_units(m, l, t, I, T):
         "birth_density": m / (l ** 3),
         "birth_time": t,
         "initial_masses": m,
+        "smoothing_length": l,
         **shared,
         **baryon,
     }

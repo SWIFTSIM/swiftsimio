@@ -56,6 +56,7 @@ stars = {
     "BirthDensity": "birth_density",
     "BirthTime": "birth_time",
     "InitialMasses": "initial_masses",
+    "SmoothingLength": "smoothing_length",
     **shared,
     **baryon,
 }

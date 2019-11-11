@@ -76,6 +76,7 @@ def generate_cosmology(scale_factor: float, gamma: float):
         "birth_density": gas["density"],
         "birth_time": no_cosmology,
         "initial_masses": no_cosmology,
+        "smoothing_length": cosmo_factory(a),
         **shared,
         **baryon,
     }
