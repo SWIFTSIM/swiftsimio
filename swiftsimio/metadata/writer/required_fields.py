@@ -22,6 +22,6 @@ boundary = {**shared}
 
 second_boundary = {**shared}
 
-stars = {**shared}
+stars = {**shared, "smoothing_length": "SmoothingLength"}
 
 black_holes = {**shared}
