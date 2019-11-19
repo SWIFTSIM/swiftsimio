@@ -9,64 +9,12 @@ import numpy as np
 
 from swiftsimio.reader import __SWIFTParticleDataset
 from swiftsimio.objects import cosmo_array
+from swiftsimio.optional_packages import TREE_AVAILABLE, SPHVIEWER_AVAILABLE, viewer
 from unyt import unyt_array
 
 from typing import Union, List
 
-try:
-    import sphviewer as viewer
-
-    SPHVIEWER_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    SPHVIEWER_AVAILABLE = False
-
-
-try:
-    from scipy.spatial import cKDTree as KDTree
-
-    TREE_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    TREE_AVAILABLE = False
-
-
-def generate_smoothing_lengths(
-    coordinates: Union[unyt_array, cosmo_array],
-    boxsize: Union[unyt_array, cosmo_array],
-    neighbours=32,
-):
-    """
-    Generates smoothing lengths that encompass a number of neighbours specified here.
-    """
-
-    number_of_parts = coordinates.shape[0]
-
-    tree = KDTree(coordinates.value, boxsize=boxsize.to(coordinates.units).value)
-
-    smoothing_lengths = np.empty(number_of_parts, dtype=np.float32)
-    smoothing_lengths[-1] = -0.1
-
-    # We create a lot of data doing this, so we want to do it in small (parallel) chunks
-    # such that we keep the memory from filling up
-    block_size = 8192
-    number_of_blocks = 1 + number_of_parts // block_size
-
-    for block in range(number_of_blocks):
-        starting_index = block * block_size
-        ending_index = (block + 1) * (block_size)
-
-        if ending_index > number_of_parts:
-            ending_index = number_of_parts + 1
-
-        if starting_index >= ending_index:
-            break
-
-        # Get the distances to _all_ neighbours out of the tree - this is
-        # why we need to process in blocks (this is 32x+ the size of coordinates)
-        d, _ = tree.query(coordinates[starting_index:ending_index].value, k=neighbours)
-
-        smoothing_lengths[starting_index:ending_index] = d[:, -1]
-
-    return smoothing_lengths * coordinates.units
+from .smoothing_length_generation import generate_smoothing_lengths
 
 
 class SPHViewerWrapper(object):

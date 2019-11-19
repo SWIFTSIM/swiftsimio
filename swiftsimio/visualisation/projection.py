@@ -5,9 +5,11 @@ if it is available.
 
 from typing import Union
 from math import sqrt
-from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones
+from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones, isclose
+from unyt import unyt_array
 from swiftsimio import SWIFTDataset
 
+from swiftsimio.reader import __SWIFTParticleDataset
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 
 # Taken from Dehnen & Aly 2012
@@ -86,13 +88,22 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
         # SWIFT stores hsml as the FWHM.
         kernel_width = kernel_gamma * hsml
 
+        # The number of cells that this kernel spans
+        cells_spanned = int32(1.0 + kernel_width * float_res)
+
+        if (
+            particle_cell_x + cells_spanned < 0
+            or particle_cell_x - cells_spanned > maximal_array_index
+            or particle_cell_y + cells_spanned < 0
+            or particle_cell_y - cells_spanned > maximal_array_index
+        ):
+            # Can happily skip this particle
+            continue
+
         if kernel_width < drop_to_single_cell:
             # Easygame, gg
             image[particle_cell_x, particle_cell_y] += mass * inverse_cell_area
         else:
-            # The number of cells that this kernel spans
-            cells_spanned = int32(1.0 + kernel_width * float_res)
-
             # Now we loop over the square of cells that the kernel lives in
             for cell_x in range(
                 # Ensure that the lowest x value is 0, otherwise we'll segfault
@@ -158,11 +169,93 @@ def scatter_parallel(
     return output
 
 
+def project_pixel_grid(
+    data: __SWIFTParticleDataset,
+    boxsize: unyt_array,
+    resolution: int,
+    project: Union[str, None] = "masses",
+    parallel: bool = False,
+    region: Union[None, unyt_array] = None,
+):
+    r"""
+    Creates a 2D projection of a SWIFT dataset, projected by the "project"
+    variable (e.g. if project is Temperature, we return:
+        \bar{T} = \sum_j T_j W_{ij}
+    ).
+    
+    Differs from its particle-propery named counterparts as this uses
+    a particledataset instead of the full dataset.
+    
+    Default projection variable is mass. If it is None, then we don't
+    weight.
+
+    Creates a resolution x resolution array and returns it, without appropriate
+    units.
+
+    The parallel argument, is used to determine if we will create the image
+    in parallel. This defaults to False, but can speed up the creation of large
+    images significantly.
+
+    The final argument, region, determines where the image will be created
+    (this corresponds to the left and right-hand edges, and top and bottom edges)
+    if it is not None. It should have a length of four, and take the form:
+
+        [x_min, x_max, y_min, y_max]
+    """
+
+    number_of_partices = data.coordinates.shape[0]
+
+    if project is None:
+        m = ones(number_of_particles, dtype=float32)
+    else:
+        m = getattr(data, project).value
+
+    box_x, box_y, _ = boxsize
+
+    # Set the limits of the image.
+    if region is not None:
+        x_min, x_max, y_min, y_max = region
+    else:
+        x_min = 0 * box_x
+        x_max = box_x
+        y_min = 0 * box_y
+        y_max = box_y
+
+    x_range = x_max - x_min
+    y_range = y_max - y_min
+
+    # Test that we've got a square box
+    if not isclose(x_range.value, y_range.value):
+        raise AttributeError(
+            "Projection code is currently not able to handle non-square images"
+        )
+
+    x, y, _ = data.coordinates.T
+
+    try:
+        hsml = data.smoothing_lengths
+    except AttributeError:
+        # Backwards compatibility
+        hsml = data.smoothing_length
+
+    if parallel:
+        image = scatter_parallel(
+            (x - x_min) / x_range, (y - y_min) / y_range, m, hsml / x_range, resolution
+        )
+    else:
+        image = scatter(
+            (x - x_min) / x_range, (y - y_min) / y_range, m, hsml / x_range, resolution
+        )
+
+    return image
+
+
 def project_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    region: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -176,32 +269,25 @@ def project_gas_pixel_grid(
     Creates a resolution x resolution array and returns it, without appropriate
     units.
 
-    The final argument, parallel, is used to determine if we will create the image
+    The parallel argument, is used to determine if we will create the image
     in parallel. This defaults to False, but can speed up the creation of large
     images significantly.
+
+    The final argument, region, determines where the image will be created
+    (this corresponds to the left and right-hand edges, and top and bottom edges)
+    if it is not None. It should have a length of four, and take the form:
+
+        [x_min, x_max, y_min, y_max]
     """
 
-    number_of_gas_particles = data.gas.particle_ids.size
-
-    if project is None:
-        m = ones(number_of_gas_particles, dtype=float32)
-    else:
-        m = getattr(data.gas, project).value
-
-    box_x, box_y, _ = data.metadata.boxsize
-
-    # Let's just hope that the box is square otherwise we're probably SOL
-    x, y, _ = data.gas.coordinates.T
-    try:
-        hsml = data.gas.smoothing_lengths
-    except AttributeError:
-        # Backwards compatibility
-        hsml = data.gas.smoothing_length
-
-    if parallel:
-        image = scatter_parallel(x / box_x, y / box_y, m, hsml / box_x, resolution)
-    else:
-        image = scatter(x / box_x, y / box_y, m, hsml / box_x, resolution)
+    image = project_pixel_grid(
+        data=data.gas,
+        boxsize=data.metadata.boxsize,
+        resolution=resolution,
+        project=project,
+        parallel=parallel,
+        region=region,
+    )
 
     return image
 
@@ -211,6 +297,7 @@ def project_gas(
     resolution: int,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    region: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -224,14 +311,26 @@ def project_gas(
     Creates a resolution x resolution array and returns it, with appropriate
     units.
 
-    The final argument, parallel, is used to determine if we will create the image
+    The parallel argument, is used to determine if we will create the image
     in parallel. This defaults to False, but can speed up the creation of large
     images significantly.
+
+    The final argument, region, determines where the image will be created
+    (this corresponds to the left and right-hand edges, and top and bottom edges)
+    if it is not None. It should have a length of four, and take the form:
+
+        [x_min, x_max, y_min, y_max]
     """
 
-    image = project_gas_pixel_grid(data, resolution, project, parallel)
+    image = project_gas_pixel_grid(data, resolution, project, parallel, region)
 
-    units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
+    if region is not None:
+        x_range = region[1] - region[0]
+        y_range = region[3] - region[2]
+        units = 1.0 / (x_range * y_range)
+        print(units, x_range, y_range, x_range.units, y_range.units)
+    else:
+        units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
 
     if project is not None:
         units *= getattr(data.gas, project).units
