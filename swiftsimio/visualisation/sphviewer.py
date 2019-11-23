@@ -241,4 +241,3 @@ class SPHViewerWrapper(object):
         self.get_scene()
 
         return self.get_render()
-

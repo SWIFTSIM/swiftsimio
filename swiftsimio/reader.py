@@ -871,4 +871,3 @@ class SWIFTDataset(object):
             )
 
         return
-

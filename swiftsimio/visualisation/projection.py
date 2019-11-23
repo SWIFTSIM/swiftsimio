@@ -203,7 +203,7 @@ def project_pixel_grid(
         [x_min, x_max, y_min, y_max]
     """
 
-    number_of_partices = data.coordinates.shape[0]
+    number_of_particles = data.coordinates.shape[0]
 
     if project is None:
         m = ones(number_of_particles, dtype=float32)

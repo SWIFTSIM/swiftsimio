@@ -58,7 +58,7 @@ def generate_smoothing_lengths(
     # such that we keep the memory from filling up - this seems to be a reasonable
     # chunk size based on previous performance testing. This may change in the
     # future, or may be computer dependent (cache sizes?).
-    block_size = 65536 
+    block_size = 65536
     number_of_blocks = 1 + number_of_parts // block_size
 
     for block in tqdm(range(number_of_blocks), desc="Generating smoothing lengths"):
