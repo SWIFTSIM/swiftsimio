@@ -328,7 +328,6 @@ def project_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         units = 1.0 / (x_range * y_range)
-        print(units, x_range, y_range, x_range.units, y_range.units)
     else:
         units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
 
