@@ -4,7 +4,7 @@ Sub-module for slice plots in SWFITSIMio.
 
 from typing import Union
 from math import sqrt
-from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones
+from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones, isclose
 from unyt import unyt_array
 from swiftsimio import SWIFTDataset
 

@@ -151,7 +151,7 @@ def test_volume_render():
         np.array([0.0, 0.0, 1.0]),
         np.array([1.0, 1.0, 1.0]),
         np.array([0.2, 0.2, 0.2]),
-        256,
+        64,
     )
 
     return
@@ -160,7 +160,7 @@ def test_volume_render():
 def test_volume_parallel():
     number_of_parts = 1000
     h_max = np.float32(0.05)
-    resolution = 128
+    resolution = 64
 
     coordinates = (
         np.random.rand(3 * number_of_parts)
