@@ -14,9 +14,11 @@ try:
 except (ImportError, ModuleNotFoundError):
     pass
 
+create_plots = False
+
 
 @requires("cosmological_volume.hdf5")
-def test_gas_rendering(filename, create_plots=True):
+def test_gas_rendering(filename, create_plots=create_plots):
     data = load(filename)
 
     data.gas.coordinates.convert_to_units("Mpc")
@@ -33,7 +35,7 @@ def test_gas_rendering(filename, create_plots=True):
 
 
 @requires("cosmological_volume.hdf5")
-def test_dm_rendering(filename, create_plots=True):
+def test_dm_rendering(filename, create_plots=create_plots):
     data = load(filename)
 
     data.dark_matter.coordinates.convert_to_units("Mpc")

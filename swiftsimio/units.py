@@ -11,9 +11,21 @@ with
 
 import unyt
 
-cosmo_units = unyt.UnitSystem(
-    "cosmological",
-    unyt.Mpc,
-    1e10 * unyt.msun,
-    (1.0 * unyt.s * unyt.Mpc / unyt.km).to(unyt.Gyr),
-)
+
+try:
+    # Need to do this first otherwise the `unyt` system freaks out about
+    # us upgrading msun from a symbol
+    cosmo_units = unyt.UnitSystem(
+        "cosmological",
+        unyt.Mpc,
+        1e10 * unyt.msun,
+        (1.0 * unyt.s * unyt.Mpc / unyt.km).to(unyt.Gyr),
+    )
+
+    # We need to upgrade msun from a symbol to a first class unit. This allows
+    # people to do .convert_to_units("msun") and have it actually work.
+    unyt.define_unit("msun", unyt.msun, tex_repr=r"M_\odot")
+except RuntimeError:
+    # We've already done that, oops.
+    cosmo_units = unyt.unit_systems.cosmological
+    pass
