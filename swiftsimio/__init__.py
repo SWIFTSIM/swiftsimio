@@ -10,10 +10,6 @@ import swiftsimio.units as units
 
 name = "swiftsimio"
 
-# First things first, we need to upgrade msun from a symbol to a
-# first-class unit.
-import unyt
-
 
 def validate_file(filename):
     """
