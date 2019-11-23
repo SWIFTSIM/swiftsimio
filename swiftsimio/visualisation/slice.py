@@ -238,7 +238,12 @@ def slice_gas_pixel_grid(
     x_range = x_max - x_min
     y_range = y_max - y_min
 
-    # Let's just hope that the box is square otherwise we're probably SOL
+    # Test that we've got a square box
+    if not isclose(x_range.value, y_range.value):
+        raise AttributeError(
+            "Slice code is currently not able to handle non-square images"
+        )
+
     x, y, z = data.gas.coordinates.T
 
     try:
@@ -309,9 +314,13 @@ def slice_gas(
     if region is not None:
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
-        units = 1.0 / (x_range * y_range)
+        units = 1.0 / (x_range * y_range * data.metadata.boxsize[2])
     else:
-        units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
+        units = 1.0 / (
+            data.metadata.boxsize[0]
+            * data.metadata.boxsize[1]
+            * data.metadata.boxsize[2]
+        )
 
     if project is not None:
         units *= getattr(data.gas, project).units
