@@ -78,16 +78,30 @@ class SPHViewerWrapper(object):
         structure.
         """
 
+        # Parameters required to generate smoothing lengths
+        number_of_neighbours = int(
+            round(self.data.metadata.hydro_scheme["Kernel target N_ngb"][0])
+        )
+        kernel_eta = self.data.metadata.hydro_scheme["Kernel eta"][0]
+
+        kernel_gamma = ((3.0 * number_of_neighbours) / (4.0 * 3.14159)) ** (
+            1 / 3
+        ) / kernel_eta
+
         if hsml_name is None:
             self._internal_smoothing_lengths = generate_smoothing_lengths(
-                self.data.coordinates, boxsize=self.data.metadata.boxsize
+                self.data.coordinates,
+                boxsize=self.data.metadata.boxsize,
+                kernel_gamma=kernel_gamma,
             )
         else:
             try:
                 self._internal_smoothing_lengths = getattr(self.data, hsml_name)
             except AttributeError:
                 self._internal_smoothing_lengths = generate_smoothing_lengths(
-                    self.data.coordinates, boxsize=self.data.metadata.boxsize
+                    self.data.coordinates,
+                    boxsize=self.data.metadata.boxsize,
+                    kernel_gamma=kernel_gamma,
                 )
 
     def __create_particles_instance(self):
