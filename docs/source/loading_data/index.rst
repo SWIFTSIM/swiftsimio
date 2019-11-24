@@ -199,3 +199,26 @@ scale-factor information, too, through the ``cosmo_factor`` object,
 
 which will output ``132651.002785671`` and ``a**(-3.0)``. This is an easy way
 to convert your co-moving values to physical ones.
+
+
+User-defined particle types
+---------------------------
+
+It is now possible to add user-defined particle types that are not already
+present in the :mod:`swiftsimio` metadata. All you need to do is specify the
+three names (see below) and then the particle datasets that you have provided
+in SWIFT will be automatically read.
+
+.. code-block:: python
+
+   import swiftsimio as sw
+   import swiftsimio.metadata.particle as swp
+   from swiftsimio.objects import cosmo_factor, a
+
+   swp.particle_name_underscores[6] = "extratype"
+   swp.particle_name_class[6] = "Extratype"
+   swp.particle_name_text[6] = "Extratype"
+
+   data = sw.load(
+       "extra_test.hdf5",
+   )
