@@ -1,6 +1,28 @@
 SWIFTsimIO Changelog
 ====================
 
+v 2.0.0
+-------
+
+The `v2` update! This includes a huge laundry list of changes.
+
++ Added stellar smoothing lengths to output from the `swiftsimio` generated initial
+  conditions.
++ Added smoothing length generation code to ensure that smoothing lengths can
+  be made for dark matter.
++ Enabled projection images for all particle types through `project_pixel_grid`.
++ Added `msun` as a first-class unit in `unyt` such that things can be converted
+  to it much more easily.
++ Added region selection to rendering so that users can select to render only a
+  specific portion of the box instead of the whole thing.
++ Added a large amount of automated tests for the rendering suite.
++ Added the `__version__` attribute to `swiftsimio` for convenience.
++ Added a new `swiftsimio.optional_packages` sub-module to enable use of new
+  optional packages throughout the code, in a similar fashion to the 
+  `swiftsimio.accelerated` sub-module.
++ Added a huge amount of new documentation.
+
+
 v 1.2.0
 -------
 
