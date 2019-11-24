@@ -17,6 +17,7 @@ snapshots to enable partial reading.
 
    getting_started/index
    loading_data/index
+   masking/index
 
    modules/index
 
