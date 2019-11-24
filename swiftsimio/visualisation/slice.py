@@ -191,9 +191,8 @@ def slice_gas_pixel_grid(
 ):
     r"""
     Creates a 2D slice of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
 
     The 'slice' is given in the z direction as a ratio of the boxsize.
     
@@ -212,6 +211,9 @@ def slice_gas_pixel_grid(
     if it is not None. It should have a length of four, and take the form:
 
         [x_min, x_max, y_min, y_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     if slice > 1.0 or slice < 0.0:
@@ -286,9 +288,8 @@ def slice_gas(
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     The 'slice' is given in the z direction as a ratio of the boxsize.
 
@@ -307,6 +308,9 @@ def slice_gas(
     if it is not None. It should have a length of four, and take the form:
 
         [x_min, x_max, y_min, y_max].
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     image = slice_gas_pixel_grid(data, resolution, slice, project, parallel, region)

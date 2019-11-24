@@ -179,9 +179,8 @@ def project_pixel_grid(
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     Differs from its particle-propery named counterparts as this uses
     a particledataset instead of the full dataset.
@@ -201,6 +200,9 @@ def project_pixel_grid(
     if it is not None. It should have a length of four, and take the form:
 
         [x_min, x_max, y_min, y_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     number_of_particles = data.coordinates.shape[0]
@@ -259,9 +261,8 @@ def project_gas_pixel_grid(
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     Default projection variable is mass. If it is None, then we don't
     weight.
@@ -278,6 +279,9 @@ def project_gas_pixel_grid(
     if it is not None. It should have a length of four, and take the form:
 
         [x_min, x_max, y_min, y_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     image = project_pixel_grid(
@@ -301,9 +305,8 @@ def project_gas(
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     Default projection variable is mass. If it is None, then we don't
     weight.
@@ -320,6 +323,9 @@ def project_gas(
     if it is not None. It should have a length of four, and take the form:
 
         [x_min, x_max, y_min, y_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     image = project_gas_pixel_grid(data, resolution, project, parallel, region)

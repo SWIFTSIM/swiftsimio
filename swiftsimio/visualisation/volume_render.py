@@ -154,9 +154,8 @@ def render_gas_voxel_grid(
 ):
     r"""
     Creates a 3D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     Default projection variable is mass. If it is None, then we don't
     weight.
@@ -174,6 +173,9 @@ def render_gas_voxel_grid(
     length of six, and take the form:
 
         [x_min, x_max, y_min, y_max, z_min, z_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     number_of_gas_particles = data.gas.particle_ids.size
@@ -238,9 +240,8 @@ def render_gas(
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     Default projection variable is mass. If it is None, then we don't
     weight.
@@ -258,6 +259,9 @@ def render_gas(
     length of six, and take the form:
 
         [x_min, x_max, y_min, y_max, z_min, z_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     image = render_gas_voxel_grid(data, resolution, project, parallel, region=region)

@@ -3,9 +3,6 @@
 API Documentation
 =================
 
-.. automodule:: swiftsimio
-   :members:
-
 .. toctree::
    :maxdepth: 3
 

@@ -28,10 +28,7 @@ class cosmo_factor:
 
     To do this, use the a imported from objects multiplied as you'd like:
 
-    density_cosmo_factor = cosmo_factor(
-        a**3,
-        scale_factor=0.97
-    )
+    density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
     """
 
     def __init__(self, expr, scale_factor):
@@ -66,15 +63,16 @@ class cosmo_array(unyt_array):
 
     It provides four new methods:
 
-        + convert_to_physical() (in-place)
-        + convert_to_comoving() (in-pace)
-        + to_physical() (returns copy)
-        + to_comoving() (returns copy)
+    + convert_to_physical() (in-place)
+    + convert_to_comoving() (in-pace)
+    + to_physical() (returns copy)
+    + to_comoving() (returns copy)
 
     and provides a state variable:
 
-        + comoving, if True then the array is in comoving co-ordinates, and if
-          False then it is in physical units.
+    + comoving, if True then the array is in comoving co-ordinates, and if
+        False then it is in physical units.
+
     """
 
     def __new__(
