@@ -67,9 +67,9 @@ and install with ``pip`` using the ``-e`` flag,
 Usage
 -----
 
-There are many examples of using :mod:`swiftsimio` available in the 
+There are many examples of using :mod:`swiftsimio` available in the
 swiftsimio_examples_ repository, which also includes examples for reading
-older (e.g. EAGLE) datasets. 
+older (e.g. EAGLE) datasets.
 
 Example usage is shown below, which plots a density-temperature phase
 diagram, with density and temperature given in CGS units:
@@ -101,6 +101,9 @@ diagram, with density and temperature given in CGS units:
 
    plt.savefig("test_plot.png", dpi=300)
 
+
+Don't worry too much about this for now if you can't understand it, we will
+get into this much more heavily in the next section.
 
 In the above it's important to note the following:
 

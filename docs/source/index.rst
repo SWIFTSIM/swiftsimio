@@ -16,6 +16,8 @@ snapshots to enable partial reading.
    :maxdepth: 2
 
    getting_started/index
+   loading_data/index
+
    modules/index
 
 .. _SWIFT: http://www.swiftsim.com
