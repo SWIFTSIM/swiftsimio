@@ -25,9 +25,9 @@ It is important that you upgrade if you are still a ``python2`` user.
 Python packages
 ^^^^^^^^^^^^^^^
 
-+ ``numpy``
-+ ``h5py``
-+ ``unyt``
++ ``numpy``, required for the core numerical routines.
++ ``h5py``, required to read data from the SWIFT HDF5 output files.
++ ``unyt``, required for symbolic unit calculations (depends on ``sympy``).
 
 Optional packages
 ^^^^^^^^^^^^^^^^^
@@ -41,6 +41,28 @@ Optional packages
 + ``py-sphviewer``, if you wish to use our integration with this visualisation
   code.
 
+
+Installing
+----------
+
+:mod:`swiftsimio` can be installed using the python packaging manager, ``pip``,
+or any other packaging manager that you wish to use:
+
+``pip install swiftsimio``
+
+Note that this will install any required packages for you.
+
+To set up the code for development, first clone the latest master from GitHub:
+
+``git clone https://github.com/SWIFTSIM/swiftsimio.git``
+
+and install with ``pip`` using the ``-e`` flag,
+
+``cd swiftsimio``
+
+``pip install -e .``
+
+.. TODO: Add contribution guide.
 
 Usage
 -----
