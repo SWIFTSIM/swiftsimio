@@ -1,8 +1,8 @@
 Loading Data
 ============
 
-The main purpose of :mod:`swiftsimio` is to load data. This section will tell you all
-about four main objects:
+The main purpose of :mod:`swiftsimio` is to load data. This section will tell
+you all about four main objects:
 
 + :obj:`swiftsimio.reader.SWIFTUnits`, responsible for creating a correspondence between
   the SWIFT units and :mod:`unyt` objects.
@@ -10,13 +10,14 @@ about four main objects:
   from the SWIFT headers into python-readable data.
 + :obj:`swiftsimio.reader.SWIFTDataset`, responsible for holding all particle data, and
   keeping track of the above two objects.
-+ :obj:`swiftsimio.reader.SWIFTParticleTypeMetadata`, responsible for cataloguing metadata
-  just about individual particle types, like gas, including what particle fields are 
-  present.
++ :obj:`swiftsimio.reader.SWIFTParticleTypeMetadata`, responsible for
+  cataloguing metadata just about individual particle types, like gas,
+  including what particle fields are present.
 
 
-To get started, first locate any SWIFT data that you wish to analyse. If you don't have
-any handy, you can always download our test cosmological volume at:
+To get started, first locate any SWIFT data that you wish to analyse. If you
+don't have any handy, you can always download our test cosmological volume
+at:
 
 ``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmological_volume.hdf5``
 
