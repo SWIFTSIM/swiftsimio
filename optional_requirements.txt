@@ -1,0 +1,7 @@
+# Development
+numba
+pytest
+black
+py-sphviewer
+matplotlib
+scipy
