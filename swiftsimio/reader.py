@@ -127,6 +127,10 @@ class SWIFTMetadata(object):
                         name,
                         self.header[field] * header_unpack_variables_units[name],
                     )
+                    # This is required or we automatically get everything in CGS!
+                    getattr(self, name).convert_to_units(
+                        header_unpack_variables_units[name]
+                    )
                 else:
                     # Must not have any units! Oh well.
                     setattr(self, name, self.header[field])
