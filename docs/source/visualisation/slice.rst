@@ -128,7 +128,7 @@ image if their smoothing lengths overlap with [0, 1]. You will need to
 re-scale your data such that it lives within this range. Then you may use the
 function as follows:
 
-.. code-block::
+.. code-block:: python
 
    from swiftsimio.visualisation.slice import slice_scatter
 

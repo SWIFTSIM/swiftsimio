@@ -68,7 +68,7 @@ Example
 
 Then, running ``h5glance`` on the resulting ``test.hdf5`` produces:
 
-.. code-block::
+.. code-block:: bash
 
    test.hdf5
    ├Header
