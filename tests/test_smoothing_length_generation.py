@@ -37,7 +37,7 @@ def test_generate_smoothing_length(filename):
     ).to(smoothing_lengths.units)
 
     assert isclose(
-        generated_smoothing_lengths.value, smoothing_lengths.value, 0.05
+        generated_smoothing_lengths.value, smoothing_lengths.value, 0.1
     ).all()
 
     return
@@ -69,7 +69,7 @@ def test_generate_smoothing_length_faster(filename):
     ).to(smoothing_lengths.units)
 
     assert isclose(
-        generated_smoothing_lengths.value, smoothing_lengths.value, 0.10
+        generated_smoothing_lengths.value, smoothing_lengths.value, 0.1
     ).all()
 
     return
