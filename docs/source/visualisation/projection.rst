@@ -119,6 +119,7 @@ mass density map for dark matter. We provide a utility to do this through
        # Note here that we pass in the dark matter dataset not the whole
        # data object, to specify what particle type we wish to visualise
        data=data.dark_matter,
+       boxsize=data.metadata.boxsize,
        resolution=1024,
        project="masses",
        parallel=True,
