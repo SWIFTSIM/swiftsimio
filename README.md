@@ -2,6 +2,7 @@ SWIFTsimIO
 ==========
 
 [![Build Status](https://travis-ci.com/SWIFTSIM/swiftsimio.svg?branch=master)](https://travis-ci.com/SWIFTSIM/swiftsimio)
+[![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable)
 
 The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used
 widely. There exists many ways of reading the data from SWIFT, which outputs
