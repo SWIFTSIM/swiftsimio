@@ -22,10 +22,7 @@ def test_reading_select_region_spatial(filename):
     mask_region_nospatial = mask(filename, spatial_only=False)
 
     restrict = array(
-        [
-            [0.0, 0.0, 0.0] * full_data.metadata.boxsize.units,
-            full_data.metadata.boxsize * 0.5,
-        ]
+        [[0.0, 0.0, 0.0] * full_data.metadata.boxsize, full_data.metadata.boxsize * 0.5]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
@@ -58,7 +55,7 @@ def test_reading_select_region_half_box(filename):
 
     restrict = array(
         [
-            [0.0, 0.0, 0.0] * full_data.metadata.boxsize.units,
+            [0.0, 0.0, 0.0] * full_data.metadata.boxsize,
             full_data.metadata.boxsize * 0.49,
         ]
     ).T
