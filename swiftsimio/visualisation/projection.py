@@ -218,9 +218,9 @@ def project_pixel_grid(
     if region is not None:
         x_min, x_max, y_min, y_max = region
     else:
-        x_min = 0 * box_x
+        x_min = (0 * box_x).to(box_x.units)
         x_max = box_x
-        y_min = 0 * box_y
+        y_min = (0 * box_y).to(box_x.units)
         y_max = box_y
 
     x_range = x_max - x_min
@@ -240,14 +240,18 @@ def project_pixel_grid(
         # Backwards compatibility
         hsml = data.smoothing_length
 
+    common_arguments = dict(
+        x=(x - x_min) / x_range,
+        y=(y - y_min) / y_range,
+        m=m,
+        h=hsml / x_range,
+        res=resolution,
+    )
+
     if parallel:
-        image = scatter_parallel(
-            (x - x_min) / x_range, (y - y_min) / y_range, m, hsml / x_range, resolution
-        )
+        image = scatter_parallel(**common_arguments)
     else:
-        image = scatter(
-            (x - x_min) / x_range, (y - y_min) / y_range, m, hsml / x_range, resolution
-        )
+        image = scatter(**common_arguments)
 
     return image
 
@@ -334,8 +338,14 @@ def project_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         units = 1.0 / (x_range * y_range)
+        # Unfortunately this is required to prevent us from {over,under}flowing
+        # the units...
+        units.convert_to_units(1.0 / (x_range.units * y_range.units))
     else:
         units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
+        # Unfortunately this is required to prevent us from {over,under}flowing
+        # the units...
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
 
     if project is not None:
         units *= getattr(data.gas, project).units

@@ -191,11 +191,11 @@ def render_gas_voxel_grid(
     if region is not None:
         x_min, x_max, y_min, y_max, z_min, z_max = region
     else:
-        x_min = 0 * box_x
+        x_min = (0 * box_x).to(box_x.units)
         x_max = box_x
-        y_min = 0 * box_y
+        y_min = (0 * box_y).to(box_y.units)
         y_max = box_y
-        z_min = 0 * box_z
+        z_min = (0 * box_z).to(box_z.units)
         z_max = box_z
 
     x_range = x_max - x_min
@@ -271,12 +271,14 @@ def render_gas(
         y_range = region[3] - region[2]
         z_range = region[5] - region[4]
         units = 1.0 / (x_range * y_range * z_range)
+        units.convert_to_units(1.0 / (x_range.units * y_range.units * z_range.units))
     else:
         units = 1.0 / (
             data.metadata.boxsize[0]
             * data.metadata.boxsize[1]
             * data.metadata.boxsize[2]
         )
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     if project is not None:
         units *= getattr(data.gas, project).units

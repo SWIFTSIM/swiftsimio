@@ -232,9 +232,9 @@ def slice_gas_pixel_grid(
     if region is not None:
         x_min, x_max, y_min, y_max = region
     else:
-        x_min = 0 * box_x
+        x_min = (0 * box_x).to(box_x.units)
         x_max = box_x
-        y_min = 0 * box_y
+        y_min = (0 * box_y).to(box_y.units)
         y_max = box_y
 
     x_range = x_max - x_min
@@ -254,26 +254,20 @@ def slice_gas_pixel_grid(
         # Backwards compatibility
         hsml = data.gas.smoothing_length
 
+    common_parameters = dict(
+        x=(x - x_min) / x_range,
+        y=(y - y_min) / y_range,
+        z=z / box_z,
+        m=m,
+        h=hsml / x_range,
+        z_slice=slice,
+        res=resolution,
+    )
+
     if parallel:
-        image = slice_scatter_parallel(
-            (x - x_min) / x_range,
-            (y - y_min) / y_range,
-            z / box_z,
-            m,
-            hsml / x_range,
-            slice,
-            resolution,
-        )
+        image = slice_scatter_parallel(**common_parameters)
     else:
-        image = slice_scatter(
-            (x - x_min) / x_range,
-            (y - y_min) / y_range,
-            z / box_z,
-            m,
-            hsml / x_range,
-            slice,
-            resolution,
-        )
+        image = slice_scatter(**common_parameters)
 
     return image
 
@@ -319,12 +313,20 @@ def slice_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         units = 1.0 / (x_range * y_range * data.metadata.boxsize[2])
+        # Unfortunately this is required to prevent us from {over,under}flowing
+        # the units...
+        units.convert_to_units(
+            1.0 / (x_range.units * y_range.units * data.metadata.boxsize.units)
+        )
     else:
         units = 1.0 / (
             data.metadata.boxsize[0]
             * data.metadata.boxsize[1]
             * data.metadata.boxsize[2]
         )
+        # Unfortunately this is required to prevent us from {over,under}flowing
+        # the units...
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     if project is not None:
         units *= getattr(data.gas, project).units
