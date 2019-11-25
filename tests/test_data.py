@@ -12,7 +12,7 @@ import h5py
 
 from unyt import unyt_array as array
 from unyt import K
-from numpy import logical_and, isclose, float64
+from numpy import logical_and, isclose, float64, ones
 from numpy import array as numpy_array
 
 
@@ -128,6 +128,42 @@ def test_units(filename):
 
 
 @requires("cosmological_volume.hdf5")
+def test_metadata_is_valid(filename):
+    """
+    Test that the metadata does what we think it does!
+
+    I.e. that it sets the particles contained in a top-level cell.
+    """
+
+    mask_region = mask(filename)
+    data = load(filename)
+
+    cell_size = mask_region.cell_size.to(data.gas.coordinates.units)
+    boxsize = mask_region.metadata.boxsize[0].to(data.gas.coordinates.units)
+    offsets = mask_region.offsets["gas"]
+    start_offset = offsets[:-1]
+    stop_offset = offsets[1:]
+
+    for center, start, stop in zip(
+        mask_region.centers.to(data.gas.coordinates.units), start_offset, stop_offset
+    ):
+        for dimension in range(0, 3):
+            lower = (center - 0.5 * cell_size)[dimension]
+            upper = (center + 0.5 * cell_size)[dimension]
+
+            max = data.gas.coordinates[start:stop, dimension].max()
+            min = data.gas.coordinates[start:stop, dimension].min()
+
+            # Ignore things close to the boxsize
+            if min < 0.05 * boxsize or max > 0.95 * boxsize:
+                continue
+
+            # Give it a little wiggle room
+            assert max <= upper * 1.05
+            assert min > lower * 0.95
+
+
+@requires("cosmological_volume.hdf5")
 def test_reading_select_region_metadata(filename):
     """
     Tests reading select regions of the volume.
@@ -139,7 +175,7 @@ def test_reading_select_region_metadata(filename):
     mask_region = mask(filename, spatial_only=True)
 
     restrict = array(
-        [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
+        [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
@@ -168,7 +204,8 @@ def test_reading_select_region_metadata(filename):
     hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
 
     assert (
-        hand_selected_coordinates == selected_coordinates[selected_subset_mask]
+        hand_selected_coordinates.value
+        == selected_coordinates[selected_subset_mask].value
     ).all()
     return
 

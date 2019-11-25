@@ -15,3 +15,6 @@ test_data/*
 # Code coverage
 htmlcov/*
 .coverage
+
+# MacOS
+*.DS_Store

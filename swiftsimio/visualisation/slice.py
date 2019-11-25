@@ -4,7 +4,8 @@ Sub-module for slice plots in SWFITSIMio.
 
 from typing import Union
 from math import sqrt
-from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones
+from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones, isclose
+from unyt import unyt_array
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
@@ -92,13 +93,20 @@ def slice_scatter(
 
         # SWIFT stores hsml as the FWHM.
         kernel_width = kernel_gamma * hsml
-
-        if distance_z_2 > (kernel_width * kernel_width):
-            # We have no overlap, we can skip this particle.
-            continue
-
         # The number of cells that this kernel spans
         cells_spanned = int32(1.0 + kernel_width * float_res)
+
+        if (
+            # No overlap in z
+            distance_z_2 > (kernel_width * kernel_width)
+            # No overlap in x, y
+            or particle_cell_x + cells_spanned < 0
+            or particle_cell_x - cells_spanned > maximal_array_index
+            or particle_cell_y + cells_spanned < 0
+            or particle_cell_y - cells_spanned > maximal_array_index
+        ):
+            # We have no overlap, we can skip this particle.
+            continue
 
         # Now we loop over the square of cells that the kernel lives in
         for cell_x in range(
@@ -179,12 +187,12 @@ def slice_gas_pixel_grid(
     slice: float,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    region: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D slice of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
 
     The 'slice' is given in the z direction as a ratio of the boxsize.
     
@@ -194,15 +202,24 @@ def slice_gas_pixel_grid(
     Creates a resolution x resolution array and returns it, without appropriate
     units.
 
-    The final argument, parallel, is used to determine if we will create the image
+    The parallel argument is used to determine if we will create the image
     in parallel. This defaults to False, but can speed up the creation of large
-    images significantly.
+    images significantly at the cost of increased memory usage.
+
+    The final argument, region, determines where the image will be created
+    (this corresponds to the left and right-hand edges, and top and bottom edges)
+    if it is not None. It should have a length of four, and take the form:
+
+        [x_min, x_max, y_min, y_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     if slice > 1.0 or slice < 0.0:
         raise ValueError("Please enter a slice value between 0.0 and 1.0 in slice_gas.")
 
-    number_of_gas_particles = data.gas.particle_ids.size
+    number_of_gas_particles = data.gas.coordinates.shape[0]
 
     if project is None:
         m = ones(number_of_gas_particles, dtype=float32)
@@ -211,17 +228,51 @@ def slice_gas_pixel_grid(
 
     box_x, box_y, box_z = data.metadata.boxsize
 
-    # Let's just hope that the box is square otherwise we're probably SOL
+    # Set the limits of the image.
+    if region is not None:
+        x_min, x_max, y_min, y_max = region
+    else:
+        x_min = 0 * box_x
+        x_max = box_x
+        y_min = 0 * box_y
+        y_max = box_y
+
+    x_range = x_max - x_min
+    y_range = y_max - y_min
+
+    # Test that we've got a square box
+    if not isclose(x_range.value, y_range.value):
+        raise AttributeError(
+            "Slice code is currently not able to handle non-square images"
+        )
+
     x, y, z = data.gas.coordinates.T
-    hsml = data.gas.smoothing_lengths
+
+    try:
+        hsml = data.gas.smoothing_lengths
+    except AttributeError:
+        # Backwards compatibility
+        hsml = data.gas.smoothing_length
 
     if parallel:
         image = slice_scatter_parallel(
-            x / box_x, y / box_y, z / box_z, m, hsml / box_x, slice, resolution
+            (x - x_min) / x_range,
+            (y - y_min) / y_range,
+            z / box_z,
+            m,
+            hsml / x_range,
+            slice,
+            resolution,
         )
     else:
         image = slice_scatter(
-            x / box_x, y / box_y, z / box_z, m, hsml / box_x, slice, resolution
+            (x - x_min) / x_range,
+            (y - y_min) / y_range,
+            z / box_z,
+            m,
+            hsml / x_range,
+            slice,
+            resolution,
         )
 
     return image
@@ -233,12 +284,12 @@ def slice_gas(
     slice: float,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    region: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     The 'slice' is given in the z direction as a ratio of the boxsize.
 
@@ -248,16 +299,32 @@ def slice_gas(
     Creates a resolution x resolution array and returns it, with appropriate
     units.
 
-    The final argument, parallel, is used to determine if we will create the image
+    The parallel argument is used to determine if we will create the image
     in parallel. This defaults to False, but can speed up the creation of large
-    images significantly.
+    images significantly at the cost of increased memory usage.
+
+    The final argument, region, determines where the image will be created
+    (this corresponds to the left and right-hand edges, and top and bottom edges)
+    if it is not None. It should have a length of four, and take the form:
+
+        [x_min, x_max, y_min, y_max].
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
-    image = slice_gas_pixel_grid(data, resolution, slice, project, parallel)
+    image = slice_gas_pixel_grid(data, resolution, slice, project, parallel, region)
 
-    units = 1.0 / (
-        data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
-    )
+    if region is not None:
+        x_range = region[1] - region[0]
+        y_range = region[3] - region[2]
+        units = 1.0 / (x_range * y_range * data.metadata.boxsize[2])
+    else:
+        units = 1.0 / (
+            data.metadata.boxsize[0]
+            * data.metadata.boxsize[1]
+            * data.metadata.boxsize[2]
+        )
 
     if project is not None:
         units *= getattr(data.gas, project).units

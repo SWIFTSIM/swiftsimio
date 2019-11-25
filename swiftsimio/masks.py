@@ -217,6 +217,7 @@ class SWIFTMask(object):
             [0.5, 0.7],
             [0.1, 0.9],
             [0.0, 0.1]
+            
         ]
 
         These values must have units associated with them. It is also acceptable

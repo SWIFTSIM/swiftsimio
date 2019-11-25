@@ -1,6 +1,9 @@
+from swiftsimio import load
 from swiftsimio.visualisation import scatter, slice, volume_render
-from swiftsimio.visualisation.projection import scatter_parallel
-from swiftsimio.visualisation.slice import slice_scatter_parallel
+from swiftsimio.visualisation.projection import scatter_parallel, project_gas
+from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
+
+from tests.helper import requires
 
 import numpy as np
 
@@ -22,6 +25,27 @@ def test_scatter(save=False):
 
     if save:
         imsave("test_image_creation.png", image)
+
+    return
+
+
+def test_scatter_mass_conservation():
+    np.random.seed(971263)
+    # Width of 0.8 centered on 0.5, 0.5.
+    x = 0.8 * np.random.rand(100) + 0.1
+    y = 0.8 * np.random.rand(100) + 0.1
+    m = np.ones_like(x)
+    h = 0.05 * np.ones_like(x)
+
+    resolutions = [8, 16, 32, 64, 128, 256, 512]
+    total_mass = np.sum(m)
+
+    for resolution in resolutions:
+        image = scatter(x, y, m, h, resolution)
+        mass_in_image = image.sum() / (resolution ** 2)
+
+        # Check mass conservation to 5%
+        assert np.isclose(mass_in_image, total_mass, 0.05)
 
     return
 
@@ -127,7 +151,7 @@ def test_volume_render():
         np.array([0.0, 0.0, 1.0]),
         np.array([1.0, 1.0, 1.0]),
         np.array([0.2, 0.2, 0.2]),
-        256,
+        64,
     )
 
     return
@@ -136,7 +160,7 @@ def test_volume_render():
 def test_volume_parallel():
     number_of_parts = 1000
     h_max = np.float32(0.05)
-    resolution = 128
+    resolution = 64
 
     coordinates = (
         np.random.rand(3 * number_of_parts)
@@ -156,3 +180,30 @@ def test_volume_parallel():
     assert np.isclose(image, image_par).all()
 
     return
+
+
+@requires("cosmological_volume.hdf5")
+def test_selection_render(filename):
+    data = load(filename)
+    bs = data.metadata.boxsize[0]
+
+    # Projection
+    render_full = project_gas(data, 256, parallel=True)
+    render_partial = project_gas(
+        data, 256, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
+    )
+    render_tiny = project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
+
+    # Slicing
+    render_full = slice_gas(data, 256, slice=0.5, parallel=True)
+    render_partial = slice_gas(
+        data, 256, slice=0.5, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
+    )
+    render_tiny = slice_gas(
+        data, 256, slice=0.5, parallel=True, region=[0 * bs, 0.001 * bs] * 2
+    )
+
+    # If they don't crash we're happy!
+
+    return
+

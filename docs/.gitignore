@@ -1,0 +1,5 @@
+# Builds
+build/*
+
+# Automatically generated files from APIDoc
+source/modules/swiftsimio*.rst

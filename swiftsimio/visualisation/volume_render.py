@@ -4,7 +4,8 @@ of the particles and projects them onto a grid.
 """
 from typing import Union
 from math import sqrt
-from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones
+from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones, isclose
+from unyt import unyt_array
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
@@ -149,12 +150,12 @@ def render_gas_voxel_grid(
     resolution: int,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    region: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 3D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     Default projection variable is mass. If it is None, then we don't
     weight.
@@ -162,9 +163,19 @@ def render_gas_voxel_grid(
     Creates a resolution x resolution array and returns it, without appropriate
     units.
 
-    The final argument, parallel, is used to determine if we will create the image
+    The parallel argument, is used to determine if we will create the image
     in parallel. This defaults to False, but can speed up the creation of large
     images significantly.
+
+    The final argument, region, determines where the image will be created
+    (this corresponds to the left and right-hand edges, and top and bottom
+    edges, and front and back edges) if it is not None. It should have a
+    length of six, and take the form:
+
+        [x_min, x_max, y_min, y_max, z_min, z_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
     number_of_gas_particles = data.gas.particle_ids.size
@@ -176,16 +187,46 @@ def render_gas_voxel_grid(
 
     box_x, box_y, box_z = data.metadata.boxsize
 
+    # Set the limits of the image.
+    if region is not None:
+        x_min, x_max, y_min, y_max, z_min, z_max = region
+    else:
+        x_min = 0 * box_x
+        x_max = box_x
+        y_min = 0 * box_y
+        y_max = box_y
+        z_min = 0 * box_z
+        z_max = box_z
+
+    x_range = x_max - x_min
+    y_range = y_max - y_min
+    z_range = z_max - z_min
+
+    # Test that we've got a cubic box
+    if not (
+        isclose(x_range.value, y_range.value) and isclose(x_range.value, z_range.value)
+    ):
+        raise AttributeError(
+            "Projection code is currently not able to handle non-cubic images"
+        )
+
     # Let's just hope that the box is square otherwise we're probably SOL
     x, y, z = data.gas.coordinates.T
     hsml = data.gas.smoothing_lengths
 
+    arguments = dict(
+        x=(x - x_min) / x_range,
+        y=(y - y_min) / y_range,
+        z=(z - z_min) / z_range,
+        m=m,
+        h=hsml / x_range,
+        res=resolution,
+    )
+
     if parallel:
-        image = scatter_parallel(
-            x / box_x, y / box_y, z / box_z, m, hsml / box_x, resolution
-        )
+        image = scatter_parallel(**arguments)
     else:
-        image = scatter(x / box_x, y / box_y, z / box_z, m, hsml / box_x, resolution)
+        image = scatter(**arguments)
 
     return image
 
@@ -195,12 +236,12 @@ def render_gas(
     resolution: int,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    region: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return:
-        \bar{T} = \sum_j T_j W_{ij}
-    ).
+    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
+    W_{ij}).
     
     Default projection variable is mass. If it is None, then we don't
     weight.
@@ -208,16 +249,34 @@ def render_gas(
     Creates a resolution x resolution array and returns it, with appropriate
     units.
 
-    The final argument, parallel, is used to determine if we will create the image
+    The parallel argument, is used to determine if we will create the image
     in parallel. This defaults to False, but can speed up the creation of large
     images significantly.
+
+    The final argument, region, determines where the image will be created
+    (this corresponds to the left and right-hand edges, and top and bottom
+    edges, and front and back edges) if it is not None. It should have a
+    length of six, and take the form:
+
+        [x_min, x_max, y_min, y_max, z_min, z_max]
+
+    Note that particles outside of this range are still considered if their
+    smoothing lengths overlap with the range.
     """
 
-    image = render_gas_voxel_grid(data, resolution, project, parallel)
+    image = render_gas_voxel_grid(data, resolution, project, parallel, region=region)
 
-    units = 1.0 / (
-        data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
-    )
+    if region is not None:
+        x_range = region[1] - region[0]
+        y_range = region[3] - region[2]
+        z_range = region[5] - region[4]
+        units = 1.0 / (x_range * y_range * z_range)
+    else:
+        units = 1.0 / (
+            data.metadata.boxsize[0]
+            * data.metadata.boxsize[1]
+            * data.metadata.boxsize[2]
+        )
 
     if project is not None:
         units *= getattr(data.gas, project).units

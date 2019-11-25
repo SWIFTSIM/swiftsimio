@@ -14,6 +14,7 @@ from typing import Union
 def generate_smoothing_lengths(
     coordinates: Union[unyt_array, cosmo_array],
     boxsize: Union[unyt_array, cosmo_array],
+    kernel_gamma: float32,
     neighbours=32,
     speedup_fac=2,
     dimension=3,
@@ -24,13 +25,15 @@ def generate_smoothing_lengths(
 
     + coordinates, a unyt array that gives the co-ordinates of all particles
     + boxsize, the size of the box (3D)
+    + kernel_gamma, the kernel gamma of the kernel you are using
     + neighbours, the number of neighbours to encompass
     + speedup_fac, a parameter that neighbours is divided by to provide a speed-up
                    by only searching for a lower number of neighbours. For example,
                    if neighbours is 32, and speedup_fac is 2, we only search for 16
                    (32 / 2) neighbours, and extend the smoothing length out to 
                    (speedup)**(1/dimension) such that we encompass an approximately
-                   higher number of neighbours.
+                   higher number of neighbours. A factor of 2 gives smooothing lengths
+                   the same as the full search within 10%, good enough for visualisation.
     + dimension, the dimensionality of the problem (used for speedup_fac calculation).
 
     Returns:
@@ -58,7 +61,7 @@ def generate_smoothing_lengths(
     # such that we keep the memory from filling up - this seems to be a reasonable
     # chunk size based on previous performance testing. This may change in the
     # future, or may be computer dependent (cache sizes?).
-    block_size = 65536 
+    block_size = 65536
     number_of_blocks = 1 + number_of_parts // block_size
 
     for block in tqdm(range(number_of_blocks), desc="Generating smoothing lengths"):
@@ -81,4 +84,8 @@ def generate_smoothing_lengths(
 
         smoothing_lengths[starting_index:ending_index] = d[:, -1]
 
-    return smoothing_lengths * (hsml_correction_fac_speedup) * coordinates.units
+    return (
+        smoothing_lengths
+        * (hsml_correction_fac_speedup / kernel_gamma)
+        * coordinates.units
+    )

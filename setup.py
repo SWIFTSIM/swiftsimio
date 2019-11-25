@@ -1,11 +1,12 @@
 import setuptools
+from swiftsimio import __version__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="swiftsimio",
-    version="1.2.0",
+    version=__version__,
     description="SWIFTsim (swift.dur.ac.uk) i/o routines for python.",
     url="https://github.com/swiftsim/swiftsimio",
     author="Josh Borrow",

@@ -1,23 +1,15 @@
 from .reader import *
 from .writer import SWIFTWriterDataset
 from .masks import SWIFTMask
+from .__version__ import __version__
 
 import swiftsimio.metadata as metadata
 import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
 import swiftsimio.visualisation as visualisation
+import swiftsimio.units as units
 
 name = "swiftsimio"
-
-# First things first, we need to upgrade msun from a symbol to a
-# first-class unit.
-import unyt
-
-try:
-    unyt.define_unit("msun", unyt.msun, tex_repr=r"M_\odot")
-except RuntimeError:
-    # We've already done that, oops.
-    pass
 
 
 def validate_file(filename):

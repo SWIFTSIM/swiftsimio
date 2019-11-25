@@ -811,6 +811,11 @@ class SWIFTDataset(object):
     """
 
     def __init__(self, filename, mask=None):
+        """
+        Takes two arguments, the filename of the SWIFT dataset, including
+        the file extension, and an optional mask object (of type SWIFTMask)
+        should you wish to constrain the dataset to a given set of particles.
+        """
         self.filename = filename
         self.mask = mask
 
@@ -871,4 +876,3 @@ class SWIFTDataset(object):
             )
 
         return
-

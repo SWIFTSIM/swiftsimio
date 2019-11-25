@@ -41,10 +41,11 @@ def ranges_from_array(array: np.array) -> np.ndarray:
         ...
         [c, c]
         [c, d]
+        
     ]
     
-    Which are the ranges that are contiguous (inclusive) in the input array. For example,
-    the array
+    Which are the ranges that are contiguous (inclusive) in the input array.
+    For example, the array
 
     [0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13]
 
