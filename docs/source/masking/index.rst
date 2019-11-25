@@ -10,6 +10,9 @@ with this. This functionality is provided through the :mod:`swiftsimio.masks`
 sub-module but is available easily through the :meth:`swiftsimio.mask`
 top-level function.
 
+Note that masking does not currently work with simulations that use
+dithering.
+
 This functionality is used heavily in our `VELOCIraptor integration library`_
 for only reading data that is near bound objects.
 
