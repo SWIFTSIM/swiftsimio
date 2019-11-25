@@ -52,6 +52,7 @@ templates_path = ["_templates"]
 exclude_patterns = []
 
 source_suffix = [".rst", ".md"]
+master_doc = "index"
 
 
 # -- Options for HTML output -------------------------------------------------
