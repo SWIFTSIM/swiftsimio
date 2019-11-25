@@ -1,6 +1,8 @@
 numpy
 h5py
-unyt<2.0.0
+unyt
+# Development
+numba
 pytest
 black
 py-sphviewer
