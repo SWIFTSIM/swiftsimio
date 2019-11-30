@@ -161,11 +161,9 @@ class SWIFTMask(object):
             if restrict[dimension] is None:
                 continue
 
-            lower, upper = restrict[dimension]
-
-            # Now include the cell size.
-            lower -= 0.5 * self.cell_size[dimension]
-            upper += 0.5 * self.cell_size[dimension]
+            # Include the cell size so it's easier to find the overlap
+            lower = restrict[dimension][0] - 0.5 * self.cell_size[dimension]
+            upper = restrict[dimension][1] + 0.5 * self.cell_size[dimension]
 
             this_mask = np.logical_and.reduce(
                 [
