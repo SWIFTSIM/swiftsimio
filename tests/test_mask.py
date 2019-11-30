@@ -68,3 +68,23 @@ def test_reading_select_region_half_box(filename):
 
     # Some of these particles will be outside because of the periodic BCs
     assert ((selected_coordinates / full_data.metadata.boxsize) > 0.5).sum() < 25
+
+
+@requires("cosmological_volume.hdf5")
+def test_region_mask_not_modified(filename):
+    """
+    Tests if a mask region is modified during the course of its use.
+
+    Checks if https://github.com/SWIFTSIM/swiftsimio/issues/22 is broken.
+    """
+
+    this_mask = mask(filename, spatial_only=True)
+    bs = this_mask.metadata.boxsize
+
+    read = [[0 * b, 0.5 * b] for b in bs]
+    read_constant = [[0 * b, 0.5 * b] for b in bs]
+
+    this_mask._generate_cell_mask(read)
+
+    assert read == read_constant
+
