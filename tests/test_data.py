@@ -128,7 +128,7 @@ def test_units(filename):
 
 
 @requires("cosmological_volume.hdf5")
-def test_metadata_is_valid(filename):
+def test_cell_metadata_is_valid(filename):
     """
     Test that the metadata does what we think it does!
 
@@ -136,13 +136,20 @@ def test_metadata_is_valid(filename):
     """
 
     mask_region = mask(filename)
-    data = load(filename)
+    # Because we sort by offset if we are using the metadata we
+    # must re-order the data to be in the correct order
+    spatial_constraint = mask_region.constrain_spatial(
+        [[0 * b, b] for b in mask_region.metadata.boxsize]
+    )
+    data = load(filename, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.gas.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.gas.coordinates.units)
     offsets = mask_region.offsets["gas"]
-    start_offset = offsets[:-1]
-    stop_offset = offsets[1:]
+    counts = mask_region.counts["gas"]
+
+    start_offset = offsets
+    stop_offset = offsets + counts
 
     for center, start, stop in zip(
         mask_region.centers.to(data.gas.coordinates.units), start_offset, stop_offset
