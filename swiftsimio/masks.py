@@ -66,18 +66,42 @@ class SWIFTMask(object):
         self.offsets = {}
 
         with h5py.File(self.metadata.filename, "r") as handle:
+            cell_handle = handle["Cells"]
+            offset_handle = cell_handle["Offsets"]
+            count_handle = cell_handle["Counts"]
+            metadata_handle = cell_handle["Meta-data"]
+            centers_handle = cell_handle["Centres"]
+
+            # Only want to compute this once (even if it is fast, we do not
+            # have a reliable stable sort in the case where cells do not
+            # contain at least one of each type of particle).
+            sort = None
+
             for ptype, pname in zip(
                 self.metadata.present_particle_types,
                 self.metadata.present_particle_names,
             ):
-                self.counts[pname] = handle["Cells"]["Counts"][f"PartType{ptype}"][:]
-                self.offsets[pname] = handle["Cells"]["Offsets"][f"PartType{ptype}"][:]
+                part_type = f"PartType{ptype}"
+                counts = count_handle[part_type][:]
+                offsets = offset_handle[part_type][:]
 
-            self.centers = handle["Cells"]["Centres"][:] * self.units.length
+                # When using MPI, we cannot assume that these are sorted.
+                if sort is None:
+                    # Only compute once; not stable between particle
+                    # types if some datasets do not have particles in a cell!
+                    sort = np.argsort(offsets)
+
+                self.offsets[pname] = offsets[sort]
+                self.counts[pname] = counts[sort]
+
+            # Also need to sort centers in the same way
+            self.centers = unyt.unyt_array(
+                centers_handle[:][sort], units=self.units.length
+            )
 
             # Note that we cannot assume that these are cubic, unfortunately.
-            self.cell_size = (
-                np.array(handle["Cells"]["Meta-data"].attrs["size"]) * self.units.length
+            self.cell_size = unyt.unyt_array(
+                metadata_handle.attrs["size"], units=self.units.length
             )
 
         return
