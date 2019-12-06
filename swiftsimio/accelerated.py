@@ -89,15 +89,16 @@ def read_ranges_from_file(
     output = np.empty(output_shape, dtype=output_type)
     already_read = 0
 
-    # Cannot do pythonic loop because numba cannot jit that
-    for index in np.arange(ranges.shape[0]):
-        range = ranges[index]
+    for (read_start, read_end) in ranges:
         # Because we read inclusively
-        size_of_range = (range[1] + 1) - range[0]
+        size_of_range = (read_end + 1) - read_start
 
-        output[already_read : size_of_range + already_read] = handle[
-            range[0] : range[1] + 1
-        ]
+        # Construct selectors so we can use read_direct to prevent creating
+        # copies of data from the hdf5 file.
+        hdf5_read_sel = np.s_[read_start : read_end + 1]
+        output_dest_sel = np.s_[already_read : size_of_range + already_read]
+
+        handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
 
         already_read += size_of_range
 

@@ -4,6 +4,7 @@ Contains helper functions for the test routines.
 
 import subprocess
 import os
+import h5py
 
 webstorage_location = "http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/"
 test_data_location = "test_data/"
@@ -54,3 +55,11 @@ def requires(filename):
         return do_call_test
 
     raise Exception("You should never have got here.")
+
+
+def create_in_memory_hdf5(filename="f1"):
+    """
+    Creates an in-memory hdf5 file object.
+    """
+
+    return h5py.File(filename, driver="core", mode="a", backing_store=False)
