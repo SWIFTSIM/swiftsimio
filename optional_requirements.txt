@@ -5,3 +5,4 @@ black
 py-sphviewer
 matplotlib
 scipy
+wily
