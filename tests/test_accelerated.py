@@ -49,7 +49,7 @@ def test_read_ranges_from_file():
     """
 
     # In memory hdf5 file
-    file_handle = create_in_memory_hdf5() 
+    file_handle = create_in_memory_hdf5()
     handle = file_handle.create_dataset("test", data=np.arange(1000))
     ranges = np.array([[77, 79], [88, 98], [204, 204]])
     output_size = 3 + 11 + 1
@@ -73,7 +73,7 @@ def test_index_dataset():
     data = file.create_dataset("test", data=np.arange(1000))
     mask = np.unique(np.random.randint(0, 1000, 100))
 
-    true = data[mask]
+    true = data[list(mask)]
 
     assert (index_dataset(data, mask) == true).all()
 
