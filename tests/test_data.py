@@ -138,9 +138,7 @@ def test_cell_metadata_is_valid(filename):
     mask_region = mask(filename)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
-    spatial_constraint = mask_region.constrain_spatial(
-        [[0 * b, b] for b in mask_region.metadata.boxsize]
-    )
+    mask_region.constrain_spatial([[0 * b, b] for b in mask_region.metadata.boxsize])
     data = load(filename, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.gas.coordinates.units)
@@ -160,6 +158,52 @@ def test_cell_metadata_is_valid(filename):
 
             max = data.gas.coordinates[start:stop, dimension].max()
             min = data.gas.coordinates[start:stop, dimension].min()
+
+            # Ignore things close to the boxsize
+            if min < 0.05 * boxsize or max > 0.95 * boxsize:
+                continue
+
+            # Give it a little wiggle room
+            assert max <= upper * 1.05
+            assert min > lower * 0.95
+
+
+@requires("cosmological_volume_dithered.hdf5")
+def test_dithered_cell_metadata_is_valid(filename):
+    """
+    Test that the metadata does what we think it does, in the
+    dithered case.
+
+    I.e. that it sets the particles contained in a top-level cell.
+    """
+
+    mask_region = mask(filename)
+    # Because we sort by offset if we are using the metadata we
+    # must re-order the data to be in the correct order
+    spatial_constraint = mask_region.constrain_spatial(
+        [[0 * b, b] for b in mask_region.metadata.boxsize]
+    )
+    data = load(filename, mask=mask_region)
+
+    cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
+    boxsize = mask_region.metadata.boxsize[0].to(data.dark_matter.coordinates.units)
+    offsets = mask_region.offsets["dark_matter"]
+    counts = mask_region.counts["dark_matter"]
+
+    start_offset = offsets
+    stop_offset = offsets + counts
+
+    for center, start, stop in zip(
+        mask_region.centers.to(data.dark_matter.coordinates.units),
+        start_offset,
+        stop_offset,
+    ):
+        for dimension in range(0, 3):
+            lower = (center - 0.5 * cell_size)[dimension]
+            upper = (center + 0.5 * cell_size)[dimension]
+
+            max = data.dark_matter.coordinates[start:stop, dimension].max()
+            min = data.dark_matter.coordinates[start:stop, dimension].min()
 
             # Ignore things close to the boxsize
             if min < 0.05 * boxsize or max > 0.95 * boxsize:

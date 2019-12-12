@@ -188,13 +188,37 @@ class SWIFTMask(object):
             # Include the cell size so it's easier to find the overlap
             lower = restrict[dimension][0] - 0.5 * self.cell_size[dimension]
             upper = restrict[dimension][1] + 0.5 * self.cell_size[dimension]
+            boxsize = self.metadata.boxsize[dimension]
 
-            this_mask = np.logical_and.reduce(
-                [
-                    self.centers[cell_mask, dimension] > lower,
-                    self.centers[cell_mask, dimension] <= upper,
-                ]
-            )
+            # Now need to deal with the three wrapping cases:
+            if lower.value < 0.0:
+                # Wrap lower -> high
+                lower += boxsize
+
+                this_mask = np.logical_or.reduce(
+                    [
+                        self.centers[cell_mask, dimension] > lower,
+                        self.centers[cell_mask, dimension] <= upper,
+                    ]
+                )
+            elif upper > boxsize:
+                # Wrap high -> lower
+                upper -= boxsize
+
+                this_mask = np.logical_or.reduce(
+                    [
+                        self.centers[cell_mask, dimension] > lower,
+                        self.centers[cell_mask, dimension] <= upper,
+                    ]
+                )
+            else:
+                # No wrapping required
+                this_mask = np.logical_and.reduce(
+                    [
+                        self.centers[cell_mask, dimension] > lower,
+                        self.centers[cell_mask, dimension] <= upper,
+                    ]
+                )
 
             cell_mask[cell_mask] = this_mask
 
