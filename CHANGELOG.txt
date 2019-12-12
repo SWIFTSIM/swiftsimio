@@ -1,6 +1,18 @@
 SWIFTsimIO Changelog
 ====================
 
+v 2.1.0
+-------
+
+Minor updates, including:
+
++ Added badge to link to documentation to README.
++ Significant performance improvements for reading chunks from HDF5 files.
++ Visualisation bug fix where box-size was overflowing.
++ Now support dithered top-level cell mesh for reading partial snapshots.
++ Added `wily` as an optional requirement for development.
++ Use `Solar_Mass` in units instead of `msun` as it is a 'first-class' unit.
+
 v 2.0.0
 -------
 
