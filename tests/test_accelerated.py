@@ -21,7 +21,7 @@ def test_ranges_from_array():
 
     my_array = np.array([0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13], dtype=int)
 
-    out = np.array([[0, 3], [5, 7], [9, 9], [11, 13]])
+    out = np.array([[0, 4], [5, 8], [9, 10], [11, 14]])
 
     assert (ranges_from_array(my_array) == out).all()
 
@@ -36,7 +36,7 @@ def test_ranges_from_array_non_contiguous():
     my_array = np.array([77, 34483, 234582, 123412341324], dtype=int)
 
     out = np.array(
-        [[77, 77], [34483, 34483], [234582, 234582], [123412341324, 123412341324]]
+        [[77, 78], [34483, 34484], [234582, 234583], [123412341324, 123412341325]]
     )
 
     assert (ranges_from_array(my_array) == out).all()
@@ -51,11 +51,11 @@ def test_read_ranges_from_file():
     # In memory hdf5 file
     file_handle = create_in_memory_hdf5()
     handle = file_handle.create_dataset("test", data=np.arange(1000))
-    ranges = np.array([[77, 79], [88, 98], [204, 204]])
-    output_size = 3 + 11 + 1
+    ranges = np.array([[77, 79], [81,81], [88, 98], [204, 204]])
+    output_size = 2 + 10
     output_type = type(handle[0])
 
-    expected = np.array([77, 78, 79, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 204])
+    expected = np.array([77, 78, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97])
     out = read_ranges_from_file(handle, ranges, output_size, output_type)
 
     assert (out == expected).all()
