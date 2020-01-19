@@ -51,7 +51,7 @@ def test_read_ranges_from_file():
     # In memory hdf5 file
     file_handle = create_in_memory_hdf5()
     handle = file_handle.create_dataset("test", data=np.arange(1000))
-    ranges = np.array([[77, 79], [81,81], [88, 98], [204, 204]])
+    ranges = np.array([[77, 79], [81, 81], [88, 98], [204, 204]])
     output_size = 2 + 10
     output_type = type(handle[0])
 

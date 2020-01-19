@@ -87,4 +87,3 @@ def test_region_mask_not_modified(filename):
     this_mask._generate_cell_mask(read)
 
     assert read == read_constant
-

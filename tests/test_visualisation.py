@@ -206,4 +206,3 @@ def test_selection_render(filename):
     # If they don't crash we're happy!
 
     return
-

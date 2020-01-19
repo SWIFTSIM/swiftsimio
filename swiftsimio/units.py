@@ -25,4 +25,3 @@ except RuntimeError:
     # We've already done that, oops.
     cosmo_units = unyt.unit_systems.cosmological
     pass
-

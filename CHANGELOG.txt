@@ -1,6 +1,17 @@
 SWIFTsimIO Changelog
 ====================
 
+v 2.1.1
+-------
+
+Minor bugfix, including:
+
++ Fixed an error in indexing syntax that meant cells were not correctly
+  reading particles from a file.
++ Fixed an error where when using SWIFTMask, where reading arrays would
+  crash if there was not a particle of a given type in a top-level cell.
++ Changed the ReadTheDocs theme.
+
 v 2.1.0
 -------
 

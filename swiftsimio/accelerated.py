@@ -97,7 +97,7 @@ def read_ranges_from_file(
 
         # Construct selectors so we can use read_direct to prevent creating
         # copies of data from the hdf5 file.
-        hdf5_read_sel = np.s_[read_start : read_end]
+        hdf5_read_sel = np.s_[read_start:read_end]
         output_dest_sel = np.s_[already_read : size_of_range + already_read]
 
         handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
