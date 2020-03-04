@@ -82,6 +82,91 @@ this:
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
 
 
+Rotations
+---------
+
+Sometimes you will need to visualise a galaxy from a different perspective.
+The :mod:`swiftsimio.visualisation.rotation` sub-module provides routines to
+generate rotation matrices corresponding to vectors, which can then be
+provided to the ``rotation_matrix`` argument of :meth:`project_gas` (and
+:meth:`project_gas_pixel_grid`). You will also need to supply the
+``rotation_center`` argument, as the rotation takes place around this given
+point. The example code below loads a snapshot, and a halo catalogue, and
+creates an edge-on and face-on projection using the integration in
+``velociraptor``.
+
+.. code-block:: python
+
+   from swiftsimio import load, mask
+   from velociraptor import load as load_catalogue
+   from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
+   from swiftsimio.visualisation.projection import project_gas_pixel_grid
+
+   import unyt
+   import numpy as np
+   import matplotlib.pyplot as plt
+   from matplotlib.colors import LogNorm
+
+   # Radius around which to load data, we will visualise half of this
+   size = 100 * unyt.kpc
+
+   snapshot_filename = "eagle.hdf5"
+   catalogue_filename = "stf.properties"
+
+   catalogue = load_catalogue(catalogue_filename)
+
+   # Which halo should we visualise?
+   halo = 25
+
+   x = catalogue.positions.xcmbp[halo]
+   y = catalogue.positions.ycmbp[halo]
+   z = catalogue.positions.zcmbp[halo]
+
+   lx = catalogue.angular_momentum.lx_star[halo]
+   ly = catalogue.angular_momentum.ly_star[halo]
+   lz = catalogue.angular_momentum.lz_star[halo]
+
+   # The angular momentum vector will point perpendicular to the galaxy disk.
+   angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
+   angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
+
+   face_on_rotation_matrix = rotation_matrix_from_vector(vector)
+   edge_on_rotation_matrix = rotation_matrix_from_vector(vector, axis="y")
+
+   region = [
+      [x - size, x + size],
+      [y - size, y + size],
+      [z - size, z + size],
+   ]
+
+   visualise_region = [
+      x - 0.5 * size, x + 0.5 * size,
+      y - 0.5 * size, y + 0.5 * size,
+   ]
+
+   data_mask = mask(snapshot_filename)
+   data_mask.constrain_spatial(region)
+   data = load(snapshot_filename, mask=data_mask)
+
+   # Use project_gas_pixel_grid to generate projected images
+
+   common_arguments = dict(data=data, resolution=512, parallel=True, region=visualise_region)
+
+   un_rotated = project_gas_pixel_grid(**common_arguments)
+
+   face_on = project_gas_pixel_grid(
+      **common_arguments,
+      rotation_center=unyt.unyt_array([x, y, z]),
+      rotation_matrix=face_on_rotation_matrix,
+   )
+
+   edge_on = project_gas_pixel_grid(
+      **common_argumetns,
+      rotation_center=unyt.unyt_array([x, y, z]),
+      rotation_matrix=edge_on_rotation_matrix,
+   )
+
+
 Other particle types
 --------------------
 

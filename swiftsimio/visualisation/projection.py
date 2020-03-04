@@ -5,8 +5,19 @@ if it is available.
 
 from typing import Union
 from math import sqrt
-from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones, isclose
-from unyt import unyt_array
+from numpy import (
+    float64,
+    float32,
+    int32,
+    zeros,
+    array,
+    arange,
+    ndarray,
+    ones,
+    isclose,
+    matmul,
+)
+from unyt import unyt_array, unyt_quantity
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.reader import __SWIFTParticleDataset
@@ -54,7 +65,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     + m: the masses (or otherwise weights) of the particles
     + h: the smoothing lengths of the particles
     + res: the number of pixels.
-    
+
     This ignores boundary effects.
 
     Note that explicitly defining the types in this function allows
@@ -176,15 +187,17 @@ def project_pixel_grid(
     project: Union[str, None] = "masses",
     parallel: bool = False,
     region: Union[None, unyt_array] = None,
+    rotation_matrix: Union[None, array] = None,
+    rotation_center: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
-    
+
     Differs from its particle-propery named counterparts as this uses
     a particledataset instead of the full dataset.
-    
+
     Default projection variable is mass. If it is None, then we don't
     weight.
 
@@ -218,9 +231,9 @@ def project_pixel_grid(
     if region is not None:
         x_min, x_max, y_min, y_max = region
     else:
-        x_min = (0 * box_x).to(box_x.units)
+        x_min = unyt_quantity(0.0, units=box_x.units)
         x_max = box_x
-        y_min = (0 * box_y).to(box_x.units)
+        y_min = unyt_quantity(0.0, units=box_y.units)
         y_max = box_y
 
     x_range = x_max - x_min
@@ -232,13 +245,21 @@ def project_pixel_grid(
             "Projection code is currently not able to handle non-square images"
         )
 
-    x, y, _ = data.coordinates.T
-
     try:
         hsml = data.smoothing_lengths
     except AttributeError:
         # Backwards compatibility
         hsml = data.smoothing_length
+
+    if rotation_center is not None:
+        # Rotate co-ordinates as required
+        x, y, _ = matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+
+        x += rotation_center[0]
+        y += rotation_center[1]
+
+    else:
+        x, y, _ = data.coordinates.T
 
     common_arguments = dict(
         x=(x - x_min) / x_range,
@@ -262,12 +283,14 @@ def project_gas_pixel_grid(
     project: Union[str, None] = "masses",
     parallel: bool = False,
     region: Union[None, unyt_array] = None,
+    rotation_matrix: Union[None, array] = None,
+    rotation_center: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
-    
+
     Default projection variable is mass. If it is None, then we don't
     weight.
 
@@ -295,6 +318,8 @@ def project_gas_pixel_grid(
         project=project,
         parallel=parallel,
         region=region,
+        rotation_matrix=rotation_matrix,
+        rotation_center=rotation_center,
     )
 
     return image
@@ -306,12 +331,14 @@ def project_gas(
     project: Union[str, None] = "masses",
     parallel: bool = False,
     region: Union[None, unyt_array] = None,
+    rotation_matrix: Union[None, array] = None,
+    rotation_center: Union[None, unyt_array] = None,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
-    
+
     Default projection variable is mass. If it is None, then we don't
     weight.
 
@@ -332,7 +359,9 @@ def project_gas(
     smoothing lengths overlap with the range.
     """
 
-    image = project_gas_pixel_grid(data, resolution, project, parallel, region)
+    image = project_gas_pixel_grid(
+        data, resolution, project, parallel, region, rotation_matrix, rotation_center
+    )
 
     if region is not None:
         x_range = region[1] - region[0]
