@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 2.2.0
+-------
+
+Visualisation update! Includes:
+
++ New ability to generate rotation matrices from vectors.
++ Projection plots can now be made with arbitrary rotations.
+
 v 2.1.1
 -------
 
