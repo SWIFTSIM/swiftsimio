@@ -73,4 +73,3 @@ def rotation_matrix_from_vector(vector: float64, axis: str = "z") -> array:
         )
 
         return inv(identity(3) + sin_theta * A + (1 - cos_theta) * matmul(A, A))
-
