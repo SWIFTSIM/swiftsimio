@@ -499,7 +499,14 @@ def project_gas(
     """
 
     image = project_gas_pixel_grid(
-        data, resolution, project, parallel, region, rotation_matrix, rotation_center
+        data=data,
+        resolution=resolution,
+        project=project,
+        mask=mask,
+        parallel=parallel,
+        region=region,
+        rotation_matrix=rotation_matrix,
+        rotation_center=rotation_center,
     )
 
     if region is not None:
