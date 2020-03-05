@@ -1,6 +1,17 @@
 SWIFTsimIO Changelog
 ====================
 
+v 2.3.0
+-------
+
+Masking visualisation update. Changes:
+
++ The order of parameters in ``projection`` visualisation
+  functions has changed, to make more logical sense.
++ A new argument in ``projection`` allows for the
+  projection of sub-sets of particles, ``mask``. See
+  the documentation for more details.
+
 v 2.2.0
 -------
 
