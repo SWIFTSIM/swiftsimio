@@ -16,6 +16,7 @@ from numpy import (
     ones,
     isclose,
     matmul,
+    s_,
 )
 from unyt import unyt_array, unyt_quantity
 from swiftsimio import SWIFTDataset
@@ -185,37 +186,80 @@ def project_pixel_grid(
     boxsize: unyt_array,
     resolution: int,
     project: Union[str, None] = "masses",
-    parallel: bool = False,
     region: Union[None, unyt_array] = None,
+    mask: Union[None, array] = None,
     rotation_matrix: Union[None, array] = None,
     rotation_center: Union[None, unyt_array] = None,
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
 
-    Differs from its particle-propery named counterparts as this uses
-    a particledataset instead of the full dataset.
-
     Default projection variable is mass. If it is None, then we don't
-    weight.
+    weight with anything, providing a number density image.
 
-    Creates a resolution x resolution array and returns it, without appropriate
-    units.
+    Parameters
+    ----------
 
-    The parallel argument, is used to determine if we will create the image
-    in parallel. This defaults to False, but can speed up the creation of large
-    images significantly.
+    data: __SWIFTParticleDataset
+        The SWIFT dataset that you wish to visualise (get this from ``load``)
 
-    The final argument, region, determines where the image will be created
-    (this corresponds to the left and right-hand edges, and top and bottom edges)
-    if it is not None. It should have a length of four, and take the form:
+    boxsize: unyt_array
+        The box-size of the simulation.
 
-        [x_min, x_max, y_min, y_max]
+    resolution: int
+        The resolution of the image. All images returned are square, ``res``
+        by ``res``, pixel grids.
 
-    Note that particles outside of this range are still considered if their
-    smoothing lengths overlap with the range.
+    project: str, optional
+        Variable to project to get the weighted density of. By default, this
+        is mass. If you would like to mass-weight any other variable, you can
+        always create it as ``data.gas.my_variable = data.gas.other_variable
+        * data.gas.masses``.
+
+    region: unyt_array, optional
+        Region, determines where the image will be created (this corresponds
+        to the left and right-hand edges, and top and bottom edges) if it is
+        not None. It should have a length of four, and take the form:
+        ``[x_min, x_max, y_min, y_max]``
+
+    mask: np.array, optional
+        Allows only a sub-set of the particles in data to be visualised. Useful
+        in cases where you have read data out of a ``velociraptor`` catalogue,
+        or if you only want to visualise e.g. star forming particles. This boolean
+        mask is applied just before visualisation.
+
+    rotation_center: np.array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
+
+    rotation_matrix: np.array, optional
+        Rotation matrix (3x3) that describes the rotation of the box around
+        ``rotation_center``. In the default case, this provides a projection
+        along the z axis.
+
+    parallel: bool, optional
+        Defaults to ``False``, whether or not to create the image in parallel.
+        The parallel version of this function uses significantly more memory.
+
+
+    Returns
+    -------
+
+    image: unyt_array
+        Projected image with units of project / length^2, of size ``res`` x ``res``.
+
+
+    Notes
+    -----
+
+    + Particles outside of this range are still considered if their smoothing
+      lengths overlap with the range.
+    + The returned array has x as the first component and y as the second component,
+      which is the opposite to what ``imshow`` requires. You should transpose the
+      array if you want it to be visualised the 'right way up'.
     """
 
     number_of_particles = data.coordinates.shape[0]
@@ -224,6 +268,10 @@ def project_pixel_grid(
         m = ones(number_of_particles, dtype=float32)
     else:
         m = getattr(data, project).value
+
+    # This provides a default 'slice it all' mask.
+    if mask is None:
+        mask = s_[:]
 
     box_x, box_y, _ = boxsize
 
@@ -262,10 +310,10 @@ def project_pixel_grid(
         x, y, _ = data.coordinates.T
 
     common_arguments = dict(
-        x=(x - x_min) / x_range,
-        y=(y - y_min) / y_range,
-        m=m,
-        h=hsml / x_range,
+        x=(x[mask] - x_min) / x_range,
+        y=(y[mask] - y_min) / y_range,
+        m=m[mask],
+        h=hsml[mask] / x_range,
         res=resolution,
     )
 
@@ -281,34 +329,80 @@ def project_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
     project: Union[str, None] = "masses",
-    parallel: bool = False,
     region: Union[None, unyt_array] = None,
+    mask: Union[None, array] = None,
     rotation_matrix: Union[None, array] = None,
     rotation_center: Union[None, unyt_array] = None,
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
 
+    This function is the same as ``project_gas`` but does not include units.
+
     Default projection variable is mass. If it is None, then we don't
-    weight.
+    weight with anything, providing a number density image.
 
-    Creates a resolution x resolution array and returns it, without appropriate
-    units.
+    Parameters
+    ----------
 
-    The parallel argument, is used to determine if we will create the image
-    in parallel. This defaults to False, but can speed up the creation of large
-    images significantly.
+    data: SWIFTDataset
+        The SWIFT dataset that you wish to visualise (get this from ``load``)
 
-    The final argument, region, determines where the image will be created
-    (this corresponds to the left and right-hand edges, and top and bottom edges)
-    if it is not None. It should have a length of four, and take the form:
+    resolution: int
+        The resolution of the image. All images returned are square, ``res``
+        by ``res``, pixel grids.
 
-        [x_min, x_max, y_min, y_max]
+    project: str, optional
+        Variable to project to get the weighted density of. By default, this
+        is mass. If you would like to mass-weight any other variable, you can
+        always create it as ``data.gas.my_variable = data.gas.other_variable
+        * data.gas.masses``.
 
-    Note that particles outside of this range are still considered if their
-    smoothing lengths overlap with the range.
+    region: unyt_array, optional
+        Region, determines where the image will be created (this corresponds
+        to the left and right-hand edges, and top and bottom edges) if it is
+        not None. It should have a length of four, and take the form:
+        ``[x_min, x_max, y_min, y_max]``
+
+    mask: np.array, optional
+        Allows only a sub-set of the particles in data to be visualised. Useful
+        in cases where you have read data out of a ``velociraptor`` catalogue,
+        or if you only want to visualise e.g. star forming particles. This boolean
+        mask is applied just before visualisation.
+
+    rotation_center: np.array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
+
+    rotation_matrix: np.array, optional
+        Rotation matrix (3x3) that describes the rotation of the box around
+        ``rotation_center``. In the default case, this provides a projection
+        along the z axis.
+
+    parallel: bool, optional
+        Defaults to ``False``, whether or not to create the image in parallel.
+        The parallel version of this function uses significantly more memory.
+
+
+    Returns
+    -------
+
+    image: np.array
+        Projected image with dimensions of project / length^2, of size
+        ``res`` x ``res``.
+
+
+    Notes
+    -----
+
+    + Particles outside of this range are still considered if their smoothing
+      lengths overlap with the range.
+    + The returned array has x as the first component and y as the second component,
+      which is the opposite to what ``imshow`` requires. You should transpose the
+      array if you want it to be visualised the 'right way up'.
     """
 
     image = project_pixel_grid(
@@ -316,6 +410,7 @@ def project_gas_pixel_grid(
         boxsize=data.metadata.boxsize,
         resolution=resolution,
         project=project,
+        mask=mask,
         parallel=parallel,
         region=region,
         rotation_matrix=rotation_matrix,
@@ -329,10 +424,11 @@ def project_gas(
     data: SWIFTDataset,
     resolution: int,
     project: Union[str, None] = "masses",
-    parallel: bool = False,
     region: Union[None, unyt_array] = None,
-    rotation_matrix: Union[None, array] = None,
+    mask: Union[None, array] = None,
     rotation_center: Union[None, unyt_array] = None,
+    rotation_matrix: Union[None, array] = None,
+    parallel: bool = False,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -340,23 +436,66 @@ def project_gas(
     W_{ij}).
 
     Default projection variable is mass. If it is None, then we don't
-    weight.
+    weight with anything, providing a number density image.
 
-    Creates a resolution x resolution array and returns it, with appropriate
-    units.
+    Parameters
+    ----------
 
-    The parallel argument, is used to determine if we will create the image
-    in parallel. This defaults to False, but can speed up the creation of large
-    images significantly.
+    data: SWIFTDataset
+        The SWIFT dataset that you wish to visualise (get this from ``load``)
 
-    The final argument, region, determines where the image will be created
-    (this corresponds to the left and right-hand edges, and top and bottom edges)
-    if it is not None. It should have a length of four, and take the form:
+    resolution: int
+        The resolution of the image. All images returned are square, ``res``
+        by ``res``, pixel grids.
 
-        [x_min, x_max, y_min, y_max]
+    project: str, optional
+        Variable to project to get the weighted density of. By default, this
+        is mass. If you would like to mass-weight any other variable, you can
+        always create it as ``data.gas.my_variable = data.gas.other_variable
+        * data.gas.masses``.
 
-    Note that particles outside of this range are still considered if their
-    smoothing lengths overlap with the range.
+    region: unyt_array, optional
+        Region, determines where the image will be created (this corresponds
+        to the left and right-hand edges, and top and bottom edges) if it is
+        not None. It should have a length of four, and take the form:
+        ``[x_min, x_max, y_min, y_max]``
+
+    mask: np.array, optional
+        Allows only a sub-set of the particles in data to be visualised. Useful
+        in cases where you have read data out of a ``velociraptor`` catalogue,
+        or if you only want to visualise e.g. star forming particles. This boolean
+        mask is applied just before visualisation.
+
+    rotation_center: np.array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
+
+    rotation_matrix: np.array, optional
+        Rotation matrix (3x3) that describes the rotation of the box around
+        ``rotation_center``. In the default case, this provides a projection
+        along the z axis.
+
+    parallel: bool, optional
+        Defaults to ``False``, whether or not to create the image in parallel.
+        The parallel version of this function uses significantly more memory.
+
+
+    Returns
+    -------
+
+    image: unyt_array
+        Projected image with units of project / length^2, of size ``res`` x
+        ``res``.
+
+
+    Notes
+    -----
+
+    + Particles outside of this range are still considered if their smoothing
+      lengths overlap with the range.
+    + The returned array has x as the first component and y as the second component,
+      which is the opposite to what ``imshow`` requires. You should transpose the
+      array if you want it to be visualised the 'right way up'.
     """
 
     image = project_gas_pixel_grid(
