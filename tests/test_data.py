@@ -119,9 +119,9 @@ def test_units(filename):
                 swift_units = handle[path].attrs[
                     "Conversion factor to CGS (not including cosmological corrections)"
                 ][0]
-                swift_units *= handle[path][0]
+                swift_value = swift_units * handle[path][0]
 
-            assert isclose(swift_units, our_units.value).all()
+            assert isclose(swift_value, our_units.value).all()
 
     # If we didn't crash out, we gucci.
     return

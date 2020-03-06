@@ -48,4 +48,4 @@ def find_nearest_base_unit(unit: unyt.unyt_quantity, dimension: str):
 
     possible_bases = possible_base_units[dimension]
 
-    return min(possible_bases, key=lambda x: abs(log((1.0 * x).to(unit))))
+    return unit.to(min(possible_bases, key=lambda x: abs(log((1.0 * x).to(unit)))))
