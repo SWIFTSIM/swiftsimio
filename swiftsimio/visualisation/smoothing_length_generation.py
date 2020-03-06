@@ -4,7 +4,7 @@ that do not usually carry a smoothing length field (e.g. dark matter).
 """
 
 from swiftsimio.objects import cosmo_array
-from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE, tqdm
+from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE 
 from unyt import unyt_array
 from numpy import empty, float32
 
@@ -64,7 +64,7 @@ def generate_smoothing_lengths(
     block_size = 65536
     number_of_blocks = 1 + number_of_parts // block_size
 
-    for block in tqdm(range(number_of_blocks), desc="Generating smoothing lengths"):
+    for block in range(number_of_blocks):
         starting_index = block * block_size
         ending_index = (block + 1) * (block_size)
 
