@@ -1,6 +1,18 @@
 SWIFTsimIO Changelog
 ====================
 
+v 2.4.0
+-------
+
+Units and internal updates. Changes:
+
++ Removed unnecessary call to `tqdm` inside smoothing length generation
+  module.
++ Added `to_physical` and `convert_to_physical` methods to `cosmo_array`.
++ Added math operators to `cosmo_factor`
++ `swiftsimio` now converts internal units from cgs-based units to the
+  closest 'sensible' value to prevent underflows in image making.
+
 v 2.3.0
 -------
 
