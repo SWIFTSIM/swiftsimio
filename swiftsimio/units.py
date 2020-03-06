@@ -7,6 +7,8 @@ with
 + Unit velocity = km/s
 + Unit mass = 10^10 Msun
 + Unit temperature = K
+
+Also contains unit conversion factors, to simplify units wherever possible.
 """
 
 import unyt

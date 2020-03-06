@@ -65,11 +65,21 @@ class SWIFTUnits(object):
             }
 
         # We now unpack this into variables.
-        self.mass = self.units["Unit mass in cgs (U_M)"]
-        self.length = self.units["Unit length in cgs (U_L)"]
-        self.time = self.units["Unit time in cgs (U_t)"]
-        self.current = self.units["Unit current in cgs (U_I)"]
-        self.temperature = self.units["Unit temperature in cgs (U_T)"]
+        self.mass = metadata.unit_types.find_nearest_base_unit(
+            self.units["Unit mass in cgs (U_M)"], "mass"
+        )
+        self.length = metadata.unit_types.find_nearest_base_unit(
+            self.units["Unit length in cgs (U_L)"], "length"
+        )
+        self.time = metadata.unit_types.find_nearest_base_unit(
+            self.units["Unit time in cgs (U_t)"], "time"
+        )
+        self.current = metadata.unit_types.find_nearest_base_unit(
+            self.units["Unit current in cgs (U_I)"], "current"
+        )
+        self.temperature = metadata.unit_types.find_nearest_base_unit(
+            self.units["Unit temperature in cgs (U_T)"], "temperature"
+        )
 
 
 class SWIFTMetadata(object):

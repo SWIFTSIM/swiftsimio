@@ -184,16 +184,29 @@ class cosmo_array(unyt_array):
         """
         Essentially a copy of the __new__ constructor.
         """
-        obj = super().__new__(
-            self,
-            input_array,
-            units=units,
-            registry=registry,
-            dtype=dtype,
-            bypass_validation=bypass_validation,
-            input_units=input_units,
-            name=None,
-        )
+
+        try:
+            obj = super().__new__(
+                self,
+                input_array,
+                units=units,
+                registry=registry,
+                dtype=dtype,
+                bypass_validation=bypass_validation,
+                input_units=input_units,
+                name=name,
+            )
+        except TypeError:
+            # Older versions of unyt
+            obj = super().__new__(
+                self,
+                input_array,
+                units=units,
+                registry=registry,
+                dtype=dtype,
+                bypass_validation=bypass_validation,
+                input_units=input_units,
+            )
 
         obj.cosmo_factor = cosmo_factor
         obj.comoving = comoving
