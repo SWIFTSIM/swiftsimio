@@ -13,6 +13,19 @@ import sympy
 a = sympy.symbols("a")
 
 
+class InvalidScaleFactor(Exception):
+    """
+    Raised when a scale factor is invalid, such as when adding
+    two cosmo_factors with inconsistent scale factors.
+    """
+
+    def __init__(self, message=None, *args):
+        self.message = message
+
+    def __str__(self):
+        return f"InvalidScaleFactor: {self.message}"
+
+
 class cosmo_factor:
     """
     Cosmology factor. This takes two arguments, one which takes the expected
@@ -37,14 +50,14 @@ class cosmo_factor:
         pass
 
     def __str__(self):
-        return str(self.expr)
+        return str(self.expr) + f" at a={self.scale_factor}"
 
     @property
     def a_factor(self):
         """
         The a-factor for the unit, e.g. for density this is 1 / a**3.
         """
-        return self.expr.subs(a, self.scale_factor)
+        return float(self.expr.subs(a, self.scale_factor))
 
     @property
     def redshift(self):
@@ -52,6 +65,87 @@ class cosmo_factor:
         Compute the redshift from the scale factor.
         """
         return (1.0 / self.scale_factor) - 1.0
+
+    def __add__(self, b):
+        if not self.scale_factor == b.scale_factor:
+            raise InvalidScaleFactor(
+                "Attempting to add two cosmo_factors with different scale factors "
+                f"{self.scale_factor} and {b.scale_factor}"
+            )
+
+        if not self.expr == b.expr:
+            raise InvalidScaleFactor(
+                "Attempting to add two cosmo_factors with different scale factor "
+                f"dependence, {self.expr} and {b.expr}"
+            )
+
+        return cosmo_factor(expr=self.expr, scale_factor=self.scale_factor)
+
+    def __sub__(self, b):
+        if not self.scale_factor == b.scale_factor:
+            raise InvalidScaleFactor(
+                "Attempting to subtract two cosmo_factors with different scale factors "
+                f"{self.scale_factor} and {b.scale_factor}"
+            )
+
+        if not self.expr == b.expr:
+            raise InvalidScaleFactor(
+                "Attempting to subtract two cosmo_factors with different scale factor "
+                f"dependence, {self.expr} and {b.expr}"
+            )
+
+        return cosmo_factor(expr=self.expr, scale_factor=self.scale_factor)
+
+    def __mul__(self, b):
+        if not self.scale_factor == b.scale_factor:
+            raise InvalidScaleFactor(
+                "Attempting to subtract two cosmo_factors with different scale factors "
+                f"{self.scale_factor} and {b.scale_factor}"
+            )
+
+        return cosmo_factor(expr=self.expr * b.expr, scale_factor=self.scale_factor)
+
+    def __div__(self, b):
+        if not self.scale_factor == b.scale_factor:
+            raise InvalidScaleFactor(
+                "Attempting to subtract two cosmo_factors with different scale factors "
+                f"{self.scale_factor} and {b.scale_factor}"
+            )
+
+        return cosmo_factor(expr=self.expr / b.expr, scale_factor=self.scale_factor)
+
+    def __radd__(self, b):
+        return self.__add__(b)
+
+    def __rsub__(self, b):
+        return self.__sub__(b)
+
+    def __rmul__(self, b):
+        return self.__mul__(b)
+
+    def __rdiv__(self, b):
+        return b.__div__(self)
+
+    def __pow__(self, p):
+        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+
+    def __lt__(self, b):
+        return self.a_factor < b.a_factor
+
+    def __gt__(self, b):
+        return self.a_factor > b.a_factor
+
+    def __le__(self, b):
+        return self.a_factor <= b.a_factor
+
+    def __ge__(self, b):
+        return self.a_factor >= b.a_factor
+
+    def __eq__(self, b):
+        return self.a_factor == b.a_factor
+
+    def __ne__(self, b):
+        return self.a_factor != b.a_factor
 
 
 class cosmo_array(unyt_array):
@@ -78,12 +172,14 @@ class cosmo_array(unyt_array):
     def __new__(
         self,
         input_array,
-        units,
+        units=None,
         registry=None,
         dtype=None,
         bypass_validation=False,
-        *args,
-        **kwargs
+        input_units=None,
+        name=None,
+        cosmo_factor=None,
+        comoving=True,
     ):
         """
         Essentially a copy of the __new__ constructor.
@@ -95,28 +191,14 @@ class cosmo_array(unyt_array):
             registry=registry,
             dtype=dtype,
             bypass_validation=bypass_validation,
+            input_units=input_units,
+            name=None,
         )
+
+        obj.cosmo_factor = cosmo_factor
+        obj.comoving = comoving
+
         return obj
-
-    def __init__(
-        self,
-        input_array,
-        units,
-        registry=None,
-        dtype=None,
-        bypass_validation=False,
-        cosmo_factor: Union[cosmo_factor, None] = None,
-        description: str = "",
-        comoving: bool = True,
-    ):
-        """
-        Our version of the __init__. We also call the super().
-        """
-        super().__init__()
-
-        self.cosmo_factor = cosmo_factor
-        self.comoving = comoving
-        self.description = description
 
     def __str__(self):
         if self.comoving:
@@ -126,42 +208,46 @@ class cosmo_array(unyt_array):
 
         return super().__str__() + " " + comoving_str
 
-    # TODO: Fix this API. At the moment, it doesn't work.
+    def convert_to_comoving(self) -> None:
+        """
+        Convert the internal data to be in comoving units.
+        """
+        if self.comoving:
+            return
+        else:
+            # Best to just modify values as otherwise we're just going to have
+            # to do a convert_to_units anyway.
+            values = self.d
+            values *= self.cosmo_factor.a_factor
+            self.comoving = True
 
-    # def convert_to_comoving(self) -> None:
-    #     """
-    #     Convert the internal data to be in comoving units.
-    #     """
-    #     if self.comoving:
-    #         return
-    #     else:
-    #         self.units *= self.cosmo_factor.a_factor
-    #         self.comoving = True
+    def convert_to_physical(self) -> None:
+        """
+        Convert the internal data to be in physical units.
+        """
+        if self.comoving:
+            # Best to just modify values as otherwise we're just going to have
+            # to do a convert_to_units anyway.
+            values = self.d
+            values /= self.cosmo_factor.a_factor
+            self.comoving = False
+        else:
+            return
 
-    # def convert_to_physical(self) -> None:
-    #     """
-    #     Convert the internal data to be in physical units.
-    #     """
-    #     if self.comoving:
-    #         self.units /= self.cosmo_factor.a_factor
-    #         self.comoving = False
-    #     else:
-    #         return
+    def to_physical(self):
+        """
+        Returns a copy of the data in physical units.
+        """
+        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
+        copied_data.convert_to_physical()
 
-    # def to_physical(self):
-    #     """
-    #     Returns a copy of the data in physical units.
-    #     """
-    #     copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
-    #     copied_data.convert_to_physical()
+        return copied_data
 
-    #     return copied_data
+    def to_comoving(self):
+        """
+        Returns a copy of the data in comoving units.
+        """
+        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
+        copied_data.convert_to_comoving()
 
-    # def to_comoving(self):
-    #     """
-    #     Returns a copy of the data in comoving units.
-    #     """
-    #     copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
-    #     copied_data.convert_to_comoving()
-
-    #     return copied_data
+        return copied_data

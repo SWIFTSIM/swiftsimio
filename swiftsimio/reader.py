@@ -614,7 +614,7 @@ def generate_getter(
                                 ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
-                                description=description,
+                                name=description,
                             ),
                         )
                     else:
@@ -625,7 +625,7 @@ def generate_getter(
                                 handle[field][...],
                                 unit,
                                 cosmo_factor=cosmo_factor,
-                                description=description,
+                                name=description,
                             ),
                         )
                 except KeyError:
