@@ -201,6 +201,16 @@ scale-factor information, too, through the ``cosmo_factor`` object,
 which will output ``132651.002785671`` and ``a**(-3.0)``. This is an easy way
 to convert your co-moving values to physical ones.
 
+An even easier way to convert your properties to physical is to use the
+built-in ``to_physical`` and ``convert_to_physical`` methods, as follows:
+
+.. code-block:: python
+
+   physical_rho_gas = rho_gas.to_physical()
+
+   # Convert in-place
+   rho_gas.convert_to_physical()
+
 
 User-defined particle types
 ---------------------------
