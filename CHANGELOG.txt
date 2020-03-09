@@ -1,6 +1,16 @@
 SWIFTsimIO Changelog
 ====================
 
+v 2.4.1
+-------
+
+Internal unit update:
+
++ Changes the handling of close-by internal units to only be accurate
+  to within 1e-5 precision. This is due to units only being specified
+  to this precision within parameter files, and is to avoid rounding
+  errors when converting between units.
+
 v 2.4.0
 -------
 
