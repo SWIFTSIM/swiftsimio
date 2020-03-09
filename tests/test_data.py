@@ -121,7 +121,7 @@ def test_units(filename):
                 ][0]
                 swift_value = swift_units * handle[path][0]
 
-            assert isclose(swift_value, our_units.value).all()
+            assert isclose(swift_value, our_units.value, 5e-5).all()
 
     # If we didn't crash out, we gucci.
     return
