@@ -13,6 +13,7 @@ metadata_fields_to_read = {
     "Policy": "policy",
     "RuntimePars": "runtime_pars",
     "SubgridScheme": "subgrid_scheme",
+    "StarsScheme": "stars_scheme",
     "UnusedParameters": "unused_parameters",
 }
 

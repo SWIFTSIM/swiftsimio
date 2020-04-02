@@ -575,11 +575,12 @@ def generate_getter(
     filename,
     name: str,
     field: str,
-    unit,
+    unit: unyt.unyt_quantity,
     mask: Union[None, np.ndarray],
     mask_size: int,
     cosmo_factor: cosmo_factor,
     description: str,
+    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
 ):
     """
     Generates a function that:
@@ -589,6 +590,61 @@ def generate_getter(
     c) Reads filename[`field`]
     d) Set self._`name`
     e) Return self._`name`.
+
+    Parameters
+    ----------
+
+    filename: str
+        Filename of the HDF5 file that everything will be read from. Used to generate
+        the HDF5 dataset.
+
+    name: str
+        Output name (snake_case) of the field.
+
+    field: str
+        Full path of field, including e.g. particle type. Examples include
+        ``/PartType0/Velocities``.
+
+    unit: unyt.unyt_quantity
+        Output unit of the resultant ``cosmo_array``
+
+    mask: Union[None, np.ndarray]
+        Mask to be used with ``accelerated.read_ranges_from_file``, i.e. an array of
+        integers that describe ranges to be read from the file.
+
+    mask_size: int
+        Size of the mask if present.
+
+    cosmo_factor: cosmo_factor
+        Cosmology factor object corresponding to this array.
+
+    description: str
+        Description (read from HDF5 file) of the data.
+
+    columns: np.lib.index_tricks.IndexEpression, optional
+        Index expression corresponding to which columns to read from the numpy array.
+        If not provided, we read all columns and return an n-dimensional array.
+
+    
+    Returns
+    -------
+
+    getter: callable
+        A callable object that gets the value of the array that has been saved to
+        ``_name``. This function takes only ``self`` from the 
+        :obj:``__SWIFTParticleDataset`` class.
+
+
+    Notes
+    -----
+
+    The major use of this function is for its side effect of setting ``_name`` as
+    a member of the class on first read. When the attribute is accessed, it will
+    be dynamically read from the file, to keep initial memory usage as minimal
+    as possible.
+
+    If the resultant array is modified, it will not be re-read from the file.
+
     """
 
     def getter(self):
@@ -621,6 +677,7 @@ def generate_getter(
                                     mask,
                                     output_shape=output_shape,
                                     output_type=output_type,
+                                    columns=columns,
                                 ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
@@ -632,7 +689,11 @@ def generate_getter(
                             self,
                             f"_{name}",
                             cosmo_array(
-                                handle[field][...],
+                                # Only use column data if array is multidimensional, otherwise
+                                # we will crash here
+                                handle[field][:, columns]
+                                if handle[field].ndim > 1
+                                else handle[field][:],
                                 unit,
                                 cosmo_factor=cosmo_factor,
                                 name=description,

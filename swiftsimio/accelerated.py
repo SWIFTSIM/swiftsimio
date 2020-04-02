@@ -76,17 +76,48 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
 
 def read_ranges_from_file(
-    handle: Dataset, ranges: np.ndarray, output_shape: Tuple, output_type=np.float64
+    handle: Dataset,
+    ranges: np.ndarray,
+    output_shape: Tuple,
+    output_type: type = np.float64,
+    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
 ) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
     ranges_from_array, and reads only those ranges from the file.
 
     Unfortunately this functionality is not built into HDF5.
+
+    Parameters
+    ----------
+
+    handle: Dataset
+        HDF5 dataset to slice data from
+
+    ranges: np.ndarray
+        Array of ranges (see :func:`ranges_from_array`)
+
+    output_shape: Tuple, optional
+        Resultant shape of output. 
+    
+    output_type: type, optional
+        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+
+    columns: np.lib.index_tricks.IndexExpression, optional
+        Selector for columns if using a multi-dimensional array. If the array is only
+        a single dimension this is not used.
+
+    
+    Returns
+    -------
+
+    array: np.ndarray
+        Result from reading only the relevant values from ``handle``.
     """
 
     output = np.empty(output_shape, dtype=output_type)
     already_read = 0
+    handle_multidim = handle.ndim > 1
 
     for (read_start, read_end) in ranges:
         if read_end == read_start:
@@ -97,7 +128,12 @@ def read_ranges_from_file(
 
         # Construct selectors so we can use read_direct to prevent creating
         # copies of data from the hdf5 file.
-        hdf5_read_sel = np.s_[read_start:read_end]
+        hdf5_read_sel = (
+            np.s_[read_start:read_end, columns]
+            if handle_multidim
+            else np.s_[read_start:read_end]
+        )
+
         output_dest_sel = np.s_[already_read : size_of_range + already_read]
 
         handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
