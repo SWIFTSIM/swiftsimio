@@ -134,7 +134,7 @@ class SWIFTMetadata(object):
                     k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
                 }
         except KeyError:
-            self.named_columns = None
+            self.named_columns = {}
 
         return
 
