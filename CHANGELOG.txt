@@ -1,6 +1,17 @@
 SWIFTsimIO Changelog
 ====================
 
+v 3.0.0
+-------
+
+Named columns update:
+
++ Adds support for the SWIFT `NamedColumns` feature, where multidimensional
+  arrays are now accessible through a named object hierarchy. This is
+  particularly useful for things like element abundances.
++ Changes to the `__repr__` of various objects to make them more usable,
+  instead of pointing to arbitrary memory locations.
+
 v 2.4.1
 -------
 
