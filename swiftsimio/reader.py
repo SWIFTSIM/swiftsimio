@@ -23,7 +23,7 @@ import numpy as np
 
 from datetime import datetime
 
-from typing import Union, Callable
+from typing import Union, Callable, List
 
 
 class SWIFTUnits(object):
@@ -89,11 +89,16 @@ class SWIFTMetadata(object):
     metadata.
     """
 
+    filename: str
+    units: SWIFTUnits
+    header: dict
+
     def __init__(self, filename, units: SWIFTUnits):
         self.filename = filename
         self.units = units
 
         self.get_metadata()
+        self.get_named_column_metadata()
 
         self.postprocess_header()
 
@@ -112,6 +117,24 @@ class SWIFTMetadata(object):
                     setattr(self, name, dict(handle[field].attrs))
                 except KeyError:
                     setattr(self, name, None)
+
+        return
+
+    def get_named_column_metadata(self):
+        """
+        Loads the custom named column metadata (if it exists) from
+        SubgridScheme/NamedColumns.
+        """
+
+        try:
+            with h5py.File(self.filename, "r") as handle:
+                data = handle["SubgridScheme/NamedColumns"]
+
+                self.named_columns = {
+                    k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
+                }
+        except KeyError:
+            self.named_columns = {}
 
         return
 
@@ -198,9 +221,18 @@ class SWIFTMetadata(object):
         # These are special cases, sorry!
         # Date and time of snapshot dump
         try:
-            self.snapshot_date = datetime.strptime(
-                self.header["Snapshot date"].decode("utf-8"), "%c\n"
-            )
+            try:
+                self.snapshot_date = datetime.strptime(
+                    self.header["Snapshot date"].decode("utf-8"), "%H:%M:%S %Y-%m-%d %Z"
+                )
+            except ValueError:
+                # Backwards compatibility; this was used previously due to simplicity
+                # but is not portable between regions. So if you ran a simulation on
+                # a British (en_GB) machine, and then tried to read on a Dutch
+                # machine (nl_NL), this would _not_ work because %c is different.
+                self.snapshot_date = datetime.strptime(
+                    self.header["Snapshot date"].decode("utf-8"), "%c\n"
+                )
         except KeyError:
             # Old file
             pass
@@ -426,8 +458,8 @@ class SWIFTParticleTypeMetadata(object):
     """
     Object that contains the metadata for one particle type. This, for, instance,
     could be part type 0, or 'gas'. This will load in the names of all particle datasets,
-    their units, and their cosmology, and present them for use in the actual
-    i/o routines.
+    their units, possible named fields, and their cosmology, and present them for use
+    in the actual i/o routines.
     """
 
     def __init__(
@@ -452,15 +484,19 @@ class SWIFTParticleTypeMetadata(object):
     def __str__(self):
         return f"Metadata class for PartType{self.particle_type} ({self.particle_name})"
 
+    def __repr__(self):
+        return self.__str__()
+
     def load_metadata(self):
         """
-        Workhorse function, loads the requried metadata.
+        Workhorse function, loads the required metadata.
         """
 
         self.load_field_names()
         self.load_field_units()
         self.load_field_descriptions()
         self.load_cosmology()
+        self.load_named_columns()
 
     def load_field_names(self):
         """
@@ -570,16 +606,56 @@ class SWIFTParticleTypeMetadata(object):
 
         return
 
+    def load_named_columns(self):
+        """
+        Loads the named column data for relevant fields.
+        """
+
+        named_columns = {}
+
+        for field in self.field_paths:
+            property_name = field.split("/")[-1]
+
+            if property_name in self.metadata.named_columns.keys():
+                field_names = self.metadata.named_columns[property_name]
+
+                # Now need to make a decision on capitalisation. If we have a set of
+                # words with only one capital in them, then it's likely that they are
+                # element names or something similar, so they should be lower case.
+                # If on average we have many more capitals, then they are likely to be
+                # ionized fractions (e.g. HeII) and so we want to leave them with their
+                # original capitalisation.
+
+                num_capitals = lambda x: sum(1 for c in x if c.isupper())
+                mean_num_capitals = sum(map(num_capitals, field_names)) / len(
+                    field_names
+                )
+
+                if mean_num_capitals < 1.01:
+                    # Decapitalise them as they are likely individual element names
+                    formatted_field_names = [x.lower() for x in field_names]
+                else:
+                    formatted_field_names = field_names
+
+                named_columns[field] = formatted_field_names
+            else:
+                named_columns[field] = None
+
+        self.named_columns = named_columns
+
+        return
+
 
 def generate_getter(
     filename,
     name: str,
     field: str,
-    unit,
+    unit: unyt.unyt_quantity,
     mask: Union[None, np.ndarray],
     mask_size: int,
     cosmo_factor: cosmo_factor,
     description: str,
+    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
 ):
     """
     Generates a function that:
@@ -589,6 +665,61 @@ def generate_getter(
     c) Reads filename[`field`]
     d) Set self._`name`
     e) Return self._`name`.
+
+    Parameters
+    ----------
+
+    filename: str
+        Filename of the HDF5 file that everything will be read from. Used to generate
+        the HDF5 dataset.
+
+    name: str
+        Output name (snake_case) of the field.
+
+    field: str
+        Full path of field, including e.g. particle type. Examples include
+        ``/PartType0/Velocities``.
+
+    unit: unyt.unyt_quantity
+        Output unit of the resultant ``cosmo_array``
+
+    mask: Union[None, np.ndarray]
+        Mask to be used with ``accelerated.read_ranges_from_file``, i.e. an array of
+        integers that describe ranges to be read from the file.
+
+    mask_size: int
+        Size of the mask if present.
+
+    cosmo_factor: cosmo_factor
+        Cosmology factor object corresponding to this array.
+
+    description: str
+        Description (read from HDF5 file) of the data.
+
+    columns: np.lib.index_tricks.IndexEpression, optional
+        Index expression corresponding to which columns to read from the numpy array.
+        If not provided, we read all columns and return an n-dimensional array.
+
+    
+    Returns
+    -------
+
+    getter: callable
+        A callable object that gets the value of the array that has been saved to
+        ``_name``. This function takes only ``self`` from the 
+        :obj:``__SWIFTParticleDataset`` class.
+
+
+    Notes
+    -----
+
+    The major use of this function is for its side effect of setting ``_name`` as
+    a member of the class on first read. When the attribute is accessed, it will
+    be dynamically read from the file, to keep initial memory usage as minimal
+    as possible.
+
+    If the resultant array is modified, it will not be re-read from the file.
+
     """
 
     def getter(self):
@@ -621,6 +752,7 @@ def generate_getter(
                                     mask,
                                     output_shape=output_shape,
                                     output_type=output_type,
+                                    columns=columns,
                                 ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
@@ -632,7 +764,11 @@ def generate_getter(
                             self,
                             f"_{name}",
                             cosmo_array(
-                                handle[field][...],
+                                # Only use column data if array is multidimensional, otherwise
+                                # we will crash here
+                                handle[field][:, columns]
+                                if handle[field].ndim > 1
+                                else handle[field][:],
                                 unit,
                                 cosmo_factor=cosmo_factor,
                                 name=description,
@@ -683,8 +819,8 @@ class __SWIFTParticleDataset(object):
 
     def __init__(self, particle_metadata: SWIFTParticleTypeMetadata):
         """
-        This function primarily calls the generate_getters_for_particle_types
-        function to ensure that we are reading correctly.
+        This function primarily calls the generate_empty_properties
+        function to ensure that defaults are set correctly.
         """
         self.filename = particle_metadata.filename
         self.units = particle_metadata.units
@@ -724,6 +860,30 @@ class __SWIFTParticleDataset(object):
         return
 
 
+class __SWIFTNamedColumnDataset(object):
+    """
+    Holder class for individual named datasets. Very similar to
+    __SWIFTParticleDataset but much simpler.
+    """
+
+    def __init__(self, field_path: str, named_columns: List[str], name: str):
+        self.field_path = field_path
+        self.named_columns = named_columns
+        self.name = name
+
+        # Need to initialise for the getter() call.
+        for column in named_columns:
+            setattr(self, f"_{column}", None)
+
+        return
+
+    def __str__(self):
+        return f'Named columns instance with {self.named_columns} available for "{self.name}"'
+
+    def __repr__(self):
+        return self.__str__()
+
+
 def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
@@ -759,6 +919,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     field_cosmologies = particle_metadata.field_cosmologies
     field_units = particle_metadata.field_units
     field_descriptions = particle_metadata.field_descriptions
+    field_named_columns = particle_metadata.named_columns
 
     dataset_iterator = zip(
         field_paths, field_names, field_cosmologies, field_units, field_descriptions
@@ -779,10 +940,10 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
         field_unit,
         field_description,
     ) in dataset_iterator:
-        setattr(
-            ThisDataset,
-            field_name,
-            property(
+        named_columns = field_named_columns[field_path]
+
+        if named_columns is None:
+            field_property = property(
                 generate_getter(
                     filename,
                     field_name,
@@ -795,8 +956,47 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
                 ),
                 generate_setter(field_name),
                 generate_deleter(field_name),
-            ),
-        )
+            )
+        else:
+            # TODO: Handle this case with recursion.
+
+            # Here we want to create an extra middleman object. So we can do something
+            # like {ptype}.{ThisNamedColumnDataset}.column_name. This follows from the
+            # above templating.
+            ThisNamedColumnDataset = type(
+                f"{particle_nice_name}{field_path.split('/')[-1]}Columns",
+                __SWIFTNamedColumnDataset.__bases__,
+                dict(__SWIFTNamedColumnDataset.__dict__),
+            )
+
+            for index, column in enumerate(named_columns):
+                setattr(
+                    ThisNamedColumnDataset,
+                    column,
+                    property(
+                        generate_getter(
+                            filename,
+                            column,
+                            field_path,
+                            unit=field_unit,
+                            mask=mask_array,
+                            mask_size=mask_size,
+                            cosmo_factor=field_cosmology,
+                            description=f"{field_description} [Column {index}, {column}]",
+                            columns=np.s_[index],
+                        ),
+                        generate_setter(column),
+                        generate_deleter(column),
+                    ),
+                )
+
+            field_property = ThisNamedColumnDataset(
+                field_path=field_path,
+                named_columns=named_columns,
+                name=field_description,
+            )
+
+        setattr(ThisDataset, field_name, field_property)
 
     empty_dataset = ThisDataset(particle_metadata)
 
@@ -849,6 +1049,9 @@ class SWIFTDataset(object):
         """
 
         return f"SWIFT dataset at {self.filename}."
+
+    def __repr__(self):
+        return self.__str__()
 
     def get_units(self):
         """
