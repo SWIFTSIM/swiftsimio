@@ -89,6 +89,12 @@ class SWIFTMetadata(object):
     metadata.
     """
 
+    filename: str
+    units: SWIFTUnits
+    header: dict
+
+    snapshot_date: datetime.datetime
+
     def __init__(self, filename, units: SWIFTUnits):
         self.filename = filename
         self.units = units
@@ -198,9 +204,18 @@ class SWIFTMetadata(object):
         # These are special cases, sorry!
         # Date and time of snapshot dump
         try:
-            self.snapshot_date = datetime.strptime(
-                self.header["Snapshot date"].decode("utf-8"), "%c\n"
-            )
+            try:
+                self.snapshot_date = datetime.strptime(
+                    self.header["Snapshot date"].decode("utf-8"), "%H:%M:%S %Y-%m-%d %Z"
+                )
+            except ValueError:
+                # Backwards compatibility; this was used previously due to simplicity
+                # but is not portable between regions. So if you ran a simulation on
+                # a British (en_GB) machine, and then tried to read on a Dutch
+                # machine (nl_NL), this would _not_ work because %c is different.
+                self.snapshot_date = datetime.strptime(
+                    self.header["Snapshot date"].decode("utf-8"), "%c\n"
+                )
         except KeyError:
             # Old file
             pass
@@ -426,8 +441,8 @@ class SWIFTParticleTypeMetadata(object):
     """
     Object that contains the metadata for one particle type. This, for, instance,
     could be part type 0, or 'gas'. This will load in the names of all particle datasets,
-    their units, and their cosmology, and present them for use in the actual
-    i/o routines.
+    their units, possible named fields, and their cosmology, and present them for use
+    in the actual i/o routines.
     """
 
     def __init__(
@@ -454,13 +469,14 @@ class SWIFTParticleTypeMetadata(object):
 
     def load_metadata(self):
         """
-        Workhorse function, loads the requried metadata.
+        Workhorse function, loads the required metadata.
         """
 
         self.load_field_names()
         self.load_field_units()
         self.load_field_descriptions()
         self.load_cosmology()
+        self.load_named_columns()
 
     def load_field_names(self):
         """
@@ -567,6 +583,13 @@ class SWIFTParticleTypeMetadata(object):
 
         with h5py.File(self.filename, "r") as handle:
             self.field_cosmologies = [get_cosmo(handle[x]) for x in self.field_paths]
+
+        return
+
+    def load_named_columns(self):
+        """
+        Loads the named column data for everything.
+        """
 
         return
 
