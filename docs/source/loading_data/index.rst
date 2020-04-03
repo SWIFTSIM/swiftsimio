@@ -171,6 +171,26 @@ this is very useful for making plots as it can ensure that your data and axes
 labels always have consistent units.
 
 
+Named columns
+-------------
+
+SWIFT can output custom metadata in ``SubgridScheme/NamedColumns`` for multi
+dimensional tables containing columns that carry individual data. One common
+example of this is the element mass fractions of gas and stellar particles.
+These are then placed in an object hierarchy, as follows:
+
+.. code-block:: python
+
+   data.gas.element_mass_fractions
+
+   >>> Named columns instance with ['hydrogen', 'helium', 'carbon', 'nitrogen',
+       'oxygen', 'neon', 'magnesium', 'silicon', 'iron'] available for
+       "Fractions of the particles' masses that are in the given element"
+
+   # Access the silicon abundance
+   data.gas.element_mass_fractions.silicon
+
+
 Non-unyt properties
 -------------------
 
