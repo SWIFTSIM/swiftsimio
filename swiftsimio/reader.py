@@ -23,7 +23,7 @@ import numpy as np
 
 from datetime import datetime
 
-from typing import Union, Callable
+from typing import Union, Callable, List
 
 
 class SWIFTUnits(object):
@@ -484,6 +484,9 @@ class SWIFTParticleTypeMetadata(object):
     def __str__(self):
         return f"Metadata class for PartType{self.particle_type} ({self.particle_name})"
 
+    def __repr__(self):
+        return self.__str__()
+
     def load_metadata(self):
         """
         Workhorse function, loads the required metadata.
@@ -816,8 +819,8 @@ class __SWIFTParticleDataset(object):
 
     def __init__(self, particle_metadata: SWIFTParticleTypeMetadata):
         """
-        This function primarily calls the generate_getters_for_particle_types
-        function to ensure that we are reading correctly.
+        This function primarily calls the generate_empty_properties
+        function to ensure that defaults are set correctly.
         """
         self.filename = particle_metadata.filename
         self.units = particle_metadata.units
@@ -857,6 +860,30 @@ class __SWIFTParticleDataset(object):
         return
 
 
+class __SWIFTNamedColumnDataset(object):
+    """
+    Holder class for individual named datasets. Very similar to
+    __SWIFTParticleDataset but much simpler.
+    """
+
+    def __init__(self, field_path: str, named_columns: List[str], name: str):
+        self.field_path = field_path
+        self.named_columns = named_columns
+        self.name = name
+
+        # Need to initialise for the getter() call.
+        for column in named_columns:
+            setattr(self, f"_{column}", None)
+
+        return
+
+    def __str__(self):
+        return f'Named columns instance with {self.named_columns} available for "{self.name}"'
+
+    def __repr__(self):
+        return self.__str__()
+
+
 def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
@@ -892,6 +919,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     field_cosmologies = particle_metadata.field_cosmologies
     field_units = particle_metadata.field_units
     field_descriptions = particle_metadata.field_descriptions
+    field_named_columns = particle_metadata.named_columns
 
     dataset_iterator = zip(
         field_paths, field_names, field_cosmologies, field_units, field_descriptions
@@ -912,10 +940,10 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
         field_unit,
         field_description,
     ) in dataset_iterator:
-        setattr(
-            ThisDataset,
-            field_name,
-            property(
+        named_columns = field_named_columns[field_path]
+
+        if named_columns is None:
+            field_property = property(
                 generate_getter(
                     filename,
                     field_name,
@@ -928,8 +956,47 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
                 ),
                 generate_setter(field_name),
                 generate_deleter(field_name),
-            ),
-        )
+            )
+        else:
+            # TODO: Handle this case with recursion.
+
+            # Here we want to create an extra middleman object. So we can do something
+            # like {ptype}.{ThisNamedColumnDataset}.column_name. This follows from the
+            # above templating.
+            ThisNamedColumnDataset = type(
+                f"{particle_nice_name}{field_path.split('/')[-1]}Columns",
+                __SWIFTNamedColumnDataset.__bases__,
+                dict(__SWIFTNamedColumnDataset.__dict__),
+            )
+
+            for index, column in enumerate(named_columns):
+                setattr(
+                    ThisNamedColumnDataset,
+                    column,
+                    property(
+                        generate_getter(
+                            filename,
+                            column,
+                            field_path,
+                            unit=field_unit,
+                            mask=mask_array,
+                            mask_size=mask_size,
+                            cosmo_factor=field_cosmology,
+                            description=f"{field_description} [Column {index}, {column}]",
+                            columns=np.s_[index],
+                        ),
+                        generate_setter(column),
+                        generate_deleter(column),
+                    ),
+                )
+
+            field_property = ThisNamedColumnDataset(
+                field_path=field_path,
+                named_columns=named_columns,
+                name=field_description,
+            )
+
+        setattr(ThisDataset, field_name, field_property)
 
     empty_dataset = ThisDataset(particle_metadata)
 
@@ -982,6 +1049,9 @@ class SWIFTDataset(object):
         """
 
         return f"SWIFT dataset at {self.filename}."
+
+    def __repr__(self):
+        return self.__str__()
 
     def get_units(self):
         """
