@@ -93,13 +93,12 @@ class SWIFTMetadata(object):
     units: SWIFTUnits
     header: dict
 
-    snapshot_date: datetime.datetime
-
     def __init__(self, filename, units: SWIFTUnits):
         self.filename = filename
         self.units = units
 
         self.get_metadata()
+        self.get_named_column_metadata()
 
         self.postprocess_header()
 
@@ -118,6 +117,24 @@ class SWIFTMetadata(object):
                     setattr(self, name, dict(handle[field].attrs))
                 except KeyError:
                     setattr(self, name, None)
+
+        return
+
+    def get_named_column_metadata(self):
+        """
+        Loads the custom named column metadata (if it exists) from
+        SubgridScheme/NamedColumns.
+        """
+
+        try:
+            with h5py.File(self.filename, "r") as handle:
+                data = handle["SubgridScheme/NamedColumns"]
+
+                self.named_columns = {
+                    k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
+                }
+        except KeyError:
+            self.named_columns = None
 
         return
 
@@ -588,8 +605,40 @@ class SWIFTParticleTypeMetadata(object):
 
     def load_named_columns(self):
         """
-        Loads the named column data for everything.
+        Loads the named column data for relevant fields.
         """
+
+        named_columns = {}
+
+        for field in self.field_paths:
+            property_name = field.split("/")[-1]
+
+            if property_name in self.metadata.named_columns.keys():
+                field_names = self.metadata.named_columns[property_name]
+
+                # Now need to make a decision on capitalisation. If we have a set of
+                # words with only one capital in them, then it's likely that they are
+                # element names or something similar, so they should be lower case.
+                # If on average we have many more capitals, then they are likely to be
+                # ionized fractions (e.g. HeII) and so we want to leave them with their
+                # original capitalisation.
+
+                num_capitals = lambda x: sum(1 for c in x if c.isupper())
+                mean_num_capitals = sum(map(num_capitals, field_names)) / len(
+                    field_names
+                )
+
+                if mean_num_capitals < 1.01:
+                    # Decapitalise them as they are likely individual element names
+                    formatted_field_names = [x.lower() for x in field_names]
+                else:
+                    formatted_field_names = field_names
+
+                named_columns[field] = formatted_field_names
+            else:
+                named_columns[field] = None
+
+        self.named_columns = named_columns
 
         return
 
