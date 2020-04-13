@@ -1,6 +1,16 @@
 SWIFTsimIO Changelog
 ====================
 
+v 3.1.0
+-------
+
+Projected quantities update:
+
++ Added six extra backends for use with projected SPH data to ensure converged
+  results even at low resolution. These can be used through the
+  `backend="x"` option within project_{quantity}`. See documentation for full
+  details.
+
 v 3.0.0
 -------
 
