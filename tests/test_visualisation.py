@@ -2,6 +2,7 @@ from swiftsimio import load
 from swiftsimio.visualisation import scatter, slice, volume_render
 from swiftsimio.visualisation.projection import scatter_parallel, project_gas
 from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
+from swiftsimio.visualisation.projection_backends import backends
 
 from tests.helper import requires
 
@@ -15,13 +16,18 @@ except:
 
 
 def test_scatter(save=False):
-    image = scatter(
-        np.array([0.0, 1.0, 1.0]),
-        np.array([0.0, 0.0, 1.0]),
-        np.array([1.0, 1.0, 1.0]),
-        np.array([0.2, 0.2, 0.2]),
-        256,
-    )
+    """
+    Tests the scatter functions from all backends.
+    """
+
+    for backend in backends.values():
+        image = backend(
+            np.array([0.0, 1.0, 1.0]),
+            np.array([0.0, 0.0, 1.0]),
+            np.array([1.0, 1.0, 1.0]),
+            np.array([0.2, 0.2, 0.2]),
+            256,
+        )
 
     if save:
         imsave("test_image_creation.png", image)

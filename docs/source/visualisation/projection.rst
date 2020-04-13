@@ -82,6 +82,53 @@ this:
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
 
 
+Backends
+--------
+
+In certain cases, rather than just using this facility for visualisation, you
+will wish that the values that are returned to be as well converged as
+possible. For this, we provide several different backends. These are passed
+as ``backend="str"`` to all of the projection visualisation functions, and
+are available in the module
+:mod:`swiftsimio.visualisation.projection.projection_backends`. The available
+backends are as follows:
+
++ ``fast``: The default backend - this is extremely fast, and provides very basic
+  smoothing, with a return type of single precision floating point numbers.
++ ``histogram``: This backend provides zero smoothing, and acts in a similar way
+  to the ``np.hist2d`` function but with the same arguments as ``scatter``.
++ ``reference``: The same backend as ``fast`` but with two distinguishing features;
+  all calculations are performed in double precision, and it will return early
+  with a warning message if there are not enough pixels to fully resolve each kernel.
+  Regular users should not use this mode.
++ ``renormalised``: The same as ``fast``, but each kernel is evaluated twice and
+  renormalised to ensure mass conservation within floating point precision. Returns
+  single precision arrays.
++ ``subsampled``: This is the recommended mode for users who wish to have converged
+  results even at low resolution. Each kernel is evaluated at least 32 times, with
+  overlaps between pixels considered for every single particle. Returns in
+  double precision.
++ ``subsampled_extreme``: The same as ``subsampled``, but provides 64 kernel
+  evaluations.
+
+Example:
+
+.. code-block:: python
+
+   from swiftsimio import load
+   from swiftsimio.visualisation.projection import project_gas
+
+   data = load("my_snapshot_0000.hdf5")
+
+   subsampled_array = project_gas(
+      data,
+      resolution=1024,
+      project="star_formation_rates",
+      parallel=True,
+      backend="subsampled"
+   )
+
+
 Rotations
 ---------
 
@@ -231,6 +278,10 @@ This API is available through
 version. The parallel version uses significantly more memory as it allocates
 a thread-local image array for each thread, summing them in the end. Here we
 will only describe the ``scatter`` variant, but they behave in the exact same way.
+
+By default this uses the "fast" backend. To use the others, you can select them
+manually from the module, or by using the ``backends`` and ``backends_parallel``
+dictionaries in :mod:`swiftsimio.visualisation.projection`.
 
 To use this function, you will need:
 
