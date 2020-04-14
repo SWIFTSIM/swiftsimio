@@ -18,6 +18,7 @@ class SWIFTMask(object):
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
     """
+    # ALEXEI: expand docs
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
         """
@@ -31,6 +32,7 @@ class SWIFTMask(object):
         considerably more memory efficient (~ bytes per cell, rather than ~ bytes
         per particle).
         """
+        # ALEXEI: Add thorough docs on params, return, examples
 
         self.metadata = metadata
         self.units = metadata.units
@@ -46,6 +48,7 @@ class SWIFTMask(object):
         Generates the empty (i.e. all False) masks for all available particle
         types.
         """
+        # ALEXEI: add return, examples docs
 
         for ptype in self.metadata.present_particle_names:
             setattr(
@@ -59,6 +62,7 @@ class SWIFTMask(object):
         Unpacks the cell metadata into local (to the class) variables. We do not
         read in information for empty cells.
         """
+        # ALEXEI: add return, examples docs
 
         # Reset this in case for any reason we have messed them up
 
@@ -122,6 +126,7 @@ class SWIFTMask(object):
 
         Note that the quantities must have units attached.
         """
+        # ALEXEI: add param, return, examples docs
 
         if self.spatial_only:
             print("You cannot constrain a mask if spatial_only=True")
@@ -178,6 +183,7 @@ class SWIFTMask(object):
 
         These values must have units associated with them.
         """
+        # ALEXEI: add param, return, examples docs
 
         cell_mask = np.ones(len(self.centers), dtype=bool)
 
@@ -231,6 +237,7 @@ class SWIFTMask(object):
         initially that we want to write all particles in, and we want to
         respect other masks that may have been applied to the data.
         """
+        # ALEXEI: add param, return, examples docs
 
         if self.spatial_only:
             counts = self.counts[ptype][cell_mask]
@@ -274,6 +281,7 @@ class SWIFTMask(object):
         If you would like to further refine this afterwards, please use the
         constrain_mask method.
         """
+        # ALEXEI: add param, return, examples docs
 
         cell_mask = self._generate_cell_mask(restrict)
 
@@ -291,6 +299,7 @@ class SWIFTMask(object):
 
         If you don't know what you are doing please don't use this.
         """
+        # ALEXEI: add param, return, examples docs
 
         if self.spatial_only:
             # We are already done!

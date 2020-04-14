@@ -35,6 +35,7 @@ def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
 
     units respectively.
     """
+    # ALEXEI: add param, return, examples docs, improve variable names?
 
     # Do not include those items that do not have units.
     units = {"boxsize": l, "mass_table": m}
@@ -66,6 +67,7 @@ def generate_units_header_unpack_single_float(m, l, t, I, T) -> dict:
 
     units respectively.
     """
+    # ALEXEI: add param, return, examples docs. Improve variable names?
 
     units = {"time": t, "t": t}
 

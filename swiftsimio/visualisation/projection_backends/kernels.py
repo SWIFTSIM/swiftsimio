@@ -23,6 +23,7 @@ def kernel_single_precision(r: float32, H: float32):
     radius of compact support) and it returns the contribution to the
     density.
     """
+    # ALEXEI: add param, return, examples docs
     kernel_constant = float32(2.22817109)
 
     inverse_H = 1.0 / H
@@ -52,6 +53,7 @@ def kernel_double_precision(r: float64, H: float64):
     radius of compact support) and it returns the contribution to the
     density.
     """
+    # ALEXEI: add param, return, examples docs
     kernel_constant = float64(2.22817109)
 
     inverse_H = 1.0 / H

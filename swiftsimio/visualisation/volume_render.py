@@ -34,6 +34,7 @@ def scatter(
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
     """
+    # ALEXEI: add param, return, examples docs
     # Output array for our image
     image = zeros((res, res, res), dtype=float32)
     maximal_array_index = int32(res)
@@ -115,6 +116,7 @@ def scatter_parallel(
     Same as scatter, but executes in parallel! This is actually trivial,
     we just make NUM_THREADS images and add them together at the end.
     """
+        # ALEXEI: add param, return, examples docs
 
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
@@ -177,6 +179,7 @@ def render_gas_voxel_grid(
     Note that particles outside of this range are still considered if their
     smoothing lengths overlap with the range.
     """
+        # ALEXEI: add param, return, examples docs
 
     number_of_gas_particles = data.gas.particle_ids.size
 
@@ -263,6 +266,7 @@ def render_gas(
     Note that particles outside of this range are still considered if their
     smoothing lengths overlap with the range.
     """
+        # ALEXEI: add param, return, examples docs
 
     image = render_gas_voxel_grid(data, resolution, project, parallel, region=region)
 

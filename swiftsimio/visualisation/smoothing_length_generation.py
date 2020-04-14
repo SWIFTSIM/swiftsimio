@@ -40,6 +40,7 @@ def generate_smoothing_lengths(
 
     + smoothing lengths, an unyt array of smoothing lengths.
     """
+    # ALEXEI: add param, return, examples docs
 
     if not TREE_AVAILABLE:
         raise ImportError(

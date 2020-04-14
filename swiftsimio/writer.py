@@ -23,6 +23,7 @@ class __SWIFTWriterParticleDataset(object):
     set. Perhaps one day they will be merged, but for now this keeps the
     code used to manage both simple.
     """
+    # ALEXEI: further docs/clean up?
 
     def __init__(self, unit_system: Union[unyt.UnitSystem, str], particle_type: int):
         """
@@ -33,6 +34,7 @@ class __SWIFTWriterParticleDataset(object):
         The other parameter is the particle type, with 0 corresponding to gas, etc.
         as usual.
         """
+        # ALEXEI: add param, return, examples docs
 
         self.unit_system = unit_system
         self.particle_type = particle_type
@@ -52,6 +54,7 @@ class __SWIFTWriterParticleDataset(object):
         setter and getters. We initially set all of the _{name} values
         to None. Note that we only generate required properties.
         """
+        # ALEXEI: add return, examples docs
 
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             setattr(self, f"_{name}", None)
@@ -62,6 +65,7 @@ class __SWIFTWriterParticleDataset(object):
         """
         Checks if all required datasets are empty.
         """
+        # ALEXEI: add return, examples docs
 
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             if getattr(self, f"_{name}") is not None:
@@ -81,6 +85,7 @@ class __SWIFTWriterParticleDataset(object):
         + self.n_part is set with the total number of particles of this type
         + self.requires_particle_ids_before_write is set to a boolean.
         """
+        # ALEXEI: add return, examples docs
 
         self.requires_particle_ids_before_write = False
 
@@ -115,6 +120,7 @@ class __SWIFTWriterParticleDataset(object):
         This only works for a uniform boxsize (i.e. one that has the same length in all dimensions).
         If boxsize is a list, we just use the 0th member.
         """
+        # ALEXEI: add param, return, examples docs
 
         try:
             boxsize = boxsize[0]
@@ -134,6 +140,7 @@ class __SWIFTWriterParticleDataset(object):
         """
         Writes the particle group's required properties to file.
         """
+        # ALEXEI: add param, return, examples docs
 
         particle_group = file_handle.create_group(self.particle_handle)
 
@@ -156,6 +163,7 @@ def generate_getter(name: str):
     """
     Generates a function that gets the unyt array for name.
     """
+    # ALEXEI: add param, return, examples docs
 
     def getter(self):
         return getattr(self, f"_{name}")
@@ -170,6 +178,7 @@ def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, s
     It also checks that value is of type unyt array. Dimensions are the dimensions
     of the named object. These are checked for consistency here.
     """
+    # ALEXEI: add param, return, examples docs
 
     def setter(self, value: unyt.unyt_array):
         if dimensions is not 1:
@@ -196,6 +205,7 @@ def generate_deleter(name: str):
     """
     Generates a function that destroys self._name (sets it back to None).
     """
+    # ALEXEI: add param, return, examples docs
 
     def deleter(self):
         current_value = getattr(self, f"_{name}")
@@ -228,6 +238,7 @@ def generate_dataset(
     to be accessed from outside by using SWIFTWriterParticleDataset.name, where
     the name is, for example, coordinates.
     """
+        # ALEXEI: add param, return, examples docs
 
     particle_name = metadata.particle_types.particle_name_underscores[particle_type]
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
@@ -290,6 +301,7 @@ class SWIFTWriterDataset(object):
         available. If you are generating initial conditions for a dimensionality
         other than 3, you will want to set the (integer) dimension parameter.
         """
+        # ALEXEI: add param, return, examples docs
         self.unit_fields_generate_units = unit_fields_generate_units
         if isinstance(unit_system, str):
             self.unit_system = unyt.unit_systems.unit_system_registry[unit_system]
@@ -316,6 +328,7 @@ class SWIFTWriterDataset(object):
         return
 
     def create_particle_datasets(self):
+        # ALEXEI: add return, examples docs
         for number, name in metadata.particle_types.particle_name_underscores.items():
             setattr(
                 self,
@@ -331,6 +344,7 @@ class SWIFTWriterDataset(object):
         """
         (Re-)generates all particle IDs for groups with names in names_to_write.
         """
+        # ALEXEI: add param, return, examples docs
 
         numbers_of_particles = [getattr(self, name).n_part for name in names_to_write]
         already_used = 0
@@ -348,6 +362,7 @@ class SWIFTWriterDataset(object):
         Writes metadata to file based on the information passed to the object
         and the information in the particle groups.
         """
+        # ALEXEI: add param, return, examples docs
         part_types = max(metadata.particle.particle_name_underscores.keys()) + 1
         number_of_particles = [0] * part_types
         mass_table = [0.0] * part_types
@@ -385,6 +400,7 @@ class SWIFTWriterDataset(object):
 
         Note that we do not have support for unit current yet.
         """
+        # ALEXEI: add param, return, examples docs
 
         dim = unyt.dimensions
         cgs_base = unyt.unit_systems.cgs_unit_system.base_units
@@ -420,6 +436,7 @@ class SWIFTWriterDataset(object):
         """
         Writes the information in the dataset to file.
         """
+        # ALEXEI: add param, return, examples docs
 
         names_to_write = []
         generate_ids = False

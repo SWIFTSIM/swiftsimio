@@ -20,9 +20,11 @@ class InvalidScaleFactor(Exception):
     """
 
     def __init__(self, message=None, *args):
+        # ALEXEI: numpy standard requests some constructor docs
         self.message = message
 
     def __str__(self):
+        # ALEXEI: do we need docs here?
         return f"InvalidScaleFactor: {self.message}"
 
 
@@ -43,13 +45,16 @@ class cosmo_factor:
 
     density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
     """
+    # ALEXEI: organise these docs
 
     def __init__(self, expr, scale_factor):
+        # ALEXEI: numpy standard requests some constructor docs
         self.expr = expr
         self.scale_factor = scale_factor
         pass
 
     def __str__(self):
+        # ALEXEI: do we need docs here?
         return str(self.expr) + f" at a={self.scale_factor}"
 
     @property
@@ -57,6 +62,7 @@ class cosmo_factor:
         """
         The a-factor for the unit, e.g. for density this is 1 / a**3.
         """
+        # ALEXEI: add return, examples docs
         return float(self.expr.subs(a, self.scale_factor))
 
     @property
@@ -64,9 +70,11 @@ class cosmo_factor:
         """
         Compute the redshift from the scale factor.
         """
+        # ALEXEI: add return, examples docs
         return (1.0 / self.scale_factor) - 1.0
 
     def __add__(self, b):
+        # ALEXEI: add param, return, examples docs
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to add two cosmo_factors with different scale factors "
@@ -82,6 +90,7 @@ class cosmo_factor:
         return cosmo_factor(expr=self.expr, scale_factor=self.scale_factor)
 
     def __sub__(self, b):
+        # ALEXEI: add param, return, examples docs
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to subtract two cosmo_factors with different scale factors "
@@ -97,6 +106,7 @@ class cosmo_factor:
         return cosmo_factor(expr=self.expr, scale_factor=self.scale_factor)
 
     def __mul__(self, b):
+        # ALEXEI: add param, return, examples docs
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to subtract two cosmo_factors with different scale factors "
@@ -106,6 +116,7 @@ class cosmo_factor:
         return cosmo_factor(expr=self.expr * b.expr, scale_factor=self.scale_factor)
 
     def __div__(self, b):
+        # ALEXEI: add param, return, examples docs
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to subtract two cosmo_factors with different scale factors "
@@ -115,36 +126,47 @@ class cosmo_factor:
         return cosmo_factor(expr=self.expr / b.expr, scale_factor=self.scale_factor)
 
     def __radd__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.__add__(b)
 
     def __rsub__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.__sub__(b)
 
     def __rmul__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.__mul__(b)
 
     def __rdiv__(self, b):
+        # ALEXEI: add param, return, examples docs
         return b.__div__(self)
 
     def __pow__(self, p):
+        # ALEXEI: add param, return, examples docs
         return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.a_factor < b.a_factor
 
     def __gt__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.a_factor > b.a_factor
 
     def __le__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.a_factor <= b.a_factor
 
     def __ge__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.a_factor >= b.a_factor
 
     def __eq__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.a_factor == b.a_factor
 
     def __ne__(self, b):
+        # ALEXEI: add param, return, examples docs
         return self.a_factor != b.a_factor
 
 
@@ -184,6 +206,7 @@ class cosmo_array(unyt_array):
         """
         Essentially a copy of the __new__ constructor.
         """
+        # ALEXEI: add param, return, examples docs
 
         try:
             obj = super().__new__(
@@ -214,6 +237,7 @@ class cosmo_array(unyt_array):
         return obj
 
     def __str__(self):
+        # ALEXEI: do we need docs here?
         if self.comoving:
             comoving_str = "(Comoving)"
         else:
@@ -225,6 +249,7 @@ class cosmo_array(unyt_array):
         """
         Convert the internal data to be in comoving units.
         """
+        # ALEXEI: add return, examples docs
         if self.comoving:
             return
         else:
@@ -238,6 +263,7 @@ class cosmo_array(unyt_array):
         """
         Convert the internal data to be in physical units.
         """
+        # ALEXEI: add return, examples docs
         if self.comoving:
             # Best to just modify values as otherwise we're just going to have
             # to do a convert_to_units anyway.
@@ -251,6 +277,7 @@ class cosmo_array(unyt_array):
         """
         Returns a copy of the data in physical units.
         """
+        # ALEXEI: add return, examples docs
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_physical()
 
@@ -260,6 +287,7 @@ class cosmo_array(unyt_array):
         """
         Returns a copy of the data in comoving units.
         """
+        # ALEXEI: add return, examples docs
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_comoving()
 

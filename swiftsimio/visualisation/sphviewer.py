@@ -21,6 +21,7 @@ class SPHViewerWrapper(object):
     """
     Wrapper for Py-SPHViewer to use SWIFTsimIO data structures.
     """
+    # ALEXEI: additional class docs?
 
     # Forward declarations
     # Internal smoothing lengths that are used in the case where we
@@ -48,6 +49,7 @@ class SPHViewerWrapper(object):
         
         Then, we can use any data available in that object to render the system.
         """
+        # ALEXEI: numpy standard requests some constructor docs, put in proper format
 
         if not SPHVIEWER_AVAILABLE:
             raise ImportError("Unable to find py-sphviewer on your system")
@@ -77,6 +79,7 @@ class SPHViewerWrapper(object):
         continue to create the smoothing lengths using an internal tree
         structure.
         """
+        # ALEXEI: add param, return, examples docs
 
         # Parameters required to generate smoothing lengths
         number_of_neighbours = int(
@@ -110,6 +113,7 @@ class SPHViewerWrapper(object):
         
         Requires the setting of the smoothing lengths first.
         """
+        # ALEXEI: add return, examples docs
 
         if self._internal_smoothing_lengths is None:
             raise AssertionError(
@@ -141,6 +145,7 @@ class SPHViewerWrapper(object):
         Sets a sensible value for the camera based on the camera's built in
         properties.
         """
+        # ALEXEI: add return, examples docs
 
         self.camera = viewer.Camera()
         self.camera.set_autocamera(self.particles)
@@ -175,6 +180,7 @@ class SPHViewerWrapper(object):
         + xsize, ysize: Pixel size of your output
         + extent: Area to render between
         """
+        # ALEXEI: add param, return, examples docs
 
         def convert_if_not_none(parameter):
             # Convert our parameter to the length units of the rest of
@@ -209,6 +215,7 @@ class SPHViewerWrapper(object):
         we use the internal self.camera. If this is not set, then we raise
         an AttributeError.
         """
+        # ALEXEI: add param, return, examples docs
 
         if camera is not None:
             self.scene = viewer.Scene(self.particles, camera)
@@ -231,6 +238,7 @@ class SPHViewerWrapper(object):
         We also provide .image and .extent as values that represent the render's
         image and extent including the input units.
         """
+        # ALEXEI: add param, return, examples docs
 
         self.render = viewer.Render(self.scene)
 
@@ -248,6 +256,7 @@ class SPHViewerWrapper(object):
 
         Here you must call 
         """
+        # ALEXEI: add param, return, examples docs
 
         self.get_autocamera()
         self.camera.set_params(xsize=xsize, ysize=ysize, r=r, **kwargs)

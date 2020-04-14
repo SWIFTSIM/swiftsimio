@@ -15,6 +15,8 @@ from typing import Callable
 # DEPRECATED: This should not be used any more by real code as we now
 # read anything directly out of the snapshots.
 
+# ALEXEI: explicitly mark functions as deprecated and add bare-bones docs
+
 
 def generate_units(m, l, t, I, T):
     """
@@ -24,6 +26,7 @@ def generate_units(m, l, t, I, T):
 
     units respectively.
     """
+    # ALEXEI: add param, return, examples docs
 
     shared = {
         "coordinates": l,
@@ -100,6 +103,7 @@ def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units
     """
     Gets the dimensions for the above.
     """
+    # ALEXEI: add param, return, examples docs
 
     units = generate_unit_func(g, cm, s, statA, K)
 

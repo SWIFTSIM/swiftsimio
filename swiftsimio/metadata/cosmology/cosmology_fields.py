@@ -6,6 +6,8 @@ from swiftsimio.objects import cosmo_factor, a
 
 # DEPRECATED: This information is now directly read out of the snapshots.
 
+# ALEXEI: mark everything as deprecated in addition to adding some bare-bones docs
+
 
 def generate_cosmology(scale_factor: float, gamma: float):
     """
@@ -14,6 +16,7 @@ def generate_cosmology(scale_factor: float, gamma: float):
 
     Gives comoving -> physical.
     """
+    # ALEXEI: add param, return, examples docs
 
     def cosmo_factory(a_dependence):
         return cosmo_factor(a_dependence, scale_factor)

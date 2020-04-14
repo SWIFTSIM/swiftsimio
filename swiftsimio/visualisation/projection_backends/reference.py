@@ -38,6 +38,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
     """
+    # ALEXEI: add param, return, examples docs
     # Output array for our image
     image = zeros((res, res), dtype=float64)
     maximal_array_index = int32(res)
@@ -111,6 +112,7 @@ def scatter_parallel(
     Same as scatter, but executes in parallel! This is actually trivial,
     we just make NUM_THREADS images and add them together at the end.
     """
+    # ALEXEI: add param, return, examples docs
 
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS

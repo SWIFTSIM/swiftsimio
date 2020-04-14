@@ -55,6 +55,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     The input array must have type int.
     """
+    # ALEXEI: put these docs into proper format
 
     output = []
 
@@ -149,6 +150,7 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 
     This is not currently a feature of h5py. (March 2019)
     """
+    # ALEXEI: add params, return, examples
 
     output_type = handle[0].dtype
     output_size = mask_array.size

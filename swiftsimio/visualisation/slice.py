@@ -25,6 +25,7 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
     radius of compact support) and it returns the contribution to the
     density.
     """
+    # ALEXEI: add param, return, examples docs
     inverse_H = 1.0 / H
     ratio = r * inverse_H
 
@@ -69,6 +70,7 @@ def slice_scatter(
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
     """
+    # ALEXEI: add param, return, examples docs
     # Output array for our image
     image = zeros((res, res), dtype=float32)
     maximal_array_index = int32(res)
@@ -150,6 +152,7 @@ def slice_scatter_parallel(
     Same as scatter, but executes in parallel! This is actually trivial,
     we just make NUM_THREADS images and add them together at the end.
     """
+    # ALEXEI: add param, return, examples docs
 
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
@@ -215,6 +218,7 @@ def slice_gas_pixel_grid(
     Note that particles outside of this range are still considered if their
     smoothing lengths overlap with the range.
     """
+    # ALEXEI: add param, return, examples docs
 
     if slice > 1.0 or slice < 0.0:
         raise ValueError("Please enter a slice value between 0.0 and 1.0 in slice_gas.")
@@ -306,6 +310,7 @@ def slice_gas(
     Note that particles outside of this range are still considered if their
     smoothing lengths overlap with the range.
     """
+    # ALEXEI: add param, return, examples docs
 
     image = slice_gas_pixel_grid(data, resolution, slice, project, parallel, region)
 

@@ -16,6 +16,7 @@ def validate_file(filename):
     """
     Checks that the provided file is a SWIFT dataset.
     """
+    # ALEXEI: add param, return, examples docs
     try:
         with h5py.File(filename, "r") as handle:
             if handle["Code"].attrs["Code"] != b"SWIFT":
@@ -37,6 +38,7 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
     more expensive, ~bytes per particle instead of ~bytes per cell
     spatial_only=False version).
     """
+    # ALEXEI: add param, return, examples docs
 
     units = SWIFTUnits(filename)
     metadata = SWIFTMetadata(filename, units)
@@ -48,6 +50,7 @@ def load(filename, mask=None) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
     """
+    # ALEXEI: add param, return, examples docs
 
     return SWIFTDataset(filename, mask=mask)
 
