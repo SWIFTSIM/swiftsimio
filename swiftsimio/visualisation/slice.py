@@ -94,6 +94,12 @@ def slice_scatter(
     ndarray of float32
         output array for scatterplot image
     
+    See Also
+    --------
+    scatter : Create 3D scatter plot of SWIFT data
+    scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
+    slice_scatter_parallel : Create scatter plot of a slice of data in parallel
+
     Notes
     -----
     Explicitly defining the types in this function allows
@@ -204,6 +210,12 @@ def slice_scatter_parallel(
     ndarray of float32
         output array for scatterplot image
     
+    See Also
+    --------
+    scatter : Create 3D scatter plot of SWIFT data
+    scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
+    slice_scatter : Create scatter plot of a slice of data
+
     Notes
     -----
     ALEXEI: Check with Josh, do these notes still hold?
@@ -290,8 +302,12 @@ def slice_gas_pixel_grid(
     Returns
     -------
     ndarray of float32
-        Creates a `resolution` x `resolution` array and returns it, without appropriate
-        units.
+        Creates a `resolution` x `resolution` array and returns it, 
+        without appropriate units.
+
+    See Also
+    --------
+    render_gas_voxel_grid : Creates a 3D voxel grid from a SWIFT dataset
 
     """
 
@@ -396,8 +412,13 @@ def slice_gas(
     Returns
     -------
     ndarray of float32
-        Creates a `resolution` x `resolution` array and returns it, without appropriate
-        units.
+        a `resolution` x `resolution` array of the contribution
+        of the projected data field to the voxel grid from all of the particles
+
+    See Also
+    --------
+    slice_gas_pixel grid : Creates a 2D slice of a SWIFT dataset 
+    render_gas : Creates a 3D voxel grid of a SWIFT dataset with appropriate units
 
     Notes
     -----
