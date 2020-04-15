@@ -18,22 +18,22 @@ def scatter(
     x: float64, y: float64, z: float64, m: float32, h: float32, res: int
 ) -> ndarray:
     r"""
-    Creates a weighted voxel grid:
+    Creates a weighted voxel grid
 
-    Compute contributions to a voxel grid from particles with positions
+    Computes contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.
     This ignores boundary effects.
     Parameters
     ----------
-    x : array of float64 
+    x : np.array[float64]
         array of x-positions of the particles. Must be bounded by [0, 1].
-    y : array of float64 
+    y : np.array[float64]
         array of y-positions of the particles. Must be bounded by [0, 1].
-    z : array of float64 
+    z : np.array[float64]
         array of z-positions of the particles. Must be bounded by [0, 1].
-    m : array of float32 
+    m : np.array[float32]
         array of masses (or otherwise weights) of the particles
-    h : array of float32 
+    h : np.array[float32]
         array of smoothing lengths of the particles
     res : int
         the number of voxels along one axis, i.e. this returns a cube
@@ -41,7 +41,7 @@ def scatter(
 
     Returns
     -------
-    ndarray of float32
+    np.array[float32, float32, float32]
         voxel grid of quantity 
     
     See Also
