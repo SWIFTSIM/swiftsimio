@@ -17,15 +17,31 @@ kernel_constant = 21.0 * 0.31830988618379067154 / 2.0
 
 @jit(nopython=True, fastmath=True)
 def kernel(r: Union[float, float32], H: Union[float, float32]):
-    """
-    Kernel implementation for swiftsimio. This is the Wendland-C2
-    kernel as shown in Denhen & Aly (2012).
+    r"""
+    Kernel implementation for swiftsimio. 
 
-    Give it a radius and a kernel width (i.e. not a smoothing length, but the
-    radius of compact support) and it returns the contribution to the
-    density.
+    Parameters
+    ----------
+    r : float or float32
+        Distance from particle
+
+    H : float or float32
+        Kernel width (i.e. radius of compact support of kernel)
+
+    Returns
+    -------
+    float
+        Contribution to density by particle at distance `r`
+
+    Notes
+    -----
+    Swiftsimio uses the Wendland-C2 kernel as described in [1]_.
+
+    References
+    ----------
+    .. [1] Denhen & Aly (2012) ALEXEI: add proper citation
+
     """
-    # ALEXEI: add param, return, examples docs
     inverse_H = 1.0 / H
     ratio = r * inverse_H
 
@@ -53,24 +69,37 @@ def slice_scatter(
     z_slice: float64,
     res: int,
 ) -> ndarray:
-    """
-    Creates a slice-scatter plot of:
+    r"""
+    Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
 
-    + x: the x-positions of the particles. Must be bounded by [0, 1].
-    + y: the y-positions of the particles. Must be bounded by [0, 1].
-    + z: the z-positions of the particles. Must be bounded by [0, 1].
-    + m: the masses (or otherwise weights) of the particles
-    + h: the smoothing lengths of the particles
-    + z_slice: the position at which we wish to create the slice
-    + res: the number of pixels.
+    Parameters
+    ----------
+    x : array of float64
+        x-positions of the particles. Must be bounded by [0, 1].
+    y : array of float64
+        y-positions of the particles. Must be bounded by [0, 1].
+    z : array of float64
+        z-positions of the particles. Must be bounded by [0, 1].
+    m : array of float32
+        masses (or otherwise weights) of the particles
+    h : array of float32
+        smoothing lengths of the particles
+    z_slice : float64
+        the position at which we wish to create the slice
+    res : int
+        the number of pixels.
+
+    Returns
+    -------
+    ndarray of float32
+        output array for scatterplot image
     
-    This ignores boundary effects.
-
-    Note that explicitly defining the types in this function allows
+    Notes
+    -----
+    Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
     """
-    # ALEXEI: add param, return, examples docs
     # Output array for our image
     image = zeros((res, res), dtype=float32)
     maximal_array_index = int32(res)
@@ -148,11 +177,42 @@ def slice_scatter_parallel(
     z_slice: float64,
     res: int,
 ) -> ndarray:
+    r"""
+    Parallel implementation of slice_scatter
+    
+    Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
+
+    Parameters
+    ----------
+    x : array of float64
+        x-positions of the particles. Must be bounded by [0, 1].
+    y : array of float64
+        y-positions of the particles. Must be bounded by [0, 1].
+    z : array of float64
+        z-positions of the particles. Must be bounded by [0, 1].
+    m : array of float32
+        masses (or otherwise weights) of the particles
+    h : array of float32
+        smoothing lengths of the particles
+    z_slice : float64
+        the position at which we wish to create the slice
+    res : int
+        the number of pixels.
+
+    Returns
+    -------
+    ndarray of float32
+        output array for scatterplot image
+    
+    Notes
+    -----
+    ALEXEI: Check with Josh, do these notes still hold?
+    Explicitly defining the types in this function allows
+    for a 25-50% performance improvement. In our testing, using numpy
+    floats and integers is also an improvement over using the numba ones.
     """
-    Same as scatter, but executes in parallel! This is actually trivial,
-    we just make NUM_THREADS images and add them together at the end.
-    """
-    # ALEXEI: add param, return, examples docs
+    #Same as scatter, but executes in parallel! This is actually trivial,
+    #we just make NUM_THREADS images and add them together at the end.
 
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
@@ -193,32 +253,47 @@ def slice_gas_pixel_grid(
     region: Union[None, unyt_array] = None,
 ):
     r"""
-    Creates a 2D slice of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
-    W_{ij}).
+    Creates a 2D slice of a SWIFT dataset, weighted by data field, in the
+    form of a pixel grid.
 
-    The 'slice' is given in the z direction as a ratio of the boxsize.
+    Parameters
+    ----------
+    data : SWIFTDataset
+        Dataset from which slice is extracted
+
+    resolution : int
+        Specifies size of return array
+        
+    slice : float
+        Specifies the location along the z-axis where the slice is to be
+        extracted as a fraction of boxsize.
+
+    project : str, optional
+        Data field to be projected. Default is mass. If None then simply
+        count number of particles (ALEXEI: check wording with Josh)
     
-    Default projection variable is mass. If it is None, then we don't
-    weight.
+    parallel : bool
+        used to determine if we will create the image in parallel. This 
+        defaults to False, but can speed up the creation of large images 
+        significantly at the cost of increased memory usage.
 
-    Creates a resolution x resolution array and returns it, without appropriate
-    units.
-
-    The parallel argument is used to determine if we will create the image
-    in parallel. This defaults to False, but can speed up the creation of large
-    images significantly at the cost of increased memory usage.
-
-    The final argument, region, determines where the image will be created
-    (this corresponds to the left and right-hand edges, and top and bottom edges)
-    if it is not None. It should have a length of four, and take the form:
+    region : array, optional
+        determines where the image will be created
+        (this corresponds to the left and right-hand edges, and top and bottom edges)
+        if it is not None. It should have a length of four, and take the form:
 
         [x_min, x_max, y_min, y_max]
 
-    Note that particles outside of this range are still considered if their
-    smoothing lengths overlap with the range.
+        Particles outside of this range are still considered if their
+        smoothing lengths overlap with the range.
+
+    Returns
+    -------
+    ndarray of float32
+        Creates a `resolution` x `resolution` array and returns it, without appropriate
+        units.
+
     """
-    # ALEXEI: add param, return, examples docs
 
     if slice > 1.0 or slice < 0.0:
         raise ValueError("Please enter a slice value between 0.0 and 1.0 in slice_gas.")
@@ -285,32 +360,50 @@ def slice_gas(
     region: Union[None, unyt_array] = None,
 ):
     r"""
-    Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
-    W_{ij}).
+    Creates a 2D slice of a SWIFT dataset, weighted by data field
+
+    Parameters
+    ----------
+    data : SWIFTDataset
+        Dataset from which slice is extracted
+
+    resolution : int
+        Specifies size of return array
+        
+    slice : float
+        Specifies the location along the z-axis where the slice is to be
+        extracted as a fraction of boxsize.
+
+    project : str, optional
+        Data field to be projected. Default is mass. If None then simply
+        count number of particles (ALEXEI: check wording with Josh)
     
-    The 'slice' is given in the z direction as a ratio of the boxsize.
+    parallel : bool
+        used to determine if we will create the image in parallel. This 
+        defaults to False, but can speed up the creation of large images 
+        significantly at the cost of increased memory usage.
 
-    Default projection variable is mass. If it is None, then we don't
-    weight.
+    region : array, optional
+        determines where the image will be created
+        (this corresponds to the left and right-hand edges, and top and bottom edges)
+        if it is not None. It should have a length of four, and take the form:
 
-    Creates a resolution x resolution array and returns it, with appropriate
-    units.
+        [x_min, x_max, y_min, y_max]
 
-    The parallel argument is used to determine if we will create the image
-    in parallel. This defaults to False, but can speed up the creation of large
-    images significantly at the cost of increased memory usage.
+        Particles outside of this range are still considered if their
+        smoothing lengths overlap with the range.
 
-    The final argument, region, determines where the image will be created
-    (this corresponds to the left and right-hand edges, and top and bottom edges)
-    if it is not None. It should have a length of four, and take the form:
+    Returns
+    -------
+    ndarray of float32
+        Creates a `resolution` x `resolution` array and returns it, without appropriate
+        units.
 
-        [x_min, x_max, y_min, y_max].
-
-    Note that particles outside of this range are still considered if their
-    smoothing lengths overlap with the range.
+    Notes
+    -----
+    This is a wrapper function for slice_gas_pixel_grid ensuring that output units are
+    appropriate
     """
-    # ALEXEI: add param, return, examples docs
 
     image = slice_gas_pixel_grid(data, resolution, slice, project, parallel, region)
 
