@@ -20,8 +20,24 @@ from .smoothing_length_generation import generate_smoothing_lengths
 class SPHViewerWrapper(object):
     """
     Wrapper for Py-SPHViewer to use SWIFTsimIO data structures.
+
+    Methods
+    -------
+    __set_smoothing_lengths(self, hsml_name: Union[str, None])
+        Set smoothing lengths for particles in SWIFTsimIO dataset
+    __create_particles_instance(self)
+        Creates particles in SWIFTsimIO data structure
+    get_autocamera(self)
+        Set sensible values for the camera automatically
+    get_camera( self, x: Union[None, float] = None, y: Union[None, float] = None, z: Union[None, float] = None, r: Union[None, float] = None, t: Union[None, float] = None, p: Union[None, float] = None, zoom: Union[None, float] = None, roll: Union[None, float] = None, xsize: Union[None, int] = None, ysize: Union[None, int] = None, extent: Union[None, List[float]] = None)
+        Get pysphviewer camera object
+    get_scene(self, camera: Union["viewer.Camera", None] = None)
+        Get the scene for a given camera
+    get_render(self)
+        Returns the render object using the internal scene object.
+    quick_view(self, xsize: int, ysize: int, r: Union[None, float] = None, **kwargs)
+        Analogue to sphviewer.tools.QuickView
     """
-    # ALEXEI: additional class docs?
 
     # Forward declarations
     # Internal smoothing lengths that are used in the case where we
@@ -37,19 +53,20 @@ class SPHViewerWrapper(object):
         hsml_name: Union[str, None] = "smoothing_lengths",
     ):
         """
-        Initialise the Particles class of py-sphviewer. Takes three arguments:
-
-        + data, the particle dataset (e.g. data.gas would be render the gas)
-        + hsml_name, the name of the object that contains smoothing lengths. If this
-                     is None, we will attempt to create smoothing lengths that
-                     encompass 32 nearest neighbours.
-        + smooth_over, the name of the object to smooth over. This defaults to
-                       masses, such that we return the projected mass density. This
-                       can also be an arbritary unyt or cosmo array.
+        Initialise the Particles class of py-sphviewer. 
         
-        Then, we can use any data available in that object to render the system.
+        Parameters
+        ----------
+        data : 
+            the particle dataset to render (e.g. data.gas would render the gas)
+        hsml_name : str, optional
+            the name of the object that contains smoothing lengths. If this
+            is None, attempt to create smoothing lengths that encompass 32 
+            nearest neighbours.
+        smooth_over : str, optional
+            the name of the object to smooth over. Default to mass if not 
+            provided. This can also be an arbritary unyt or cosmo array.
         """
-        # ALEXEI: numpy standard requests some constructor docs, put in proper format
 
         if not SPHVIEWER_AVAILABLE:
             raise ImportError("Unable to find py-sphviewer on your system")
@@ -74,12 +91,19 @@ class SPHViewerWrapper(object):
         return
 
     def __set_smoothing_lengths(self, hsml_name: Union[str, None]):
+        r"""
+        Internal function for setting smoothing lengths. 
+        
+        Object containing smoothing length data may be provided. If omitted 
+        smoothing lengths are generated using internal tree structure.
+
+        Parameters
+        ----------
+        hsml_name : str, optional
+            the name of the object that contains smoothing lengths. If this
+            is None, attempt to create smoothing lengths that encompass 32 
+            nearest neighbours.
         """
-        Internal function for setting smoothing lengths. If None, then we 
-        continue to create the smoothing lengths using an internal tree
-        structure.
-        """
-        # ALEXEI: add param, return, examples docs
 
         # Parameters required to generate smoothing lengths
         number_of_neighbours = int(
@@ -108,12 +132,13 @@ class SPHViewerWrapper(object):
                 )
 
     def __create_particles_instance(self):
-        """
+        r"""
         Internal function for creating the particles instance.
         
-        Requires the setting of the smoothing lengths first.
+        Notes
+        -----
+        Requires the smoothing lengths to be set first.
         """
-        # ALEXEI: add return, examples docs
 
         if self._internal_smoothing_lengths is None:
             raise AssertionError(
@@ -141,11 +166,10 @@ class SPHViewerWrapper(object):
         return
 
     def get_autocamera(self):
-        """
+        r"""
         Sets a sensible value for the camera based on the camera's built in
         properties.
         """
-        # ALEXEI: add return, examples docs
 
         self.camera = viewer.Camera()
         self.camera.set_autocamera(self.particles)
@@ -167,20 +191,31 @@ class SPHViewerWrapper(object):
         extent: Union[None, List[float]] = None,
     ):
         """
-        Get the py-sphviewer camera object. This also sets it as self.camera that is used later.
+        Get the py-sphviewer camera object. 
+        
+        Parameters
+        ----------
+        x, y, z : float, optional
+            Cartesian co-ordinates of the object being viewed
+        r : float, optional
+            Cartesian distance to the object
+        t : float, optional
+            ?????????? TODO
+        p : float, optional
+            ?????????? TODO
+        zoom : float, optional
+            ?????????? TODO
+        roll : float, optional
+            ?????????? TODO
+        xsize, ysize : int, optional
+            output pixel size
+        extent : list of float, optional
+            Area to render between
 
-        Properties are:
-
-        + x, y, z: Cartesian co-ordinates of the object you're looking at
-        + r: Cartesian distance to the object
-        + t: ?????????? TODO
-        + p: ?????????? TODO
-        + zoom: ?????????? TODO
-        + roll: ?????????? TODO
-        + xsize, ysize: Pixel size of your output
-        + extent: Area to render between
+        Notes
+        -----
+        This method also sets self.camera that is used later.
         """
-        # ALEXEI: add param, return, examples docs
 
         def convert_if_not_none(parameter):
             # Convert our parameter to the length units of the rest of
@@ -211,11 +246,15 @@ class SPHViewerWrapper(object):
 
     def get_scene(self, camera: Union["viewer.Camera", None] = None):
         """
-        Get the scene for a given camera. If there is no camera provided,
-        we use the internal self.camera. If this is not set, then we raise
-        an AttributeError.
+        Get the scene for a given camera. 
+        
+        If there is no camera provided, we use the internal self.camera. 
+        If this is not set, then we raise an AttributeError.
+        Parameters
+        ----------
+        camera : viewer.Camera, optional
+            Camera object used to render scene
         """
-        # ALEXEI: add param, return, examples docs
 
         if camera is not None:
             self.scene = viewer.Scene(self.particles, camera)
@@ -232,10 +271,12 @@ class SPHViewerWrapper(object):
 
     def get_render(self):
         """
-        Returns the render object (and sets self.render) using the internal
+        Returns the render object and sets self.render using the internal
         scene object.
 
-        We also provide .image and .extent as values that represent the render's
+        Notes
+        -----
+        self.image and self.extent are also provided as values that represent the render's
         image and extent including the input units.
         """
         # ALEXEI: add param, return, examples docs
@@ -251,12 +292,21 @@ class SPHViewerWrapper(object):
         self, xsize: int, ysize: int, r: Union[None, float] = None, **kwargs
     ):
         """
-        Analogous to sphviewer.tools.QuickView but easier to directly call.
-        Note that here we do not logscale any of the quantities.
+        Simple render of a scene with auto camera setting
 
-        Here you must call 
+        Analogous to sphviewer.tools.QuickView but easier to directly call.
+        Parameters
+        ----------
+        xsize, ysize : int
+            camera size in pixels 
+            ALEXEI: check with Josh
+        r : float, optional
+            ALEXEI: check with Josh
+            
+        Notes
+        -----
+        All of the quantities are presented on a linear scale.
         """
-        # ALEXEI: add param, return, examples docs
 
         self.get_autocamera()
         self.camera.set_params(xsize=xsize, ysize=ysize, r=r, **kwargs)
