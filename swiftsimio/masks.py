@@ -17,22 +17,47 @@ class SWIFTMask(object):
     """
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
+
+    Methods
+    -------
+    _generate_empty_masks(self)
+        Create empty masks for all particles
+    _unpack_cell_metadata(self)
+        load cell metadata into local class variables
+    constrain_mask( self, ptype: str, quantity: str, lower: unyt.array.unyt_quantity, upper: unyt.array.unyt_quantity,)
+        constrains a particle mask based on the value of a the particle quantity
+    _generate_cell_mask(self, restrict)
+        generates spatially restricted mask for cell
+    _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array)
+        updates the particle mask using the cell mask. 
+    constrain_spatial(self, restrict)
+        generates spatially constrained cell mask
+    convert_masks_to_ranges(self)
+        converts the masks to range masks so that they take up less space.
     """
-    # ALEXEI: expand docs
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
-        """
+        r"""
+        SWIFTMask constructor
+
         Takes the SWIFT metadata and enables individual property-by-property masking
         when reading from snapshots. Please note that when masking like this
         order-in-file is not preserved, i.e. the 7th particle may not be the
         7th particle in the file.
 
-        spatial_only is a very powerful property. If True (the default), you can
-        only constrain spatially. However, this is significantly faster and
-        considerably more memory efficient (~ bytes per cell, rather than ~ bytes
-        per particle).
+        Parameters
+        ----------
+        metadata : SWIFTMetadata
+            Metadata specifying masking for reading of snapshots
+
+        spatial_only : bool, optional
+            If True (the default), you can only constrain spatially. 
+            However, this is significantly faster and considerably 
+            more memory efficient (~ bytes per cell, rather than 
+            ~ bytes per particle).
+
         """
-        # ALEXEI: Add thorough docs on params, return, examples
+        # ALEXEI: add examples, check if anything else needed for this doc
 
         self.metadata = metadata
         self.units = metadata.units
@@ -44,11 +69,10 @@ class SWIFTMask(object):
             self._generate_empty_masks()
 
     def _generate_empty_masks(self):
-        """
+        r"""
         Generates the empty (i.e. all False) masks for all available particle
         types.
         """
-        # ALEXEI: add return, examples docs
 
         for ptype in self.metadata.present_particle_names:
             setattr(
@@ -58,11 +82,10 @@ class SWIFTMask(object):
         return
 
     def _unpack_cell_metadata(self):
-        """
+        r"""
         Unpacks the cell metadata into local (to the class) variables. We do not
         read in information for empty cells.
         """
-        # ALEXEI: add return, examples docs
 
         # Reset this in case for any reason we have messed them up
 
@@ -117,16 +140,35 @@ class SWIFTMask(object):
         lower: unyt.array.unyt_quantity,
         upper: unyt.array.unyt_quantity,
     ):
-        """
+        r"""
         Constrains the mask further for a given particle type, and bounds a 
-        quantity between lower and upper values. We update the mask such
-        that
+        quantity between lower and upper values. 
+        
+        We update the mask such that
 
             lower < ptype.quantity <= upper
 
-        Note that the quantities must have units attached.
+        The quantities must have units attached.
+
+        Parameters
+        ----------
+        ptype : str
+            particle type
+
+        quantity : str
+            quantity being constrained
+
+        lower : unyt.array.unyt_quantity
+            constraint lower bound 
+
+        upper : unyt.array.unyt_quantity
+            constraint upper bound
+
+        See Also
+        --------
+        constrain_spatial : method to generate spatially constrained cell mask
+
         """
-        # ALEXEI: add param, return, examples docs
 
         if self.spatial_only:
             print("You cannot constrain a mask if spatial_only=True")
@@ -166,24 +208,32 @@ class SWIFTMask(object):
         return
 
     def _generate_cell_mask(self, restrict):
-        """
+        r"""
+        Generates spatially restricted mask for cell
+
         Takes the cell metadata and finds the mask for the _cells_ that are
         within the spatial region defined by the spatial mask. Not for
         user use. 
 
-        Uses the cell metadata to create a spatial mask. Restrict is a 3 length
-        list that contains length two arrays giving the lower and upper bounds
-        for that axis, e.g.
+        Parameters
+        ----------
+        restrict : list
+            Restrict is a 3 length list that contains length two arrays giving 
+            the lower and upper bounds for that axis, e.g.
 
-        restrict = [
-            [0.5, 0.7],
-            [0.1, 0.9],
-            [0.0, 0.1]
-        ]
+            restrict = [
+                [0.5, 0.7],
+                [0.1, 0.9],
+                [0.0, 0.1]
+            ]
 
-        These values must have units associated with them.
+            These values must have units associated with them.
+
+        Returns
+        -------
+        cell_mask : np.array[bool]
+            mask to indicate whether cells within specified spatial range
         """
-        # ALEXEI: add param, return, examples docs
 
         cell_mask = np.ones(len(self.centers), dtype=bool)
 
@@ -231,13 +281,24 @@ class SWIFTMask(object):
         return cell_mask
 
     def _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array):
+        r"""
+        Updates the particle mask using the cell mask. 
+        
+        We actually overwrite all non-used cells with False, rather than the 
+        inverse, as we assume initially that we want to write all particles in, 
+        and we want to respect other masks that may have been applied to the data.
+
+        Parameters
+        ----------
+        restrict : list
+            currently unused
+        
+        ptype : str
+            particle type to update
+
+        cell_mask : np.array
+            cell mask used to update the particle mask
         """
-        Updates the mask for ptype using the cell mask. We actually overwrite
-        all non-used cells with False, rather than the inverse, as we assume
-        initially that we want to write all particles in, and we want to
-        respect other masks that may have been applied to the data.
-        """
-        # ALEXEI: add param, return, examples docs
 
         if self.spatial_only:
             counts = self.counts[ptype][cell_mask]
@@ -261,27 +322,31 @@ class SWIFTMask(object):
         return
 
     def constrain_spatial(self, restrict):
-        """
-        Uses the cell metadata to create a spatial mask. Restrict is a 3 length
-        list that contains length two arrays giving the lower and upper bounds
-        for that axis, e.g.
-
-        restrict = [
-            [0.5, 0.7],
-            [0.1, 0.9],
-            [0.0, 0.1]
-            
-        ]
-
-        These values must have units associated with them. It is also acceptable
-        to have a row as None to not restrict in this direction.
-
-        Please note that this is approximate and is coarse-grained to the cell size.
+        r"""
+        Uses the cell metadata to create a spatial mask. 
         
-        If you would like to further refine this afterwards, please use the
-        constrain_mask method.
+        This mask is necessarily approximate and is coarse-grained to the cell size.
+        
+        Parameters
+        ----------
+        restrict : list 
+            length 3 list of length two arrays giving the lower and 
+            upper bounds for that axis, e.g.
+
+            restrict = [
+                [0.5, 0.7],
+                [0.1, 0.9],
+                [0.0, 0.1]
+                
+            ]
+
+            These values must have units associated with them. It is also acceptable
+            to have a row as None to not restrict in this direction.
+
+        See Also
+        -------
+        constrain_mask : method to further refine mask
         """
-        # ALEXEI: add param, return, examples docs
 
         cell_mask = self._generate_cell_mask(restrict)
 
@@ -291,7 +356,7 @@ class SWIFTMask(object):
         return
 
     def convert_masks_to_ranges(self):
-        """
+        r"""
         Converts the masks to range masks so that they take up less space.
         
         This is non-reversible. It is also not required, but can help save space
@@ -299,7 +364,6 @@ class SWIFTMask(object):
 
         If you don't know what you are doing please don't use this.
         """
-        # ALEXEI: add param, return, examples docs
 
         if self.spatial_only:
             # We are already done!
