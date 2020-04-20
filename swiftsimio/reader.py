@@ -30,22 +30,37 @@ class SWIFTUnits(object):
     """
     Generates a unyt system that can then be used with the SWIFT data.
 
-    You are probably looking for the following attributes:
-
-    + SWIFTUnits.mass
-    + SWIFTUnits.length
-    + SWIFTUnits.time
-    + SWIFTUnits.current
-    + SWIFTUnits.temperature
-
-    That give the unit mass, length, time, current, and temperature as
+    These give the unit mass, length, time, current, and temperature as
     unyt unit variables in simulation units. I.e. you can take any value
     that you get out of the code and multiply it by the appropriate values
     to get it 'unyt-ified' with the correct units.
+
+    Attributes
+    ----------
+    mass : float
+        unit for mass used
+    length : float
+        unit for length used
+    time : float
+        unit for time used
+    current : float
+        unit for current used
+    temperature : float
+        unit for temperature used
+
     """
 
     def __init__(self, filename):
-        # ALEXEI: numpy standard requests some constructor docs
+        """
+        SWIFTUnits constructor
+
+        Sets filename for file to read units from and gets unit dictionary
+
+        Parameters
+        ----------
+        filename : str
+            name of file to read units from
+        """
         self.filename = filename
 
         self.get_unit_dictionary()
@@ -54,12 +69,12 @@ class SWIFTUnits(object):
 
     def get_unit_dictionary(self):
         """
-        For some reason instead of just floats we use length 1 arrays to
-        store the unit data. This dictionary also happens to contain the
-        metadata information that connects the unyt objects to the names
-        that are stored in the SWIFT snapshots.
+        Store unit data and metadata
+
+        Length 1 arrays are used to store the unit data. This dictionary 
+        also contains the metadata information that connects the unyt 
+        objects to the names that are stored in the SWIFT snapshots.
         """
-        # ALEXEI: add return, examples docs
         with h5py.File(self.filename, "r") as handle:
             self.units = {
                 name: value[0] * metadata.unit_types.unit_names_to_unyt[name]
@@ -87,8 +102,43 @@ class SWIFTUnits(object):
 class SWIFTMetadata(object):
     """
     Loads all metadata (apart from Units, those are handled by SWIFTUnits)
-    into dictionaries. This also does some extra parsing on some well-used
-    metadata.
+    into dictionaries. 
+    
+    This also does some extra parsing on some well-used metadata.
+
+    Attributes
+    ----------
+    filename: str
+        name of file to read from
+    units: SWIFTUnits
+        the units being used
+    header: dict
+        stores metadata about snapshot
+
+    Methods
+    -------
+    get_metadata(self):
+        Loads the metadata 
+    get_named_column_metadata(self):
+        Loads custom metadata from named columns
+    postprocess_header(self):
+        Postprocesses local variables in header 
+    present_particle_types(self):
+        Get particle types present in snapshot
+    present_particle_names(self):
+        Get particle names present in snapshot
+    code_info(self):
+        Print info about SWIFT version used
+    compiler_info(self):
+        Print info about compilers used
+    library_info(self):
+        Print info about library versions used
+    hydro_info(self):
+        Print info about hydro scheme used
+    viscosity_info(self)
+        Print info about viscosity scheme used
+    diffusion_info(self):
+        Print info about diffusion scheme used
     """
 
     filename: str
@@ -96,7 +146,16 @@ class SWIFTMetadata(object):
     header: dict
 
     def __init__(self, filename, units: SWIFTUnits):
-        # ALEXEI: numpy standard requests some constructor docs
+        """
+        Constructor for SWIFTMetadata object
+
+        Parameters
+        ----------
+        filename : str
+            name of file to read from
+        units : SWIFTUnits
+            the units being used
+        """
         self.filename = filename
         self.units = units
 
@@ -113,7 +172,6 @@ class SWIFTMetadata(object):
         """
         Loads the metadata as specified in metadata.metadata_fields.
         """
-        # ALEXEI: add return, examples docs
 
         with h5py.File(self.filename, "r") as handle:
             for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
@@ -129,7 +187,6 @@ class SWIFTMetadata(object):
         Loads the custom named column metadata (if it exists) from
         SubgridScheme/NamedColumns.
         """
-        # ALEXEI: add return, examples docs
 
         try:
             with h5py.File(self.filename, "r") as handle:
@@ -147,7 +204,6 @@ class SWIFTMetadata(object):
         """
         Some minor postprocessing on the header to local variables.
         """
-        # ALEXEI: add return, examples docs, better explanation what this does
 
         # These are just read straight in to variables
         header_unpack_variables_units = metadata.metadata_fields.generate_units_header_unpack_variables(
@@ -282,7 +338,6 @@ class SWIFTMetadata(object):
 
         As well as some more information about the particle type.
         """
-        # ALEXEI: add return, examples docs
 
         for particle_type, particle_name in zip(
             self.present_particle_types, self.present_particle_names
@@ -305,7 +360,6 @@ class SWIFTMetadata(object):
         """
         The particle types that are present in the file.
         """
-        # ALEXEI: add return, examples docs, better explanation
 
         return np.where(np.array(self.num_part) != 0)[0]
 
@@ -314,7 +368,6 @@ class SWIFTMetadata(object):
         """
         The particle _names_ that are present in the simulation.
         """
-        # ALEXEI: add return, examples docs, better explanation
 
         return [
             metadata.particle_types.particle_name_underscores[x]
@@ -330,7 +383,6 @@ class SWIFTMetadata(object):
         Git Revision
         Git Date
         """
-        # ALEXEI: add return, examples docs
 
         def get_string(x):
             return self.code[x].decode("utf-8")
@@ -346,12 +398,11 @@ class SWIFTMetadata(object):
     @property
     def compiler_info(self):
         """
-        Gets information about the compiler and formats it in a string like:
+        Gets information about the compiler and formats it as:
 
         Compiler Name (Compiler Version)
         MPI library
         """
-        # ALEXEI: add return, examples docs
 
         def get_string(x):
             return self.code[x].decode("utf-8")
@@ -372,7 +423,6 @@ class SWIFTMetadata(object):
         GSL vGSL library version
         HDF5 vHDF5 library version
         """
-        # ALEXEI: add return, examples docs
 
         def get_string(x):
             return self.code[f"{x} library version"].decode("utf-8")
@@ -388,14 +438,13 @@ class SWIFTMetadata(object):
     @property
     def hydro_info(self):
         r"""
-        Grabs information about the hydro scheme and formats it nicely:
+        Gets information about the hydro scheme and formats it as:
 
         Scheme
         Kernel function in DimensionD
         $\eta$ = Kernel eta (Kernel target N_ngb $N_{ngb}$)
         $C_{\rm CFL}$ = CFL parameter
         """
-        # ALEXEI: add return, examples docs
 
         def get_float(x):
             return "{:4.2f}".format(self.hydro_scheme[x][0])
@@ -420,13 +469,12 @@ class SWIFTMetadata(object):
     @property
     def viscosity_info(self):
         r"""
-        Pretty-prints some information about the viscosity scheme.
+        Gets information about the viscosity scheme and formats it as:
 
         Viscosity Model
         $\alpha_{V, 0}$ = Alpha viscosity, $\ell_V$ = Viscosity decay length [internal units], $\beta_V$ = Beta viscosity
         Alpha viscosity (min) < $\alpha_V$ < Alpha viscosity (max)
         """
-        # ALEXEI: add return, examples docs
 
         def get_float(x):
             return "{:4.2f}".format(self.hydro_scheme[x][0])
@@ -448,12 +496,11 @@ class SWIFTMetadata(object):
     @property
     def diffusion_info(self):
         """
-        Pretty-prints some information about the diffusion scheme.
+        Gets information about the diffusion scheme and formats it as:
 
         $\alpha_{D, 0}$ = Diffusion alpha, $\beta_D$ = Diffusion beta
         Diffusion alpha (min) < $\alpha_D$ < Diffusion alpha (max)
         """
-        # ALEXEI: add return, examples docs
 
         def get_float(x):
             return "{:4.2f}".format(self.hydro_scheme[x][0])
@@ -471,10 +518,26 @@ class SWIFTMetadata(object):
 
 class SWIFTParticleTypeMetadata(object):
     """
-    Object that contains the metadata for one particle type. This, for, instance,
-    could be part type 0, or 'gas'. This will load in the names of all particle datasets,
-    their units, possible named fields, and their cosmology, and present them for use
-    in the actual i/o routines.
+    Object that contains the metadata for one particle type. 
+    
+    This, for instance, could be part type 0, or 'gas'. This will load in 
+    the names of all particle datasets, their units, possible named fields, 
+    and their cosmology, and present them for use in the actual i/o routines.
+
+    Methods
+    -------
+    load_metadata(self):
+        Loads the required metadata.
+    load_field_names(self):
+        Loads in the field names.
+    load_field_units(self):
+        Loads in the units from each dataset.
+    load_field_descriptions(self):
+        Loads in descriptions of the fields for each dataset.
+    load_cosmology(self):
+        Loads in the field cosmologies.
+    load_named_columns(self):
+        Loads the named column data for relevant fields.
     """
 
     def __init__(
@@ -484,7 +547,20 @@ class SWIFTParticleTypeMetadata(object):
         metadata: SWIFTMetadata,
         scale_factor: float,
     ):
-        # ALEXEI: numpy standard requests some constructor docs
+        """
+        Constructor for SWIFTParticleTypeMetadata class
+
+        Parameters
+        ----------
+        partycle_type : int
+            the integer particle type
+        particle_name : str
+            the corresponding particle name
+        metadata : SWIFTMetadata
+            the snapshot metadata
+        scale_factor : float
+            the snapshot scale factor
+        """
         self.particle_type = particle_type
         self.particle_name = particle_name
         self.metadata = metadata
@@ -498,18 +574,18 @@ class SWIFTParticleTypeMetadata(object):
         return
 
     def __str__(self):
-        # ALEXEI: do we need docs here?
         return f"Metadata class for PartType{self.particle_type} ({self.particle_name})"
 
     def __repr__(self):
-        # ALEXEI: do we need docs here?
         return self.__str__()
 
     def load_metadata(self):
         """
-        Workhorse function, loads the required metadata.
+        Loads the required metadata.
+
+        This includes loading the field names, units and descriptions, as well as the 
+        cosmology metadata and any custom named columns
         """
-        # ALEXEI: Add thorough docs on params, return, examples
 
         self.load_field_names()
         self.load_field_units()
@@ -519,9 +595,8 @@ class SWIFTParticleTypeMetadata(object):
 
     def load_field_names(self):
         """
-        Loads in only the field names (including dealing with recursion).
+        Loads in only the field names.
         """
-        # ALEXEI: add return, examples docs
 
         # regular expression for camel case to snake case
         # https://stackoverflow.com/a/1176023
@@ -544,7 +619,6 @@ class SWIFTParticleTypeMetadata(object):
         """
         Loads in the units from each dataset.
         """
-        # ALEXEI: add return, examples docs
 
         unit_dict = {
             "I": self.units.current,
@@ -589,7 +663,6 @@ class SWIFTParticleTypeMetadata(object):
         """
         Loads in the text descriptions of the fields for each dataset.
         """
-        # ALEXEI: add return, examples docs
 
         def get_desc(dataset):
             try:
@@ -609,7 +682,6 @@ class SWIFTParticleTypeMetadata(object):
         """
         Loads in the field cosmologies.
         """
-        # ALEXEI: add return, examples docs
 
         current_scale_factor = self.scale_factor
 
@@ -633,7 +705,6 @@ class SWIFTParticleTypeMetadata(object):
         """
         Loads the named column data for relevant fields.
         """
-        # ALEXEI: add return, examples docs
 
         named_columns = {}
 
@@ -810,8 +881,18 @@ def generate_getter(
 def generate_setter(name: str):
     """
     Generates a function that sets self._name to the value that is passed to it.
+
+    Parameters
+    ----------
+    name : str
+        the name of the attribute to set
+
+    Returns
+    -------
+    setter : callable
+        a callable object that sets the attribute specified by ``name`` to the value 
+        passed to it.
     """
-    # ALEXEI: add param, return, examples docs
 
     def setter(self, value):
         setattr(self, f"_{name}", value)
@@ -824,8 +905,17 @@ def generate_setter(name: str):
 def generate_deleter(name: str):
     """
     Generates a function that destroys self._name (sets it back to None).
+
+    Parameters
+    ----------
+    name : str
+        the name of the field to be destroyed
+
+    Returns
+    -------
+    deleter : callable
+        callable that destroys ``name`` field
     """
-    # ALEXEI: add param, return, examples docs
 
     def deleter(self):
         current_value = getattr(self, f"_{name}")
@@ -839,17 +929,29 @@ def generate_deleter(name: str):
 
 class __SWIFTParticleDataset(object):
     """
+    Creates empty property fields
+
     Do not use this class alone; it is essentially completely empty. It is filled
     with properties by generate_dataset.
+
+    Methods
+    -------
+    generate_empty_properties(self)
+        creates empty properties to be accessed through setter and getter functions
     """
-    # ALEXEI: additional class docs?
 
     def __init__(self, particle_metadata: SWIFTParticleTypeMetadata):
         """
+        Constructor for SWIFTParticleDataset class
+
         This function primarily calls the generate_empty_properties
         function to ensure that defaults are set correctly.
+
+        Parameters
+        ----------
+        particle_metadata : SWIFTParticleTypeMetadata
+            the metadata used to generate empty properties
         """
-        # ALEXEI: add param, return, examples docs
         self.filename = particle_metadata.filename
         self.units = particle_metadata.units
 
@@ -866,11 +968,11 @@ class __SWIFTParticleDataset(object):
     def generate_empty_properties(self):
         """
         Generates the empty properties that will be accessed through the
-        setter and getters. We initially set all of the _{name} values
-        to None. If it doesn't _exist_ in the file, we do not create the
-        variable.
+        setter and getters. 
+        
+        Initially set all of the _{name} values to None. If it doesn't 
+        _exist_ in the file, the variable is not created.
         """
-        # ALEXEI: add return, examples docs
 
         with h5py.File(self.filename, "r") as handle:
             for field_name, field_path in zip(
@@ -894,10 +996,33 @@ class __SWIFTNamedColumnDataset(object):
     Holder class for individual named datasets. Very similar to
     __SWIFTParticleDataset but much simpler.
     """
-    # ALEXEI: additional class docs?
 
     def __init__(self, field_path: str, named_columns: List[str], name: str):
-        # ALEXEI: numpy standard requests some constructor docs
+        r"""
+        Constructor for __SWIFTNamedColumnDataset class
+
+        Parameters
+        ----------
+        field_path : str
+            path to field within hdf5 snapshot
+        named_columns : list of str
+            list of categories for the variable `name`
+        name : str
+            the variable of interest
+
+        Examples
+        --------
+        For a gas particle we might be interested in the mass fractions for a number
+        of elements (e.g. hydrogen, helium, carbon, etc). In a SWIFT snapshot these
+        would be found in `field_path` = /PartType0/ElementMassFractions. The 
+        `named_columns` would be the list of elements (["hydrogen", ...]) and the 
+        variable we're interested in is the mass fraction `name` = element_mass_fraction.
+        Thus, 
+            data.gas = __SWIFTNamedColumnDataset(/PartType0/ElementMassFractions, ["hydrogen", "helium"], element_mass_fraction)
+        would make visible:
+            data.gas.element_mass_fraction.hydrogen
+            data.gas.element_mass_fraction.helium
+        """
         self.field_path = field_path
         self.named_columns = named_columns
         self.name = name
@@ -909,11 +1034,9 @@ class __SWIFTNamedColumnDataset(object):
         return
 
     def __str__(self):
-        # ALEXEI: do we need docs here?
         return f'Named columns instance with {self.named_columns} available for "{self.name}"'
 
     def __repr__(self):
-        # ALEXEI: do we need docs here?
         return self.__str__()
 
 
@@ -931,8 +1054,14 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     create setters and getters for those properties. This will allow them
     to be accessed from outside by using SWIFTParticleDataset.name, where
     the name is, for example, coordinates.
+
+    Parameters
+    ----------
+    particle_metadata : SWIFTParticleTypeMetadata
+        the metadata for the particle type
+    mask : SWIFTMask
+        the mask object for the dataset
     """
-    # ALEXEI: Add thorough docs on params, return, examples
 
     filename = particle_metadata.filename
     particle_type = particle_metadata.particle_type
@@ -1039,7 +1168,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
 
 class SWIFTDataset(object):
     """
-    A collection object for the above three:
+    A collection object for:
 
     + SWIFTUnits,
     + SWIFTMetadata,
@@ -1056,15 +1185,22 @@ class SWIFTDataset(object):
 
     The unit system is available as SWIFTDataset.units and the metadata as
     SWIFTDataset.metadata.
+
+    Methods
+    -------
     """
 
     def __init__(self, filename, mask=None):
         """
-        Takes two arguments, the filename of the SWIFT dataset, including
-        the file extension, and an optional mask object (of type SWIFTMask)
-        should you wish to constrain the dataset to a given set of particles.
+        Constructor for SWIFTDataset class
+
+        Parameters
+        ----------
+        filename : str
+            name of file containing snapshot
+        mask : Union[None, np.ndarray], optional
+            mask object containing dataset to selected particles
         """
-        # ALEXEI: numpy standard requests some constructor docs
         self.filename = filename
         self.mask = mask
 
@@ -1082,20 +1218,19 @@ class SWIFTDataset(object):
         Prints out some more useful information, rather than just
         the memory location.
         """
-        # ALEXEI: do we need docs here?
 
         return f"SWIFT dataset at {self.filename}."
 
     def __repr__(self):
-        # ALEXEI: do we need docs here?
         return self.__str__()
 
     def get_units(self):
         """
-        Loads the units from the SWIFT snapshot. This happens automatically,
-        but you can call this function again if you mess things up.
+        Loads the units from the SWIFT snapshot. 
+        
+        Ordinarily this happens automatically, but you can call 
+        this function again if you mess things up.
         """
-        # ALEXEI: add return, examples docs
 
         self.units = SWIFTUnits(self.filename)
 
@@ -1103,10 +1238,11 @@ class SWIFTDataset(object):
 
     def get_metadata(self):
         """
-        Loads the metadata from the SWIFT snapshot. This happens automatically,
-        but you can call this function again if you mess things up.
+        Loads the metadata from the SWIFT snapshot. 
+        
+        Ordinarily this happens automatically, but you can call 
+        this function again if you mess things up.
         """
-        # ALEXEI: add return, examples docs
 
         self.metadata = SWIFTMetadata(self.filename, self.units)
 
@@ -1118,7 +1254,6 @@ class SWIFTDataset(object):
         are specified in metadata.particle_types. These can then be
         accessed using their underscore names, e.g. gas.
         """
-        # ALEXEI: add return, examples docs
 
         if not hasattr(self, "metadata"):
             self.get_metadata()

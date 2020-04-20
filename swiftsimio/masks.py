@@ -37,7 +37,7 @@ class SWIFTMask(object):
     """
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
-        r"""
+        """
         SWIFTMask constructor
 
         Takes the SWIFT metadata and enables individual property-by-property masking
@@ -57,7 +57,6 @@ class SWIFTMask(object):
             ~ bytes per particle).
 
         """
-        # ALEXEI: add examples, check if anything else needed for this doc
 
         self.metadata = metadata
         self.units = metadata.units
@@ -69,7 +68,7 @@ class SWIFTMask(object):
             self._generate_empty_masks()
 
     def _generate_empty_masks(self):
-        r"""
+        """
         Generates the empty (i.e. all False) masks for all available particle
         types.
         """
@@ -82,7 +81,7 @@ class SWIFTMask(object):
         return
 
     def _unpack_cell_metadata(self):
-        r"""
+        """
         Unpacks the cell metadata into local (to the class) variables. We do not
         read in information for empty cells.
         """
@@ -140,7 +139,7 @@ class SWIFTMask(object):
         lower: unyt.array.unyt_quantity,
         upper: unyt.array.unyt_quantity,
     ):
-        r"""
+        """
         Constrains the mask further for a given particle type, and bounds a 
         quantity between lower and upper values. 
         
@@ -208,7 +207,7 @@ class SWIFTMask(object):
         return
 
     def _generate_cell_mask(self, restrict):
-        r"""
+        """
         Generates spatially restricted mask for cell
 
         Takes the cell metadata and finds the mask for the _cells_ that are
@@ -281,7 +280,7 @@ class SWIFTMask(object):
         return cell_mask
 
     def _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array):
-        r"""
+        """
         Updates the particle mask using the cell mask. 
         
         We actually overwrite all non-used cells with False, rather than the 
@@ -322,7 +321,7 @@ class SWIFTMask(object):
         return
 
     def constrain_spatial(self, restrict):
-        r"""
+        """
         Uses the cell metadata to create a spatial mask. 
         
         This mask is necessarily approximate and is coarse-grained to the cell size.
