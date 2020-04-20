@@ -15,14 +15,15 @@ from typing import Callable
 # DEPRECATED: This should not be used any more by real code as we now
 # read anything directly out of the snapshots.
 
-# ALEXEI: explicitly mark functions as deprecated and add bare-bones docs
-
 
 def generate_units(m, l, t, I, T):
     """
     Generates the unit dictionaries with the:
 
     mass, length, time, current, and temperature
+
+    ..deprecated:: 3.1.0
+        Everything is read directly out of the snapshots now
 
     units respectively.
     """
@@ -102,6 +103,10 @@ def generate_units(m, l, t, I, T):
 def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units):
     """
     Gets the dimensions for the above.
+    
+    ..deprecated:: 3.1.0
+        Everything is read directly out of the snapshots now
+
     """
     # ALEXEI: add param, return, examples docs
 
