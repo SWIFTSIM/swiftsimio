@@ -31,21 +31,22 @@ except ImportError:
 @jit(nopython=True)
 def ranges_from_array(array: np.array) -> np.ndarray:
     """
-    Takes in an array of IDs (assumed to be sorted) and returns a list of
-    the following structure:
+    Finds contiguous ranges of IDs in sorted list of IDs
 
-    [
-        [i, j]
-        [k, l]
-        [n, o]
-        ...
-        [c, c]
-        [c, d]
-        
-    ]
+    Parameters
+    ----------
+    array : np.array of int
+        sorted list of IDs 
+
+    Returns
+    -------
+    np.ndarray
+        list of length two arrays corresponding to contiguous 
+        ranges of IDs (inclusive) in the input array
     
-    Which are the ranges that are contiguous (inclusive) in the input array.
-    For example, the array
+    Examples
+    --------
+    The array
 
     [0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13]
 
@@ -53,9 +54,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     [[0, 4], [5, 8], [9, 10], [11, 14]]
 
-    The input array must have type int.
     """
-    # ALEXEI: put these docs into proper format
 
     output = []
 
@@ -149,8 +148,19 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
     Indexes the dataset using the mask array.
 
     This is not currently a feature of h5py. (March 2019)
+
+    Parameters
+    ----------
+    handle : Dataset
+        data to be indexed
+    mask_array : np.array
+        mask used to index data
+
+    Returns
+    -------
+    np.array
+        Subset of the data specified by the mask
     """
-    # ALEXEI: add params, return, examples
 
     output_type = handle[0].dtype
     output_size = mask_array.size
