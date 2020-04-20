@@ -17,7 +17,7 @@ kernel_constant = 21.0 * 0.31830988618379067154 / 2.0
 
 @jit(nopython=True, fastmath=True)
 def kernel(r: Union[float, float32], H: Union[float, float32]):
-    r"""
+    """
     Kernel implementation for swiftsimio. 
 
     Parameters
@@ -69,7 +69,7 @@ def slice_scatter(
     z_slice: float64,
     res: int,
 ) -> ndarray:
-    r"""
+    """
     Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
 
     Parameters
@@ -183,7 +183,7 @@ def slice_scatter_parallel(
     z_slice: float64,
     res: int,
 ) -> ndarray:
-    r"""
+    """
     Parallel implementation of slice_scatter
     
     Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
@@ -264,7 +264,7 @@ def slice_gas_pixel_grid(
     parallel: bool = False,
     region: Union[None, unyt_array] = None,
 ):
-    r"""
+    """
     Creates a 2D slice of a SWIFT dataset, weighted by data field, in the
     form of a pixel grid.
 
@@ -375,7 +375,7 @@ def slice_gas(
     parallel: bool = False,
     region: Union[None, unyt_array] = None,
 ):
-    r"""
+    """
     Creates a 2D slice of a SWIFT dataset, weighted by data field
 
     Parameters

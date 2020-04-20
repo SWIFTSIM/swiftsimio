@@ -91,7 +91,7 @@ class SPHViewerWrapper(object):
         return
 
     def __set_smoothing_lengths(self, hsml_name: Union[str, None]):
-        r"""
+        """
         Internal function for setting smoothing lengths. 
         
         Object containing smoothing length data may be provided. If omitted 
@@ -132,11 +132,9 @@ class SPHViewerWrapper(object):
                 )
 
     def __create_particles_instance(self):
-        r"""
+        """
         Internal function for creating the particles instance.
         
-        Notes
-        -----
         Requires the smoothing lengths to be set first.
         """
 
@@ -166,7 +164,7 @@ class SPHViewerWrapper(object):
         return
 
     def get_autocamera(self):
-        r"""
+        """
         Sets a sensible value for the camera based on the camera's built in
         properties.
         """

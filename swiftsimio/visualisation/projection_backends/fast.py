@@ -25,7 +25,7 @@ from swiftsimio.visualisation.projection_backends.kernels import (
 
 @jit(nopython=True, fastmath=True)
 def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
-    r"""
+    """
     Creates a weighted scatter plot
 
     Computes contributions to from particles with positions
@@ -132,7 +132,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
 def scatter_parallel(
     x: float64, y: float64, m: float32, h: float32, res: int
 ) -> ndarray:
-    r"""
+    """
     Parallel implementation of scatter
     
     Creates a weighted scatter plot. Computes contributions from

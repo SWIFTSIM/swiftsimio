@@ -17,7 +17,7 @@ from .slice import kernel, kernel_constant, kernel_gamma
 def scatter(
     x: float64, y: float64, z: float64, m: float32, h: float32, res: int
 ) -> ndarray:
-    r"""
+    """
     Creates a weighted voxel grid
 
     Computes contributions to a voxel grid from particles with positions
@@ -134,7 +134,7 @@ def scatter(
 def scatter_parallel(
     x: float64, y: float64, z: float64, m: float32, h: float32, res: int
 ) -> ndarray:
-    r"""
+    """
     Parallel implementation of scatter
 
     Compute contributions to a voxel grid from particles with positions
@@ -213,7 +213,7 @@ def render_gas_voxel_grid(
     parallel: bool = False,
     region: Union[None, unyt_array] = None,
 ):
-    r"""
+    """
     Creates a 3D render of a SWIFT dataset, weighted by data field, in the
     form of a voxel grid.
 
@@ -317,7 +317,7 @@ def render_gas(
     parallel: bool = False,
     region: Union[None, unyt_array] = None,
 ):
-    r"""
+    """
     Creates a 3D voxel grid of a SWIFT dataset, weighted by data field
 
     Parameters

@@ -355,7 +355,7 @@ class SWIFTMask(object):
         return
 
     def convert_masks_to_ranges(self):
-        r"""
+        """
         Converts the masks to range masks so that they take up less space.
         
         This is non-reversible. It is also not required, but can help save space

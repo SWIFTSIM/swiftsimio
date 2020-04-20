@@ -15,7 +15,7 @@ kernel_constant = float32(7.0 / 3.14159)
 
 @jit("float32(float32, float32)", nopython=True, fastmath=True)
 def kernel_single_precision(r: float32, H: float32):
-    r"""
+    """
     Single precision kernel implementation for swiftsimio. 
     
     This is the Wendland-C2 kernel as shown in Denhen & Aly (2012) [1]_.
@@ -61,7 +61,7 @@ def kernel_single_precision(r: float32, H: float32):
 
 @jit("float64(float64, float64)", nopython=True, fastmath=True)
 def kernel_double_precision(r: float64, H: float64):
-    r"""
+    """
     Single precision kernel implementation for swiftsimio. 
     
     This is the Wendland-C2 kernel as shown in Denhen & Aly (2012) [1]_.
