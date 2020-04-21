@@ -49,10 +49,12 @@ class cosmo_factor:
 
     r = cosmo_factor * r' with r in physical and r' comoving
 
-    Methods
-    -------
+    Attributes
+    ----------
     a_factor
-        Calculates the conversion factor based on the unit and current scale factor
+        the conversion factor based on the unit and current scale factor
+    redshift
+        the redshift of the snapshot
     
     Examples
     --------

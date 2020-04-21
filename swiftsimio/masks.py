@@ -231,7 +231,7 @@ class SWIFTMask(object):
         Returns
         -------
         cell_mask : np.array[bool]
-            mask to indicate whether cells within specified spatial range
+            mask to indicate which cells are within the specified spatial range
         """
 
         cell_mask = np.ones(len(self.centers), dtype=bool)

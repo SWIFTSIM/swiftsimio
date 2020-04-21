@@ -114,6 +114,20 @@ class SWIFTMetadata(object):
         the units being used
     header: dict
         stores metadata about snapshot
+    present_particle_names:
+        Get particle names present in snapshot
+    code_info:
+        Print info about SWIFT version used
+    compiler_info:
+        Print info about compilers used
+    library_info:
+        Print info about library versions used
+    hydro_info:
+        Print info about hydro scheme used
+    viscosity_info
+        Print info about viscosity scheme used
+    diffusion_info:
+        Print info about diffusion scheme used
 
     Methods
     -------
@@ -125,20 +139,6 @@ class SWIFTMetadata(object):
         Postprocesses local variables in header 
     present_particle_types(self):
         Get particle types present in snapshot
-    present_particle_names(self):
-        Get particle names present in snapshot
-    code_info(self):
-        Print info about SWIFT version used
-    compiler_info(self):
-        Print info about compilers used
-    library_info(self):
-        Print info about library versions used
-    hydro_info(self):
-        Print info about hydro scheme used
-    viscosity_info(self)
-        Print info about viscosity scheme used
-    diffusion_info(self):
-        Print info about diffusion scheme used
     """
 
     filename: str
@@ -1018,7 +1018,11 @@ class __SWIFTNamedColumnDataset(object):
         `named_columns` would be the list of elements (["hydrogen", ...]) and the 
         variable we're interested in is the mass fraction `name` = element_mass_fraction.
         Thus, 
-            data.gas = __SWIFTNamedColumnDataset(/PartType0/ElementMassFractions, ["hydrogen", "helium"], element_mass_fraction)
+            data.gas = __SWIFTNamedColumnDataset(
+            "/PartType0/ElementMassFractions",
+            ["hydrogen", "helium"],
+            "element_mass_fraction"
+            )
         would make visible:
             data.gas.element_mass_fraction.hydrogen
             data.gas.element_mass_fraction.helium

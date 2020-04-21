@@ -23,8 +23,8 @@ def validate_file(filename):
 
     Return
     ------
-    True
-        if `filename` is a SWIFT dataset return successfully,
+    bool
+        if `filename` is a SWIFT dataset return True,
         otherwise raise exception
 
     Raises
@@ -52,7 +52,9 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
     filename : str
         SWIFT data file to read from
     spatial_only : bool, optional
-        flag for specifing spatial masking, default to True
+        Flag for only spatial masking, this is much faster but will not 
+        allow you to use masking on other variables (e.g. density). 
+        Defaults to True.
 
     Returns
     -------

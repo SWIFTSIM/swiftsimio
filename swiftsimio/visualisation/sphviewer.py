@@ -190,6 +190,8 @@ class SPHViewerWrapper(object):
     ):
         """
         Get the py-sphviewer camera object. 
+
+        See py-sphviewer for detailed documentation
         
         Parameters
         ----------
@@ -198,13 +200,9 @@ class SPHViewerWrapper(object):
         r : float, optional
             Cartesian distance to the object
         t : float, optional
-            ?????????? TODO
         p : float, optional
-            ?????????? TODO
         zoom : float, optional
-            ?????????? TODO
         roll : float, optional
-            ?????????? TODO
         xsize, ysize : int, optional
             output pixel size
         extent : list of float, optional
