@@ -169,7 +169,6 @@ def scatter_parallel(
 
     Notes
     -----
-    ALEXEI: Check with Josh if this note still holds
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
@@ -227,14 +226,14 @@ def render_gas_voxel_grid(
         
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles (ALEXEI: check wording with Josh)
+        count number of particles 
     
     parallel : bool
         used to determine if we will create the image in parallel. This 
         defaults to False, but can speed up the creation of large images 
         significantly at the cost of increased memory usage.
 
-    region : array, optional
+    region : unyt_array, optional
         determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom
         edges, and front and back edges) if it is not None. It should have a
@@ -330,14 +329,14 @@ def render_gas(
         
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles (ALEXEI: check wording with Josh)
+        count number of particles 
     
     parallel : bool
         used to determine if we will create the image in parallel. This 
         defaults to False, but can speed up the creation of large images 
         significantly at the cost of increased memory usage.
 
-    region : array, optional
+    region : unyt_array, optional
         determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom
         edges, and front and back edges) if it is not None. It should have a

@@ -778,7 +778,7 @@ def generate_getter(
     unit: unyt.unyt_quantity
         Output unit of the resultant ``cosmo_array``
 
-    mask: Union[None, np.ndarray]
+    mask: None or np.ndarray
         Mask to be used with ``accelerated.read_ranges_from_file``, i.e. an array of
         integers that describe ranges to be read from the file.
 
@@ -1202,7 +1202,7 @@ class SWIFTDataset(object):
         ----------
         filename : str
             name of file containing snapshot
-        mask : Union[None, np.ndarray], optional
+        mask : np.ndarray, optional
             mask object containing dataset to selected particles
         """
         self.filename = filename

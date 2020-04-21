@@ -39,7 +39,7 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
 
     References
     ----------
-    .. [1] Denhen & Aly (2012) ALEXEI: add proper citation
+    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
 
     """
     inverse_H = 1.0 / H
@@ -218,7 +218,6 @@ def slice_scatter_parallel(
 
     Notes
     -----
-    ALEXEI: Check with Josh, do these notes still hold?
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
@@ -282,14 +281,14 @@ def slice_gas_pixel_grid(
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles (ALEXEI: check wording with Josh)
+        count number of particles 
     
     parallel : bool
         used to determine if we will create the image in parallel. This 
         defaults to False, but can speed up the creation of large images 
         significantly at the cost of increased memory usage.
 
-    region : array, optional
+    region : unyt_array, optional
         determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom edges)
         if it is not None. It should have a length of four, and take the form:
@@ -392,7 +391,7 @@ def slice_gas(
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles (ALEXEI: check wording with Josh)
+        count number of particles 
     
     parallel : bool
         used to determine if we will create the image in parallel. This 

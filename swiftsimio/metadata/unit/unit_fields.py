@@ -27,7 +27,6 @@ def generate_units(m, l, t, I, T):
 
     units respectively.
     """
-    # ALEXEI: add param, return, examples docs
 
     shared = {
         "coordinates": l,
@@ -108,7 +107,6 @@ def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units
         Everything is read directly out of the snapshots now
 
     """
-    # ALEXEI: add param, return, examples docs
 
     units = generate_unit_func(g, cm, s, statA, K)
 

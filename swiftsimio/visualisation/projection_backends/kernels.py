@@ -38,7 +38,7 @@ def kernel_single_precision(r: float32, H: float32):
 
     References
     ----------
-    .. [1] Denhen & Aly (2012)...
+    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = float32(2.22817109)
 
@@ -84,9 +84,8 @@ def kernel_double_precision(r: float64, H: float64):
 
     References
     ----------
-    .. [1] Denhen & Aly (2012)...
+    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
-    # ALEXEI: add param, return, examples docs
     kernel_constant = float64(2.22817109)
 
     inverse_H = 1.0 / H

@@ -275,7 +275,6 @@ class SPHViewerWrapper(object):
         self.image and self.extent are also provided as values that represent the render's
         image and extent including the input units.
         """
-        # ALEXEI: add param, return, examples docs
 
         self.render = viewer.Render(self.scene)
 
@@ -294,10 +293,9 @@ class SPHViewerWrapper(object):
         Parameters
         ----------
         xsize, ysize : int
-            camera size in pixels 
-            ALEXEI: check with Josh
+            camera size in pixels
         r : float, optional
-            ALEXEI: check with Josh
+            distance to image centre
             
         Notes
         -----

@@ -361,9 +361,6 @@ class SWIFTWriterDataset(object):
     + Fully consistent unit system
     + All required arrays for SWIFT to start
     + Required metadata (all automatic, apart from those required by __init__)
-
-    extra_header should be a dictionary containing extra things to write to the
-    header.
     """
 
     def __init__(
@@ -382,16 +379,16 @@ class SWIFTWriterDataset(object):
 
         Parameters
         ----------
-        unit_system : Union[unyt.UnitSystem, str]
+        unit_system : unyt.UnitSystem or str
             unit system for dataset
-        boxsize : Union[list, unyt.unyt_quantity]
+        boxsize : list or unyt.unyt_quantity
             size of simulation box and associated units
         dimension : int, optional
             dimensions of simulation
         compress : bool, optional
             flag to turn on compression
-        extra_header : Union[None, dict], optional
-            ALEXEI: check with Josh
+        extra_header : dict, optional
+            dictionary containing extra things to write to the header
         unit_fields_generate_units: callable, optional
             collection of properties in metadata file for which to create setters
             and getters
