@@ -22,6 +22,9 @@ def generate_units(m, l, t, I, T):
 
     mass, length, time, current, and temperature
 
+    ..deprecated:: 3.1.0
+        Everything is read directly out of the snapshots now
+
     units respectively.
     """
 
@@ -99,6 +102,10 @@ def generate_units(m, l, t, I, T):
 def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units):
     """
     Gets the dimensions for the above.
+    
+    ..deprecated:: 3.1.0
+        Everything is read directly out of the snapshots now
+
     """
 
     units = generate_unit_func(g, cm, s, statA, K)

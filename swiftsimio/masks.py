@@ -17,19 +17,45 @@ class SWIFTMask(object):
     """
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
+
+    Methods
+    -------
+    _generate_empty_masks(self)
+        Create empty masks for all particles
+    _unpack_cell_metadata(self)
+        load cell metadata into local class variables
+    constrain_mask( self, ptype: str, quantity: str, lower: unyt.array.unyt_quantity, upper: unyt.array.unyt_quantity,)
+        constrains a particle mask based on the value of a the particle quantity
+    _generate_cell_mask(self, restrict)
+        generates spatially restricted mask for cell
+    _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array)
+        updates the particle mask using the cell mask. 
+    constrain_spatial(self, restrict)
+        generates spatially constrained cell mask
+    convert_masks_to_ranges(self)
+        converts the masks to range masks so that they take up less space.
     """
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
         """
+        SWIFTMask constructor
+
         Takes the SWIFT metadata and enables individual property-by-property masking
         when reading from snapshots. Please note that when masking like this
         order-in-file is not preserved, i.e. the 7th particle may not be the
         7th particle in the file.
 
-        spatial_only is a very powerful property. If True (the default), you can
-        only constrain spatially. However, this is significantly faster and
-        considerably more memory efficient (~ bytes per cell, rather than ~ bytes
-        per particle).
+        Parameters
+        ----------
+        metadata : SWIFTMetadata
+            Metadata specifying masking for reading of snapshots
+
+        spatial_only : bool, optional
+            If True (the default), you can only constrain spatially. 
+            However, this is significantly faster and considerably 
+            more memory efficient (~ bytes per cell, rather than 
+            ~ bytes per particle).
+
         """
 
         self.metadata = metadata
@@ -115,12 +141,32 @@ class SWIFTMask(object):
     ):
         """
         Constrains the mask further for a given particle type, and bounds a 
-        quantity between lower and upper values. We update the mask such
-        that
+        quantity between lower and upper values. 
+        
+        We update the mask such that
 
             lower < ptype.quantity <= upper
 
-        Note that the quantities must have units attached.
+        The quantities must have units attached.
+
+        Parameters
+        ----------
+        ptype : str
+            particle type
+
+        quantity : str
+            quantity being constrained
+
+        lower : unyt.array.unyt_quantity
+            constraint lower bound 
+
+        upper : unyt.array.unyt_quantity
+            constraint upper bound
+
+        See Also
+        --------
+        constrain_spatial : method to generate spatially constrained cell mask
+
         """
 
         if self.spatial_only:
@@ -162,21 +208,30 @@ class SWIFTMask(object):
 
     def _generate_cell_mask(self, restrict):
         """
+        Generates spatially restricted mask for cell
+
         Takes the cell metadata and finds the mask for the _cells_ that are
         within the spatial region defined by the spatial mask. Not for
         user use. 
 
-        Uses the cell metadata to create a spatial mask. Restrict is a 3 length
-        list that contains length two arrays giving the lower and upper bounds
-        for that axis, e.g.
+        Parameters
+        ----------
+        restrict : list
+            Restrict is a 3 length list that contains length two arrays giving 
+            the lower and upper bounds for that axis, e.g.
 
-        restrict = [
-            [0.5, 0.7],
-            [0.1, 0.9],
-            [0.0, 0.1]
-        ]
+            restrict = [
+                [0.5, 0.7],
+                [0.1, 0.9],
+                [0.0, 0.1]
+            ]
 
-        These values must have units associated with them.
+            These values must have units associated with them.
+
+        Returns
+        -------
+        cell_mask : np.array[bool]
+            mask to indicate which cells are within the specified spatial range
         """
 
         cell_mask = np.ones(len(self.centers), dtype=bool)
@@ -226,10 +281,22 @@ class SWIFTMask(object):
 
     def _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array):
         """
-        Updates the mask for ptype using the cell mask. We actually overwrite
-        all non-used cells with False, rather than the inverse, as we assume
-        initially that we want to write all particles in, and we want to
-        respect other masks that may have been applied to the data.
+        Updates the particle mask using the cell mask. 
+        
+        We actually overwrite all non-used cells with False, rather than the 
+        inverse, as we assume initially that we want to write all particles in, 
+        and we want to respect other masks that may have been applied to the data.
+
+        Parameters
+        ----------
+        restrict : list
+            currently unused
+        
+        ptype : str
+            particle type to update
+
+        cell_mask : np.array
+            cell mask used to update the particle mask
         """
 
         if self.spatial_only:
@@ -255,24 +322,29 @@ class SWIFTMask(object):
 
     def constrain_spatial(self, restrict):
         """
-        Uses the cell metadata to create a spatial mask. Restrict is a 3 length
-        list that contains length two arrays giving the lower and upper bounds
-        for that axis, e.g.
-
-        restrict = [
-            [0.5, 0.7],
-            [0.1, 0.9],
-            [0.0, 0.1]
-            
-        ]
-
-        These values must have units associated with them. It is also acceptable
-        to have a row as None to not restrict in this direction.
-
-        Please note that this is approximate and is coarse-grained to the cell size.
+        Uses the cell metadata to create a spatial mask. 
         
-        If you would like to further refine this afterwards, please use the
-        constrain_mask method.
+        This mask is necessarily approximate and is coarse-grained to the cell size.
+        
+        Parameters
+        ----------
+        restrict : list 
+            length 3 list of length two arrays giving the lower and 
+            upper bounds for that axis, e.g.
+
+            restrict = [
+                [0.5, 0.7],
+                [0.1, 0.9],
+                [0.0, 0.1]
+                
+            ]
+
+            These values must have units associated with them. It is also acceptable
+            to have a row as None to not restrict in this direction.
+
+        See Also
+        -------
+        constrain_mask : method to further refine mask
         """
 
         cell_mask = self._generate_cell_mask(restrict)

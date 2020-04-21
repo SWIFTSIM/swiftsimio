@@ -21,24 +21,32 @@ def generate_smoothing_lengths(
 ):
     """
     Generates smoothing lengths that encompass a number of neighbours specified here.
-    Takes the following arguments:
 
-    + coordinates, a unyt array that gives the co-ordinates of all particles
-    + boxsize, the size of the box (3D)
-    + kernel_gamma, the kernel gamma of the kernel you are using
-    + neighbours, the number of neighbours to encompass
-    + speedup_fac, a parameter that neighbours is divided by to provide a speed-up
-                   by only searching for a lower number of neighbours. For example,
-                   if neighbours is 32, and speedup_fac is 2, we only search for 16
-                   (32 / 2) neighbours, and extend the smoothing length out to 
-                   (speedup)**(1/dimension) such that we encompass an approximately
-                   higher number of neighbours. A factor of 2 gives smooothing lengths
-                   the same as the full search within 10%, good enough for visualisation.
-    + dimension, the dimensionality of the problem (used for speedup_fac calculation).
+    Parameters
+    ----------
+    coordinates : unyt_array or cosmo_array
+        a unyt array that gives the co-ordinates of all particles
+    boxsize : unyt_array or cosmo_array
+        the size of the box (3D)
+    kernel_gamma : float32
+        the kernel gamma of the kernel being used
+    neighbours : int, optional 
+        the number of neighbours to encompass
+    speedup_fac : int, optional
+        a parameter that neighbours is divided by to provide a speed-up
+        by only searching for a lower number of neighbours. For example,
+        if neighbours is 32, and speedup_fac is 2, we only search for 16
+        (32 / 2) neighbours, and extend the smoothing length out to 
+        (speedup)**(1/dimension) such that we encompass an approximately
+        higher number of neighbours. A factor of 2 gives smooothing lengths
+        the same as the full search within 10%, good enough for visualisation.
+    dimension : int, optional
+        the dimensionality of the problem (used for speedup_fac calculation).
 
-    Returns:
-
-    + smoothing lengths, an unyt array of smoothing lengths.
+    Returns
+    -------
+    smoothing lengths : unyt_array
+        an unyt array of smoothing lengths.
     """
 
     if not TREE_AVAILABLE:

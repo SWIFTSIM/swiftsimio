@@ -6,11 +6,13 @@ from swiftsimio.objects import cosmo_factor, a
 
 # DEPRECATED: This information is now directly read out of the snapshots.
 
-
 def generate_cosmology(scale_factor: float, gamma: float):
     """
     Generates the cosmology dictionaries with the
     a-factors given for each particle field.
+
+    ..deprecated:: 3.1.0
+        This information is now directly read out of the snapshots
 
     Gives comoving -> physical.
     """

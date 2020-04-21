@@ -20,6 +20,23 @@ from .smoothing_length_generation import generate_smoothing_lengths
 class SPHViewerWrapper(object):
     """
     Wrapper for Py-SPHViewer to use SWIFTsimIO data structures.
+
+    Methods
+    -------
+    __set_smoothing_lengths(self, hsml_name: Union[str, None])
+        Set smoothing lengths for particles in SWIFTsimIO dataset
+    __create_particles_instance(self)
+        Creates particles in SWIFTsimIO data structure
+    get_autocamera(self)
+        Set sensible values for the camera automatically
+    get_camera( self, x: Union[None, float] = None, y: Union[None, float] = None, z: Union[None, float] = None, r: Union[None, float] = None, t: Union[None, float] = None, p: Union[None, float] = None, zoom: Union[None, float] = None, roll: Union[None, float] = None, xsize: Union[None, int] = None, ysize: Union[None, int] = None, extent: Union[None, List[float]] = None)
+        Get pysphviewer camera object
+    get_scene(self, camera: Union["viewer.Camera", None] = None)
+        Get the scene for a given camera
+    get_render(self)
+        Returns the render object using the internal scene object.
+    quick_view(self, xsize: int, ysize: int, r: Union[None, float] = None, **kwargs)
+        Analogue to sphviewer.tools.QuickView
     """
 
     # Forward declarations
@@ -36,17 +53,19 @@ class SPHViewerWrapper(object):
         hsml_name: Union[str, None] = "smoothing_lengths",
     ):
         """
-        Initialise the Particles class of py-sphviewer. Takes three arguments:
-
-        + data, the particle dataset (e.g. data.gas would be render the gas)
-        + hsml_name, the name of the object that contains smoothing lengths. If this
-                     is None, we will attempt to create smoothing lengths that
-                     encompass 32 nearest neighbours.
-        + smooth_over, the name of the object to smooth over. This defaults to
-                       masses, such that we return the projected mass density. This
-                       can also be an arbritary unyt or cosmo array.
+        Initialise the Particles class of py-sphviewer. 
         
-        Then, we can use any data available in that object to render the system.
+        Parameters
+        ----------
+        data : 
+            the particle dataset to render (e.g. data.gas would render the gas)
+        hsml_name : str, optional
+            the name of the object that contains smoothing lengths. If this
+            is None, attempt to create smoothing lengths that encompass 32 
+            nearest neighbours.
+        smooth_over : str, optional
+            the name of the object to smooth over. Default to mass if not 
+            provided. This can also be an arbritary unyt or cosmo array.
         """
 
         if not SPHVIEWER_AVAILABLE:
@@ -73,9 +92,17 @@ class SPHViewerWrapper(object):
 
     def __set_smoothing_lengths(self, hsml_name: Union[str, None]):
         """
-        Internal function for setting smoothing lengths. If None, then we 
-        continue to create the smoothing lengths using an internal tree
-        structure.
+        Internal function for setting smoothing lengths. 
+        
+        Object containing smoothing length data may be provided. If omitted 
+        smoothing lengths are generated using internal tree structure.
+
+        Parameters
+        ----------
+        hsml_name : str, optional
+            the name of the object that contains smoothing lengths. If this
+            is None, attempt to create smoothing lengths that encompass 32 
+            nearest neighbours.
         """
 
         # Parameters required to generate smoothing lengths
@@ -108,7 +135,7 @@ class SPHViewerWrapper(object):
         """
         Internal function for creating the particles instance.
         
-        Requires the setting of the smoothing lengths first.
+        Requires the smoothing lengths to be set first.
         """
 
         if self._internal_smoothing_lengths is None:
@@ -162,18 +189,28 @@ class SPHViewerWrapper(object):
         extent: Union[None, List[float]] = None,
     ):
         """
-        Get the py-sphviewer camera object. This also sets it as self.camera that is used later.
+        Get the py-sphviewer camera object. 
 
-        Properties are:
+        See py-sphviewer for detailed documentation
+        
+        Parameters
+        ----------
+        x, y, z : float, optional
+            Cartesian co-ordinates of the object being viewed
+        r : float, optional
+            Cartesian distance to the object
+        t : float, optional
+        p : float, optional
+        zoom : float, optional
+        roll : float, optional
+        xsize, ysize : int, optional
+            output pixel size
+        extent : list of float, optional
+            Area to render between
 
-        + x, y, z: Cartesian co-ordinates of the object you're looking at
-        + r: Cartesian distance to the object
-        + t: ?????????? TODO
-        + p: ?????????? TODO
-        + zoom: ?????????? TODO
-        + roll: ?????????? TODO
-        + xsize, ysize: Pixel size of your output
-        + extent: Area to render between
+        Notes
+        -----
+        This method also sets self.camera that is used later.
         """
 
         def convert_if_not_none(parameter):
@@ -205,9 +242,14 @@ class SPHViewerWrapper(object):
 
     def get_scene(self, camera: Union["viewer.Camera", None] = None):
         """
-        Get the scene for a given camera. If there is no camera provided,
-        we use the internal self.camera. If this is not set, then we raise
-        an AttributeError.
+        Get the scene for a given camera. 
+        
+        If there is no camera provided, we use the internal self.camera. 
+        If this is not set, then we raise an AttributeError.
+        Parameters
+        ----------
+        camera : viewer.Camera, optional
+            Camera object used to render scene
         """
 
         if camera is not None:
@@ -225,10 +267,12 @@ class SPHViewerWrapper(object):
 
     def get_render(self):
         """
-        Returns the render object (and sets self.render) using the internal
+        Returns the render object and sets self.render using the internal
         scene object.
 
-        We also provide .image and .extent as values that represent the render's
+        Notes
+        -----
+        self.image and self.extent are also provided as values that represent the render's
         image and extent including the input units.
         """
 
@@ -243,10 +287,19 @@ class SPHViewerWrapper(object):
         self, xsize: int, ysize: int, r: Union[None, float] = None, **kwargs
     ):
         """
-        Analogous to sphviewer.tools.QuickView but easier to directly call.
-        Note that here we do not logscale any of the quantities.
+        Simple render of a scene with auto camera setting
 
-        Here you must call 
+        Analogous to sphviewer.tools.QuickView but easier to directly call.
+        Parameters
+        ----------
+        xsize, ysize : int
+            camera size in pixels
+        r : float, optional
+            distance to image centre
+            
+        Notes
+        -----
+        All of the quantities are presented on a linear scale.
         """
 
         self.get_autocamera()

@@ -20,42 +20,90 @@ class InvalidScaleFactor(Exception):
     """
 
     def __init__(self, message=None, *args):
+        """
+        Constructor for warning of invalid scale factor
+
+        Parameters
+        ----------
+        message : str, optional
+            Message to print in case of invalid scale factor
+        """
         self.message = message
 
     def __str__(self):
+        """
+        Print warning message of invalid scale factor
+        """
         return f"InvalidScaleFactor: {self.message}"
 
 
 class cosmo_factor:
     """
-    Cosmology factor. This takes two arguments, one which takes the expected
-    exponent of the array that can be parsed by sympy, and the current
-    value of the cosmological scale factor a.
+    Cosmology factor class for storing and computing conversion between
+    comoving and physical coordinates.
+    
+    This takes the expected exponent of the array that can be parsed 
+    by sympy, and the current value of the cosmological scale factor a.
 
     This should be given as the conversion from comoving to physical, i.e.
 
     r = cosmo_factor * r' with r in physical and r' comoving
 
-    Typicall this would make cosmo_factor = a for the conversion between
+    Attributes
+    ----------
+    a_factor
+        the conversion factor based on the unit and current scale factor
+    redshift
+        the redshift of the snapshot
+    
+    Examples
+    --------
+    Typically this would make cosmo_factor = a for the conversion between
     comoving positions r' and physical co-ordinates r.
 
     To do this, use the a imported from objects multiplied as you'd like:
 
     density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
+
     """
 
     def __init__(self, expr, scale_factor):
+        """
+        Constructor for cosmology factor class
+
+        Parameters
+        ----------
+        expr : sympy.expr
+            expression used to convert between comoving and physical coordinates
+        scale_factor : float
+            the scale factor of the simulation data
+        """
         self.expr = expr
         self.scale_factor = scale_factor
         pass
 
     def __str__(self):
+        """
+        Print exponent and current scale factor
+
+        Returns
+        -------
+        str
+            string to print exponent and current scale factor
+        """
         return str(self.expr) + f" at a={self.scale_factor}"
 
     @property
     def a_factor(self):
         """
-        The a-factor for the unit, e.g. for density this is 1 / a**3.
+        The a-factor for the unit.
+        
+        e.g. for density this is 1 / a**3.
+
+        Returns
+        -------
+        float
+            the a-factor for given unit
         """
         return float(self.expr.subs(a, self.scale_factor))
 
@@ -63,6 +111,17 @@ class cosmo_factor:
     def redshift(self):
         """
         Compute the redshift from the scale factor.
+
+        Returns
+        -------
+        float 
+            redshift from the given scale factor
+
+        Notes
+        -----
+        Returns the redshift
+        ..math:: z = \frac{1}{a} - 1,
+        where :math: `a` is the scale factor
         """
         return (1.0 / self.scale_factor) - 1.0
 
@@ -99,7 +158,7 @@ class cosmo_factor:
     def __mul__(self, b):
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
-                "Attempting to subtract two cosmo_factors with different scale factors "
+                "Attempting to multiply two cosmo_factors with different scale factors "
                 f"{self.scale_factor} and {b.scale_factor}"
             )
 
@@ -108,7 +167,7 @@ class cosmo_factor:
     def __div__(self, b):
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
-                "Attempting to subtract two cosmo_factors with different scale factors "
+                "Attempting to divide two cosmo_factors with different scale factors "
                 f"{self.scale_factor} and {b.scale_factor}"
             )
 
@@ -150,22 +209,30 @@ class cosmo_factor:
 
 class cosmo_array(unyt_array):
     """
-    Cosmology array. This inherits from the unyt.unyt_array, and adds
+    Cosmology array class. 
+    
+    This inherits from the unyt.unyt_array, and adds
     a two variables; cosmo_factor, and comoving. Data is assumed to be
     comoving when passed to the object but you can override this by setting
     the latter flag to be False.
 
-    It provides four new methods:
+    Parameters
+    ----------
+    unyt_array : unyt.unyt_array
+        the inherited unyt_array
 
-    + convert_to_physical() (in-place)
-    + convert_to_comoving() (in-pace)
-    + to_physical() (returns copy)
-    + to_comoving() (returns copy)
-
-    and provides a state variable:
-
-    + comoving, if True then the array is in comoving co-ordinates, and if
+    Attributes
+    ----------
+    comoving : bool
+        if True then the array is in comoving co-ordinates, and if
         False then it is in physical units.
+
+    Methods
+    -------
+    convert_to_physical() (in-place)
+    convert_to_comoving() (in-pace)
+    to_physical() (returns copy)
+    to_comoving() (returns copy)
 
     """
 
@@ -183,6 +250,34 @@ class cosmo_array(unyt_array):
     ):
         """
         Essentially a copy of the __new__ constructor.
+
+        Parameters
+        ----------
+        imput_array : iterable
+            A tuple, list, or array to attach units to
+        units : str, unyt.unit_symbols or astropy.unit, optional
+            The units of the array. Powers must be specified using python syntax (cm**3, not cm^3).
+        registry : unyt.unit_registry.UnitRegistry, optional
+            The registry to create units from. If input_units is already associated with a unit 
+            registry and this is specified, this will be used instead of the registry associated 
+            with the unit object.
+        dtype : np.dtype or str, optional
+            The dtype of the array data. Defaults to the dtype of the input data, or, if none is 
+            found, uses np.float64
+        bypass_validation : bool, optional
+            If True, all input validation is skipped. Using this option may produce corrupted, 
+            invalid units or array data, but can lead to significant speedups in the input 
+            validation logic adds significant overhead. If set, input_units must be a valid 
+            unit object. Defaults to False.
+        input_units : str, optional
+            deprecated in favour of units option
+        name : str, optional
+            The name of the array. Defaults to None. This attribute does not propagate through 
+            mathematical operations, but is preserved under indexing and unit conversions.
+        cosmo_factor : cosmo_factor
+            cosmo_factor object to store conversion data between comoving and physical coordinates
+        comoving : bool
+            flag to indicate whether using comoving coordinates
         """
 
         try:
@@ -249,7 +344,12 @@ class cosmo_array(unyt_array):
 
     def to_physical(self):
         """
-        Returns a copy of the data in physical units.
+        Creates a copy of the data in physical units.
+
+        Returns
+        -------
+        cosmo_array 
+            copy of cosmo_array in physical units
         """
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_physical()
@@ -258,7 +358,12 @@ class cosmo_array(unyt_array):
 
     def to_comoving(self):
         """
-        Returns a copy of the data in comoving units.
+        Creates a copy of the data in comoving units.
+        
+        Returns
+        -------
+        cosmo_array 
+            copy of cosmo_array in comoving units
         """
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_comoving()

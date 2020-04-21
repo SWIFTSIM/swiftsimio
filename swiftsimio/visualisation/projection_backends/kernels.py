@@ -16,12 +16,29 @@ kernel_constant = float32(7.0 / 3.14159)
 @jit("float32(float32, float32)", nopython=True, fastmath=True)
 def kernel_single_precision(r: float32, H: float32):
     """
-    Kernel implementation for swiftsimio. This is the Wendland-C2
-    kernel as shown in Denhen & Aly (2012).
+    Single precision kernel implementation for swiftsimio. 
+    
+    This is the Wendland-C2 kernel as shown in Denhen & Aly (2012) [1]_.
 
-    Give it a radius and a kernel width (i.e. not a smoothing length, but the
-    radius of compact support) and it returns the contribution to the
-    density.
+    Parameters
+    ----------
+    r : float32
+        radius used in kernel computation
+    H : float32
+        kernel width (i.e. radius of compact support for the kernel)
+
+    Returns
+    -------
+    float32
+        Contribution to the density by the particle
+
+    See Also
+    --------
+    kernel_double_precision
+
+    References
+    ----------
+    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = float32(2.22817109)
 
@@ -45,12 +62,29 @@ def kernel_single_precision(r: float32, H: float32):
 @jit("float64(float64, float64)", nopython=True, fastmath=True)
 def kernel_double_precision(r: float64, H: float64):
     """
-    Kernel implementation for swiftsimio. This is the Wendland-C2
-    kernel as shown in Denhen & Aly (2012).
+    Single precision kernel implementation for swiftsimio. 
+    
+    This is the Wendland-C2 kernel as shown in Denhen & Aly (2012) [1]_.
 
-    Give it a radius and a kernel width (i.e. not a smoothing length, but the
-    radius of compact support) and it returns the contribution to the
-    density.
+    Parameters
+    ----------
+    r : float32
+        radius used in kernel computation
+    H : float32
+        kernel width (i.e. radius of compact support for the kernel)
+
+    Returns
+    -------
+    float32
+        Contribution to the density by the particle
+
+    See Also
+    --------
+    kernel_single_precision
+
+    References
+    ----------
+    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = float64(2.22817109)
 

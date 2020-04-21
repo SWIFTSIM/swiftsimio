@@ -35,14 +35,37 @@ kernel_gamma = float64(kernel_gamma)
 @jit(nopython=True, fastmath=True)
 def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
     """
-    Creates a scatter plot of:
-    + x: the x-positions of the particles. Must be bounded by [0, 1].
-    + y: the y-positions of the particles. Must be bounded by [0, 1].
-    + m: the masses (or otherwise weights) of the particles
-    + h: the smoothing lengths of the particles
-    + res: the number of pixels.
+    Creates a weighted scatter plot
+
+    Computes contributions to from particles with positions
+    (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
     This ignores boundary effects.
-    Note that explicitly defining the types in this function allows
+    Parameters
+    ----------
+    x : np.array[float64]
+        array of x-positions of the particles. Must be bounded by [0, 1].
+    y : np.array[float64]
+        array of y-positions of the particles. Must be bounded by [0, 1].
+    m : np.array[float32]
+        array of masses (or otherwise weights) of the particles
+    h : np.array[float32]
+        array of smoothing lengths of the particles
+    res : int
+        the number of pixels along one axis, i.e. this returns a square
+         of res * res..
+
+    Returns
+    -------
+    np.array[float32, float32, float32]
+        pixel grid of quantity 
+
+    See Also
+    --------
+    scatter_parallel : Parallel implementation of this function
+
+    Notes
+    -----
+    Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
     """
@@ -232,9 +255,43 @@ def scatter_parallel(
     x: float64, y: float64, m: float32, h: float32, res: int
 ) -> ndarray:
     """
-    Same as scatter, but executes in parallel! This is actually trivial,
-    we just make NUM_THREADS images and add them together at the end.
+    Parallel implementation of scatter
+    
+    Creates a weighted scatter plot. Computes contributions from
+    particles with positions (`x`,`y`) with smoothing lengths `h` 
+    weighted by quantities `m`.
+    This ignores boundary effects.
+    Parameters
+    ----------
+    x : np.array[float64]
+        array of x-positions of the particles. Must be bounded by [0, 1].
+    y : np.array[float64]
+        array of y-positions of the particles. Must be bounded by [0, 1].
+    m : np.array[float32]
+        array of masses (or otherwise weights) of the particles
+    h : np.array[float32]
+        array of smoothing lengths of the particles
+    res : int
+        the number of pixels along one axis, i.e. this returns a square
+         of res * res..
+
+    Returns
+    -------
+    np.array[float32, float32, float32]
+        pixel grid of quantity 
+
+    See Also
+    --------
+    scatter : Creates 2D scatter plot from SWIFT data
+
+    Notes
+    -----
+    Explicitly defining the types in this function allows
+    for a 25-50% performance improvement. In our testing, using numpy
+    floats and integers is also an improvement over using the numba ones.
     """
+    #Same as scatter, but executes in parallel! This is actually trivial,
+    #we just make NUM_THREADS images and add them together at the end.
 
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
