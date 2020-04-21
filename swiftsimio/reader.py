@@ -1192,6 +1192,13 @@ class SWIFTDataset(object):
 
     Methods
     -------
+    def get_units(self):
+        Loads the units from the SWIFT snapshot. 
+    def get_metadata(self):
+        Loads the metadata from the SWIFT snapshot. 
+    def create_particle_datasets(self):
+        Creates particle datasets for whatever particle types and names
+        are specified in metadata.particle_types. 
     """
 
     def __init__(self, filename, mask=None):
@@ -1255,8 +1262,9 @@ class SWIFTDataset(object):
     def create_particle_datasets(self):
         """
         Creates particle datasets for whatever particle types and names
-        are specified in metadata.particle_types. These can then be
-        accessed using their underscore names, e.g. gas.
+        are specified in metadata.particle_types. 
+        
+        These can then be accessed using their underscore names, e.g. gas.
         """
 
         if not hasattr(self, "metadata"):
