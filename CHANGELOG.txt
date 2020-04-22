@@ -1,6 +1,16 @@
 SWIFTsimIO Changelog
 ====================
 
+v 3.1.1
+-------
+
+Minor fixes:
+
++ Silenced deprecation warning from versions of `numba` that are greater than 
+  0.47 by changing to `numba.core.config` from `numba.config`.
++ Allowed the use of SWIFT files where offsets are known as `OffsetsInFile`
+  rather than `Offsets`.
+
 v 3.1.0
 -------
 
