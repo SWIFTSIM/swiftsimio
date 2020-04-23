@@ -826,7 +826,7 @@ def generate_getter(
             with h5py.File(filename, "r") as handle:
                 try:
                     if mask is not None:
-                        # First, need to claculate data shape (which may be
+                        # First, need to calculate data shape (which may be
                         # non-trivial), so we read in the first value
                         first_value = handle[field][0]
 

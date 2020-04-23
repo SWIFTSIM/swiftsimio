@@ -15,9 +15,11 @@ class SWIFTDatasubset(object):
     class for reading in subset of SWIFT snapshot
     """
 
-    def __init__(self, filename: str):
+    def __init__(self, filename: str, mask: SWIFTMask, mask_size: int):
         # Load the units and metadata
         self.filename = filename
+        self.mask = mask
+        self.mask_size = mask_size
         self.dataset_names = []
         self.datasets = []
         
@@ -31,10 +33,20 @@ class SWIFTDatasubset(object):
 
     def load_datasets(self):
         with h5py.File(self.filename, "r") as infile:
-            for i in range(2):
-                dataset = infile.get(self.dataset_names[i])[()]
-                self.datasets.append(dataset)
-            
+            if self.mask is not None:
+                # ALEXEI: note we restrict the range of dataset names for testing for now
+                for name in self.dataset_names[0:2]:
+                    # get output dtype and size 
+                    first_value = infile[name][0]
+                    input_type = first_value.dtype
+                    input_size = first_value.size
+                    if output_size != 1:
+                        output_shape = (mask_size, output_size)
+                    else:
+                        output_shape = mask_size
+
+                    self.datasets.append(read_ranges_from_file(infile[name], mask, output_shape = output_shape, output_type = output_type))
+
 
 
 class SWIFTWriterDatasubset(object):
