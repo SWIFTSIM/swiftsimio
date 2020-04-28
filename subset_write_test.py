@@ -5,6 +5,7 @@ import h5py
 import sys
 
 def compare(A, B):
+    # ALEXEI: don't be so stringent on comparing all elements of metadata, focus on dataset instead
     val = True
     for key in A.__dict__.keys():
         print("comparing ", key)
@@ -42,12 +43,12 @@ mask_size = np.sum(mask.gas[:,1]) - np.sum(mask.gas[:,0])
 
 # Write the subset
 subset_writer = SWIFTWriterDatasubset(infile, outfile, mask, mask_size)
-subset_writer.write_datasubset()
-
-# Compare written subset of snapshot against corresponding region in full snapshot
-snapshot = sw.load(infile)
-sub_snapshot = sw.load(outfile)
-
-# First check the metadata
-compare(snapshot.metadata, sub_snapshot.metadata)
+#subset_writer.write_datasubset()
+#
+## Compare written subset of snapshot against corresponding region in full snapshot
+#snapshot = sw.load(infile)
+#sub_snapshot = sw.load(outfile)
+#
+## First check the metadata
+#compare(snapshot.metadata, sub_snapshot.metadata)
 

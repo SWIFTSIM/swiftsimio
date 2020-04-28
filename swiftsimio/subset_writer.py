@@ -11,6 +11,8 @@ import unyt
 import h5py
 import numpy as np
 
+# Make everything as standalone functions
+
 class SWIFTDatasubset(object):
     """
     class for reading in subset of SWIFT snapshot
@@ -18,13 +20,14 @@ class SWIFTDatasubset(object):
 
     test_dataset = "PartType0/Coordinates"
 
-    def __init__(self, filename: str, mask: SWIFTMask, mask_size: int):
+    def __init__(self, filename: str, output_filename: str, mask: SWIFTMask, mask_size: int):
         # Load the units and metadata
         self.filename = filename
         self.mask = mask
         self.mask_size = mask_size
         self.dataset_names = []
         self.datasets = []
+        self.output = output_filename
         
         with h5py.File(filename, "r") as infile:
             # Find all the datasets in the snapshot
@@ -79,10 +82,13 @@ class SWIFTDatasubset(object):
 
                     print(name, mask_size, output_shape, output_size, output_type)
                     mask = self.get_mask_label(name)
-                    self.datasets.append(read_ranges_from_file(infile[name], mask, output_shape = output_shape, output_type = output_type))
-
-
-
+                    subset = read_ranges_from_file(infile[name], mask, output_shape = output_shape, output_type = output_type)
+                    
+                    # Write the subset
+                    with h5py.File(self.output, "a") as output_file:
+                        print("writing ", name)
+                        output_file.create_dataset(name, data=subset)
+                    
 class SWIFTWriterDatasubset(object):
     """
     Class for writing subset of SWIFT snapshot
@@ -92,8 +98,8 @@ class SWIFTWriterDatasubset(object):
         self.input_filename = infile
         self.output_filename = outfile
 
-        self.subset = SWIFTDatasubset(self.input_filename, mask, mask_size)
         self.write_metadata()
+        self.subset = SWIFTDatasubset(self.input_filename, self.output_filename, mask, mask_size)
 
     def write_metadata(self):
         """
@@ -105,7 +111,7 @@ class SWIFTWriterDatasubset(object):
         with h5py.File(self.input_filename, "r") as input_file:
             with h5py.File(self.output_filename, "w") as output_file:
                 for field in input_file.keys():
-                    if not any([group_str in field for group_str in ["PartType", "Cells"]]):
+                    if not any([group_str in field for group_str in ["PartType"]]):
                         print("copying "+field)
                         input_file.copy(field, output_file)
 
