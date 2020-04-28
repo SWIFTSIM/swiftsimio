@@ -1,5 +1,5 @@
 import numpy as np
-from swiftsimio.subset_writer import SWIFTWriterDatasubset, SWIFTDatasubset
+from swiftsimio.subset_writer import write_subset
 import swiftsimio as sw
 import h5py
 import sys
@@ -42,9 +42,8 @@ mask_size = np.asarray(mask).size
 mask_size = np.sum(mask.gas[:,1]) - np.sum(mask.gas[:,0])
 
 # Write the subset
-subset_writer = SWIFTWriterDatasubset(infile, outfile, mask, mask_size)
-#subset_writer.write_datasubset()
-#
+write_subset(infile, outfile, mask)
+
 ## Compare written subset of snapshot against corresponding region in full snapshot
 #snapshot = sw.load(infile)
 #sub_snapshot = sw.load(outfile)
