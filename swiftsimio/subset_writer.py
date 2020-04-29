@@ -39,25 +39,27 @@ def get_mask_label(mask: SWIFTMask, dataset_name: str):
 def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
     if mask is not None:
         for name in dataset_names:
-            # get output dtype and size 
-            first_value = infile[name][0]
-            output_type = first_value.dtype
-            output_size = first_value.size
-            mask_size = compute_mask_size(mask, name)
-            if output_size != 1:
-                output_shape = (mask_size, output_size)
-            else:
-                output_shape = mask_size
+            if "Cells" not in name:
+                print("reading ", name)
+                # get output dtype and size 
+                first_value = infile[name][0]
+                output_type = first_value.dtype
+                output_size = first_value.size
+                mask_size = compute_mask_size(mask, name)
+                if output_size != 1:
+                    output_shape = (mask_size, output_size)
+                else:
+                    output_shape = mask_size
     
-            print(name, mask_size, output_shape, output_size, output_type)
-            dataset_mask = get_mask_label(mask, name)
-            subset = read_ranges_from_file(infile[name], dataset_mask, output_shape = output_shape, output_type = output_type)
-            
-            # Write the subset
-            print("writing ", name)
-            outfile.create_dataset(name, data=subset)
+                dataset_mask = get_mask_label(mask, name)
+                print("output shape type ", output_shape, output_type)
+                subset = read_ranges_from_file(infile[name], dataset_mask, output_shape = output_shape, output_type = output_type)
+                
+                # Write the subset
+                print("writing ", name)
+                outfile.create_dataset(name, data=subset)
 
-def write_metadata(infile, outfile):
+def write_metadata(infile, outfile, dataset_names):
     """
     Copy over all the metadata from snapshot to output file
 
@@ -65,15 +67,24 @@ def write_metadata(infile, outfile):
     datasets in SWIFTDatasubset
     """
     for field in infile.keys():
+        #if field not in dataset_names:
         if not any([group_str in field for group_str in ["PartType"]]):
-            print("copying "+field)
+            print("copying ", field)
             infile.copy(field, outfile)
 
-def find_datasets(name, node):
-    #if isinstance(node, h5py.Dataset) and not name in self.dataset_names:
-    # ALEXEI: for testing
-    if isinstance(node, h5py.Dataset) and not name in self.dataset_names and "Cells" not in name:
-        self.dataset_names.append(name)
+def find_datasets(input_file, dataset_names, path = None):
+    if path != None:
+        keys = input_file[path].keys()
+    else:
+        keys = input_file.keys()
+        path = ""
+
+    for key in keys:
+        subpath = path + "/" + key
+        if isinstance(input_file[subpath], h5py.Dataset):
+            dataset_names.append(subpath)
+        elif input_file[subpath].keys() != None:
+            find_datasets(input_file, dataset_names, subpath)
 
 def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     # Open the files
@@ -81,12 +92,11 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     outfile = h5py.File(output_file, "w")
 
     # Find the datasets
-    #infile.visititems(find_datasets)
-    # ALEXEI: temporary for testing, change to using visititems function again
-    dataset_names = ["PartType0/Coordinates"]
+    dataset_names = []
+    find_datasets(infile, dataset_names)
     
     # Write metadata and data subset
-    write_metadata(infile, outfile)
+    write_metadata(infile, outfile, dataset_names)
     write_datasubset(infile, outfile, mask, dataset_names)
 
     # Clean up
