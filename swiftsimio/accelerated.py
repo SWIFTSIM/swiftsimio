@@ -135,7 +135,6 @@ def read_ranges_from_file(
         )
 
         output_dest_sel = np.s_[already_read : size_of_range + already_read]
-        print(output_dest_sel, already_read, size_of_range)
 
         handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
 

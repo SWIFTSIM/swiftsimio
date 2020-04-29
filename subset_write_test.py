@@ -1,29 +1,50 @@
 import numpy as np
-from swiftsimio.subset_writer import write_subset
+from swiftsimio.subset_writer import write_subset, find_datasets
 import swiftsimio as sw
 import h5py
 import sys
 
-def compare(A, B):
-    # ALEXEI: don't be so stringent on comparing all elements of metadata, focus on dataset instead
-    val = True
-    for key in A.__dict__.keys():
-        print("comparing ", key)
+def compare_arrays(A, B):
+    # Check we're not going crazy
+    if len(A) != len(B):
+        return False
+    
+    # Compare element-by-element
+    for i in range(len(A)):
         try:
-            if A.__dict__[key] != B.__dict__[key] :
-                val = False
-        except TypeError:
-            if not all(A.__dict__[key][:] == B.__dict__[key][:]):
-                val = False
+            if A[i] != B[i]:
+                return False
         except:
-            print(A.__dict__[key])
+            if not all(A[i][:] == B[i][:]):
+                return False
 
-    if val:
-        print("everything's fine")
+    # All good
+    return True
+
+def compare(A, B):
+    # Initialise a list to store fields that differ
+    bad_compares = []
+
+    # Compare metadata
+    if A.metadata.time != B.metadata.time:
+        bad_compares.append("metadata")
+
+    # Compare datasets
+    part_types = ['gas', 'dark_matter', 'stars', 'black_holes']
+    for j in range(len(part_types)):
+        A_type = getattr(A, part_types[j])
+        B_type = getattr(B, part_types[j])
+        attrs = [attr for attr in dir(A_type) if not attr.startswith('_')]
+        for i in range(len(attrs)):
+            if not callable(getattr(A_type, attrs[i])):
+                print("comparing ", attrs[i])
+                if not compare_arrays(getattr(A_type, attrs[i]), getattr(B_type, attrs[i])):
+                    bad_compares.append(part_types[j] + " " + attrs[i])
+
+    if bad_compares != []:
+        print("compare failed on ", bad_compares)
     else:
-        print("something's wrong")
-        sys.exit()
-
+        print("compare completed successfully")
 
 # Specify filepaths
 infile = "/cosma7/data/dp004/dc-bori1/swiftsimio_project/snapshots/test_snap_eagle25.hdf5"
@@ -38,16 +59,13 @@ boxsize = mask.metadata.boxsize
 load_region = [[0.49 * b, 0.51*b] for b in boxsize]
 mask.constrain_spatial(load_region)
 
-mask_size = np.asarray(mask).size
-mask_size = np.sum(mask.gas[:,1]) - np.sum(mask.gas[:,0])
-
 # Write the subset
 write_subset(infile, outfile, mask)
 
-## Compare written subset of snapshot against corresponding region in full snapshot
-#snapshot = sw.load(infile)
-#sub_snapshot = sw.load(outfile)
-#
-## First check the metadata
-#compare(snapshot.metadata, sub_snapshot.metadata)
+# Compare written subset of snapshot against corresponding region in full snapshot
+snapshot = sw.load(infile, mask)
+sub_snapshot = sw.load(outfile)
+
+# First check the metadata
+compare(snapshot, sub_snapshot)
 

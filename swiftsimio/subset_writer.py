@@ -11,7 +11,6 @@ import unyt
 import h5py
 import numpy as np
 
-# Make everything as standalone functions
 def compute_mask_size(mask: SWIFTMask, dataset_name: str):
     legend = {"Cells": 0, 
               "PartType0": mask.gas_size, 
@@ -40,7 +39,6 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
     if mask is not None:
         for name in dataset_names:
             if "Cells" not in name:
-                print("reading ", name)
                 # get output dtype and size 
                 first_value = infile[name][0]
                 output_type = first_value.dtype
@@ -52,11 +50,9 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
                     output_shape = mask_size
     
                 dataset_mask = get_mask_label(mask, name)
-                print("output shape type ", output_shape, output_type)
                 subset = read_ranges_from_file(infile[name], dataset_mask, output_shape = output_shape, output_type = output_type)
                 
                 # Write the subset
-                print("writing ", name)
                 outfile.create_dataset(name, data=subset)
 
 def write_metadata(infile, outfile, dataset_names):
@@ -69,7 +65,6 @@ def write_metadata(infile, outfile, dataset_names):
     for field in infile.keys():
         #if field not in dataset_names:
         if not any([group_str in field for group_str in ["PartType"]]):
-            print("copying ", field)
             infile.copy(field, outfile)
 
 def find_datasets(input_file, dataset_names, path = None):
