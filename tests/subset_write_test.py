@@ -46,26 +46,29 @@ def compare(A, B):
     else:
         print("compare completed successfully")
 
-# Specify filepaths
-infile = "/cosma7/data/dp004/dc-bori1/swiftsimio_project/snapshots/test_snap_eagle25.hdf5"
-outfile = "/cosma7/data/dp004/dc-bori1/swiftsimio_project/snapshots/test_out.hdf5"
-
-# Create a mask
-mask = sw.mask(infile)
-
-boxsize = mask.metadata.boxsize
-
-# Decide which region we want to load
-load_region = [[0.49 * b, 0.51*b] for b in boxsize]
-mask.constrain_spatial(load_region)
-
-# Write the subset
-write_subset(infile, outfile, mask)
-
-# Compare written subset of snapshot against corresponding region in full snapshot
-snapshot = sw.load(infile, mask)
-sub_snapshot = sw.load(outfile)
-
-# First check the metadata
-compare(snapshot, sub_snapshot)
+@requires("cosmological_volume.hdf5")
+def test_subset_writer(filename):
+    # Specify filepaths
+    #infile = "/cosma7/data/dp004/dc-bori1/swiftsimio_project/snapshots/test_snap_eagle25.hdf5"
+    #outfile = "/cosma7/data/dp004/dc-bori1/swiftsimio_project/snapshots/test_out.hdf5"
+    outfile = "subset_cosmological_volume.hdf5"
+    
+    # Create a mask
+    mask = sw.mask(filename)
+    
+    boxsize = mask.metadata.boxsize
+    
+    # Decide which region we want to load
+    load_region = [[0.49 * b, 0.51*b] for b in boxsize]
+    mask.constrain_spatial(load_region)
+    
+    # Write the subset
+    write_subset(filename, outfile, mask)
+    
+    # Compare written subset of snapshot against corresponding region in full snapshot
+    snapshot = sw.load(filename, mask)
+    sub_snapshot = sw.load(outfile)
+    
+    # First check the metadata
+    compare(snapshot, sub_snapshot)
 
