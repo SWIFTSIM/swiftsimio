@@ -7,6 +7,7 @@ import h5py
 import sys
 import os
 
+
 def compare_arrays(A, B):
     """
     Compares two arrays or arrays of arrays
@@ -24,7 +25,7 @@ def compare_arrays(A, B):
     # Check we're not going crazy
     if len(A) != len(B):
         return False
-    
+
     # Compare element-by-element
     for i in range(len(A)):
         try:
@@ -36,6 +37,7 @@ def compare_arrays(A, B):
 
     # All good
     return True
+
 
 def compare(A, B):
     """
@@ -58,7 +60,10 @@ def compare(A, B):
         bad_compares.append("metadata")
 
     # Compare datasets
-    for part_type in filter(lambda x: hasattr(A, x), sw.metadata.particle_types.particle_name_underscores.values()):
+    for part_type in filter(
+        lambda x: hasattr(A, x),
+        sw.metadata.particle_types.particle_name_underscores.values(),
+    ):
         A_type = getattr(A, part_type)
         B_type = getattr(B, part_type)
         for attr in filter(lambda x: not x.startswith("_"), dir(A_type)):
@@ -68,6 +73,7 @@ def compare(A, B):
                     bad_compares.append(f"{part_type} {attr}")
 
     assert bad_compares == [], f"compare failed on {bad_compares}"
+
 
 @requires("cosmological_volume.hdf5")
 def test_subset_writer(filename):
@@ -79,23 +85,23 @@ def test_subset_writer(filename):
     """
     # Specify output filepath
     outfile = "subset_cosmological_volume.hdf5"
-    
+
     # Create a mask
     mask = sw.mask(filename)
-    
+
     boxsize = mask.metadata.boxsize
-    
+
     # Decide which region we want to load
-    load_region = [[0.49 * b, 0.51*b] for b in boxsize]
+    load_region = [[0.49 * b, 0.51 * b] for b in boxsize]
     mask.constrain_spatial(load_region)
-    
+
     # Write the subset
     write_subset(filename, outfile, mask)
-    
+
     # Compare written subset of snapshot against corresponding region in full snapshot
     snapshot = sw.load(filename, mask)
     sub_snapshot = sw.load(outfile)
-    
+
     # First check the metadata
     compare(snapshot, sub_snapshot)
 
@@ -103,4 +109,3 @@ def test_subset_writer(filename):
     os.remove(outfile)
 
     return
-

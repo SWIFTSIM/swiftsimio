@@ -12,6 +12,7 @@ import unyt
 import h5py
 import numpy as np
 
+
 def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
     """
     Return appropriate mask or mask size for given dataset
@@ -40,9 +41,12 @@ def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
     elif "PartType" in dataset_name:
         part_type = [int(x) for x in filter(str.isdigit, dataset_name)][0]
         mask_name = metadata.particle_types.particle_name_underscores[part_type]
-        return getattr(mask, f"{mask_name}{suffix}") if hasattr(mask, mask_name) else None
+        return (
+            getattr(mask, f"{mask_name}{suffix}") if hasattr(mask, mask_name) else None
+        )
     else:
         return None
+
 
 def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
     """
@@ -62,7 +66,7 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
         for name in dataset_names:
             if "Cells" in name:
                 continue
-            # get output dtype and size 
+            # get output dtype and size
             first_value = infile[name][0]
             output_type = first_value.dtype
             output_size = first_value.size
@@ -71,12 +75,18 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
                 output_shape = (mask_size, output_size)
             else:
                 output_shape = mask_size
-    
+
             dataset_mask = get_dataset_mask(mask, name)
-            subset = read_ranges_from_file(infile[name], dataset_mask, output_shape = output_shape, output_type = output_type)
-            
+            subset = read_ranges_from_file(
+                infile[name],
+                dataset_mask,
+                output_shape=output_shape,
+                output_type=output_type,
+            )
+
             # Write the subset
             outfile.create_dataset(name, data=subset)
+
 
 def write_metadata(infile, outfile):
     """
@@ -93,7 +103,8 @@ def write_metadata(infile, outfile):
         if not "PartType" in field:
             infile.copy(field, outfile)
 
-def find_datasets(input_file: h5py.File, dataset_names=[], path = None):
+
+def find_datasets(input_file: h5py.File, dataset_names=[], path=None):
     """
     Recursively finds all the datasets in the snapshot and writes them to a list
 
@@ -121,6 +132,7 @@ def find_datasets(input_file: h5py.File, dataset_names=[], path = None):
 
     return dataset_names
 
+
 def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     """
     Writes subset of snapshot according to specified mask to new snapshot file
@@ -137,7 +149,7 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     # Open the files
     infile = h5py.File(input_file, "r")
     outfile = h5py.File(output_file, "w")
-    
+
     # Write metadata and data subset
     write_metadata(infile, outfile)
     write_datasubset(infile, outfile, mask, find_datasets(infile))
