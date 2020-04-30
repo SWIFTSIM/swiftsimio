@@ -1,5 +1,5 @@
 """
-Contains functions and objects for reading a subset of a SWIFT dataset and writing
+Contains functions for reading a subset of a SWIFT dataset and writing
 it to a new file.
 """
 
@@ -12,6 +12,22 @@ import h5py
 import numpy as np
 
 def compute_mask_size(mask: SWIFTMask, dataset_name: str):
+    """
+    Return number of elements of the specified dataset selected by the mask
+
+    Parameters
+    ----------
+    mask : SWIFTMask
+        the mask used to define subset that is written to new snapshot
+    dataset_name : str
+        the name of the dataset we're interested in. This is the name from the
+        hdf5 file (i.e. "PartType0", rather than "gas")
+
+    Returns
+    -------
+    int
+        size of the subset of the dataset selected by the mask
+    """
     legend = {"Cells": 0, 
               "PartType0": mask.gas_size if hasattr(mask, "gas_size") else 0, 
               "PartType1": mask.dark_matter_size if hasattr(mask, "dark_matter_size") else 0, 
@@ -24,6 +40,23 @@ def compute_mask_size(mask: SWIFTMask, dataset_name: str):
             return legend[key]
 
 def get_mask_label(mask: SWIFTMask, dataset_name: str):
+    """
+    Return appropriate mask for appropriate dataset
+
+    Parameters
+    ----------
+    mask : SWIFTMask
+        the mask used to define subset that is written to new snapshot
+    dataset_name : str
+        the name of the dataset we're interested in. This is the name from the
+        hdf5 file (i.e. "PartType0", rather than "gas")
+
+    Returns
+    -------
+    np.ndarray
+        mask for the appropriate dataset
+
+    """
     legend = {"Cells": 0, 
               "PartType0": mask.gas if hasattr(mask, "gas") else 0, 
               "PartType1": mask.dark_matter if hasattr(mask, "dark_matter") else 0, 
@@ -36,6 +69,19 @@ def get_mask_label(mask: SWIFTMask, dataset_name: str):
             return legend[key]
 
 def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
+    """
+    Writes subset of all datasets contained in snapshot according to specified mask
+    Parameters
+    ----------
+    infile : h5py.File
+        hdf5 file handle for input snapshot
+    outfile : h5py.File
+        hdf5 file handle for output snapshot
+    mask : SWIFTMask
+        the mask used to define subset that is written to new snapshot
+    dataset_names : list of str
+        names of datasets found in the snapshot
+    """
     if mask is not None:
         for name in dataset_names:
             if "Cells" not in name:
@@ -55,19 +101,34 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
                 # Write the subset
                 outfile.create_dataset(name, data=subset)
 
-def write_metadata(infile, outfile, dataset_names):
+def write_metadata(infile, outfile):
     """
     Copy over all the metadata from snapshot to output file
 
-    ALEXEI: rewrite this taking advantage of finding the 
-    datasets in SWIFTDatasubset
+    Parameters
+    ----------
+    infile : h5py.File
+        hdf5 file handle for input snapshot
+    outfile : h5py.File
+        hdf5 file handle for output snapshot
     """
     for field in infile.keys():
-        #if field not in dataset_names:
         if not any([group_str in field for group_str in ["PartType"]]):
             infile.copy(field, outfile)
 
-def find_datasets(input_file, dataset_names, path = None):
+def find_datasets(input_file: h5py.File, dataset_names, path = None):
+    """
+    Recursively finds all the datasets in the snapshot and writes them to a list
+
+    Parameters
+    ----------
+    input_file : h5py.File
+        hdf5 file handle for snapshot
+    dataset_names : list of str
+        names of datasets found in the snapshot
+    path : str, optional
+        the path to the current location in the snapshot
+    """
     if path != None:
         keys = input_file[path].keys()
     else:
@@ -82,6 +143,18 @@ def find_datasets(input_file, dataset_names, path = None):
             find_datasets(input_file, dataset_names, subpath)
 
 def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
+    """
+    Writes subset of snapshot according to specified mask to new snapshot file
+
+    Parameters
+    ----------
+    input_file : str
+        path to input snapshot
+    output_file : str
+        path to output snapshot
+    mask : SWIFTMask
+        the mask used to define subset that is written to new snapshot
+    """
     # Open the files
     infile = h5py.File(input_file, "r")
     outfile = h5py.File(output_file, "w")
@@ -91,7 +164,7 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     find_datasets(infile, dataset_names)
     
     # Write metadata and data subset
-    write_metadata(infile, outfile, dataset_names)
+    write_metadata(infile, outfile)
     write_datasubset(infile, outfile, mask, dataset_names)
 
     # Clean up

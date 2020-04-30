@@ -7,6 +7,19 @@ import h5py
 import sys
 
 def compare_arrays(A, B):
+    """
+    Compares two arrays or arrays of arrays
+
+    Parameters
+    ----------
+    A, B : np.array
+        Arrays to compare
+
+    Returns
+    -------
+    bool 
+        True if all elements are identical between `A` and `B`
+    """
     # Check we're not going crazy
     if len(A) != len(B):
         return False
@@ -24,6 +37,18 @@ def compare_arrays(A, B):
     return True
 
 def compare(A, B):
+    """
+    Compares two SWIFTDatasets 
+
+    Compares all datasets, and one of the metadata fields (this is
+    because all metadata fields are copied over simultaneously so if
+    they should be either all right or all wrong)
+
+    Parameters
+    ----------
+    A, B : SWIFTDataset
+        datasets to compare
+    """
     # Initialise a list to store fields that differ
     bad_compares = []
 
@@ -53,6 +78,12 @@ def compare(A, B):
 
 @requires("cosmological_volume.hdf5")
 def test_subset_writer(filename):
+    """
+    Test to make sure subset writing works as intended
+
+    Writes a subset of the cosmological volume to a snapshot file
+    and compares result against masked load of the original file.
+    """
     # Specify output filepath
     outfile = "subset_cosmological_volume.hdf5"
     
