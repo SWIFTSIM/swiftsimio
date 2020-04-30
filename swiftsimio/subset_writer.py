@@ -6,14 +6,15 @@ it to a new file.
 from swiftsimio.reader import SWIFTUnits, SWIFTMetadata
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
+import swiftsimio.metadata as metadata
 
 import unyt
 import h5py
 import numpy as np
 
-def compute_mask_size(mask: SWIFTMask, dataset_name: str):
+def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
     """
-    Return number of elements of the specified dataset selected by the mask
+    Return appropriate mask or mask size for given dataset
 
     Parameters
     ----------
@@ -22,34 +23,11 @@ def compute_mask_size(mask: SWIFTMask, dataset_name: str):
     dataset_name : str
         the name of the dataset we're interested in. This is the name from the
         hdf5 file (i.e. "PartType0", rather than "gas")
-
-    Returns
-    -------
-    int
-        size of the subset of the dataset selected by the mask
-    """
-    legend = {"Cells": 0, 
-              "PartType0": mask.gas_size if hasattr(mask, "gas_size") else 0, 
-              "PartType1": mask.dark_matter_size if hasattr(mask, "dark_matter_size") else 0, 
-              "PartType2": 0, 
-              "PartType3": 0, 
-              "PartType4": mask.stars_size if hasattr(mask, "stars_size") else 0, 
-              "PartType5": mask.black_holes_size if hasattr(mask, "black_holes_size") else 0}
-    for key in legend.keys():
-        if key in dataset_name:
-            return legend[key]
-
-def get_mask_label(mask: SWIFTMask, dataset_name: str):
-    """
-    Return appropriate mask for appropriate dataset
-
-    Parameters
-    ----------
-    mask : SWIFTMask
-        the mask used to define subset that is written to new snapshot
-    dataset_name : str
-        the name of the dataset we're interested in. This is the name from the
-        hdf5 file (i.e. "PartType0", rather than "gas")
+    suffix : str, optional
+        specify a suffix string to append to dataset underscore name to return
+        something other than the dataset mask. This is specifically used for
+        returning the mask size by setting suffix="_size", which would return,
+        for example mask.gas_size
 
     Returns
     -------
@@ -57,16 +35,14 @@ def get_mask_label(mask: SWIFTMask, dataset_name: str):
         mask for the appropriate dataset
 
     """
-    legend = {"Cells": 0, 
-              "PartType0": mask.gas if hasattr(mask, "gas") else 0, 
-              "PartType1": mask.dark_matter if hasattr(mask, "dark_matter") else 0, 
-              "PartType2": 0, 
-              "PartType3": 0, 
-              "PartType4": mask.stars if hasattr(mask, "stars") else 0, 
-              "PartType5": mask.black_holes if hasattr(mask, "black_holes") else 0}
-    for key in legend.keys():
-        if key in dataset_name:
-            return legend[key]
+    if "Cells" in dataset_name:
+        return None
+    elif "PartType" in dataset_name:
+        part_type = [int(x) for x in filter(str.isdigit, dataset_name)][0]
+        mask_name = metadata.particle_types.particle_name_underscores[part_type]
+        return getattr(mask, mask_name+suffix) if hasattr(mask, mask_name) else None
+    else:
+        return None
 
 def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
     """
@@ -89,13 +65,13 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
                 first_value = infile[name][0]
                 output_type = first_value.dtype
                 output_size = first_value.size
-                mask_size = compute_mask_size(mask, name)
+                mask_size = get_dataset_mask(mask, name, suffix="_size")
                 if output_size != 1:
                     output_shape = (mask_size, output_size)
                 else:
                     output_shape = mask_size
     
-                dataset_mask = get_mask_label(mask, name)
+                dataset_mask = get_dataset_mask(mask, name)
                 subset = read_ranges_from_file(infile[name], dataset_mask, output_shape = output_shape, output_type = output_type)
                 
                 # Write the subset
