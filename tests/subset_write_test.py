@@ -1,3 +1,5 @@
+from tests.helper import requires
+
 import numpy as np
 from swiftsimio.subset_writer import write_subset, find_datasets
 import swiftsimio as sw
@@ -30,7 +32,8 @@ def compare(A, B):
         bad_compares.append("metadata")
 
     # Compare datasets
-    part_types = ['gas', 'dark_matter', 'stars', 'black_holes']
+    possible_part_types = ['gas', 'dark_matter', 'stars', 'black_holes']
+    part_types = [attr for attr in possible_part_types if hasattr(A, attr)]
     for j in range(len(part_types)):
         A_type = getattr(A, part_types[j])
         B_type = getattr(B, part_types[j])
@@ -46,11 +49,11 @@ def compare(A, B):
     else:
         print("compare completed successfully")
 
+    assert(bad_compares == [])
+
 @requires("cosmological_volume.hdf5")
 def test_subset_writer(filename):
-    # Specify filepaths
-    #infile = "/cosma7/data/dp004/dc-bori1/swiftsimio_project/snapshots/test_snap_eagle25.hdf5"
-    #outfile = "/cosma7/data/dp004/dc-bori1/swiftsimio_project/snapshots/test_out.hdf5"
+    # Specify output filepath
     outfile = "subset_cosmological_volume.hdf5"
     
     # Create a mask
@@ -71,4 +74,6 @@ def test_subset_writer(filename):
     
     # First check the metadata
     compare(snapshot, sub_snapshot)
+
+    return
 

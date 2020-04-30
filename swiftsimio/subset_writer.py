@@ -13,24 +13,24 @@ import numpy as np
 
 def compute_mask_size(mask: SWIFTMask, dataset_name: str):
     legend = {"Cells": 0, 
-              "PartType0": mask.gas_size, 
-              "PartType1": mask.dark_matter_size, 
+              "PartType0": mask.gas_size if hasattr(mask, "gas_size") else 0, 
+              "PartType1": mask.dark_matter_size if hasattr(mask, "dark_matter_size") else 0, 
               "PartType2": 0, 
               "PartType3": 0, 
-              "PartType4": mask.stars_size, 
-              "PartType5": mask.black_holes_size}
+              "PartType4": mask.stars_size if hasattr(mask, "stars_size") else 0, 
+              "PartType5": mask.black_holes_size if hasattr(mask, "black_holes_size") else 0}
     for key in legend.keys():
         if key in dataset_name:
             return legend[key]
 
 def get_mask_label(mask: SWIFTMask, dataset_name: str):
     legend = {"Cells": 0, 
-              "PartType0": mask.gas, 
-              "PartType1": mask.dark_matter, 
+              "PartType0": mask.gas if hasattr(mask, "gas") else 0, 
+              "PartType1": mask.dark_matter if hasattr(mask, "dark_matter") else 0, 
               "PartType2": 0, 
               "PartType3": 0, 
-              "PartType4": mask.stars, 
-              "PartType5": mask.black_holes}
+              "PartType4": mask.stars if hasattr(mask, "stars") else 0, 
+              "PartType5": mask.black_holes if hasattr(mask, "black_holes") else 0}
     for key in legend.keys():
         if key in dataset_name:
             return legend[key]
