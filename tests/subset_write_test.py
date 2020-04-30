@@ -5,6 +5,7 @@ from swiftsimio.subset_writer import write_subset, find_datasets
 import swiftsimio as sw
 import h5py
 import sys
+import os
 
 def compare_arrays(A, B):
     """
@@ -57,24 +58,16 @@ def compare(A, B):
         bad_compares.append("metadata")
 
     # Compare datasets
-    possible_part_types = ['gas', 'dark_matter', 'stars', 'black_holes']
-    part_types = [attr for attr in possible_part_types if hasattr(A, attr)]
-    for j in range(len(part_types)):
-        A_type = getattr(A, part_types[j])
-        B_type = getattr(B, part_types[j])
-        attrs = [attr for attr in dir(A_type) if not attr.startswith('_')]
-        for i in range(len(attrs)):
-            if not callable(getattr(A_type, attrs[i])):
-                print("comparing ", attrs[i])
-                if not compare_arrays(getattr(A_type, attrs[i]), getattr(B_type, attrs[i])):
-                    bad_compares.append(part_types[j] + " " + attrs[i])
+    for part_type in filter(lambda x: hasattr(A, x), sw.metadata.particle_types.particle_name_underscores.values()):
+        A_type = getattr(A, part_type)
+        B_type = getattr(B, part_type)
+        for attr in filter(lambda x: not x.startswith("_"), dir(A_type)):
+            param = getattr(A_type, attr)
+            if not callable(param):
+                if not compare_arrays(param, getattr(B_type, attr)):
+                    bad_compares.append(f"{part_type} {attr}")
 
-    if bad_compares != []:
-        print("compare failed on ", bad_compares)
-    else:
-        print("compare completed successfully")
-
-    assert(bad_compares == [])
+    assert bad_compares == [], f"compare failed on {bad_compares}"
 
 @requires("cosmological_volume.hdf5")
 def test_subset_writer(filename):
@@ -105,6 +98,9 @@ def test_subset_writer(filename):
     
     # First check the metadata
     compare(snapshot, sub_snapshot)
+
+    # Clean up
+    os.remove(outfile)
 
     return
 
