@@ -36,14 +36,10 @@ def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
         mask for the appropriate dataset
 
     """
-    if "Cells" in dataset_name:
-        return None
-    elif "PartType" in dataset_name:
+    if "PartType" in dataset_name:
         part_type = [int(x) for x in filter(str.isdigit, dataset_name)][0]
         mask_name = metadata.particle_types.particle_name_underscores[part_type]
-        return (
-            getattr(mask, f"{mask_name}{suffix}") if hasattr(mask, mask_name) else None
-        )
+        return getattr(mask, f"{mask_name}{suffix}", None)
     else:
         return None
 

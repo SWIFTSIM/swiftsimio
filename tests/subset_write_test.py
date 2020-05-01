@@ -26,17 +26,7 @@ def compare_arrays(A, B):
     if len(A) != len(B):
         return False
 
-    # Compare element-by-element
-    for i in range(len(A)):
-        try:
-            if A[i] != B[i]:
-                return False
-        except:
-            if not all(A[i][:] == B[i][:]):
-                return False
-
-    # All good
-    return True
+    return (A == B).all()
 
 
 def compare(A, B):
