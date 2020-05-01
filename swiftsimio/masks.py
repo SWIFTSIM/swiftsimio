@@ -20,20 +20,32 @@ class SWIFTMask(object):
 
     Methods
     -------
-    _generate_empty_masks(self)
-        Create empty masks for all particles
-    _unpack_cell_metadata(self)
-        load cell metadata into local class variables
-    constrain_mask( self, ptype: str, quantity: str, lower: unyt.array.unyt_quantity, upper: unyt.array.unyt_quantity,)
+
+
+    constrain_mask(self, ptype: str, quantity: str,
+        lower: unyt.array.unyt_quantity, upper: unyt.array.unyt_quantity)
         constrains a particle mask based on the value of a the particle quantity
-    _generate_cell_mask(self, restrict)
-        generates spatially restricted mask for cell
-    _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array)
-        updates the particle mask using the cell mask. 
+
     constrain_spatial(self, restrict)
         generates spatially constrained cell mask
+
     convert_masks_to_ranges(self)
         converts the masks to range masks so that they take up less space.
+
+    Private Methods
+    ---------------
+
+    _generate_empty_masks(self)
+        Create empty masks for all particles
+
+    _unpack_cell_metadata(self)
+        load cell metadata into local class variables
+
+    _generate_cell_mask(self, restrict)
+        generates spatially restricted mask for cell
+
+    _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array)
+        updates the particle mask using the cell mask. 
     """
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
@@ -93,10 +105,16 @@ class SWIFTMask(object):
 
         with h5py.File(self.metadata.filename, "r") as handle:
             cell_handle = handle["Cells"]
-            offset_handle = cell_handle["Offsets"]
             count_handle = cell_handle["Counts"]
             metadata_handle = cell_handle["Meta-data"]
             centers_handle = cell_handle["Centres"]
+
+            try:
+                offset_handle = cell_handle["OffsetsInFile"]
+            except KeyError:
+                # Previous version of SWIFT did not have distributed
+                # file i/o implemented
+                offset_handle = cell_handle["Offsets"]
 
             # Only want to compute this once (even if it is fast, we do not
             # have a reliable stable sort in the case where cells do not
