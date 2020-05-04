@@ -60,8 +60,13 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
     """
     if mask is not None:
         for name in dataset_names:
-            if "Cells" in name:
+            if any([substr for substr in ["Cells", "BHParticles", "GasParticles", "DMParticles", "StarsParticles"] if substr in name]):
                 continue
+
+            if "NamedColumns" in name:
+                infile.copy(name, outfile)
+                continue
+
             # get output dtype and size
             first_value = infile[name][0]
             output_type = first_value.dtype
@@ -73,6 +78,7 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
                 output_shape = mask_size
 
             dataset_mask = get_dataset_mask(mask, name)
+
             subset = read_ranges_from_file(
                 infile[name],
                 dataset_mask,
@@ -82,6 +88,8 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names):
 
             # Write the subset
             outfile.create_dataset(name, data=subset)
+            for attr_name, attr_value in infile[name].attrs.items():
+                outfile[name].attrs.create(attr_name, attr_value)
 
 
 def write_metadata(infile, outfile):

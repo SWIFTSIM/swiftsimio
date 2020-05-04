@@ -1043,6 +1043,12 @@ class __SWIFTNamedColumnDataset(object):
     def __repr__(self):
         return self.__str__()
 
+    def __len__(self):
+        return len(self.named_columns)
+
+    def __eq__(self, other):
+        return self.named_columns == other.named_columns and self.name == other.name
+
 
 def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     """

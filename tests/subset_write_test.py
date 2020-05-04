@@ -26,7 +26,19 @@ def compare_arrays(A, B):
     if len(A) != len(B):
         return False
 
-    return (A == B).all()
+    print(A)
+    print(B)
+
+    #try:
+    #    print("trying")
+    #    val = (A == B)
+    #except:
+    #    print("excepting")
+    #    val = (A == B).all()
+
+    np.all(A,B)
+    
+    return val
 
 
 def compare(A, B):
@@ -59,8 +71,12 @@ def compare(A, B):
         for attr in filter(lambda x: not x.startswith("_"), dir(A_type)):
             param = getattr(A_type, attr)
             if not callable(param):
-                if not compare_arrays(param, getattr(B_type, attr)):
-                    bad_compares.append(f"{part_type} {attr}")
+                try:
+                    if not (param == getattr(B_type, attr)):
+                        bad_compares.append(f"{part_type} {attr}")
+                except:
+                    if not (param == getattr(B_type, attr)).all():
+                        bad_compares.append(f"{part_type} {attr}")
 
     assert bad_compares == [], f"compare failed on {bad_compares}"
 
@@ -99,3 +115,4 @@ def test_subset_writer(filename):
     os.remove(outfile)
 
     return
+
