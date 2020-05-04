@@ -7,40 +7,6 @@ import h5py
 import sys
 import os
 
-
-def compare_arrays(A, B):
-    """
-    Compares two arrays or arrays of arrays
-
-    Parameters
-    ----------
-    A, B : np.array
-        Arrays to compare
-
-    Returns
-    -------
-    bool 
-        True if all elements are identical between `A` and `B`
-    """
-    # Check we're not going crazy
-    if len(A) != len(B):
-        return False
-
-    print(A)
-    print(B)
-
-    #try:
-    #    print("trying")
-    #    val = (A == B)
-    #except:
-    #    print("excepting")
-    #    val = (A == B).all()
-
-    np.all(A,B)
-    
-    return val
-
-
 def compare(A, B):
     """
     Compares two SWIFTDatasets 
