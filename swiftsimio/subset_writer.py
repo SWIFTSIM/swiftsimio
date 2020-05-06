@@ -57,17 +57,14 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names, links_list
         the mask used to define subset that is written to new snapshot
     dataset_names : list of str
         names of datasets found in the snapshot
-    dataset_names : list of str
+    links_list : list of str
         names of links found in the snapshot
     """
-    links_list.append('Cells')
+    skip_list = links_list.copy()
+    skip_list.extend(["Cells", "SubgridScheme"])
     if mask is not None:
         for name in dataset_names:
-            if any([substr for substr in links_list if substr in name]):
-                continue
-
-            if "NamedColumns" in name:
-                infile.copy(name, outfile)
+            if any([substr for substr in skip_list if substr in name]):
                 continue
 
             # get output dtype and size
@@ -94,10 +91,8 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names, links_list
             for attr_name, attr_value in infile[name].attrs.items():
                 outfile[name].attrs.create(attr_name, attr_value)
 
-    links_list.pop()
 
-
-def write_metadata(infile, outfile, links_names):
+def write_metadata(infile, outfile, links_list):
     """
     Copy over all the metadata from snapshot to output file
 
@@ -107,12 +102,14 @@ def write_metadata(infile, outfile, links_names):
         hdf5 file handle for input snapshot
     outfile : h5py.File
         hdf5 file handle for output snapshot
+    links_list : list of str
+        names of links found in the snapshot
     """
-    links_names.append('PartType')
+    skip_list = links_list.copy()
+    skip_list.append("PartType")
     for field in infile.keys():
-        if not any([substr for substr in links_names if substr in field]):
+        if not any([substr for substr in skip_list if substr in field]):
             infile.copy(field, outfile)
-    links_names.pop()
 
 
 def find_datasets(input_file: h5py.File, dataset_names=[], path=None):
@@ -143,7 +140,8 @@ def find_datasets(input_file: h5py.File, dataset_names=[], path=None):
 
     return dataset_names
 
-def find_links(input_file: h5py.File, link_names=[], path=None):
+
+def find_links(input_file: h5py.File, link_names=[], link_paths=[], path=None):
     """
     Recursively finds all the links in the snapshot and writes them to a list
 
@@ -153,6 +151,8 @@ def find_links(input_file: h5py.File, link_names=[], path=None):
         hdf5 file handle for snapshot
     link_names : list of str, optional
         names of links found in the snapshot
+    link_paths : list of str, optional
+        paths where links found in the snapshot point to
     path : str, optional
         the path to the current location in the snapshot
     """
@@ -162,18 +162,38 @@ def find_links(input_file: h5py.File, link_names=[], path=None):
         keys = input_file.keys()
         path = ""
 
+    link_paths = []
     for key in keys:
         subpath = f"{path}/{key}"
-        if isinstance(input_file.get(subpath, getlink=True), h5py.SoftLink):
+        dataset = input_file.get(subpath, getlink=True)
+        if isinstance(dataset, h5py.SoftLink):
             link_names.append(subpath.lstrip("/"))
+            link_paths.append(dataset.path)
         else:
             try:
                 if input_file[subpath].keys() is not None:
-                    find_links(input_file, link_names, subpath)
+                    find_links(input_file, link_names, link_paths, subpath)
             except:
                 pass
 
-    return link_names
+    return link_names, link_paths
+
+
+def connect_links(file: h5py.File, links_list, paths_list):
+    """
+    Connects up the links to the appropriate path
+
+    Parameters
+    ----------
+    file : h5py.File
+        file containing the hdf5 subsnapshot
+    links_list : list of str
+        list of names of soft links
+    paths_list : list of str
+        list of paths specifying how to link each soft link
+    """
+    for i in range(len(links_list)):
+        file[links_list[i]] = h5py.SoftLink(paths_list[i])
 
 
 def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
@@ -194,9 +214,10 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     outfile = h5py.File(output_file, "w")
 
     # Write metadata and data subset
-    list_of_links = find_links(infile)
+    list_of_links, list_of_link_paths = find_links(infile)
     write_metadata(infile, outfile, list_of_links)
     write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
+    connect_links(outfile, list_of_links, list_of_link_paths)
 
     # Clean up
     infile.close()
