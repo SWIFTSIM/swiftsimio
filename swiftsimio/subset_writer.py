@@ -179,13 +179,13 @@ def find_links(input_file: h5py.File, link_names=[], link_paths=[], path=None):
     return link_names, link_paths
 
 
-def connect_links(file: h5py.File, links_list, paths_list):
+def connect_links(outfile: h5py.File, links_list, paths_list):
     """
     Connects up the links to the appropriate path
 
     Parameters
     ----------
-    file : h5py.File
+    outfile : h5py.File
         file containing the hdf5 subsnapshot
     links_list : list of str
         list of names of soft links
@@ -193,8 +193,31 @@ def connect_links(file: h5py.File, links_list, paths_list):
         list of paths specifying how to link each soft link
     """
     for i in range(len(links_list)):
-        file[links_list[i]] = h5py.SoftLink(paths_list[i])
+        outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
 
+def update_metadata_counts(file: h5py.File, mask: SWIFTMask):
+    # Get the particle counts and offsets in the cells
+    particle_counts, particle_offsets = refine_metadata_mask(mask)
+
+    # Loop over each particle type in the cells and update their counts
+    counts_dsets = find_datasets(file, path = "/Cells/Counts")
+    for part_type in particle_counts:
+        for dset in counts_dsets:
+            if part_type in dset:
+                file[dset] = particle_counts[part_type]
+    
+    # Loop over each particle type in the cells and update their offsets
+    offsets_dsets = find_datasets(file, path = "/Cells/Offsets")
+    for part_type in particle_offsets:
+        for dset in offsets_dsets:
+            if part_type in dset:
+                file[dset] = particle_offsets[part_type]
+
+def refine_metadata_mask(mask):
+    #particle_counts = dict([(mask.counts.keys(i), mask.counts.values(i)) for i in range(len(mask.counts.keys()))])
+    #offsets = dict([(mask.offsets.keys(i), mask.offsets.values(i)) for i in range(len(mask.offsets.keys()))])
+
+    return mask.counts, mask.offsets
 
 def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     """
@@ -216,6 +239,7 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
     # Write metadata and data subset
     list_of_links, list_of_link_paths = find_links(infile)
     write_metadata(infile, outfile, list_of_links)
+    update_metadata_counts(outfile, mask)
     write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
     connect_links(outfile, list_of_links, list_of_link_paths)
 

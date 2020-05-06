@@ -355,6 +355,12 @@ class SWIFTMetadata(object):
 
         return
 
+    #def refine_metadata_mask(self, mask):
+    #    particle_counts = dict([(mask.counts.keys(i), mask.counts.values(i)) for i in range(len(mask.counts.keys()))])
+    #    #offsets = dict([(mask.offsets.keys(i), mask.offsets.values(i)) for i in range(len(mask.offsets.keys()))])
+
+    #    return particle_counts
+
     @property
     def present_particle_types(self):
         """
