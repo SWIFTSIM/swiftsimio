@@ -92,7 +92,7 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names, links_list
                 outfile[name].attrs.create(attr_name, attr_value)
 
 
-def write_metadata(infile, outfile, links_list):
+def write_metadata(infile, outfile, links_list, mask, restrict):
     """
     Copy over all the metadata from snapshot to output file
 
@@ -105,14 +105,17 @@ def write_metadata(infile, outfile, links_list):
     links_list : list of str
         names of links found in the snapshot
     """
+    
+    update_metadata_counts(infile, outfile, mask, restrict)
+
     skip_list = links_list.copy()
-    skip_list.append("PartType")
+    skip_list += ["PartType", "Cells"]
     for field in infile.keys():
         if not any([substr for substr in skip_list if substr in field]):
             infile.copy(field, outfile)
 
 
-def find_datasets(input_file: h5py.File, dataset_names=[], path=None):
+def find_datasets(input_file: h5py.File, dataset_names=[], path=None, recurse = 0):
     """
     Recursively finds all the datasets in the snapshot and writes them to a list
 
@@ -125,6 +128,9 @@ def find_datasets(input_file: h5py.File, dataset_names=[], path=None):
     path : str, optional
         the path to the current location in the snapshot
     """
+    if not recurse:
+        dataset_names = []
+
     if path is not None:
         keys = input_file[path].keys()
     else:
@@ -136,7 +142,7 @@ def find_datasets(input_file: h5py.File, dataset_names=[], path=None):
         if isinstance(input_file[subpath], h5py.Dataset):
             dataset_names.append(subpath)
         elif input_file[subpath].keys() is not None:
-            find_datasets(input_file, dataset_names, subpath)
+            find_datasets(input_file, dataset_names, subpath, recurse = 1)
 
     return dataset_names
 
@@ -195,31 +201,39 @@ def connect_links(outfile: h5py.File, links_list, paths_list):
     for i in range(len(links_list)):
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
 
-def update_metadata_counts(file: h5py.File, mask: SWIFTMask):
+def get_swift_name(name: str) -> str:
+    part_type_nums = [k for k, v in metadata.particle_types.particle_name_underscores.items()]
+    part_types = [v for k, v in metadata.particle_types.particle_name_underscores.items()]
+    part_type_num = part_type_nums[part_types.index(name)]
+    return f"PartType{part_type_num}"
+
+def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask, restrict: np.ndarray):
+    outfile.create_group("Cells")
+    outfile.create_group("Cells/Counts")
+    outfile.create_group("Cells/Offsets")
+
     # Get the particle counts and offsets in the cells
-    particle_counts, particle_offsets = refine_metadata_mask(mask)
+    particle_counts, particle_offsets = mask.refine_metadata_mask(restrict)
 
     # Loop over each particle type in the cells and update their counts
-    counts_dsets = find_datasets(file, path = "/Cells/Counts")
+    counts_dsets = find_datasets(infile, path = "/Cells/Counts")
     for part_type in particle_counts:
         for dset in counts_dsets:
-            if part_type in dset:
-                file[dset] = particle_counts[part_type]
+            if get_swift_name(part_type) in dset:
+                outfile[dset] = particle_counts[part_type]
     
     # Loop over each particle type in the cells and update their offsets
-    offsets_dsets = find_datasets(file, path = "/Cells/Offsets")
+    offsets_dsets = find_datasets(infile, path = "/Cells/Offsets")
     for part_type in particle_offsets:
         for dset in offsets_dsets:
-            if part_type in dset:
-                file[dset] = particle_offsets[part_type]
+            if get_swift_name(part_type) in dset:
+                outfile[dset] = particle_offsets[part_type]
 
-def refine_metadata_mask(mask):
-    #particle_counts = dict([(mask.counts.keys(i), mask.counts.values(i)) for i in range(len(mask.counts.keys()))])
-    #offsets = dict([(mask.offsets.keys(i), mask.offsets.values(i)) for i in range(len(mask.offsets.keys()))])
+    # Copy the cell centres and metadata
+    infile.copy("/Cells/Centres", outfile)
+    infile.copy("/Cells/Meta-data", outfile)
 
-    return mask.counts, mask.offsets
-
-def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
+def write_subset(input_file: str, output_file: str, mask: SWIFTMask, restrict: np.ndarray):
     """
     Writes subset of snapshot according to specified mask to new snapshot file
 
@@ -231,6 +245,9 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
         path to output snapshot
     mask : SWIFTMask
         the mask used to define subset that is written to new snapshot
+    restrict : np.ndarray
+        length 3 array of spatial ranges (each a 2 element array) containing
+        the region of interest
     """
     # Open the files
     infile = h5py.File(input_file, "r")
@@ -238,8 +255,8 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask):
 
     # Write metadata and data subset
     list_of_links, list_of_link_paths = find_links(infile)
-    write_metadata(infile, outfile, list_of_links)
-    update_metadata_counts(outfile, mask)
+    write_metadata(infile, outfile, list_of_links, mask, restrict)
+    #update_metadata_counts(outfile, mask, restrict)
     write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
     connect_links(outfile, list_of_links, list_of_link_paths)
 

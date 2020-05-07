@@ -405,3 +405,21 @@ class SWIFTMask(object):
                 setattr(self, ptype, ranges_from_array(getattr(self, ptype)))
 
         return
+
+    def refine_metadata_mask(self, restrict):
+        if self.spatial_only:
+            refined_counts = {}
+            refined_offsets = {}
+            cell_mask = self._generate_cell_mask(restrict)
+            for part_type, counts in self.counts.items():
+                refined_counts[part_type] = counts*cell_mask
+
+                refined_offsets[part_type] = [0 for i in range(len(counts))]
+                running_sum = 0
+                for i in range(len(counts)):
+                    refined_offsets[part_type][i] = running_sum
+                    running_sum += refined_counts[part_type][i]
+
+            return refined_counts, refined_offsets
+        else:
+            raise("Only applies on spatial only masks")
