@@ -406,20 +406,43 @@ class SWIFTMask(object):
 
         return
 
-    def refine_metadata_mask(self, restrict):
+    def get_masked_counts_offsets(self, restrict: np.ndarray) -> (dict, dict):
+        """
+        Returns the particle counts and offsets in cells selected by the mask
+
+        Parameters
+        ----------
+        restrict : np.ndarray
+            Restrict is a 3 length list that contains length two arrays giving 
+            the lower and upper bounds for that axis, e.g.
+
+            restrict = [
+                [0.5, 0.7],
+                [0.1, 0.9],
+                [0.0, 0.1]
+            ]
+
+            These values must have units associated with them.
+
+        Returns
+        -------
+        dict, dict
+            dictionaries containing the particle offets and counts for each particle type
+
+        """
         if self.spatial_only:
-            refined_counts = {}
-            refined_offsets = {}
+            masked_counts = {}
+            masked_offsets = {}
             cell_mask = self._generate_cell_mask(restrict)
             for part_type, counts in self.counts.items():
-                refined_counts[part_type] = counts*cell_mask
+                masked_counts[part_type] = counts*cell_mask
 
-                refined_offsets[part_type] = [0 for i in range(len(counts))]
+                masked_offsets[part_type] = [0 for i in range(len(counts))]
                 running_sum = 0
                 for i in range(len(counts)):
-                    refined_offsets[part_type][i] = running_sum
-                    running_sum += refined_counts[part_type][i]
+                    masked_offsets[part_type][i] = running_sum
+                    running_sum += masked_counts[part_type][i]
 
-            return refined_counts, refined_offsets
+            return masked_counts, masked_offsets
         else:
             raise("Only applies on spatial only masks")

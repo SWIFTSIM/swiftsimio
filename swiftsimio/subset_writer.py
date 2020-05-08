@@ -12,6 +12,24 @@ import unyt
 import h5py
 import numpy as np
 
+def get_swift_name(name: str) -> str:
+    """
+    Returns the particle type name used in SWIFT
+
+    Parameters
+    ----------
+    name : str
+        swiftsimio particle name (e.g. gas)
+
+    Returns
+    -------
+    str
+        SWIFT particle type corresponding to `name` (e.g. PartType0)
+    """
+    part_type_nums = [k for k, v in metadata.particle_types.particle_name_underscores.items()]
+    part_types = [v for k, v in metadata.particle_types.particle_name_underscores.items()]
+    part_type_num = part_type_nums[part_types.index(name)]
+    return f"PartType{part_type_num}"
 
 def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
     """
@@ -42,6 +60,149 @@ def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
         return getattr(mask, f"{mask_name}{suffix}", None)
     else:
         return None
+
+def find_datasets(input_file: h5py.File, dataset_names=[], path=None, recurse = False):
+    """
+    Recursively finds all the datasets in the snapshot and writes them to a list
+
+    Parameters
+    ----------
+    input_file : h5py.File
+        hdf5 file handle for snapshot
+    dataset_names : list of str, optional
+        names of datasets found in the snapshot
+    path : str, optional
+        the path to the current location in the snapshot
+    recurse : bool, optional
+        flag to indicate whether we're recursing or not
+    """
+    if not recurse:
+        dataset_names = []
+
+    if path is not None:
+        keys = input_file[path].keys()
+    else:
+        keys = input_file.keys()
+        path = ""
+
+    for key in keys:
+        subpath = f"{path}/{key}"
+        if isinstance(input_file[subpath], h5py.Dataset):
+            dataset_names.append(subpath)
+        elif input_file[subpath].keys() is not None:
+            find_datasets(input_file, dataset_names, subpath, recurse = True)
+
+    return dataset_names
+
+def find_links(input_file: h5py.File, link_names=[], link_paths=[], path=None):
+    """
+    Recursively finds all the links in the snapshot and writes them to a list
+
+    Parameters
+    ----------
+    input_file : h5py.File
+        hdf5 file handle for snapshot
+    link_names : list of str, optional
+        names of links found in the snapshot
+    link_paths : list of str, optional
+        paths where links found in the snapshot point to
+    path : str, optional
+        the path to the current location in the snapshot
+    """
+    if path is not None:
+        keys = input_file[path].keys()
+    else:
+        keys = input_file.keys()
+        path = ""
+
+    link_paths = []
+    for key in keys:
+        subpath = f"{path}/{key}"
+        dataset = input_file.get(subpath, getlink=True)
+        if isinstance(dataset, h5py.SoftLink):
+            link_names.append(subpath.lstrip("/"))
+            link_paths.append(dataset.path)
+        else:
+            try:
+                if input_file[subpath].keys() is not None:
+                    find_links(input_file, link_names, link_paths, subpath)
+            except:
+                pass
+
+    return link_names, link_paths
+
+
+def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask, restrict: np.ndarray):
+    """
+    Recalculates the cell particle counts and offsets based on the particles present in the subset
+
+    Parameters
+    ----------
+    infile : h5py.File
+        File handle for input snapshot
+    outfile : h5py.File
+        File handle for output subset of snapshot
+    mask : SWIFTMask
+        the mask being used to define subset
+    restrict : np.ndarray
+        Restrict is a 3 length list that contains length two arrays giving
+        the lower and upper bounds for that axis, e.g.
+
+        restrict = [
+            [0.5, 0.7],
+            [0.1, 0.9],
+            [0.0, 0.1]
+        ]
+
+        These values must have units associated with them.  
+    """
+    outfile.create_group("Cells")
+    outfile.create_group("Cells/Counts")
+    outfile.create_group("Cells/Offsets")
+
+    # Get the particle counts and offsets in the cells
+    particle_counts, particle_offsets = mask.get_masked_counts_offsets(restrict)
+
+    # Loop over each particle type in the cells and update their counts
+    counts_dsets = find_datasets(infile, path = "/Cells/Counts")
+    for part_type in particle_counts:
+        for dset in counts_dsets:
+            if get_swift_name(part_type) in dset:
+                outfile[dset] = particle_counts[part_type]
+    
+    # Loop over each particle type in the cells and update their offsets
+    offsets_dsets = find_datasets(infile, path = "/Cells/Offsets")
+    for part_type in particle_offsets:
+        for dset in offsets_dsets:
+            if get_swift_name(part_type) in dset:
+                outfile[dset] = particle_offsets[part_type]
+
+    # Copy the cell centres and metadata
+    infile.copy("/Cells/Centres", outfile)
+    infile.copy("/Cells/Meta-data", outfile)
+
+
+def write_metadata(infile, outfile, links_list, mask, restrict):
+    """
+    Copy over all the metadata from snapshot to output file
+
+    Parameters
+    ----------
+    infile : h5py.File
+        hdf5 file handle for input snapshot
+    outfile : h5py.File
+        hdf5 file handle for output snapshot
+    links_list : list of str
+        names of links found in the snapshot
+    """
+    
+    update_metadata_counts(infile, outfile, mask, restrict)
+
+    skip_list = links_list.copy()
+    skip_list += ["PartType", "Cells"]
+    for field in infile.keys():
+        if not any([substr for substr in skip_list if substr in field]):
+            infile.copy(field, outfile)
 
 
 def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names, links_list):
@@ -92,99 +253,6 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names, links_list
                 outfile[name].attrs.create(attr_name, attr_value)
 
 
-def write_metadata(infile, outfile, links_list, mask, restrict):
-    """
-    Copy over all the metadata from snapshot to output file
-
-    Parameters
-    ----------
-    infile : h5py.File
-        hdf5 file handle for input snapshot
-    outfile : h5py.File
-        hdf5 file handle for output snapshot
-    links_list : list of str
-        names of links found in the snapshot
-    """
-    
-    update_metadata_counts(infile, outfile, mask, restrict)
-
-    skip_list = links_list.copy()
-    skip_list += ["PartType", "Cells"]
-    for field in infile.keys():
-        if not any([substr for substr in skip_list if substr in field]):
-            infile.copy(field, outfile)
-
-
-def find_datasets(input_file: h5py.File, dataset_names=[], path=None, recurse = 0):
-    """
-    Recursively finds all the datasets in the snapshot and writes them to a list
-
-    Parameters
-    ----------
-    input_file : h5py.File
-        hdf5 file handle for snapshot
-    dataset_names : list of str, optional
-        names of datasets found in the snapshot
-    path : str, optional
-        the path to the current location in the snapshot
-    """
-    if not recurse:
-        dataset_names = []
-
-    if path is not None:
-        keys = input_file[path].keys()
-    else:
-        keys = input_file.keys()
-        path = ""
-
-    for key in keys:
-        subpath = f"{path}/{key}"
-        if isinstance(input_file[subpath], h5py.Dataset):
-            dataset_names.append(subpath)
-        elif input_file[subpath].keys() is not None:
-            find_datasets(input_file, dataset_names, subpath, recurse = 1)
-
-    return dataset_names
-
-
-def find_links(input_file: h5py.File, link_names=[], link_paths=[], path=None):
-    """
-    Recursively finds all the links in the snapshot and writes them to a list
-
-    Parameters
-    ----------
-    input_file : h5py.File
-        hdf5 file handle for snapshot
-    link_names : list of str, optional
-        names of links found in the snapshot
-    link_paths : list of str, optional
-        paths where links found in the snapshot point to
-    path : str, optional
-        the path to the current location in the snapshot
-    """
-    if path is not None:
-        keys = input_file[path].keys()
-    else:
-        keys = input_file.keys()
-        path = ""
-
-    link_paths = []
-    for key in keys:
-        subpath = f"{path}/{key}"
-        dataset = input_file.get(subpath, getlink=True)
-        if isinstance(dataset, h5py.SoftLink):
-            link_names.append(subpath.lstrip("/"))
-            link_paths.append(dataset.path)
-        else:
-            try:
-                if input_file[subpath].keys() is not None:
-                    find_links(input_file, link_names, link_paths, subpath)
-            except:
-                pass
-
-    return link_names, link_paths
-
-
 def connect_links(outfile: h5py.File, links_list, paths_list):
     """
     Connects up the links to the appropriate path
@@ -200,38 +268,6 @@ def connect_links(outfile: h5py.File, links_list, paths_list):
     """
     for i in range(len(links_list)):
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
-
-def get_swift_name(name: str) -> str:
-    part_type_nums = [k for k, v in metadata.particle_types.particle_name_underscores.items()]
-    part_types = [v for k, v in metadata.particle_types.particle_name_underscores.items()]
-    part_type_num = part_type_nums[part_types.index(name)]
-    return f"PartType{part_type_num}"
-
-def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask, restrict: np.ndarray):
-    outfile.create_group("Cells")
-    outfile.create_group("Cells/Counts")
-    outfile.create_group("Cells/Offsets")
-
-    # Get the particle counts and offsets in the cells
-    particle_counts, particle_offsets = mask.refine_metadata_mask(restrict)
-
-    # Loop over each particle type in the cells and update their counts
-    counts_dsets = find_datasets(infile, path = "/Cells/Counts")
-    for part_type in particle_counts:
-        for dset in counts_dsets:
-            if get_swift_name(part_type) in dset:
-                outfile[dset] = particle_counts[part_type]
-    
-    # Loop over each particle type in the cells and update their offsets
-    offsets_dsets = find_datasets(infile, path = "/Cells/Offsets")
-    for part_type in particle_offsets:
-        for dset in offsets_dsets:
-            if get_swift_name(part_type) in dset:
-                outfile[dset] = particle_offsets[part_type]
-
-    # Copy the cell centres and metadata
-    infile.copy("/Cells/Centres", outfile)
-    infile.copy("/Cells/Meta-data", outfile)
 
 def write_subset(input_file: str, output_file: str, mask: SWIFTMask, restrict: np.ndarray):
     """
@@ -256,7 +292,6 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask, restrict: n
     # Write metadata and data subset
     list_of_links, list_of_link_paths = find_links(infile)
     write_metadata(infile, outfile, list_of_links, mask, restrict)
-    #update_metadata_counts(outfile, mask, restrict)
     write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
     connect_links(outfile, list_of_links, list_of_link_paths)
 
