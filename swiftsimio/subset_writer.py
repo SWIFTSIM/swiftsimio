@@ -11,6 +11,7 @@ import swiftsimio.metadata as metadata
 import unyt
 import h5py
 import numpy as np
+from typing import Optional, List
 
 def get_swift_name(name: str) -> str:
     """
@@ -31,7 +32,7 @@ def get_swift_name(name: str) -> str:
     part_type_num = part_type_nums[part_types.index(name)]
     return f"PartType{part_type_num}"
 
-def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
+def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix: Optional[str] = None) -> np.ndarray:
     """
     Return appropriate mask or mask size for given dataset
 
@@ -54,6 +55,8 @@ def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
         mask for the appropriate dataset
 
     """
+    suffix = "" if suffix is None else suffix
+
     if "PartType" in dataset_name:
         part_type = [int(x) for x in filter(str.isdigit, dataset_name)][0]
         mask_name = metadata.particle_types.particle_name_underscores[part_type]
@@ -61,7 +64,7 @@ def get_dataset_mask(mask: SWIFTMask, dataset_name: str, suffix=""):
     else:
         return None
 
-def find_datasets(input_file: h5py.File, dataset_names=[], path=None, recurse = False):
+def find_datasets(input_file: h5py.File, dataset_names=[], path=None, recurse = False) -> List[str]:
     """
     Recursively finds all the datasets in the snapshot and writes them to a list
 
@@ -75,6 +78,11 @@ def find_datasets(input_file: h5py.File, dataset_names=[], path=None, recurse = 
         the path to the current location in the snapshot
     recurse : bool, optional
         flag to indicate whether we're recursing or not
+
+    Returns
+    -------
+    dataset_names : list of str
+        names of datasets in `path` in `input_file`
     """
     if not recurse:
         dataset_names = []
@@ -94,7 +102,7 @@ def find_datasets(input_file: h5py.File, dataset_names=[], path=None, recurse = 
 
     return dataset_names
 
-def find_links(input_file: h5py.File, link_names=[], link_paths=[], path=None):
+def find_links(input_file: h5py.File, link_names: Optional[List]=[], link_paths: Optional[List]=[], path: Optional[str]=None) -> (List[str], List[str]):
     """
     Recursively finds all the links in the snapshot and writes them to a list
 
@@ -108,6 +116,11 @@ def find_links(input_file: h5py.File, link_names=[], link_paths=[], path=None):
         paths where links found in the snapshot point to
     path : str, optional
         the path to the current location in the snapshot
+
+    Returns
+    -------
+    link_names, link_paths : list of str, list of str
+        lists of the names and links of paths in `input_file`
     """
     if path is not None:
         keys = input_file[path].keys()
@@ -182,7 +195,7 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
     infile.copy("/Cells/Meta-data", outfile)
 
 
-def write_metadata(infile, outfile, links_list, mask, restrict):
+def write_metadata(infile: h5py.File, outfile: h5py.File, links_list: List[str], mask: SWIFTMask, restrict: np.ndarray):
     """
     Copy over all the metadata from snapshot to output file
 
@@ -194,6 +207,19 @@ def write_metadata(infile, outfile, links_list, mask, restrict):
         hdf5 file handle for output snapshot
     links_list : list of str
         names of links found in the snapshot
+    mask : SWIFTMask
+        the mask being used to define subset
+    restrict : np.ndarray
+        Restrict is a 3 length list that contains length two arrays giving
+        the lower and upper bounds for that axis, e.g.
+
+        restrict = [
+            [0.5, 0.7],
+            [0.1, 0.9],
+            [0.0, 0.1]
+        ]
+
+        These values must have units associated with them.  
     """
     
     update_metadata_counts(infile, outfile, mask, restrict)
@@ -205,7 +231,7 @@ def write_metadata(infile, outfile, links_list, mask, restrict):
             infile.copy(field, outfile)
 
 
-def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names, links_list):
+def write_datasubset(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask, dataset_names: List[str], links_list: List[str]):
     """
     Writes subset of all datasets contained in snapshot according to specified mask
     Parameters
@@ -253,7 +279,7 @@ def write_datasubset(infile, outfile, mask: SWIFTMask, dataset_names, links_list
                 outfile[name].attrs.create(attr_name, attr_value)
 
 
-def connect_links(outfile: h5py.File, links_list, paths_list):
+def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[str]):
     """
     Connects up the links to the appropriate path
 
@@ -269,7 +295,7 @@ def connect_links(outfile: h5py.File, links_list, paths_list):
     for i in range(len(links_list)):
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
 
-def write_subset(input_file: str, output_file: str, mask: SWIFTMask, restrict: np.ndarray):
+def write_subset(output_file: str, mask: SWIFTMask, restrict: np.ndarray):
     """
     Writes subset of snapshot according to specified mask to new snapshot file
 
@@ -286,7 +312,7 @@ def write_subset(input_file: str, output_file: str, mask: SWIFTMask, restrict: n
         the region of interest
     """
     # Open the files
-    infile = h5py.File(input_file, "r")
+    infile = h5py.File(mask.metadata.filename, "r")
     outfile = h5py.File(output_file, "w")
 
     # Write metadata and data subset
