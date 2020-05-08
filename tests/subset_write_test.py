@@ -7,6 +7,7 @@ import h5py
 import sys
 import os
 
+
 def compare(A, B):
     """
     Compares two SWIFTDatasets 
@@ -68,7 +69,7 @@ def test_subset_writer(filename):
     mask.constrain_spatial(load_region)
 
     # Write the subset
-    #write_subset(filename, outfile, mask, load_region)
+    # write_subset(filename, outfile, mask, load_region)
     write_subset(outfile, mask, load_region)
 
     # Compare written subset of snapshot against corresponding region in full snapshot
@@ -82,4 +83,3 @@ def test_subset_writer(filename):
     os.remove(outfile)
 
     return
-
