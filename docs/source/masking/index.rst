@@ -104,3 +104,37 @@ belong to the masked region (in both density and spatial) are read. I.e. if I
 ask for the temperature of particles, it will recieve an array containing
 temperatures of particles that lie in the region [0.2, 0.7] and have a
 density between 0.4 and 0.8 g/cm^3.
+
+Writing subset of snapshot
+--------------------------
+In some cases it may be useful to write a subset of an existing snapshot to its
+own hdf5 file. This could be used, for example, to extract a galaxy halo that 
+is of interest from a snapshot so that the file is easier to work with and transport.
+
+To do this the ``write_subset`` function is provided. It can be used, for example,
+as follows
+
+.. code-block:: python
+
+    import swiftsimio as sw                                                 
+    import unyt                                                             
+    
+    mask = sw.mask("eagle_snapshot.hdf5")                                       
+    mask.constrain_spatial([
+        [unyt.unyt_quantity(100, unyt.kpc), unyt.unyt_quantity(1000, unyt.kpc)], 
+        None, 
+        None])                                   
+    
+    sw.subset_writer.write_subset("test_subset.hdf5", mask)
+
+This will write a snapshot which contains the particles from the specified snapshot 
+whose *x*-coordinate is within the range [100, 1000] kpc. This function uses the 
+cell mask which encompases the specified spatial domain to successively read portions 
+of datasets from the input file and writes them to a new snapshot. 
+
+Due to the coarse grained nature of the cell mask, particles from outside this range 
+may also be included if they are within the same top level cells as particles that 
+fall within the given range.
+
+Please note that it is important to run ``constrain_spatial`` as this generates
+and stores the cell mask needed to write the snapshot subset. 

@@ -11,6 +11,7 @@ import numpy as np
 from swiftsimio import metadata, SWIFTMetadata, SWIFTUnits
 
 from swiftsimio.accelerated import ranges_from_array
+from typing import Dict
 
 
 class SWIFTMask(object):
@@ -31,6 +32,8 @@ class SWIFTMask(object):
 
     convert_masks_to_ranges(self)
         converts the masks to range masks so that they take up less space.
+
+    get_masked_counts_offsets(self, restrict)
 
     Private Methods
     ---------------
@@ -365,10 +368,10 @@ class SWIFTMask(object):
         constrain_mask : method to further refine mask
         """
 
-        cell_mask = self._generate_cell_mask(restrict)
+        self.cell_mask = self._generate_cell_mask(restrict)
 
         for ptype in self.metadata.present_particle_names:
-            self._update_spatial_mask(restrict, ptype, cell_mask)
+            self._update_spatial_mask(restrict, ptype, self.cell_mask)
 
         return
 
@@ -405,3 +408,41 @@ class SWIFTMask(object):
                 setattr(self, ptype, ranges_from_array(getattr(self, ptype)))
 
         return
+
+    def get_masked_counts_offsets(self) -> (Dict[str, np.array], Dict[str, np.array]):
+        """
+        Returns the particle counts and offsets in cells selected by the mask
+
+        Returns
+        -------
+        Dict[str, np.array], Dict[str, np.array]
+            dictionaries containing the particle offets and counts for each particle 
+            type. For example, the particle counts dictionary would be of the form 
+                {"gas": [g_0, g_1, ...],
+                 "dark matter": [bh_0, bh_1, ...], ...}
+            where the keys would be each of the particle types and values are arrays 
+            of the number of corresponding particles in each cell (in this case there 
+            would be g_0 gas particles in the first cell, g_1 in the second, etc.). 
+            The structure of the dictionaries is the same for the offsets, with the 
+            arrays now storing the offset of the first particle in the cell. 
+
+        """
+        if self.spatial_only:
+            masked_counts = {}
+            current_offsets = {}
+            if not hasattr(self, "cell_mask"):
+                raise RuntimeError(
+                    "Subset writing requires specifying a cell mask. Please use constrain_spatial with a suitable restrict array to generate one."
+                )
+            for part_type, counts in self.counts.items():
+                masked_counts[part_type] = counts * self.cell_mask
+
+                current_offsets[part_type] = [0] * counts.size
+                running_sum = 0
+                for i in range(len(counts)):
+                    current_offsets[part_type][i] = running_sum
+                    running_sum += masked_counts[part_type][i]
+
+            return masked_counts, current_offsets
+        else:
+            raise ("Only applies on spatial only masks")

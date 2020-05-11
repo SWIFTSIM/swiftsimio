@@ -826,7 +826,7 @@ def generate_getter(
             with h5py.File(filename, "r") as handle:
                 try:
                     if mask is not None:
-                        # First, need to claculate data shape (which may be
+                        # First, need to calculate data shape (which may be
                         # non-trivial), so we read in the first value
                         first_value = handle[field][0]
 
@@ -1042,6 +1042,12 @@ class __SWIFTNamedColumnDataset(object):
 
     def __repr__(self):
         return self.__str__()
+
+    def __len__(self):
+        return len(self.named_columns)
+
+    def __eq__(self, other):
+        return self.named_columns == other.named_columns and self.name == other.name
 
 
 def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
