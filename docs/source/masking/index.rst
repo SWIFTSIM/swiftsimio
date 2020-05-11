@@ -110,6 +110,7 @@ Writing subset of snapshot
 In some cases it may be useful to write a subset of an existing snapshot to its
 own hdf5 file. This could be used, for example, to extract a galaxy halo that 
 is of interest from a snapshot so that the file is easier to work with and transport.
+
 To do this the ``write_subset`` function is provided. It can be used, for example,
 as follows
 
@@ -127,7 +128,13 @@ as follows
     sw.subset_writer.write_subset("test_subset.hdf5", mask)
 
 This will write a snapshot which contains the particles from the specified snapshot 
-with the *x*-coordinate restricted to the range [100, 1000] kpc. 
+whose *x*-coordinate is within the range [100, 1000] kpc. This function uses the 
+cell mask which encompases the specified spatial domain to successively read portions 
+of datasets from the input file and writes them to a new snapshot. 
+
+Due to the coarse grained nature of the cell mask, particles from outside this range 
+may also be included if they are within the same top level cells as particles that 
+fall within the given range.
 
 Please note that it is important to run ``constrain_spatial`` as this generates
 and stores the cell mask needed to write the snapshot subset. 
