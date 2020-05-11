@@ -11,6 +11,7 @@ import numpy as np
 from swiftsimio import metadata, SWIFTMetadata, SWIFTUnits
 
 from swiftsimio.accelerated import ranges_from_array
+from typing import Dict
 
 
 class SWIFTMask(object):
@@ -406,7 +407,9 @@ class SWIFTMask(object):
 
         return
 
-    def get_masked_counts_offsets(self, restrict: np.ndarray) -> (dict, dict):
+    def get_masked_counts_offsets(
+        self, restrict: np.ndarray
+    ) -> (Dict[str, np.array], Dict[str, np.array]):
         """
         Returns the particle counts and offsets in cells selected by the mask
 
@@ -426,23 +429,26 @@ class SWIFTMask(object):
 
         Returns
         -------
-        dict, dict
-            dictionaries containing the particle offets and counts for each particle type
+        Dict[str, np.array], Dict[str, np.array]
+            dictionaries containing the particle offets and counts for each particle type. For example, the particle counts dictionary would be of the form 
+                {"gas": [g_0, g_1, ...],
+                 "dark matter": [bh_0, bh_1, ...], ...}
+            where the keys would be each of the particle types and values are arrays of the number of corresponding particles in each cell (in this case there would be g_0 gas particles in the first cell, g_1 in the second, etc.). The structure of the dictionaries is the same for the offsets, with the arrays now storing the offset of the first particle in the cell. 
 
         """
         if self.spatial_only:
             masked_counts = {}
-            masked_offsets = {}
+            current_offsets = {}
             cell_mask = self._generate_cell_mask(restrict)
             for part_type, counts in self.counts.items():
-                masked_counts[part_type] = counts*cell_mask
+                masked_counts[part_type] = counts * cell_mask
 
-                masked_offsets[part_type] = [0 for i in range(len(counts))]
+                current_offsets[part_type] = [0] * counts.size
                 running_sum = 0
                 for i in range(len(counts)):
-                    masked_offsets[part_type][i] = running_sum
+                    current_offsets[part_type][i] = running_sum
                     running_sum += masked_counts[part_type][i]
 
-            return masked_counts, masked_offsets
+            return masked_counts, current_offsets
         else:
-            raise("Only applies on spatial only masks")
+            raise ("Only applies on spatial only masks")
