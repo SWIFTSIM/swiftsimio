@@ -430,10 +430,15 @@ class SWIFTMask(object):
         Returns
         -------
         Dict[str, np.array], Dict[str, np.array]
-            dictionaries containing the particle offets and counts for each particle type. For example, the particle counts dictionary would be of the form 
+            dictionaries containing the particle offets and counts for each particle 
+            type. For example, the particle counts dictionary would be of the form 
                 {"gas": [g_0, g_1, ...],
                  "dark matter": [bh_0, bh_1, ...], ...}
-            where the keys would be each of the particle types and values are arrays of the number of corresponding particles in each cell (in this case there would be g_0 gas particles in the first cell, g_1 in the second, etc.). The structure of the dictionaries is the same for the offsets, with the arrays now storing the offset of the first particle in the cell. 
+            where the keys would be each of the particle types and values are arrays 
+            of the number of corresponding particles in each cell (in this case there 
+            would be g_0 gas particles in the first cell, g_1 in the second, etc.). 
+            The structure of the dictionaries is the same for the offsets, with the 
+            arrays now storing the offset of the first particle in the cell. 
 
         """
         if self.spatial_only:
