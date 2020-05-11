@@ -33,6 +33,8 @@ class SWIFTMask(object):
     convert_masks_to_ranges(self)
         converts the masks to range masks so that they take up less space.
 
+    get_masked_counts_offsets(self, restrict)
+
     Private Methods
     ---------------
 
@@ -366,10 +368,10 @@ class SWIFTMask(object):
         constrain_mask : method to further refine mask
         """
 
-        cell_mask = self._generate_cell_mask(restrict)
+        self.cell_mask = self._generate_cell_mask(restrict)
 
         for ptype in self.metadata.present_particle_names:
-            self._update_spatial_mask(restrict, ptype, cell_mask)
+            self._update_spatial_mask(restrict, ptype, self.cell_mask)
 
         return
 
@@ -407,25 +409,9 @@ class SWIFTMask(object):
 
         return
 
-    def get_masked_counts_offsets(
-        self, restrict: np.ndarray
-    ) -> (Dict[str, np.array], Dict[str, np.array]):
+    def get_masked_counts_offsets(self) -> (Dict[str, np.array], Dict[str, np.array]):
         """
         Returns the particle counts and offsets in cells selected by the mask
-
-        Parameters
-        ----------
-        restrict : np.ndarray
-            Restrict is a 3 length list that contains length two arrays giving 
-            the lower and upper bounds for that axis, e.g.
-
-            restrict = [
-                [0.5, 0.7],
-                [0.1, 0.9],
-                [0.0, 0.1]
-            ]
-
-            These values must have units associated with them.
 
         Returns
         -------
@@ -444,9 +430,12 @@ class SWIFTMask(object):
         if self.spatial_only:
             masked_counts = {}
             current_offsets = {}
-            cell_mask = self._generate_cell_mask(restrict)
+            if not hasattr(self, "cell_mask"):
+                raise RuntimeError(
+                    "Subset writing requires specifying a cell mask. Please use constrain_spatial with a suitable restrict array to generate one."
+                )
             for part_type, counts in self.counts.items():
-                masked_counts[part_type] = counts * cell_mask
+                masked_counts[part_type] = counts * self.cell_mask
 
                 current_offsets[part_type] = [0] * counts.size
                 running_sum = 0

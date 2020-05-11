@@ -69,8 +69,7 @@ def test_subset_writer(filename):
     mask.constrain_spatial(load_region)
 
     # Write the subset
-    # write_subset(filename, outfile, mask, load_region)
-    write_subset(outfile, mask, load_region)
+    write_subset(outfile, mask)
 
     # Compare written subset of snapshot against corresponding region in full snapshot
     snapshot = sw.load(filename, mask)

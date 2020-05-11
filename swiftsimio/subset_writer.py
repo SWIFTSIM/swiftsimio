@@ -162,9 +162,7 @@ def find_links(
     return link_names, link_paths
 
 
-def update_metadata_counts(
-    infile: h5py.File, outfile: h5py.File, mask: SWIFTMask, restrict: np.ndarray
-):
+def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask):
     """
     Recalculates the cell particle counts and offsets based on the particles present in the subset
 
@@ -176,24 +174,13 @@ def update_metadata_counts(
         File handle for output subset of snapshot
     mask : SWIFTMask
         the mask being used to define subset
-    restrict : np.ndarray
-        Restrict is a 3 length list that contains length two arrays giving
-        the lower and upper bounds for that axis, e.g.
-
-        restrict = [
-            [0.5, 0.7],
-            [0.1, 0.9],
-            [0.0, 0.1]
-        ]
-
-        These values must have units associated with them.  
     """
     outfile.create_group("Cells")
     outfile.create_group("Cells/Counts")
     outfile.create_group("Cells/Offsets")
 
     # Get the particle counts and offsets in the cells
-    particle_counts, particle_offsets = mask.get_masked_counts_offsets(restrict)
+    particle_counts, particle_offsets = mask.get_masked_counts_offsets()
 
     # Loop over each particle type in the cells and update their counts
     counts_dsets = find_datasets(infile, path="/Cells/Counts")
@@ -215,11 +202,7 @@ def update_metadata_counts(
 
 
 def write_metadata(
-    infile: h5py.File,
-    outfile: h5py.File,
-    links_list: List[str],
-    mask: SWIFTMask,
-    restrict: np.ndarray,
+    infile: h5py.File, outfile: h5py.File, links_list: List[str], mask: SWIFTMask,
 ):
     """
     Copy over all the metadata from snapshot to output file
@@ -234,20 +217,9 @@ def write_metadata(
         names of links found in the snapshot
     mask : SWIFTMask
         the mask being used to define subset
-    restrict : np.ndarray
-        Restrict is a 3 length list that contains length two arrays giving
-        the lower and upper bounds for that axis, e.g.
-
-        restrict = [
-            [0.5, 0.7],
-            [0.1, 0.9],
-            [0.0, 0.1]
-        ]
-
-        These values must have units associated with them.  
     """
 
-    update_metadata_counts(infile, outfile, mask, restrict)
+    update_metadata_counts(infile, outfile, mask)
 
     skip_list = links_list.copy()
     skip_list += ["PartType", "Cells"]
@@ -327,7 +299,7 @@ def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[st
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
 
 
-def write_subset(output_file: str, mask: SWIFTMask, restrict: np.ndarray):
+def write_subset(output_file: str, mask: SWIFTMask):
     """
     Writes subset of snapshot according to specified mask to new snapshot file
 
@@ -339,9 +311,6 @@ def write_subset(output_file: str, mask: SWIFTMask, restrict: np.ndarray):
         path to output snapshot
     mask : SWIFTMask
         the mask used to define subset that is written to new snapshot
-    restrict : np.ndarray
-        length 3 array of spatial ranges (each a 2 element array) containing
-        the region of interest
     """
     # Open the files
     infile = h5py.File(mask.metadata.filename, "r")
@@ -349,7 +318,7 @@ def write_subset(output_file: str, mask: SWIFTMask, restrict: np.ndarray):
 
     # Write metadata and data subset
     list_of_links, list_of_link_paths = find_links(infile)
-    write_metadata(infile, outfile, list_of_links, mask, restrict)
+    write_metadata(infile, outfile, list_of_links, mask)
     write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
     connect_links(outfile, list_of_links, list_of_link_paths)
 
