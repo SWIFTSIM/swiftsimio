@@ -188,7 +188,7 @@ def get_chunk_ranges(ranges, chunk_size, array_length):
     chunk_ranges = []
     for bound in ranges:
         lower = int(np.floor(bound[0]/chunk_size))*chunk_size
-        upper = int(np.ceil(bound[1]/chunk_size))*chunk_size
+        upper = min(int(np.ceil(bound[1]/chunk_size))*chunk_size, array_length)
 
         if len(chunk_ranges) > 0:
             assert(lower >= chunk_ranges[-1][0])
