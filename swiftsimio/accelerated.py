@@ -209,8 +209,7 @@ def expand_ranges(ranges):
     for bounds in ranges:
         lower = bounds[0]
         upper = bounds[1]
-        for i in range(lower, upper):
-            output.append(i)
+        output.extend(np.arange(lower, upper, dtype=int))
 
     return output
 
