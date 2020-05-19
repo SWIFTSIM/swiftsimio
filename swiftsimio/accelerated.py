@@ -8,7 +8,6 @@ import time
 from h5py._hl.dataset import Dataset
 
 from typing import Tuple
-from numba.typed import List
 
 try:
     from numba import jit, prange
@@ -205,28 +204,19 @@ def get_chunk_ranges(ranges, chunk_size, array_length):
 
     return chunk_ranges
 
-###@jit(forceobj=True, fastmath=True)
-@jit(nopython=True, fastmath=True)
+@jit(forceobj=True, fastmath=True)
 def expand_ranges(ranges):
     length = 0 
-    n_ranges = int(len(ranges)/2)
-    #for bounds in ranges:
-    #    length += bounds[1] - bounds[0]
-    for i in range(n_ranges):
-        length += ranges[2*i+1] - ranges[2*i]
+    for bounds in ranges:
+        length += bounds[1] - bounds[0]
 
     output = np.zeros(length, dtype=np.int64)
     i = 0
-    #for bounds in ranges:
-    #    lower = bounds[0]
-    #    upper = bounds[1]
-    for k in range(n_ranges):
-        lower = ranges[2*k]
-        upper = ranges[2*k+1]
+    for bounds in ranges:
+        lower = bounds[0]
+        upper = bounds[1]
         bound_length = upper - lower
         output[i:i+bound_length] = np.arange(lower, upper, dtype=np.int64)
-        #for j in range(bound_length):
-        #    output[i+j] = lower+j
         i += bound_length
 
     return output
@@ -244,14 +234,12 @@ def extract_ranges_from_chunks(array, chunks, ranges):
             chunk_index += 1
 
     # Adjust range indices
-    adjusted_ranges = np.zeros(2*len(ranges), dtype=int)
+    adjusted_ranges = ranges
     running_sum = 0
     for i in range(len(ranges)):
         offset = chunks[chunk_array_index[i]][0] - running_sum
-        #adjusted_ranges[i][0] = ranges[i][0] - offset
-        #adjusted_ranges[i][1] = ranges[i][1] - offset
-        adjusted_ranges[2*i] = ranges[i][0] - offset
-        adjusted_ranges[2*i+1] = ranges[i][1] - offset
+        adjusted_ranges[i][0] = ranges[i][0] - offset
+        adjusted_ranges[i][1] = ranges[i][1] - offset
         try:
             if chunk_array_index[i+1] > chunk_array_index[i]:
                 running_sum += chunks[chunk_array_index[i]][1] - chunks[chunk_array_index[i]][0]
