@@ -187,18 +187,27 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 def get_chunk_ranges(ranges, chunk_size, array_length):
     chunk_ranges = []
     for bound in ranges:
-        lower = int(np.floor(bound[0]/chunk_size))*chunk_size
-        upper = min(int(np.ceil(bound[1]/chunk_size))*chunk_size, array_length)
+        # ALEXEI: just checking Josh's implementation works here
+        #lower = int(np.floor(bound[0]/chunk_size))*chunk_size
+        #upper = min(int(np.ceil(bound[1]/chunk_size))*chunk_size, array_length)
+        lower = (bound[0] // chunk_size) * chunk_size
+        upper = min(- ((- bound[1]) / chunk_size ) * chunk_size, array_length)
 
+        # Before appending new chunk range we need to check 
+        # that it doesn't already exist or overlap with an 
+        # existing one. The only way overlap can happen is
+        # if the current lower index is less than or equal
+        # to the previous upper one. In that case simply 
+        # update the previous upper to cover current chunk
         if len(chunk_ranges) > 0:
-            assert(lower >= chunk_ranges[-1][0])
-            assert(upper >= chunk_ranges[-1][1])
             if lower > chunk_ranges[-1][1]:
                 chunk_ranges.append([lower, upper])
             elif lower <= chunk_ranges[-1][1]:
                 chunk_ranges[-1][1] = upper
-            else:
-                raise RuntimeError("computing chunk ranges has gone horribly wrong")
+            # ALEXEI: remove for production. can be used for debugging
+            #else:
+            #    raise RuntimeError("computing chunk ranges has gone horribly wrong")
+        # If chunk_ranges is empty, don't do any checks
         else:
             chunk_ranges.append([lower, upper])
 
@@ -206,9 +215,7 @@ def get_chunk_ranges(ranges, chunk_size, array_length):
 
 @jit(forceobj=True, fastmath=True)
 def expand_ranges(ranges):
-    length = 0 
-    for bounds in ranges:
-        length += bounds[1] - bounds[0]
+    length = sum([x[1] - x[0] for x in ranges])
 
     output = np.zeros(length, dtype=np.int64)
     i = 0
@@ -222,8 +229,8 @@ def expand_ranges(ranges):
     return output
 
 def extract_ranges_from_chunks(array, chunks, ranges):
-    # Find out which chunk range each range belongs to
-    chunk_array_index = np.zeros(len(ranges), dtype=np.int)
+    # Find out which of the chunks in the chunks array each range in ranges belongs to
+    chunk_array_index = np.zeros(len(ranges), dtype=np.int32)
     chunk_index = 0
     i = 0
     while i < len(ranges):
@@ -233,7 +240,9 @@ def extract_ranges_from_chunks(array, chunks, ranges):
         else:
             chunk_index += 1
 
-    # Adjust range indices
+    # Need to get the locations of the range boundaries with
+    # respect to the indexing in the array of chunked data
+    # (as opposed to the whole dataset)
     adjusted_ranges = ranges
     running_sum = 0
     for i in range(len(ranges)):
@@ -290,13 +299,14 @@ def new_read_ranges_from_file(
 
     # Get chunk size
     chunk_ranges = get_chunk_ranges(ranges, handle.chunks[0], handle.size)
-    chunk_size = np.sum([elem[1] - elem[0] for elem in chunk_ranges])
+    chunk_size = np.int32(np.sum([elem[1] - elem[0] for elem in chunk_ranges]))
     shape = output_shape
     if isinstance(output_shape, tuple):
         shape[0] = chunk_size
     else:
         shape = chunk_size
 
+    print(shape, output_type)
     output = np.empty(shape, dtype=output_type)
     already_read = 0
     handle_multidim = handle.ndim > 1
