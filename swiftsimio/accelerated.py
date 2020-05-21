@@ -176,7 +176,26 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 
 
 @jit(nopython=True, fastmath=True)
-def get_chunk_ranges(ranges, chunk_size, array_length):
+def get_chunk_ranges(ranges, chunk_size, array_length) -> np.ndarray:
+    """
+    Return indices indicating which hdf5 chunk each range from `ranges` belongs to
+
+    Parameters
+    ----------
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`)
+    chunk_size : int
+        size of the hdf5 dataset chunks
+    array_length: int
+        size of the dataset
+
+    Returns
+    -------
+    np.ndarray
+        two dimensional array of bounds for the chunks that contain each range from
+        `ranges`
+
+    """
     chunk_ranges = []
     n_ranges = len(ranges)
     for bounds in ranges:
@@ -202,7 +221,21 @@ def get_chunk_ranges(ranges, chunk_size, array_length):
 
 
 @jit(nopython=True, fastmath=True)
-def expand_ranges(ranges: np.ndarray):
+def expand_ranges(ranges: np.ndarray) -> np.array:
+    """
+    Return an array of indices that are within the specified ranges
+
+    Parameters
+    ----------
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`)
+
+    Returns
+    -------
+    np.array
+        1D array of indices that fall within each range specified in `ranges`
+        
+    """
     length = np.asarray(
         [bounds[1] - bounds[0] for bounds in ranges]
     ).sum()
@@ -220,7 +253,35 @@ def expand_ranges(ranges: np.ndarray):
 
 
 @jit(nopython=True, fastmath=True)
-def extract_ranges_from_chunks(array, chunks, ranges):
+def extract_ranges_from_chunks(array: np.ndarray, chunks: np.ndarray, ranges: np.ndarray) -> np.ndarray:
+    """
+    Returns elements from array that are located within specified ranges
+    
+    `array` is a portion of the dataset being read consisting of all the chunks
+    that contain the ranges specified in `ranges`. The `chunks` array contains
+    the indices of the upper and lower bounds of these chunks. To find the 
+    elements of the dataset that lie within the specified ranges we first create
+    an array indexing which chunk each range belongs to. From this information 
+    we create an array of adjusted ranges that takes into account that the array
+    is not the whole dataset. We then return the values in `array` that are 
+    within the adjusted ranges.
+    
+    Parameters
+    ----------
+    array : np.ndarray
+        array containing data read in from snapshot
+    chunks : np.ndarray
+        two dimensional array of bounds for the chunks that contain each range from
+        `ranges`
+    ranges: np.ndarray
+        Array of ranges (see :func:`ranges_from_array`)
+
+    Returns
+    -------
+    np.ndarray
+        subset of `array` whose elements are within each range in `ranges`
+    
+    """
     # Find out which of the chunks in the chunks array each range in ranges belongs to
     n_ranges = len(ranges)
     chunk_array_index = np.zeros(len(ranges), dtype=np.int32)
