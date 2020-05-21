@@ -177,11 +177,11 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 
 @jit(nopython=True, fastmath=True)
 def get_chunk_ranges(ranges, chunk_size, array_length):
-    chunk_ranges = List()
-    n_ranges = len(ranges) // 2
-    for i in range(n_ranges):
-        lower = (ranges[2 * i] // chunk_size) * chunk_size
-        upper = min(-((-ranges[2 * i + 1]) // chunk_size) * chunk_size, array_length)
+    chunk_ranges = []
+    n_ranges = len(ranges)
+    for bounds in ranges:
+        lower = (bounds[0] // chunk_size) * chunk_size
+        upper = min(-((-bounds[1]) // chunk_size) * chunk_size, array_length)
 
         # Before appending new chunk range we need to check
         # that it doesn't already exist or overlap with an
@@ -190,29 +190,28 @@ def get_chunk_ranges(ranges, chunk_size, array_length):
         # to the previous upper one. In that case simply
         # update the previous upper to cover current chunk
         if len(chunk_ranges) > 0:
-            if lower > chunk_ranges[-1]:
-                chunk_ranges.extend((lower, upper))
-            elif lower <= chunk_ranges[-1]:
-                chunk_ranges[-1] = upper
+            if lower > chunk_ranges[-1][1]:
+                chunk_ranges.append([lower, upper])
+            elif lower <= chunk_ranges[-1][1]:
+                chunk_ranges[-1][1] = upper
         # If chunk_ranges is empty, don't do any checks
         else:
-            chunk_ranges.extend((lower, upper))
+            chunk_ranges.append([lower, upper])
 
-    return chunk_ranges
+    return np.asarray(chunk_ranges)
 
 
 @jit(nopython=True, fastmath=True)
-def expand_ranges(ranges: List):
-    n_ranges = len(ranges) // 2
+def expand_ranges(ranges: np.ndarray):
     length = np.asarray(
-        [ranges[2 * i + 1] - ranges[2 * i] for i in range(n_ranges)]
+        [bounds[1] - bounds[0] for bounds in ranges]
     ).sum()
 
     output = np.zeros(length, dtype=np.int64)
     i = 0
-    for k in range(n_ranges):
-        lower = ranges[2 * k]
-        upper = ranges[2 * k + 1]
+    for bounds in ranges:
+        lower = bounds[0]
+        upper = bounds[1]
         bound_length = upper - lower
         output[i : i + bound_length] = np.arange(lower, upper, dtype=np.int64)
         i += bound_length
@@ -223,16 +222,16 @@ def expand_ranges(ranges: List):
 @jit(nopython=True, fastmath=True)
 def extract_ranges_from_chunks(array, chunks, ranges):
     # Find out which of the chunks in the chunks array each range in ranges belongs to
-    n_ranges = len(ranges) // 2
+    n_ranges = len(ranges)
     chunk_array_index = np.zeros(len(ranges), dtype=np.int32)
     chunk_index = 0
     i = 0
     while i < n_ranges:
         if (
-            chunks[chunk_index] <= ranges[2 * i]
-            and chunks[chunk_index + 1] >= ranges[2 * i + 1]
+            chunks[chunk_index][0] <= ranges[i][0]
+            and chunks[chunk_index][1] >= ranges[i][1]
         ):
-            chunk_array_index[2 * i] = chunk_index
+            chunk_array_index[i] = chunk_index
             i += 1
         else:
             chunk_index += 2
@@ -243,14 +242,14 @@ def extract_ranges_from_chunks(array, chunks, ranges):
     adjusted_ranges = ranges
     running_sum = 0
     for i in range(n_ranges):
-        offset = chunks[2 * chunk_array_index[i]] - running_sum
-        adjusted_ranges[2 * i] = ranges[2 * i] - offset
-        adjusted_ranges[2 * i + 1] = ranges[2 * i + 1] - offset
+        offset = chunks[chunk_array_index[i]][0] - running_sum
+        adjusted_ranges[i][0] = ranges[i][0] - offset
+        adjusted_ranges[i][1] = ranges[i][1] - offset
         if i < n_ranges:
             if chunk_array_index[i + 1] > chunk_array_index[i]:
                 running_sum += (
-                    chunks[2 * chunk_array_index[i] + 1]
-                    - chunks[2 * chunk_array_index[i]]
+                    chunks[chunk_array_index[i]][1]
+                    - chunks[chunk_array_index[i]][0]
                 )
 
     return array[expand_ranges(adjusted_ranges)]
@@ -297,12 +296,10 @@ def new_read_ranges_from_file(
     """
 
     # Get chunk size
-    ranges_list = List(chain.from_iterable(ranges))
-    chunk_ranges = get_chunk_ranges(ranges_list, handle.chunks[0], handle.size)
-    n_chunk_ranges = len(chunk_ranges) // 2
-    chunk_size = np.sum(
-        [chunk_ranges[2 * i + 1] - chunk_ranges[2 * i] for i in range(n_chunk_ranges)]
-    )
+    chunk_ranges = get_chunk_ranges(ranges, handle.chunks[0], handle.size)
+    chunk_size = int(np.sum(
+        [chunk_range[1] - chunk_range[0] for chunk_range in chunk_ranges]
+    ))
     shape = output_shape
     if isinstance(output_shape, tuple):
         shape[0] = chunk_size
@@ -313,9 +310,9 @@ def new_read_ranges_from_file(
     already_read = 0
     handle_multidim = handle.ndim > 1
 
-    for i in range(n_chunk_ranges):
-        read_start = chunk_ranges[2 * i]
-        read_end = chunk_ranges[2 * i + 1]
+    for bounds in chunk_ranges:
+        read_start = bounds[0]
+        read_end = bounds[1]
         if read_end == read_start:
             continue
 
@@ -336,4 +333,4 @@ def new_read_ranges_from_file(
 
         already_read += size_of_range
 
-    return extract_ranges_from_chunks(output, chunk_ranges, ranges_list)
+    return extract_ranges_from_chunks(output, chunk_ranges, ranges)
