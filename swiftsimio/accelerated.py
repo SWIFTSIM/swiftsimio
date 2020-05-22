@@ -201,6 +201,7 @@ def get_chunk_ranges(ranges, chunk_size, array_length) -> np.ndarray:
     for bounds in ranges:
         lower = (bounds[0] // chunk_size) * chunk_size
         upper = min(-((-bounds[1]) // chunk_size) * chunk_size, array_length)
+        counter += upper - lower
 
         # Before appending new chunk range we need to check
         # that it doesn't already exist or overlap with an
@@ -236,9 +237,7 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
         1D array of indices that fall within each range specified in `ranges`
         
     """
-    length = np.asarray(
-        [bounds[1] - bounds[0] for bounds in ranges]
-    ).sum()
+    length = np.asarray([bounds[1] - bounds[0] for bounds in ranges]).sum()
 
     output = np.zeros(length, dtype=np.int64)
     i = 0
@@ -253,7 +252,9 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
 
 
 @jit(nopython=True, fastmath=True)
-def extract_ranges_from_chunks(array: np.ndarray, chunks: np.ndarray, ranges: np.ndarray) -> np.ndarray:
+def extract_ranges_from_chunks(
+    array: np.ndarray, chunks: np.ndarray, ranges: np.ndarray
+) -> np.ndarray:
     """
     Returns elements from array that are located within specified ranges
     
@@ -309,8 +310,7 @@ def extract_ranges_from_chunks(array: np.ndarray, chunks: np.ndarray, ranges: np
         if i < n_ranges:
             if chunk_array_index[i + 1] > chunk_array_index[i]:
                 running_sum += (
-                    chunks[chunk_array_index[i]][1]
-                    - chunks[chunk_array_index[i]][0]
+                    chunks[chunk_array_index[i]][1] - chunks[chunk_array_index[i]][0]
                 )
 
     return array[expand_ranges(adjusted_ranges)]
@@ -357,13 +357,12 @@ def new_read_ranges_from_file(
     """
 
     # Get chunk size
-    chunk_ranges = get_chunk_ranges(ranges, handle.chunks[0], handle.size)
-    chunk_size = int(np.sum(
-        [chunk_range[1] - chunk_range[0] for chunk_range in chunk_ranges]
-    ))
-    shape = output_shape
+    chunk_ranges = get_chunk_ranges(ranges, handle.chunks[0], handle.shape[0])
+    chunk_size = int(
+        np.sum([chunk_range[1] - chunk_range[0] for chunk_range in chunk_ranges])
+    )
     if isinstance(output_shape, tuple):
-        shape[0] = chunk_size
+        shape = (chunk_size, output_shape[1])
     else:
         shape = chunk_size
 
