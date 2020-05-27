@@ -201,7 +201,6 @@ def get_chunk_ranges(ranges, chunk_size, array_length) -> np.ndarray:
     for bounds in ranges:
         lower = (bounds[0] // chunk_size) * chunk_size
         upper = min(-((-bounds[1]) // chunk_size) * chunk_size, array_length)
-        counter += upper - lower
 
         # Before appending new chunk range we need to check
         # that it doesn't already exist or overlap with an
@@ -322,6 +321,7 @@ def new_read_ranges_from_file(
     output_shape: Tuple,
     output_type: type = np.float64,
     columns: np.lib.index_tricks.IndexExpression = np.s_[:],
+    chunk_size = 10000
 ) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
@@ -357,16 +357,22 @@ def new_read_ranges_from_file(
     """
 
     # Get chunk size
-    chunk_ranges = get_chunk_ranges(ranges, handle.chunks[0], handle.shape[0])
-    chunk_size = int(
-        np.sum([chunk_range[1] - chunk_range[0] for chunk_range in chunk_ranges])
-    )
-    if isinstance(output_shape, tuple):
-        shape = (chunk_size, output_shape[1])
+    if handle.chunks is not None:
+        chunk_size = handle.chunks[0]
+        
+        # Make array of chunk ranges
+        chunk_ranges = get_chunk_ranges(ranges, chunk_size, handle.shape[0])
+        chunk_range_size = int(
+            np.sum([chunk_range[1] - chunk_range[0] for chunk_range in chunk_ranges])
+        )
+        if isinstance(output_shape, tuple):
+            output_shape = (chunk_range_size, output_shape[1])
+        else:
+            output_shape = chunk_range_size
     else:
-        shape = chunk_size
+        chunk_ranges = ranges
 
-    output = np.empty(shape, dtype=output_type)
+    output = np.empty(output_shape, dtype=output_type)
     already_read = 0
     handle_multidim = handle.ndim > 1
 
@@ -393,4 +399,7 @@ def new_read_ranges_from_file(
 
         already_read += size_of_range
 
-    return extract_ranges_from_chunks(output, chunk_ranges, ranges)
+    if handle.chunks is not None:
+        return extract_ranges_from_chunks(output, chunk_ranges, ranges)
+    else:
+        return output
