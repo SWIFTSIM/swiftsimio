@@ -175,6 +175,21 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 ################################ ALEXEI: playing around with better read_ranges_from_file implementation #################################
 
 
+def concatenate_ranges(ranges) -> np.ndarray:
+    concatenated = []
+    concatenated.append(ranges[0])
+
+    for i in range(1, len(ranges)):
+        lower = ranges[i][0]
+        upper = ranges[i][1]
+        if lower <= concatenated[-1][1] + 1:
+            concatenated[-1][1] = upper
+        else:
+            concatenated.append(ranges[i])
+
+    return np.asarray(concatenated)
+
+
 @jit(nopython=True, fastmath=True)
 def get_chunk_ranges(ranges, chunk_size, array_length) -> np.ndarray:
     """
@@ -321,7 +336,7 @@ def new_read_ranges_from_file(
     output_shape: Tuple,
     output_type: type = np.float64,
     columns: np.lib.index_tricks.IndexExpression = np.s_[:],
-    chunk_size = 10000
+    chunk_size=10000,
 ) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
@@ -359,7 +374,7 @@ def new_read_ranges_from_file(
     # Get chunk size
     if handle.chunks is not None:
         chunk_size = handle.chunks[0]
-        
+
         # Make array of chunk ranges
         chunk_ranges = get_chunk_ranges(ranges, chunk_size, handle.shape[0])
         chunk_range_size = int(
