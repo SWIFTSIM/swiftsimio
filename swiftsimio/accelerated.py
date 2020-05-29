@@ -175,7 +175,22 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 ################################ ALEXEI: playing around with better read_ranges_from_file implementation #################################
 
 
-def concatenate_ranges(ranges) -> np.ndarray:
+def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
+    """
+    Returns an array of ranges with consecutive ranges merged if there is no
+    gap between them
+
+
+    Parameters
+    ----------
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`)
+
+    Returns
+    -------
+    np.ndarray
+        two dimensional array of ranges
+    """
     concatenated = []
     concatenated.append(ranges[0])
 
@@ -191,7 +206,9 @@ def concatenate_ranges(ranges) -> np.ndarray:
 
 
 @jit(nopython=True, fastmath=True)
-def get_chunk_ranges(ranges, chunk_size, array_length) -> np.ndarray:
+def get_chunk_ranges(
+    ranges: np.ndarray, chunk_size: np.ndarray, array_length: int
+) -> np.ndarray:
     """
     Return indices indicating which hdf5 chunk each range from `ranges` belongs to
 
@@ -321,11 +338,10 @@ def extract_ranges_from_chunks(
         offset = chunks[chunk_array_index[i]][0] - running_sum
         adjusted_ranges[i][0] = ranges[i][0] - offset
         adjusted_ranges[i][1] = ranges[i][1] - offset
-        if i < n_ranges:
-            if chunk_array_index[i + 1] > chunk_array_index[i]:
-                running_sum += (
-                    chunks[chunk_array_index[i]][1] - chunks[chunk_array_index[i]][0]
-                )
+        if chunk_array_index[i + 1] > chunk_array_index[i]:
+            running_sum += (
+                chunks[chunk_array_index[i]][1] - chunks[chunk_array_index[i]][0]
+            )
 
     return array[expand_ranges(adjusted_ranges)]
 
