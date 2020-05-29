@@ -7,6 +7,8 @@ import h5py
 import sys
 import os
 
+import faulthandler
+from time import perf_counter
 
 def compare(A, B):
     """
@@ -48,7 +50,7 @@ def compare(A, B):
     assert bad_compares == [], f"compare failed on {bad_compares}"
 
 
-@requires("cosmological_volume.hdf5")
+#@requires("cosmological_volume.hdf5")
 def test_subset_writer(filename):
     """
     Test to make sure subset writing works as intended
@@ -82,3 +84,13 @@ def test_subset_writer(filename):
     os.remove(outfile)
 
     return
+
+faulthandler.enable()
+
+#filename = "cosmological_volume.hdf5"
+filename = "../subset_writing_speed/eagle_0011.hdf5"
+
+t1 = perf_counter()
+test_subset_writer(filename)
+t2 = perf_counter()
+print("time elapsed {:.3e}s".format(t2 - t1))

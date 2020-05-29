@@ -174,7 +174,6 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 
 ################################ ALEXEI: playing around with better read_ranges_from_file implementation #################################
 
-
 def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     """
     Returns an array of ranges with consecutive ranges merged if there is no
@@ -193,22 +192,19 @@ def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     """
     concatenated = []
     concatenated.append(ranges[0])
-
-    for i in range(1, len(ranges)):
+    
+    for i in range(1,len(ranges)):
         lower = ranges[i][0]
         upper = ranges[i][1]
         if lower <= concatenated[-1][1] + 1:
             concatenated[-1][1] = upper
         else:
             concatenated.append(ranges[i])
-
+    
     return np.asarray(concatenated)
 
-
 @jit(nopython=True, fastmath=True)
-def get_chunk_ranges(
-    ranges: np.ndarray, chunk_size: np.ndarray, array_length: int
-) -> np.ndarray:
+def get_chunk_ranges(ranges: np.ndarray, chunk_size: np.ndarray, array_length: int) -> np.ndarray:
     """
     Return indices indicating which hdf5 chunk each range from `ranges` belongs to
 
@@ -268,16 +264,19 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
         1D array of indices that fall within each range specified in `ranges`
         
     """
+    print("expanding ranges")
     length = np.asarray([bounds[1] - bounds[0] for bounds in ranges]).sum()
 
     output = np.zeros(length, dtype=np.int64)
     i = 0
+    print("loop over ranges")
     for bounds in ranges:
         lower = bounds[0]
         upper = bounds[1]
         bound_length = upper - lower
         output[i : i + bound_length] = np.arange(lower, upper, dtype=np.int64)
         i += bound_length
+    print("finished loop over ranges")
 
     return output
 
@@ -319,6 +318,7 @@ def extract_ranges_from_chunks(
     chunk_array_index = np.zeros(len(ranges), dtype=np.int32)
     chunk_index = 0
     i = 0
+    print("getting chunk indices")
     while i < n_ranges:
         if (
             chunks[chunk_index][0] <= ranges[i][0]
@@ -334,6 +334,7 @@ def extract_ranges_from_chunks(
     # (as opposed to the whole dataset)
     adjusted_ranges = ranges
     running_sum = 0
+    print("adjusting ranges")
     for i in range(n_ranges):
         offset = chunks[chunk_array_index[i]][0] - running_sum
         adjusted_ranges[i][0] = ranges[i][0] - offset
@@ -343,7 +344,12 @@ def extract_ranges_from_chunks(
                 chunks[chunk_array_index[i]][1] - chunks[chunk_array_index[i]][0]
             )
 
-    return array[expand_ranges(adjusted_ranges)]
+    print("indexing array")
+    print(expand_ranges(adjusted_ranges))
+    print(len(array))
+    out = array[expand_ranges(adjusted_ranges)]
+    print("finished indexing array")
+    return 
 
 
 def new_read_ranges_from_file(
@@ -352,7 +358,7 @@ def new_read_ranges_from_file(
     output_shape: Tuple,
     output_type: type = np.float64,
     columns: np.lib.index_tricks.IndexExpression = np.s_[:],
-    chunk_size=10000,
+    chunk_size = 10000
 ) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
@@ -388,9 +394,10 @@ def new_read_ranges_from_file(
     """
 
     # Get chunk size
+    print("getting chunks")
     if handle.chunks is not None:
         chunk_size = handle.chunks[0]
-
+        
         # Make array of chunk ranges
         chunk_ranges = get_chunk_ranges(ranges, chunk_size, handle.shape[0])
         chunk_range_size = int(
@@ -407,12 +414,15 @@ def new_read_ranges_from_file(
     already_read = 0
     handle_multidim = handle.ndim > 1
 
+    print("looping over chunks")
+    print(chunk_ranges)
     for bounds in chunk_ranges:
         read_start = bounds[0]
         read_end = bounds[1]
         if read_end == read_start:
             continue
 
+        print("reading chunk ", read_start, read_end)
         # Because we read inclusively
         size_of_range = read_end - read_start
 
@@ -426,11 +436,16 @@ def new_read_ranges_from_file(
 
         output_dest_sel = np.s_[already_read : size_of_range + already_read]
 
+        print("read_direct")
         handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
+        print("finished read_direct")
 
         already_read += size_of_range
 
     if handle.chunks is not None:
-        return extract_ranges_from_chunks(output, chunk_ranges, ranges)
+        print("extracting ranges")
+        out = extract_ranges_from_chunks(output, chunk_ranges, ranges)
+        print("finished extracting ranges")
+        return out
     else:
         return output
