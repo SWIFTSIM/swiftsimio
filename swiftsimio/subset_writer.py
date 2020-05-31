@@ -269,14 +269,12 @@ def write_datasubset(
 
             dataset_mask = get_dataset_mask(mask, name)
 
-            print("reading ranges from file")
             subset = read_ranges_from_file(
                 infile[name],
                 dataset_mask,
                 output_shape=output_shape,
                 output_type=output_type,
             )
-            print("finished reading ranges from file")
 
             # Write the subset
             outfile.create_dataset(name, data=subset)

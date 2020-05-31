@@ -264,19 +264,16 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
         1D array of indices that fall within each range specified in `ranges`
         
     """
-    print("expanding ranges")
     length = np.asarray([bounds[1] - bounds[0] for bounds in ranges]).sum()
 
     output = np.zeros(length, dtype=np.int64)
     i = 0
-    print("loop over ranges")
     for bounds in ranges:
         lower = bounds[0]
         upper = bounds[1]
         bound_length = upper - lower
         output[i : i + bound_length] = np.arange(lower, upper, dtype=np.int64)
         i += bound_length
-    print("finished loop over ranges")
 
     return output
 
@@ -315,11 +312,11 @@ def extract_ranges_from_chunks(
     """
     # Find out which of the chunks in the chunks array each range in ranges belongs to
     n_ranges = len(ranges)
+    n_chunks = len(chunks)
     chunk_array_index = np.zeros(len(ranges), dtype=np.int32)
     chunk_index = 0
     i = 0
-    print("getting chunk indices")
-    while i < n_ranges:
+    while i < n_ranges and chunk_index < n_chunks:
         if (
             chunks[chunk_index][0] <= ranges[i][0]
             and chunks[chunk_index][1] >= ranges[i][1]
@@ -327,15 +324,15 @@ def extract_ranges_from_chunks(
             chunk_array_index[i] = chunk_index
             i += 1
         else:
-            chunk_index += 2
+            chunk_index += 1
+
 
     # Need to get the locations of the range boundaries with
     # respect to the indexing in the array of chunked data
     # (as opposed to the whole dataset)
     adjusted_ranges = ranges
     running_sum = 0
-    print("adjusting ranges")
-    for i in range(n_ranges):
+    for i in range(n_ranges-1):
         offset = chunks[chunk_array_index[i]][0] - running_sum
         adjusted_ranges[i][0] = ranges[i][0] - offset
         adjusted_ranges[i][1] = ranges[i][1] - offset
@@ -343,13 +340,12 @@ def extract_ranges_from_chunks(
             running_sum += (
                 chunks[chunk_array_index[i]][1] - chunks[chunk_array_index[i]][0]
             )
+    # Take care of the last element
+    offset = chunks[chunk_array_index[n_ranges-1]][0] - running_sum
+    adjusted_ranges[n_ranges-1][0] = ranges[n_ranges-1][0] - offset
+    adjusted_ranges[n_ranges-1][1] = ranges[n_ranges-1][1] - offset
 
-    print("indexing array")
-    print(expand_ranges(adjusted_ranges))
-    print(len(array))
-    out = array[expand_ranges(adjusted_ranges)]
-    print("finished indexing array")
-    return 
+    return array[expand_ranges(adjusted_ranges)]
 
 
 def new_read_ranges_from_file(
@@ -394,7 +390,6 @@ def new_read_ranges_from_file(
     """
 
     # Get chunk size
-    print("getting chunks")
     if handle.chunks is not None:
         chunk_size = handle.chunks[0]
         
@@ -414,15 +409,12 @@ def new_read_ranges_from_file(
     already_read = 0
     handle_multidim = handle.ndim > 1
 
-    print("looping over chunks")
-    print(chunk_ranges)
     for bounds in chunk_ranges:
         read_start = bounds[0]
         read_end = bounds[1]
         if read_end == read_start:
             continue
 
-        print("reading chunk ", read_start, read_end)
         # Because we read inclusively
         size_of_range = read_end - read_start
 
@@ -436,16 +428,13 @@ def new_read_ranges_from_file(
 
         output_dest_sel = np.s_[already_read : size_of_range + already_read]
 
-        print("read_direct")
         handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
-        print("finished read_direct")
 
         already_read += size_of_range
 
+    chunk_length = sum([bounds[1] - bounds[0] for bounds in chunk_ranges])
+
     if handle.chunks is not None:
-        print("extracting ranges")
-        out = extract_ranges_from_chunks(output, chunk_ranges, ranges)
-        print("finished extracting ranges")
-        return out
+        return extract_ranges_from_chunks(output, chunk_ranges, ranges)
     else:
         return output
