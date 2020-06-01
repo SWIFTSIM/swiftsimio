@@ -20,6 +20,8 @@ show you a selection of useful metadata. See below for an example.
 
 Produces the following output:
 
+.. code::
+
     Untitled SWIFT simulation
     Written at: 2020-06-01 08:44:51
     Active policies: cosmological integration, hydro, keep, self gravity, steal
