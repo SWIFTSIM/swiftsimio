@@ -61,6 +61,7 @@ if __name__ == "__main__":
     import swiftsimio as sw
     import unyt
 
+    from swiftsimio.metadata.particle import particle_name_underscores
     from textwrap import wrap
 
     args = parser.parse_args()
@@ -112,6 +113,16 @@ if __name__ == "__main__":
             f"Output type: {output_type}, Output selection: {select_output}"
         )
         print(f"{output_type_string}")
+
+        numbers_of_particles = "Number of particles: " + ", ".join(
+            [
+                f"{x.title().replace('_', ' ')}: {getattr(data, f'n_{x}', 0)}"
+                for x in particle_name_underscores.values()
+            ]
+        )
+        numbers_of_particles_strings = wrap(numbers_of_particles, SCREEN_WIDTH)
+        for numbers_of_particles_string in numbers_of_particles_strings:
+            print(numbers_of_particles_string)
 
         print()
 
