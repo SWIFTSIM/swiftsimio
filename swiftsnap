@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
         numbers_of_particles = "Number of particles: " + ", ".join(
             [
-                f"{x.title().replace('_', ' ')}: {getattr(data, f'n_{x}', 0)}"
+                f"{x.title().replace('_', ' ')}: {getattr(data, f'n_{x}', 0):.4g}"
                 for x in particle_name_underscores.values()
             ]
         )
