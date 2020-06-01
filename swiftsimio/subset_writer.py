@@ -197,8 +197,8 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
                 outfile[dset] = particle_offsets[part_type]
 
     # Copy the cell centres and metadata
-    infile.copy("/Cells/Centres", outfile)
-    infile.copy("/Cells/Meta-data", outfile)
+    infile.copy("/Cells/Centres", outfile, name="/Cells/Centres")
+    infile.copy("/Cells/Meta-data", outfile, name="/Cells/Meta-data")
 
 
 def write_metadata(
