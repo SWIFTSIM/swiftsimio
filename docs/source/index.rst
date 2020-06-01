@@ -20,6 +20,7 @@ snapshots to enable partial reading.
    masking/index
    visualisation/index
    creating_initial_conditions/index
+   command_line/index
 
    modules/index
 
