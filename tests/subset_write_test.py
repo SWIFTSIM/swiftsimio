@@ -7,8 +7,6 @@ import h5py
 import sys
 import os
 
-import faulthandler
-from time import perf_counter
 
 def compare(A, B):
     """
@@ -39,26 +37,18 @@ def compare(A, B):
         B_type = getattr(B, part_type)
         for attr in filter(lambda x: not x.startswith("_"), dir(A_type)):
             param = getattr(A_type, attr)
-            if "coordinates" in attr:
-                print(part_type)
-                print(param)
-                print(getattr(B_type, attr))
             if not callable(param):
                 try:
                     if not (param == getattr(B_type, attr)):
                         bad_compares.append(f"{part_type} {attr}")
-                        print(param)
-                        print(getattr(B_type, attr))
                 except:
                     if not (param == getattr(B_type, attr)).all():
                         bad_compares.append(f"{part_type} {attr}")
-                        print(param)
-                        print(getattr(B_type, attr))
 
     assert bad_compares == [], f"compare failed on {bad_compares}"
 
 
-#@requires("cosmological_volume.hdf5")
+@requires("cosmological_volume.hdf5")
 def test_subset_writer(filename):
     """
     Test to make sure subset writing works as intended
@@ -73,38 +63,25 @@ def test_subset_writer(filename):
     mask = sw.mask(filename)
 
     boxsize = mask.metadata.boxsize
-    box_length = boxsize[0]
-    n_cells = 96
-    half_cell_size = box_length/(n_cells*2)
 
     # Decide which region we want to load
-    load_region = [[0.5 * b - half_cell_size, 0.5 * b + half_cell_size] for b in boxsize]
+    load_region = [[0.49 * b, 0.51 * b] for b in boxsize]
     mask.constrain_spatial(load_region)
 
     # Write the subset
-    t1 = perf_counter()
     write_subset(outfile, mask)
-    t2 = perf_counter()
-    print("time elapsed {:.3e}s".format(t2 - t1))
 
     # Compare written subset of snapshot against corresponding region in full snapshot
     snapshot = sw.load(filename, mask)
     sub_snapshot = sw.load(outfile)
 
     # First check the metadata
-    #compare(snapshot, sub_snapshot)
+    compare(snapshot, sub_snapshot)
+
+    # Check mask functionality
+    test_subset_mask = sw.mask(outfile)
 
     # Clean up
     os.remove(outfile)
 
     return
-
-faulthandler.enable()
-
-#filename = "cosmological_volume.hdf5"
-filename = "../subset_writing_speed/eagle_0011.hdf5"
-
-#t1 = perf_counter()
-test_subset_writer(filename)
-#t2 = perf_counter()
-#print("time elapsed {:.3e}s".format(t2 - t1))
