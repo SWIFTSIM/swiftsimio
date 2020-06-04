@@ -77,7 +77,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     return np.array(output)
 
 
-def read_ranges_from_file(
+def old_read_ranges_from_file(
     handle: Dataset,
     ranges: np.ndarray,
     output_shape: Tuple,
@@ -330,7 +330,7 @@ def extract_ranges_from_chunks(
     # Need to get the locations of the range boundaries with
     # respect to the indexing in the array of chunked data
     # (as opposed to the whole dataset)
-    adjusted_ranges = ranges
+    adjusted_ranges = np.copy(ranges)
     running_sum = 0
     for i in range(n_ranges-1):
         offset = chunks[chunk_array_index[i]][0] - running_sum
@@ -348,7 +348,7 @@ def extract_ranges_from_chunks(
     return array[expand_ranges(adjusted_ranges)]
 
 
-def new_read_ranges_from_file(
+def read_ranges_from_file(
     handle: Dataset,
     ranges: np.ndarray,
     output_shape: Tuple,
@@ -403,7 +403,7 @@ def new_read_ranges_from_file(
         else:
             output_shape = chunk_range_size
     else:
-        chunk_ranges = ranges
+        chunk_ranges = np.copy(ranges)
 
     output = np.empty(output_shape, dtype=output_type)
     already_read = 0

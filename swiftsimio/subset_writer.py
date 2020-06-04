@@ -13,7 +13,6 @@ import h5py
 import numpy as np
 from typing import Optional, List
 
-
 def get_swift_name(name: str) -> str:
     """
     Returns the particle type name used in SWIFT
@@ -145,6 +144,7 @@ def find_links(
         keys = input_file.keys()
         path = ""
 
+    link_names = []
     link_paths = []
     for key in keys:
         subpath = f"{path}/{key}"
@@ -297,7 +297,6 @@ def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[st
     """
     for i in range(len(links_list)):
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
-
 
 def write_subset(output_file: str, mask: SWIFTMask):
     """
