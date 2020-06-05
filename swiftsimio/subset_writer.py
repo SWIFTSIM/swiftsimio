@@ -177,7 +177,7 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
     """
     outfile.create_group("Cells")
     outfile.create_group("Cells/Counts")
-    outfile.create_group("Cells/Offsets")
+    outfile.create_group("Cells/OffsetsInFile")
 
     # Get the particle counts and offsets in the cells
     particle_counts, particle_offsets = mask.get_masked_counts_offsets()
@@ -190,7 +190,7 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
                 outfile[dset] = particle_counts[part_type]
 
     # Loop over each particle type in the cells and update their offsets
-    offsets_dsets = find_datasets(infile, path="/Cells/Offsets")
+    offsets_dsets = find_datasets(infile, path="/Cells/OffsetsInFile")
     for part_type in particle_offsets:
         for dset in offsets_dsets:
             if get_swift_name(part_type) in dset:

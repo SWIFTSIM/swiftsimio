@@ -77,7 +77,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     return np.array(output)
 
 
-def old_read_ranges_from_file(
+def read_ranges_from_file(
     handle: Dataset,
     ranges: np.ndarray,
     output_shape: Tuple,
@@ -348,13 +348,12 @@ def extract_ranges_from_chunks(
     return array[expand_ranges(adjusted_ranges)]
 
 
-def read_ranges_from_file(
+def new_read_ranges_from_file(
     handle: Dataset,
     ranges: np.ndarray,
     output_shape: Tuple,
     output_type: type = np.float64,
     columns: np.lib.index_tricks.IndexExpression = np.s_[:],
-    chunk_size = 10000
 ) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
