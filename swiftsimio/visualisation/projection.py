@@ -272,7 +272,7 @@ def project_gas_pixel_grid(
     """
 
     # Check that the units of the rotation center correspond to those of the coordinates
-    if (
+    if rotation_center is not None and (
         isinstance(rotation_center, list)
         or rotation_center.units != data.gas.coordinates.units
     ):
