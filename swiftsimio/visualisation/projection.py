@@ -124,6 +124,19 @@ def project_pixel_grid(
       array if you want it to be visualised the 'right way up'.
     """
 
+    if rotation_center is not None:
+        try:
+            if rotation_center.units == data.coordinates.units:
+                pass
+            else:
+                raise exceptions.InvalidUnitOperation(
+                    "Units of coordinates and rotation center must agree"
+                )
+        except AttributeError:
+            raise exceptions.InvalidUnitOperation(
+                "Ensure that rotation_center is a unyt array with the same units as coordinates"
+            )
+
     number_of_particles = data.coordinates.shape[0]
 
     if project is None:
@@ -270,14 +283,6 @@ def project_gas_pixel_grid(
       which is the opposite to what ``imshow`` requires. You should transpose the
       array if you want it to be visualised the 'right way up'.
     """
-
-    # Check that the units of the rotation center correspond to those of the coordinates
-    if rotation_center is not None and (
-        isinstance(rotation_center, list)
-        or rotation_center.units != data.gas.coordinates.units
-    ):
-        print("rotation center units and coordinates do not agree")
-        raise exceptions.InvalidUnitOperation()
 
     image = project_pixel_grid(
         data=data.gas,
