@@ -17,7 +17,7 @@ from numpy import (
     matmul,
     s_,
 )
-from unyt import unyt_array, unyt_quantity
+from unyt import unyt_array, unyt_quantity, exceptions
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.reader import __SWIFTParticleDataset
@@ -123,6 +123,19 @@ def project_pixel_grid(
       which is the opposite to what ``imshow`` requires. You should transpose the
       array if you want it to be visualised the 'right way up'.
     """
+
+    if rotation_center is not None:
+        try:
+            if rotation_center.units == data.coordinates.units:
+                pass
+            else:
+                raise exceptions.InvalidUnitOperation(
+                    "Units of coordinates and rotation center must agree"
+                )
+        except AttributeError:
+            raise exceptions.InvalidUnitOperation(
+                "Ensure that rotation_center is a unyt array with the same units as coordinates"
+            )
 
     number_of_particles = data.coordinates.shape[0]
 
