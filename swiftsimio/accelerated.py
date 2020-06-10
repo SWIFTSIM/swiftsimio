@@ -7,8 +7,6 @@ import numpy as np
 from h5py._hl.dataset import Dataset
 
 from typing import Tuple
-from numba.typed import List
-from itertools import chain
 
 try:
     from numba import jit, prange
@@ -172,8 +170,6 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
     return read_ranges_from_file(handle, ranges, output_size, output_type)
 
 
-################################ ALEXEI: playing around with better read_ranges_from_file implementation #################################
-
 def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     """
     Returns an array of ranges with consecutive ranges merged if there is no
@@ -189,22 +185,29 @@ def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     -------
     np.ndarray
         two dimensional array of ranges
+
+    Examples
+    --------
+    >>> concatenate_ranges([[1,5],[6,10],[12,15]])
+    np.ndarray([[1,10],[12,15]])
     """
-    concatenated = []
-    concatenated.append(ranges[0])
-    
-    for i in range(1,len(ranges)):
+    concatenated = [ranges[0]]
+
+    for i in range(1, len(ranges)):
         lower = ranges[i][0]
         upper = ranges[i][1]
         if lower <= concatenated[-1][1] + 1:
             concatenated[-1][1] = upper
         else:
             concatenated.append(ranges[i])
-    
-    return np.asarray(concatenated)
+
+    return np.array(concatenated)
+
 
 @jit(nopython=True, fastmath=True)
-def get_chunk_ranges(ranges: np.ndarray, chunk_size: np.ndarray, array_length: int) -> np.ndarray:
+def get_chunk_ranges(
+    ranges: np.ndarray, chunk_size: np.ndarray, array_length: int
+) -> np.ndarray:
     """
     Return indices indicating which hdf5 chunk each range from `ranges` belongs to
 
@@ -245,7 +248,7 @@ def get_chunk_ranges(ranges: np.ndarray, chunk_size: np.ndarray, array_length: i
         else:
             chunk_ranges.append([lower, upper])
 
-    return np.asarray(chunk_ranges)
+    return np.array(chunk_ranges)
 
 
 @jit(nopython=True, fastmath=True)
@@ -313,37 +316,33 @@ def extract_ranges_from_chunks(
     # Find out which of the chunks in the chunks array each range in ranges belongs to
     n_ranges = len(ranges)
     n_chunks = len(chunks)
-    chunk_array_index = np.zeros(len(ranges), dtype=np.int32)
+    chunk_array_index = np.zeros(n_ranges, dtype=np.int32)
     chunk_index = 0
-    i = 0
-    while i < n_ranges and chunk_index < n_chunks:
+    ranges_index = 0
+    while ranges_index < n_ranges and chunk_index < n_chunks:
         if (
-            chunks[chunk_index][0] <= ranges[i][0]
-            and chunks[chunk_index][1] >= ranges[i][1]
+            chunks[chunk_index][0] <= ranges[ranges_index][0]
+            and chunks[chunk_index][1] >= ranges[ranges_index][1]
         ):
-            chunk_array_index[i] = chunk_index
-            i += 1
+            chunk_array_index[ranges_index] = chunk_index
+            ranges_index += 1
         else:
             chunk_index += 1
-
 
     # Need to get the locations of the range boundaries with
     # respect to the indexing in the array of chunked data
     # (as opposed to the whole dataset)
     adjusted_ranges = np.copy(ranges)
     running_sum = 0
-    for i in range(n_ranges-1):
-        offset = chunks[chunk_array_index[i]][0] - running_sum
-        adjusted_ranges[i][0] = ranges[i][0] - offset
-        adjusted_ranges[i][1] = ranges[i][1] - offset
+    for i in range(n_ranges - 1):
+        this_chunk = chunks[chunk_array_index[i]]
+        offset = this_chunk[0] - running_sum
+        adjusted_ranges[i] = ranges[i] - offset
         if chunk_array_index[i + 1] > chunk_array_index[i]:
-            running_sum += (
-                chunks[chunk_array_index[i]][1] - chunks[chunk_array_index[i]][0]
-            )
+            running_sum += this_chunk[1] - this_chunk[0]
     # Take care of the last element
-    offset = chunks[chunk_array_index[n_ranges-1]][0] - running_sum
-    adjusted_ranges[n_ranges-1][0] = ranges[n_ranges-1][0] - offset
-    adjusted_ranges[n_ranges-1][1] = ranges[n_ranges-1][1] - offset
+    offset = chunks[chunk_array_index[-1]][0] - running_sum
+    adjusted_ranges[-1] = ranges[-1] - offset
 
     return array[expand_ranges(adjusted_ranges)]
 
@@ -391,15 +390,15 @@ def new_read_ranges_from_file(
     # Get chunk size
     if handle.chunks is not None:
         chunk_size = handle.chunks[0]
-        
+
         # Make array of chunk ranges
         chunk_ranges = get_chunk_ranges(ranges, chunk_size, handle.shape[0])
-        chunk_range_size = int(
-            np.sum([chunk_range[1] - chunk_range[0] for chunk_range in chunk_ranges])
-        )
-        if isinstance(output_shape, tuple):
+        chunk_range_size = np.diff(chunk_ranges).sum()
+
+        try:
             output_shape = (chunk_range_size, output_shape[1])
-        else:
+        except TypeError:
+            # Output shape is just a number, we have a 1D array.
             output_shape = chunk_range_size
     else:
         chunk_ranges = np.copy(ranges)
@@ -409,8 +408,7 @@ def new_read_ranges_from_file(
     handle_multidim = handle.ndim > 1
 
     for bounds in chunk_ranges:
-        read_start = bounds[0]
-        read_end = bounds[1]
+        read_start, read_end = bounds
         if read_end == read_start:
             continue
 
@@ -430,8 +428,6 @@ def new_read_ranges_from_file(
         handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
 
         already_read += size_of_range
-
-    chunk_length = sum([bounds[1] - bounds[0] for bounds in chunk_ranges])
 
     if handle.chunks is not None:
         return extract_ranges_from_chunks(output, chunk_ranges, ranges)

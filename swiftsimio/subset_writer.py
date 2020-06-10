@@ -13,6 +13,7 @@ import h5py
 import numpy as np
 from typing import Optional, List
 
+
 def get_swift_name(name: str) -> str:
     """
     Returns the particle type name used in SWIFT
@@ -175,9 +176,12 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
     mask : SWIFTMask
         the mask being used to define subset
     """
+    offsets_path = (
+        "Cells/OffsetsInFile" if "Cells/OffsetsInFile" in infile else "Cells/Offsets"
+    )
     outfile.create_group("Cells")
     outfile.create_group("Cells/Counts")
-    outfile.create_group("Cells/OffsetsInFile")
+    outfile.create_group(offsets_path)
 
     # Get the particle counts and offsets in the cells
     particle_counts, particle_offsets = mask.get_masked_counts_offsets()
@@ -190,7 +194,7 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
                 outfile[dset] = particle_counts[part_type]
 
     # Loop over each particle type in the cells and update their offsets
-    offsets_dsets = find_datasets(infile, path="/Cells/OffsetsInFile")
+    offsets_dsets = find_datasets(infile, path=offsets_path)
     for part_type in particle_offsets:
         for dset in offsets_dsets:
             if get_swift_name(part_type) in dset:
@@ -297,6 +301,7 @@ def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[st
     """
     for i in range(len(links_list)):
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
+
 
 def write_subset(output_file: str, mask: SWIFTMask):
     """
