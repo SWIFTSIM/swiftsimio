@@ -75,7 +75,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     return np.array(output)
 
 
-def read_ranges_from_file(
+def read_ranges_from_file_unchunked(
     handle: Dataset,
     ranges: np.ndarray,
     output_shape: Tuple,
@@ -347,7 +347,7 @@ def extract_ranges_from_chunks(
     return array[expand_ranges(adjusted_ranges)]
 
 
-def new_read_ranges_from_file(
+def read_ranges_from_file_chunked(
     handle: Dataset,
     ranges: np.ndarray,
     output_shape: Tuple,
@@ -387,21 +387,17 @@ def new_read_ranges_from_file(
         Result from reading only the relevant values from ``handle``.
     """
 
-    # Get chunk size
-    if handle.chunks is not None:
-        chunk_size = handle.chunks[0]
+    chunk_size = handle.chunks[0]
 
-        # Make array of chunk ranges
-        chunk_ranges = get_chunk_ranges(ranges, chunk_size, handle.shape[0])
-        chunk_range_size = np.diff(chunk_ranges).sum()
+    # Make array of chunk ranges
+    chunk_ranges = get_chunk_ranges(ranges, chunk_size, handle.shape[0])
+    chunk_range_size = np.diff(chunk_ranges).sum()
 
-        try:
-            output_shape = (chunk_range_size, output_shape[1])
-        except TypeError:
-            # Output shape is just a number, we have a 1D array.
-            output_shape = chunk_range_size
-    else:
-        chunk_ranges = np.copy(ranges)
+    try:
+        output_shape = (chunk_range_size, output_shape[1])
+    except:
+        # Output shape is just a number, we have a 1D array.
+        output_shape = chunk_range_size
 
     output = np.empty(output_shape, dtype=output_type)
     already_read = 0
@@ -433,3 +429,56 @@ def new_read_ranges_from_file(
         return extract_ranges_from_chunks(output, chunk_ranges, ranges)
     else:
         return output
+
+
+def read_ranges_from_file(
+    handle: Dataset,
+    ranges: np.ndarray,
+    output_shape: Tuple,
+    output_type: type = np.float64,
+    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
+) -> np.array:
+    """
+    Wrapper function to correctly select which version of read_ranges_from_file
+    should be used
+
+    Parameters
+    ----------
+
+    handle: Dataset
+        HDF5 dataset to slice data from
+
+    ranges: np.ndarray
+        Array of ranges (see :func:`ranges_from_array`)
+
+    output_shape: Tuple
+        Resultant shape of output. 
+    
+    output_type: type, optional
+        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+
+    columns: np.lib.index_tricks.IndexExpression, optional
+        Selector for columns if using a multi-dimensional array. If the array is only
+        a single dimension this is not used.
+
+    
+    Returns
+    -------
+
+    array: np.ndarray
+        Result from reading only the relevant values from ``handle``.
+
+    See Also
+    --------
+    read_ranges_from_file_chunked: reads data within specified ranges for chunked hdf5 file
+    read_ranges_from_file_unchunked: reads data within specified ranges for unchunked hdf5 file
+    """
+
+    average_range_size = np.diff(ranges).sum()
+    read_ranges = (
+        read_ranges_from_file_chunked
+        if handle.chunks is not None and average_range_size < 5e5
+        else read_ranges_from_file_unchunked
+    )
+
+    return read_ranges(handle, ranges, output_shape, output_type, columns)
