@@ -295,6 +295,9 @@ class SWIFTMetadata(object):
                 self.snapshot_date = datetime.strptime(
                     self.header["Snapshot date"].decode("utf-8"), "%c\n"
                 )
+            except ValueError:
+                # Oh dear this has gone _very_wrong. Let's just keep it as a string.
+                self.snapshot_date = self.header["Snapshot date"].decode("utf-8")
         except KeyError:
             # Old file
             pass
