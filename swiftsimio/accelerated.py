@@ -483,7 +483,7 @@ def read_ranges_from_file(
     # performance than read_ranges_from_file_unchunked
     cross_over_range_size = 5e5
 
-    average_range_size = np.diff(ranges).sum() / len(ranges)
+    average_range_size = np.diff(ranges).mean()
     read_ranges = (
         read_ranges_from_file_chunked
         if handle.chunks is not None and average_range_size < cross_over_range_size
