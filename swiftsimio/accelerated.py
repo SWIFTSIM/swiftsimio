@@ -477,10 +477,16 @@ def read_ranges_from_file(
     unchunked hdf5 file
     """
 
+    # It was found that the range size for which read_ranges_from_file_chunked was
+    # faster than unchunked was approximately 5e5. For ranges larger than this the
+    # overheads associated with read_ranges_from_file_chunked caused slightly worse
+    # performance than read_ranges_from_file_unchunked
+    cross_over_range_size = 5e5
+
     average_range_size = np.diff(ranges).sum() / len(ranges)
     read_ranges = (
         read_ranges_from_file_chunked
-        if handle.chunks is not None and average_range_size < 5e5
+        if handle.chunks is not None and average_range_size < cross_over_range_size
         else read_ranges_from_file_unchunked
     )
 
