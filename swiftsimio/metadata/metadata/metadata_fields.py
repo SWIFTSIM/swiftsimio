@@ -44,7 +44,11 @@ def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
 
 # These are the same as above, but they are extracted as real python strings
 # instead of bytecode characters.
-header_unpack_string = {"RunName": "run_name"}
+header_unpack_string = {
+    "RunName": "run_name",
+    "SelectOutput": "select_output",
+    "OutputType": "output_type",
+}
 
 
 # These are the same as above, but they are stored in the snapshots as length
