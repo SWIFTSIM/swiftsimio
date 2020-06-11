@@ -170,6 +170,7 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
     return read_ranges_from_file(handle, ranges, output_size, output_type)
 
 
+@jit(nopython=True, fastmath=True)
 def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     """
     Returns an array of ranges with consecutive ranges merged if there is no
@@ -191,7 +192,7 @@ def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     >>> concatenate_ranges([[1,5],[6,10],[12,15]])
     np.ndarray([[1,10],[12,15]])
     """
-    concatenated = [ranges[0]]
+    concatenated = [list(ranges[0])]
 
     for i in range(1, len(ranges)):
         lower = ranges[i][0]
@@ -199,7 +200,7 @@ def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
         if lower <= concatenated[-1][1] + 1:
             concatenated[-1][1] = upper
         else:
-            concatenated.append(ranges[i])
+            concatenated.append(list(ranges[i]))
 
     return np.array(concatenated)
 
@@ -276,7 +277,7 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
         upper = bounds[1]
         bound_length = upper - lower
         for j in range(bound_length):
-            output[i+j] = lower+j
+            output[i + j] = lower + j
         i += bound_length
 
     return output
@@ -476,7 +477,7 @@ def read_ranges_from_file(
     unchunked hdf5 file
     """
 
-    average_range_size = np.diff(ranges).sum()/len(ranges)
+    average_range_size = np.diff(ranges).sum() / len(ranges)
     read_ranges = (
         read_ranges_from_file_chunked
         if handle.chunks is not None and average_range_size < 5e5
