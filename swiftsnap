@@ -107,10 +107,8 @@ if __name__ == "__main__":
         for policy_string in policy_strings:
             print(policy_string)
 
-        output_type = decode(data.header.get("OutputType", b"Snapshot"))
-        select_output = decode(data.header.get("SelectOutput", b"Default"))
         output_type_string = (
-            f"Output type: {output_type}, Output selection: {select_output}"
+            f"Output type: {data.output_type}, Output selection: {data.select_output}"
         )
         print(f"{output_type_string}")
 
