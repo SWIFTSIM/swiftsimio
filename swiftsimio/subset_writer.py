@@ -145,6 +145,7 @@ def find_links(
         keys = input_file.keys()
         path = ""
 
+    link_names = []
     link_paths = []
     for key in keys:
         subpath = f"{path}/{key}"
@@ -175,9 +176,12 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
     mask : SWIFTMask
         the mask being used to define subset
     """
+    offsets_path = (
+        "Cells/OffsetsInFile" if "Cells/OffsetsInFile" in infile else "Cells/Offsets"
+    )
     outfile.create_group("Cells")
     outfile.create_group("Cells/Counts")
-    outfile.create_group("Cells/Offsets")
+    outfile.create_group(offsets_path)
 
     # Get the particle counts and offsets in the cells
     particle_counts, particle_offsets = mask.get_masked_counts_offsets()
@@ -190,15 +194,15 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
                 outfile[dset] = particle_counts[part_type]
 
     # Loop over each particle type in the cells and update their offsets
-    offsets_dsets = find_datasets(infile, path="/Cells/Offsets")
+    offsets_dsets = find_datasets(infile, path=offsets_path)
     for part_type in particle_offsets:
         for dset in offsets_dsets:
             if get_swift_name(part_type) in dset:
                 outfile[dset] = particle_offsets[part_type]
 
     # Copy the cell centres and metadata
-    infile.copy("/Cells/Centres", outfile)
-    infile.copy("/Cells/Meta-data", outfile)
+    infile.copy("/Cells/Centres", outfile, name="/Cells/Centres")
+    infile.copy("/Cells/Meta-data", outfile, name="/Cells/Meta-data")
 
 
 def write_metadata(

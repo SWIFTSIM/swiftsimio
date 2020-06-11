@@ -237,10 +237,10 @@ class SWIFTMetadata(object):
 
         for field, name in metadata.metadata_fields.header_unpack_string.items():
             try:
-                setattr(self, name, self.header[field])
+                setattr(self, name, self.header[field].decode("utf-8"))
             except KeyError:
                 # Must not be present, just skip it
-                continue
+                setattr(self, name, "")
 
         # These must be unpacked as they are stored as length-1 arrays
 
@@ -295,6 +295,9 @@ class SWIFTMetadata(object):
                 self.snapshot_date = datetime.strptime(
                     self.header["Snapshot date"].decode("utf-8"), "%c\n"
                 )
+            except ValueError:
+                # Oh dear this has gone _very_wrong. Let's just keep it as a string.
+                self.snapshot_date = self.header["Snapshot date"].decode("utf-8")
         except KeyError:
             # Old file
             pass

@@ -78,6 +78,9 @@ def test_subset_writer(filename):
     # First check the metadata
     compare(snapshot, sub_snapshot)
 
+    # Check mask functionality
+    test_subset_mask = sw.mask(outfile)
+
     # Clean up
     os.remove(outfile)
 
