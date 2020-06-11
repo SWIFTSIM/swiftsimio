@@ -275,7 +275,8 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
         lower = bounds[0]
         upper = bounds[1]
         bound_length = upper - lower
-        output[i : i + bound_length] = np.arange(lower, upper, dtype=np.int64)
+        for j in range(bound_length):
+            output[i+j] = lower+j
         i += bound_length
 
     return output
@@ -470,11 +471,12 @@ def read_ranges_from_file(
 
     See Also
     --------
-    read_ranges_from_file_chunked: reads data within specified ranges for chunked hdf5 file
-    read_ranges_from_file_unchunked: reads data within specified ranges for unchunked hdf5 file
+    read_ranges_from_file_chunked: reads data within specified ranges for chunked hdf5
+    file read_ranges_from_file_unchunked: reads data within specified ranges for 
+    unchunked hdf5 file
     """
 
-    average_range_size = np.diff(ranges).sum()
+    average_range_size = np.diff(ranges).sum()/len(ranges)
     read_ranges = (
         read_ranges_from_file_chunked
         if handle.chunks is not None and average_range_size < 5e5
