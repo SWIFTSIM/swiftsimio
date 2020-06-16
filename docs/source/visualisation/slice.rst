@@ -96,6 +96,70 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
 
 
+Rotations
+---------
+
+Rotations of the box prior to slicing are provided in a similar fashion to the 
+:mod:`swiftsimio.visualisation.projection` sub-module, by using the 
+:mod:`swiftsimio.visualisation.rotation` sub-module. To rotate the perspective
+prior to slicing a ``rotation_center`` argument in :meth:`slice_gas` needs
+to be provided, specifying the point around which the rotation takes place. 
+The angle of rotation is specified with a matrix, supplied by ``rotation_matrix``
+in :meth:`slice_gas`. The rotation matrix may be computed with 
+:meth:`rotation_matrix_from_vector`. This will result in the perspective being 
+rotated to be along the provided vector. This approach to rotations applied to 
+the above example is shown below.
+
+.. code-block:: python
+
+   from swiftsimio import load
+   from swiftsimio.visualisation.slice import slice_gas
+   from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
+
+   data = load("my_snapshot_0000.hdf5")
+
+   # First create a mass-weighted temperature dataset
+   data.gas.mass_weighted_temps = data.gas.masses * data.gas.temperatures
+
+   # Specify the rotation parameters
+   center = 0.5 * data.metadata.boxsize
+   rotate_vec = [0.5,0.5,1]
+   matrix = rotation_matrix_from_vector(rotate_vec, axis='z')
+   
+   # Map in msun / mpc^3
+   mass_map = slice_gas(
+       data,
+       slice=0.5,
+       resolution=1024,
+       project="masses",
+       rotation_matrix=matrix,
+       rotation_center=center,
+       parallel=True
+   )
+   
+   # Map in msun * K / mpc^3
+   mass_weighted_temp_map = slice_gas(
+       data, 
+       slice=0.5,
+       resolution=1024,
+       project="mass_weighted_temps",
+       rotation_matrix=matrix,
+       rotation_center=center,
+       parallel=True
+   )
+
+   temp_map = mass_weighted_temp_map / mass_map
+
+   from unyt import K
+   temp_map.convert_to_units(K)
+
+   from matplotlib.pyplot import imsave
+   from matplotlib.colors import LogNorm
+
+   # Normalize and save
+   imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
+
+
 Lower-level API
 ---------------
 
