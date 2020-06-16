@@ -76,8 +76,8 @@ this:
 Rotations
 ---------
 
-Rotations of the box prior to slicing are provided in a similar fashion to the 
-:mod:`swiftsimio.visualisation.projection` sub-module, by using the 
+Rotations of the box prior to volume rendering are provided in a similar fashion 
+to the :mod:`swiftsimio.visualisation.projection` sub-module, by using the 
 :mod:`swiftsimio.visualisation.rotation` sub-module. To rotate the perspective
 prior to slicing a ``rotation_center`` argument in :meth:`render_gas` needs
 to be provided, specifying the point around which the rotation takes place. 

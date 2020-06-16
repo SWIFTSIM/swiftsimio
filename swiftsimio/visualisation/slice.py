@@ -291,7 +291,8 @@ def slice_gas_pixel_grid(
         
     slice : float
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize.
+        extracted as a fraction of boxsize. If the perspective is rotated this
+        value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -304,8 +305,8 @@ def slice_gas_pixel_grid(
 
     rotation_matrix: np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
-        ``rotation_center``. In the default case, this provides a projection
-        along the z axis.
+        ``rotation_center``. In the default case, this provides a slice
+        perpendicular to the z axis.
 
     rotation_center: np.array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
@@ -421,7 +422,8 @@ def slice_gas(
         
     slice : float
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize.
+        extracted as a fraction of boxsize. If the perspective is rotated this
+        value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -434,8 +436,8 @@ def slice_gas(
 
     rotation_matrix: np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
-        ``rotation_center``. In the default case, this provides a projection
-        along the z axis.
+        ``rotation_center``. In the default case, this provides a slice 
+        perpendicular to the z axis.
 
     rotation_center: np.array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
