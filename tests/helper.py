@@ -116,8 +116,6 @@ def create_single_particle_dataset(filename: str, output_name: str):
     # Get rid of all traces of DM
     del outfile["/Cells/Counts/PartType1"]
     del outfile["/Cells/Offsets/PartType1"]
-    #nparts_total = outfile["/Header"].attrs.get("NumPart_Total")
-    #nparts_this_file = outfile["/Header"].attrs.get("NumPart_ThisFile")
     nparts_total = [2, 0, 0, 0, 0, 0]
     nparts_this_file = [2, 0, 0, 0, 0, 0]
     outfile["/Header"].attrs.__setitem__("NumPart_Total", nparts_total)
