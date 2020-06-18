@@ -345,7 +345,6 @@ class SWIFTMetadata(object):
         for particle_type, particle_name in zip(
             self.present_particle_types, self.present_particle_names
         ):
-            print(particle_type, particle_name)
             setattr(
                 self,
                 f"{particle_name}_properties",
