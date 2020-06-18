@@ -4,7 +4,19 @@ Sub-module for slice plots in SWFITSIMio.
 
 from typing import Union
 from math import sqrt
-from numpy import float64, float32, int32, zeros, array, arange, ndarray, ones, isclose
+from numpy import (
+    float64,
+    float32,
+    int32,
+    zeros,
+    array,
+    arange,
+    ndarray,
+    ones,
+    isclose,
+    matmul,
+    copy,
+)
 from unyt import unyt_array
 from swiftsimio import SWIFTDataset
 
@@ -222,8 +234,8 @@ def slice_scatter_parallel(
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
     """
-    #Same as scatter, but executes in parallel! This is actually trivial,
-    #we just make NUM_THREADS images and add them together at the end.
+    # Same as scatter, but executes in parallel! This is actually trivial,
+    # we just make NUM_THREADS images and add them together at the end.
 
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
@@ -261,6 +273,8 @@ def slice_gas_pixel_grid(
     slice: float,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    rotation_matrix: Union[None, array] = None,
+    rotation_center: Union[None, unyt_array] = None,
     region: Union[None, unyt_array] = None,
 ):
     """
@@ -277,7 +291,8 @@ def slice_gas_pixel_grid(
         
     slice : float
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize.
+        extracted as a fraction of boxsize. If the perspective is rotated this
+        value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -287,6 +302,15 @@ def slice_gas_pixel_grid(
         used to determine if we will create the image in parallel. This 
         defaults to False, but can speed up the creation of large images 
         significantly at the cost of increased memory usage.
+
+    rotation_matrix: np.array, optional
+        Rotation matrix (3x3) that describes the rotation of the box around
+        ``rotation_center``. In the default case, this provides a slice
+        perpendicular to the z axis.
+
+    rotation_center: np.array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
 
     region : unyt_array, optional
         determines where the image will be created
@@ -340,7 +364,16 @@ def slice_gas_pixel_grid(
             "Slice code is currently not able to handle non-square images"
         )
 
-    x, y, z = data.gas.coordinates.T
+    if rotation_center is not None:
+        # Rotate co-ordinates as required
+        x, y, z = matmul(rotation_matrix, (data.gas.coordinates - rotation_center).T)
+
+        x += rotation_center[0]
+        y += rotation_center[1]
+        z += rotation_center[2]
+
+    else:
+        x, y, z = data.gas.coordinates.T
 
     try:
         hsml = data.gas.smoothing_lengths
@@ -372,6 +405,8 @@ def slice_gas(
     slice: float,
     project: Union[str, None] = "masses",
     parallel: bool = False,
+    rotation_matrix: Union[None, array] = None,
+    rotation_center: Union[None, unyt_array] = None,
     region: Union[None, unyt_array] = None,
 ):
     """
@@ -387,16 +422,26 @@ def slice_gas(
         
     slice : float
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize.
+        extracted as a fraction of boxsize. If the perspective is rotated this
+        value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
         count number of particles 
     
-    parallel : bool
+    parallel : bool, optional
         used to determine if we will create the image in parallel. This 
         defaults to False, but can speed up the creation of large images 
         significantly at the cost of increased memory usage.
+
+    rotation_matrix: np.array, optional
+        Rotation matrix (3x3) that describes the rotation of the box around
+        ``rotation_center``. In the default case, this provides a slice 
+        perpendicular to the z axis.
+
+    rotation_center: np.array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
 
     region : array, optional
         determines where the image will be created
@@ -425,7 +470,16 @@ def slice_gas(
     appropriate
     """
 
-    image = slice_gas_pixel_grid(data, resolution, slice, project, parallel, region)
+    image = slice_gas_pixel_grid(
+        data,
+        resolution,
+        slice,
+        project,
+        parallel,
+        rotation_matrix,
+        rotation_center,
+        region,
+    )
 
     if region is not None:
         x_range = region[1] - region[0]
