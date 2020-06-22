@@ -316,6 +316,30 @@ class cosmo_array(unyt_array):
 
         return super().__str__() + " " + comoving_str
 
+    def in_units(self, units, equivalence=None, **kwargs):
+        """
+        A copy of the ``in_units`` function that makes sure to copy over
+        ``cosmo_factor`` and ``comoving``
+
+        Parameters
+        ----------
+        units : Unit object or string
+            The units you want to get a new quantity in.
+        equivalence : string, optional
+            The equivalence you wish to use. To see which equivalencies
+            are supported for this object, try the ``list_equivalencies``
+            method. Default: None
+        kwargs: optional
+            Any additional keyword arguments are supplied to the
+            equivalence
+
+        """
+        obj = super().in_units(units, equivalence, **kwargs)
+        obj.cosmo_factor = self.cosmo_factor
+        obj.comoving = self.comoving
+
+        return obj
+
     def convert_to_comoving(self) -> None:
         """
         Convert the internal data to be in comoving units.
