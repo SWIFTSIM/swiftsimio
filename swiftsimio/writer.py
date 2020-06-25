@@ -14,7 +14,7 @@ from typing import Union, List, Callable
 from functools import reduce
 
 from swiftsimio import metadata
-
+from re import findall
 
 class __SWIFTWriterParticleDataset(object):
     """
@@ -200,6 +200,63 @@ class __SWIFTWriterParticleDataset(object):
 
         return
 
+    def write_particle_group_metadata(self, file_handle: h5py.File, dset_attributes):
+        for name, output_handle in getattr(
+            metadata.required_fields, self.particle_name
+        ).items():
+            obj = file_handle[f"/PartType{self.particle_type}/{output_handle}"]
+            for attr_name, attr_value in dset_attributes[output_handle].items():
+                obj.attrs.create(attr_name, attr_value)
+
+        return
+
+    def get_attributes(self, scale_factor):
+        attributes_dict = {}
+        a_exp_dict = {
+            "coordinates": 1,
+            "internal_energies": -2,
+        }
+
+        for name, output_handle in getattr(
+            metadata.required_fields, self.particle_name
+        ).items():
+            field = getattr(self, name)
+            
+            # Find the exponents for each of the dimensions
+            dim_exponents = get_dimensions(field.units.dimensions)
+
+            # Find the scale factor associated quantities
+            a_exp =  a_exp_dict.get(name, 0)
+            a_factor = scale_factor*a_exp
+
+            attributes_dict[output_handle] = {
+                "Conversion factor to CGS (not including cosmological corrections)": [field.unit_quantity.in_cgs()],
+                "Conversion factor to physical CGS (including cosmological corrections)": [field.unit_quantity.in_cgs()*a_factor],
+                "Description": b'Co-moving positions of the particles',
+                "Expression for physical CGS units": b'a U_L  [ cm ]',
+                "U_I exponent": [dim_exponents[0]],
+                "U_L exponent": [dim_exponents[1]],
+                "U_M exponent": [dim_exponents[2]],
+                "U_T exponent": [dim_exponents[3]],
+                "U_t exponent": [dim_exponents[4]],
+                "a-scale exponent": [a_exp],
+                "h-scale exponent": [0.],
+            }
+
+        return attributes_dict
+
+def get_dimensions(obj):
+    dimensions = ["current", "length", "mass", "temperature", "time"]
+    n_dims = len(dimensions)
+    exp_array = np.zeros(n_dims, dtype = np.float32)
+    dim_array = [x.as_base_exp() for x in obj.as_ordered_factors()]
+    
+    for i in range(n_dims):
+        for dim in dim_array:
+            if dimensions[i] in str(dim[0]):
+                exp_array[i] = dim[1]
+
+    return exp_array
 
 def generate_getter(name: str):
     """
@@ -373,6 +430,7 @@ class SWIFTWriterDataset(object):
         unit_fields_generate_units: Callable[
             ..., dict
         ] = metadata.unit_fields.generate_units,
+        scale_factor: np.float32 = 1.
     ):
         """
         Creates SWIFTWriterDataset object
@@ -392,6 +450,8 @@ class SWIFTWriterDataset(object):
         unit_fields_generate_units: callable, optional
             collection of properties in metadata file for which to create setters
             and getters
+        scale_factor: np.float32
+            scale factor associated with dataset. Defaults to 1
             
         """
         self.unit_fields_generate_units = unit_fields_generate_units
@@ -416,6 +476,8 @@ class SWIFTWriterDataset(object):
         self.extra_header = extra_header
 
         self.create_particle_datasets()
+
+        self.scale_factor = scale_factor
 
         return
 
@@ -575,5 +637,7 @@ class SWIFTWriterDataset(object):
 
             for name in names_to_write:
                 getattr(self, name).write_particle_group(handle, compress=self.compress)
+                attrs = getattr(self, name).get_attributes(self.scale_factor)
+                getattr(self, name).write_particle_group_metadata(handle, attrs)
 
         return
