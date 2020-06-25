@@ -16,6 +16,7 @@ from functools import reduce
 from swiftsimio import metadata
 from re import findall
 
+
 class __SWIFTWriterParticleDataset(object):
     """
     A particle dataset for _writing_ with. This is explicitly different
@@ -221,42 +222,48 @@ class __SWIFTWriterParticleDataset(object):
             metadata.required_fields, self.particle_name
         ).items():
             field = getattr(self, name)
-            
+
             # Find the exponents for each of the dimensions
             dim_exponents = get_dimensions(field.units.dimensions)
 
             # Find the scale factor associated quantities
-            a_exp =  a_exp_dict.get(name, 0)
-            a_factor = scale_factor*a_exp
+            a_exp = a_exp_dict.get(name, 0)
+            a_factor = scale_factor * a_exp
 
             attributes_dict[output_handle] = {
-                "Conversion factor to CGS (not including cosmological corrections)": [field.unit_quantity.in_cgs()],
-                "Conversion factor to physical CGS (including cosmological corrections)": [field.unit_quantity.in_cgs()*a_factor],
-                "Description": b'Co-moving positions of the particles',
-                "Expression for physical CGS units": b'a U_L  [ cm ]',
+                "Conversion factor to CGS (not including cosmological corrections)": [
+                    field.unit_quantity.in_cgs()
+                ],
+                "Conversion factor to physical CGS (including cosmological corrections)": [
+                    field.unit_quantity.in_cgs() * a_factor
+                ],
+                "Description": b"Co-moving positions of the particles",
+                "Expression for physical CGS units": b"a U_L  [ cm ]",
                 "U_I exponent": [dim_exponents[0]],
                 "U_L exponent": [dim_exponents[1]],
                 "U_M exponent": [dim_exponents[2]],
                 "U_T exponent": [dim_exponents[3]],
                 "U_t exponent": [dim_exponents[4]],
                 "a-scale exponent": [a_exp],
-                "h-scale exponent": [0.],
+                "h-scale exponent": [0.0],
             }
 
         return attributes_dict
 
+
 def get_dimensions(obj):
     dimensions = ["current", "length", "mass", "temperature", "time"]
     n_dims = len(dimensions)
-    exp_array = np.zeros(n_dims, dtype = np.float32)
+    exp_array = np.zeros(n_dims, dtype=np.float32)
     dim_array = [x.as_base_exp() for x in obj.as_ordered_factors()]
-    
+
     for i in range(n_dims):
         for dim in dim_array:
             if dimensions[i] in str(dim[0]):
                 exp_array[i] = dim[1]
 
     return exp_array
+
 
 def generate_getter(name: str):
     """
@@ -430,7 +437,7 @@ class SWIFTWriterDataset(object):
         unit_fields_generate_units: Callable[
             ..., dict
         ] = metadata.unit_fields.generate_units,
-        scale_factor: np.float32 = 1.
+        scale_factor: np.float32 = 1.0,
     ):
         """
         Creates SWIFTWriterDataset object
