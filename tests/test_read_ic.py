@@ -4,9 +4,16 @@ from swiftsimio.units import cosmo_units
 
 import unyt
 import numpy as np
+from os import remove
 
 
-def test_read():
+def test_reading_ic_units():
+    """
+    Test to ensure we are able to correctly read ICs created with swiftsimio
+    """
+    # File we're writing to
+    test_filename = "test_write_output_units.hdf5"
+
     # Box is 100 Mpc
     boxsize = 100 * unyt.Mpc
 
@@ -35,14 +42,16 @@ def test_read():
     x.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
 
     # If IDs are not present, this automatically generates
-    x.write("test.hdf5")
+    x.write(test_filename)
 
-    data = load("test.hdf5")
+    data = load(test_filename)
 
     assert np.array_equal(data.gas.coordinates, x.gas.coordinates)
     assert np.array_equal(data.gas.velocities, x.gas.velocities)
     assert np.array_equal(data.gas.masses, x.gas.masses)
     assert np.array_equal(data.gas.internal_energy, x.gas.internal_energy)
     assert np.array_equal(data.gas.smoothing_length, x.gas.smoothing_length)
+
+    remove(test_filename)
 
     return

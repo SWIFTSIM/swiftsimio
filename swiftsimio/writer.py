@@ -14,7 +14,6 @@ from typing import Union, List, Callable
 from functools import reduce
 
 from swiftsimio import metadata
-from re import findall
 
 
 class __SWIFTWriterParticleDataset(object):
@@ -201,7 +200,19 @@ class __SWIFTWriterParticleDataset(object):
 
         return
 
-    def write_particle_group_metadata(self, file_handle: h5py.File, dset_attributes):
+    def write_particle_group_metadata(
+        self, file_handle: h5py.File, dset_attributes: dict
+    ):
+        """
+        Writes the relevant metadata for a particle group
+
+        Parameters
+        ----------
+        file_handle: h5py.File
+            hdf5 output file being written
+        dset_attributes: dict
+            dictionary containg metadata to attach to group
+        """
         for name, output_handle in getattr(
             metadata.required_fields, self.particle_name
         ).items():
@@ -211,7 +222,20 @@ class __SWIFTWriterParticleDataset(object):
 
         return
 
-    def get_attributes(self, scale_factor):
+    def get_attributes(self, scale_factor: float) -> dict:
+        """
+        Returns a dictionary containg the attributes to attach to the dataset
+
+        Parameters
+        ----------
+        scale_factor: float
+            the cosmological scale factor of the dataset
+
+        Returns
+        -------
+        attributes_dict: dict
+            dictionary containg the attributes applying to the dataset
+        """
         attributes_dict = {}
         a_exp_dict = {
             "coordinates": 1,
@@ -228,7 +252,7 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the scale factor associated quantities
             a_exp = a_exp_dict.get(name, 0)
-            a_factor = scale_factor * a_exp
+            a_factor = scale_factor ** a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
@@ -237,13 +261,12 @@ class __SWIFTWriterParticleDataset(object):
                 "Conversion factor to physical CGS (including cosmological corrections)": [
                     field.unit_quantity.in_cgs() * a_factor
                 ],
-                "Description": b"Co-moving positions of the particles",
-                "Expression for physical CGS units": b"a U_L  [ cm ]",
-                "U_I exponent": [dim_exponents[0]],
+                # Assign the exponents in the proper order (see unyt.dimensions.base_dimensions)
+                "U_I exponent": [dim_exponents[5]],
                 "U_L exponent": [dim_exponents[1]],
-                "U_M exponent": [dim_exponents[2]],
+                "U_M exponent": [dim_exponents[0]],
                 "U_T exponent": [dim_exponents[3]],
-                "U_t exponent": [dim_exponents[4]],
+                "U_t exponent": [dim_exponents[2]],
                 "a-scale exponent": [a_exp],
                 "h-scale exponent": [0.0],
             }
@@ -251,12 +274,39 @@ class __SWIFTWriterParticleDataset(object):
         return attributes_dict
 
 
-def get_dimensions(obj):
-    dimensions = ["current", "length", "mass", "temperature", "time"]
-    n_dims = len(dimensions)
-    exp_array = np.zeros(n_dims, dtype=np.float32)
-    dim_array = [x.as_base_exp() for x in obj.as_ordered_factors()]
+def get_dimensions(dimension: unyt.dimensions) -> np.ndarray:
+    """
+    Returns exponents corresponding to base dimensions for given unyt dimensions object
 
+    Parameters
+    ----------
+    dimension: unyt.dimensions
+        dimension for which we're identifying the exponents
+
+    Returns
+    -------
+    exp_array: np.ndarray
+        array of exponents corresponding to each base dimension
+
+    Examples
+    --------
+    >>> get_dimensions(unyt.dimensions.velocity)
+    np.array([0,1,-1,0,0,0,0,0,0])
+
+    """
+    # Get the names of all the dimensions
+    dimensions = [str(x) for x in unyt.dimensions.base_dimensions]
+    # Annoyingly it's current_mks instead of current in unyt, so change that
+    dimensions[5] = "(current)"
+    n_dims = len(dimensions)
+
+    # create the return array
+    exp_array = np.zeros(n_dims, dtype=np.float32)
+
+    # extract the base and exponent for each of the units
+    dim_array = [x.as_base_exp() for x in dimension.as_ordered_factors()]
+
+    # Find out which dimensions and exponents are present in the base units
     for i in range(n_dims):
         for dim in dim_array:
             if dimensions[i] in str(dim[0]):
