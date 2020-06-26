@@ -259,11 +259,11 @@ class __SWIFTWriterParticleDataset(object):
                     field.unit_quantity.in_cgs() * a_factor
                 ],
                 # Assign the exponents in the proper order (see unyt.dimensions.base_dimensions)
-                "U_I exponent": [dim_exponents[5]],
-                "U_L exponent": [dim_exponents[1]],
-                "U_M exponent": [dim_exponents[0]],
-                "U_T exponent": [dim_exponents[3]],
-                "U_t exponent": [dim_exponents[2]],
+                "U_I exponent": [dim_exponents["(current)"]],
+                "U_L exponent": [dim_exponents["(length)"]],
+                "U_M exponent": [dim_exponents["(mass)"]],
+                "U_T exponent": [dim_exponents["(temperature)"]],
+                "U_t exponent": [dim_exponents["(time)"]],
                 "a-scale exponent": [a_exp],
                 "h-scale exponent": [0.0],
             }
@@ -271,7 +271,7 @@ class __SWIFTWriterParticleDataset(object):
         return attributes_dict
 
 
-def get_dimensions(dimension: unyt.dimensions) -> np.ndarray:
+def get_dimensions(dimension: unyt.dimensions) -> dict:
     """
     Returns exponents corresponding to base dimensions for given unyt dimensions object
 
@@ -288,7 +288,17 @@ def get_dimensions(dimension: unyt.dimensions) -> np.ndarray:
     Examples
     --------
     >>> get_dimensions(unyt.dimensions.velocity)
-    np.array([0,1,-1,0,0,0,0,0,0])
+    {
+        "(mass)": 0,
+        "(length)": 1,
+        "(time)": -1,
+        "(temperature)": 0,
+        "(angle)": 0,
+        "(current)": 0,
+        "1": 0,
+        "(luminous_intensity)": 0,
+        "(logarithmic)": 0
+    }
 
     """
     # Get the names of all the dimensions
@@ -298,7 +308,7 @@ def get_dimensions(dimension: unyt.dimensions) -> np.ndarray:
     n_dims = len(dimensions)
 
     # create the return array
-    exp_array = np.zeros(n_dims, dtype=np.float32)
+    exp_array = {}
 
     # extract the base and exponent for each of the units
     dim_array = [x.as_base_exp() for x in dimension.as_ordered_factors()]
@@ -307,7 +317,9 @@ def get_dimensions(dimension: unyt.dimensions) -> np.ndarray:
     for i in range(n_dims):
         for dim in dim_array:
             if dimensions[i] in str(dim[0]):
-                exp_array[i] = dim[1]
+                exp_array[str(dim[0])] = float(dim[1])
+            else:
+                exp_array[dimensions[i]] = 0.0
 
     return exp_array
 
