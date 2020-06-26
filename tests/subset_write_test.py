@@ -70,21 +70,24 @@ def test_subset_writer(filename):
     boxsize = mask.metadata.boxsize
 
     # Decide which region we want to load
-    load_region = [[0.49 * b, 0.51 * b] for b in boxsize]
+    load_region = [[0.25 * b, 0.75 * b] for b in boxsize]
     mask.constrain_spatial(load_region)
 
     # Write the subset
     write_subset(outfile, mask)
 
-    # Compare written subset of snapshot against corresponding region in full snapshot
+    # Compare subset of written subset of snapshot against corresponding region in 
+    # full snapshot. This checks that both the metadata and dataset subsets are 
+    # written properly.
+    sub_mask = sw.mask(outfile)
+    sub_load_region = [[0.375 * b, 0.625 * b] for b in boxsize]
+    sub_mask.constrain_spatial(sub_load_region)
+    mask.constrain_spatial(sub_load_region)
+
     snapshot = sw.load(filename, mask)
-    sub_snapshot = sw.load(outfile)
+    sub_snapshot = sw.load(outfile, sub_mask)
 
-    # First check the metadata
     compare_data_contents(snapshot, sub_snapshot)
-
-    # Check mask functionality
-    test_subset_mask = sw.mask(outfile)
 
     # Clean up
     os.remove(outfile)
