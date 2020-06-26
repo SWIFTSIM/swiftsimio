@@ -1161,8 +1161,8 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
 
             ThisNamedColumnDataset = type(
                 f"{particle_nice_name}{field_path.split('/')[-1]}Columns",
-                bases=this_named_column_dataset_bases,
-                dict=this_named_column_dataset_dict,
+                this_named_column_dataset_bases,
+                this_named_column_dataset_dict,
             )
 
             field_property = ThisNamedColumnDataset(

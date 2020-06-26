@@ -342,9 +342,7 @@ def generate_dataset(
         )
 
     ThisDataset = type(
-        f"{particle_nice_name}WriterDataset",
-        bases=this_dataset_bases,
-        dict=this_dataset_dict,
+        f"{particle_nice_name}WriterDataset", this_dataset_bases, this_dataset_dict
     )
 
     empty_dataset = ThisDataset(unit_system, particle_type)
