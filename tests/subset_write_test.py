@@ -41,14 +41,14 @@ def compare_data_contents(A, B):
         )
 
         for attr in particle_dataset_field_names:
-            param = getattr(A_type, attr)
-            if not callable(param):
-                try:
-                    if not (param == getattr(B_type, attr)):
-                        bad_compares.append(f"{part_type} {attr}")
-                except:
-                    if not (param == getattr(B_type, attr)).all():
-                        bad_compares.append(f"{part_type} {attr}")
+            param_A = getattr(A_type, attr)
+            param_B = getattr(B_type, attr)
+            try:
+                if not (param_A == param_B):
+                    bad_compares.append(f"{part_type} {attr}")
+            except:
+                if not (param_A == param_B).all():
+                    bad_compares.append(f"{part_type} {attr}")
 
     assert bad_compares == [], f"compare failed on {bad_compares}"
 
