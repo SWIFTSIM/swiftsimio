@@ -8,7 +8,7 @@ import sys
 import os
 
 
-def compare(A, B):
+def compare_data_contents(A, B):
     """
     Compares two SWIFTDatasets 
 
@@ -81,7 +81,7 @@ def test_subset_writer(filename):
     sub_snapshot = sw.load(outfile)
 
     # First check the metadata
-    compare(snapshot, sub_snapshot)
+    compare_data_contents(snapshot, sub_snapshot)
 
     # Check mask functionality
     test_subset_mask = sw.mask(outfile)
