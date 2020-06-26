@@ -15,6 +15,7 @@ from numpy import (
     ones,
     isclose,
     matmul,
+    empty_like,
     s_,
 )
 from unyt import unyt_array, unyt_quantity, exceptions
@@ -173,6 +174,13 @@ def project_pixel_grid(
     except AttributeError:
         # Backwards compatibility
         hsml = data.smoothing_length
+    except AttributeError:
+        # No hsml present. If they are using the 'histogram' backend, we
+        # should just mock them to be anything as it doesn't matter.
+        if backend == "histogram":
+            hsml = empty_like(m)
+        else:
+            raise AttributeError
 
     if rotation_center is not None:
         # Rotate co-ordinates as required
