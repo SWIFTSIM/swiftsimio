@@ -447,25 +447,22 @@ def generate_dataset(
     particle_name = metadata.particle_types.particle_name_underscores[particle_type]
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
 
-    ThisDataset = type(
-        f"{particle_nice_name}WriterDataset",
-        __SWIFTWriterParticleDataset.__bases__,
-        dict(__SWIFTWriterParticleDataset.__dict__),
-    )
+    this_dataset_bases = (__SWIFTWriterParticleDataset, object)
+    this_dataset_dict = {}
 
     # Get the unit dimensions
     dimensions = metadata.unit_fields.generate_dimensions(unit_fields_generate_units)
 
     for name in getattr(metadata.required_fields, particle_name).keys():
-        setattr(
-            ThisDataset,
-            name,
-            property(
-                generate_getter(name),
-                generate_setter(name, dimensions[particle_name][name], unit_system),
-                generate_deleter(name),
-            ),
+        this_dataset_dict[name] = property(
+            generate_getter(name),
+            generate_setter(name, dimensions[particle_name][name], unit_system),
+            generate_deleter(name),
         )
+
+    ThisDataset = type(
+        f"{particle_nice_name}WriterDataset", this_dataset_bases, this_dataset_dict
+    )
 
     empty_dataset = ThisDataset(unit_system, particle_type)
 

@@ -1102,12 +1102,11 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     )
 
     # This 'nice' piece of code ensures that our datasets have different _types_
-    # for different particle types.
-    ThisDataset = type(
-        f"{particle_nice_name}Dataset",
-        __SWIFTParticleDataset.__bases__,
-        dict(__SWIFTParticleDataset.__dict__),
-    )
+    # for different particle types. We initially fill a dict with the properties that
+    # we want, and then create a single instance of our class.
+
+    this_dataset_bases = (__SWIFTParticleDataset, object)
+    this_dataset_dict = {}
 
     for (
         field_path,
@@ -1139,32 +1138,32 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
             # Here we want to create an extra middleman object. So we can do something
             # like {ptype}.{ThisNamedColumnDataset}.column_name. This follows from the
             # above templating.
-            ThisNamedColumnDataset = type(
-                f"{particle_nice_name}{field_path.split('/')[-1]}Columns",
-                __SWIFTNamedColumnDataset.__bases__,
-                dict(__SWIFTNamedColumnDataset.__dict__),
-            )
+
+            this_named_column_dataset_bases = (__SWIFTNamedColumnDataset, object)
+            this_named_column_dataset_dict = {}
 
             for index, column in enumerate(named_columns):
-                setattr(
-                    ThisNamedColumnDataset,
-                    column,
-                    property(
-                        generate_getter(
-                            filename,
-                            column,
-                            field_path,
-                            unit=field_unit,
-                            mask=mask_array,
-                            mask_size=mask_size,
-                            cosmo_factor=field_cosmology,
-                            description=f"{field_description} [Column {index}, {column}]",
-                            columns=np.s_[index],
-                        ),
-                        generate_setter(column),
-                        generate_deleter(column),
+                this_named_column_dataset_dict[column] = property(
+                    generate_getter(
+                        filename,
+                        column,
+                        field_path,
+                        unit=field_unit,
+                        mask=mask_array,
+                        mask_size=mask_size,
+                        cosmo_factor=field_cosmology,
+                        description=f"{field_description} [Column {index}, {column}]",
+                        columns=np.s_[index],
                     ),
+                    generate_setter(column),
+                    generate_deleter(column),
                 )
+
+            ThisNamedColumnDataset = type(
+                f"{particle_nice_name}{field_path.split('/')[-1]}Columns",
+                this_named_column_dataset_bases,
+                this_named_column_dataset_dict,
+            )
 
             field_property = ThisNamedColumnDataset(
                 field_path=field_path,
@@ -1172,8 +1171,11 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
                 name=field_description,
             )
 
-        setattr(ThisDataset, field_name, field_property)
+        this_dataset_dict[field_name] = field_property
 
+    ThisDataset = type(
+        f"{particle_nice_name}Dataset", this_dataset_bases, this_dataset_dict
+    )
     empty_dataset = ThisDataset(particle_metadata)
 
     return empty_dataset

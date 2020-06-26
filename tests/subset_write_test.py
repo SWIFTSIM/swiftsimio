@@ -8,7 +8,7 @@ import sys
 import os
 
 
-def compare(A, B):
+def compare_data_contents(A, B):
     """
     Compares two SWIFTDatasets 
 
@@ -24,7 +24,8 @@ def compare(A, B):
     # Initialise a list to store fields that differ
     bad_compares = []
 
-    # Compare metadata
+    # Compare metadata - this is non-trivial so we just compare the time as a
+    # sanity check.
     if A.metadata.time != B.metadata.time:
         bad_compares.append("metadata")
 
@@ -35,15 +36,19 @@ def compare(A, B):
     ):
         A_type = getattr(A, part_type)
         B_type = getattr(B, part_type)
-        for attr in filter(lambda x: not x.startswith("_"), dir(A_type)):
-            param = getattr(A_type, attr)
-            if not callable(param):
-                try:
-                    if not (param == getattr(B_type, attr)):
-                        bad_compares.append(f"{part_type} {attr}")
-                except:
-                    if not (param == getattr(B_type, attr)).all():
-                        bad_compares.append(f"{part_type} {attr}")
+        particle_dataset_field_names = set(
+            A_type.particle_metadata.field_names + B_type.particle_metadata.field_names
+        )
+
+        for attr in particle_dataset_field_names:
+            param_A = getattr(A_type, attr)
+            param_B = getattr(B_type, attr)
+            try:
+                if not (param_A == param_B):
+                    bad_compares.append(f"{part_type} {attr}")
+            except:
+                if not (param_A == param_B).all():
+                    bad_compares.append(f"{part_type} {attr}")
 
     assert bad_compares == [], f"compare failed on {bad_compares}"
 
@@ -76,7 +81,7 @@ def test_subset_writer(filename):
     sub_snapshot = sw.load(outfile)
 
     # First check the metadata
-    compare(snapshot, sub_snapshot)
+    compare_data_contents(snapshot, sub_snapshot)
 
     # Check mask functionality
     test_subset_mask = sw.mask(outfile)
