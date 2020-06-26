@@ -9,8 +9,8 @@ The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used
 widely. There exists many ways of reading the data from SWIFT, which outputs
 HDF5 files. These range from reading directly using `h5py` to using a complex
 system such as `yt`; however these either are unsatisfactory (e.g. a lack of
-unit information in reading HDF5), or too complex for most use-cases. This
-(thin) wrapper provides an object-oriented API to read (dynamically) data
+unit information in reading HDF5), or too complex for most use-cases. 
+`swiftsimio` provides an object-oriented API to read (dynamically) data
 from SWIFT.
 
 Full documentation is available at [ReadTheDocs](http://swiftsimio.readthedocs.org).
