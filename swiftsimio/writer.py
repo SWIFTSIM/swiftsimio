@@ -293,18 +293,14 @@ def get_dimensions(dimension: unyt.dimensions) -> dict:
         "(length)": 1,
         "(time)": -1,
         "(temperature)": 0,
-        "(angle)": 0,
         "(current)": 0,
-        "1": 0,
-        "(luminous_intensity)": 0,
-        "(logarithmic)": 0
     }
 
     """
     # Get the names of all the dimensions
-    dimensions = [str(x) for x in unyt.dimensions.base_dimensions]
+    dimensions = [str(x) for x in unyt.dimensions.base_dimensions[:5]]
     # Annoyingly it's current_mks instead of current in unyt, so change that
-    dimensions[5] = "(current)"
+    dimensions[4] = "(current)"
     n_dims = len(dimensions)
 
     # create the return array
