@@ -77,7 +77,9 @@ class SWIFTUnits(object):
         """
         with h5py.File(self.filename, "r") as handle:
             self.units = {
-                name: value[0] * metadata.unit_types.unit_names_to_unyt[name]
+                name: unyt.unyt_quantity(
+                    value[0], units=metadata.unit_types.unit_names_to_unyt[name]
+                )
                 for name, value in handle["Units"].attrs.items()
             }
 
@@ -206,7 +208,7 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_variables_units = metadata.metadata_fields.generate_units_header_unpack_variables(
+        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
             m=self.units.mass,
             l=self.units.length,
             t=self.units.time,
@@ -214,17 +216,19 @@ class SWIFTMetadata(object):
             T=self.units.temperature,
         )
 
-        for field, name in metadata.metadata_fields.header_unpack_variables.items():
+        for field, name in metadata.metadata_fields.header_unpack_arrays.items():
             try:
-                if name in header_unpack_variables_units.keys():
+                if name in header_unpack_arrays_units.keys():
                     setattr(
                         self,
                         name,
-                        self.header[field] * header_unpack_variables_units[name],
+                        unyt.unyt_array(
+                            self.header[field], units=header_unpack_arrays_units[name]
+                        ),
                     )
                     # This is required or we automatically get everything in CGS!
                     getattr(self, name).convert_to_units(
-                        header_unpack_variables_units[name]
+                        header_unpack_arrays_units[name]
                     )
                 else:
                     # Must not have any units! Oh well.
@@ -262,7 +266,11 @@ class SWIFTMetadata(object):
                         if variable in header_unpack_float_units.keys():
                             # We have an associated unit!
                             unit = header_unpack_float_units[variable]
-                            setattr(self, variable, self.header[field][0] * unit)
+                            setattr(
+                                self,
+                                variable,
+                                unyt.unyt_quantity(self.header[field][0], units=unit),
+                            )
                         else:
                             # No unit
                             setattr(self, variable, self.header[field][0])
@@ -272,7 +280,11 @@ class SWIFTMetadata(object):
                     if variable in header_unpack_float_units.keys():
                         # We have an associated unit!
                         unit = header_unpack_float_units[variable]
-                        setattr(self, variable, self.header[field][0] * unit)
+                        setattr(
+                            self,
+                            variable,
+                            unyt.unyt_quantity(self.header[field][0], units=unit),
+                        )
                     else:
                         # No unit
                         setattr(self, variable, self.header[field][0])

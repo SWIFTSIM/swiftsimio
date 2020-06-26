@@ -210,13 +210,13 @@ class SWIFTMask(object):
         with h5py.File(self.metadata.filename, "r") as file:
             # Surprisingly this is faster than just using the boolean
             # indexing because h5py has slow indexing routines.
-            data = (
+            data = unyt.unyt_array(
                 np.take(
                     file[f"PartType{particle_number}/{handle}"],
                     np.where(current_mask)[0],
                     axis=0,
-                )
-                * unit
+                ),
+                units=unit,
             )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
