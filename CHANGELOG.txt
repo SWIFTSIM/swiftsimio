@@ -1,6 +1,39 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.0.0
+-------
+
+Multiple fixes present in this update:
+
++ `swiftsnap` now includes slightly more information
++ Slices and volume renders now can accept rotation centre and rotation matrix
+  arguments, just like projections.
++ The `subset_writer` submodule allows you to write out a new snapshot containing
+  a sub-set of the particles. This is useful for creating small snapshots that only
+  contain a single halo.
++ The snapshot time string now has a fallback mode to a string in the case where
+  it cannot figure out what timezone the snapshot was written in.
++ The `SelectOutput` and `OutputType` metadata from a SWIFT snapshot are now surfaced
+  at the top-level in the `SWIFTMetadata` object.
++ Reading data from chunked snapshots has recieved an update, which makes it much
+  faster in some cases.
++ The `to_physical` function now works as expected.
++ `swiftsimio` now produces initial conditions that can be self-consistently read,
+  with dataset metadata written to file.
++ When using the `histogram` backend for projection we no longer require smoothing
+  lengths to be present, as they are not used.
++ `python3.8` added as an official target, with internal changes in
+  templating required to make this work. This also means that in some cases we
+  cannot run with `py-sphviewer` as some of its dependencies do not work with
+  3.8.
++ Hand-casting of units (using multiplication, rather than a call to
+  `unyt_quantity` or `unyt_array`) has been removed.
+
+This release also marks the submission of `swiftsimio` to JOSS. Thank you to
+DiRAC for providing RSE support to get us over this hurdle. Alexei Borrisov was
+a key player in the majority of the above updates.
+
 v 3.1.1
 -------
 
