@@ -4,7 +4,13 @@ Metadata for the cosmology fields.
 
 from swiftsimio.objects import cosmo_factor, a
 
+a_exponents = {
+    "coordinates": 1,
+    "internal_energies": -2,
+}
+
 # DEPRECATED: This information is now directly read out of the snapshots.
+
 
 def generate_cosmology(scale_factor: float, gamma: float):
     """

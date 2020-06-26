@@ -14,6 +14,7 @@ from typing import Union, List, Callable
 from functools import reduce
 
 from swiftsimio import metadata
+from swiftsimio.metadata.cosmology.cosmology_fields import a_exponents
 
 
 class __SWIFTWriterParticleDataset(object):
@@ -237,10 +238,6 @@ class __SWIFTWriterParticleDataset(object):
             dictionary containg the attributes applying to the dataset
         """
         attributes_dict = {}
-        a_exp_dict = {
-            "coordinates": 1,
-            "internal_energies": -2,
-        }
 
         for name, output_handle in getattr(
             metadata.required_fields, self.particle_name
@@ -251,7 +248,7 @@ class __SWIFTWriterParticleDataset(object):
             dim_exponents = get_dimensions(field.units.dimensions)
 
             # Find the scale factor associated quantities
-            a_exp = a_exp_dict.get(name, 0)
+            a_exp = a_exponents.get(name, 0)
             a_factor = scale_factor ** a_exp
 
             attributes_dict[output_handle] = {
