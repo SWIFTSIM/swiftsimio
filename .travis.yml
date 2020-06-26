@@ -11,3 +11,6 @@ install:
 
 script:
   - python3 -m pytest -x
+
+env:
+  - NUMBA_BOUNDSCHECK=1

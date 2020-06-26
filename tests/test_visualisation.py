@@ -2,7 +2,7 @@ from swiftsimio import load
 from swiftsimio.visualisation import scatter, slice, volume_render
 from swiftsimio.visualisation.projection import scatter_parallel, project_gas
 from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
-from swiftsimio.visualisation.projection_backends import backends
+from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 
 from tests.helper import requires
 
@@ -212,3 +212,29 @@ def test_selection_render(filename):
     # If they don't crash we're happy!
 
     return
+
+
+def test_render_outside_region():
+    """
+    Tests what happens when you use `scatter` on a bunch of particles that live
+    outside of the image.
+    """
+
+    number_of_parts = 10000
+    resolution = 256
+
+    x = np.random.rand(number_of_parts) - 0.5
+    y = np.random.rand(number_of_parts) - 0.5
+    z = np.random.rand(number_of_parts) - 0.5
+    h = 10 ** np.random.rand(number_of_parts) - 1.0
+    h[h > 0.5] = 0.05
+    m = np.ones_like(h)
+    backends["histogram"](x, y, m, h, resolution)
+
+    for _, backend in backends_parallel.items():
+        backend(x, y, m, h, resolution)
+
+    slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
+
+    volume_render.scatter_parallel(x, y, z, m, h, resolution)
+
