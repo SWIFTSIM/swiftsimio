@@ -123,7 +123,7 @@ class __SWIFTWriterParticleDataset(object):
 
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             if getattr(self, f"_{name}") is None:
-                if name is "particle_ids":
+                if name == "particle_ids":
                     self.requires_particle_ids_before_write = True
                 else:
                     raise AttributeError(f"Required dataset {name} is None.")
@@ -242,7 +242,7 @@ def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, s
     """
 
     def setter(self, value: unyt.unyt_array):
-        if dimensions is not 1:
+        if dimensions != 1:
             if isinstance(value, unyt.unyt_array):
                 if value.units.dimensions == dimensions:
                     value.convert_to_base(unit_system)
