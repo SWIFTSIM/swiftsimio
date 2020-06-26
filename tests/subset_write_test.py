@@ -24,7 +24,8 @@ def compare(A, B):
     # Initialise a list to store fields that differ
     bad_compares = []
 
-    # Compare metadata
+    # Compare metadata - this is non-trivial so we just compare the time as a
+    # sanity check.
     if A.metadata.time != B.metadata.time:
         bad_compares.append("metadata")
 
@@ -35,7 +36,11 @@ def compare(A, B):
     ):
         A_type = getattr(A, part_type)
         B_type = getattr(B, part_type)
-        for attr in filter(lambda x: not x.startswith("_"), dir(A_type)):
+        particle_dataset_field_names = set(
+            A_type.particle_metadata.field_names + B_type.particle_metadata.field_names
+        )
+
+        for attr in particle_dataset_field_names:
             param = getattr(A_type, attr)
             if not callable(param):
                 try:
