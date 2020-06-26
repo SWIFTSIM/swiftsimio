@@ -20,8 +20,8 @@ try:
     cosmo_units = unyt.UnitSystem(
         "cosmological",
         unyt.Mpc,
-        1e10 * unyt.Solar_Mass,
-        (1.0 * unyt.s * unyt.Mpc / unyt.km).to(unyt.Gyr),
+        unyt.unyt_quantity(1e10, units=unyt.Solar_Mass),
+        unyt.unyt_quantity(1.0, units=unyt.s * unyt.Mpc / unyt.km).to(unyt.Gyr),
     )
 except RuntimeError:
     # We've already done that, oops.

@@ -418,4 +418,4 @@ def project_gas(
     if project is not None:
         units *= getattr(data.gas, project).units
 
-    return image * units
+    return unyt_array(image, units=units)

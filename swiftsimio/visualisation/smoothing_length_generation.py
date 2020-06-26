@@ -4,7 +4,7 @@ that do not usually carry a smoothing length field (e.g. dark matter).
 """
 
 from swiftsimio.objects import cosmo_array
-from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE 
+from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 from unyt import unyt_array
 from numpy import empty, float32
 
@@ -92,8 +92,7 @@ def generate_smoothing_lengths(
 
         smoothing_lengths[starting_index:ending_index] = d[:, -1]
 
-    return (
-        smoothing_lengths
-        * (hsml_correction_fac_speedup / kernel_gamma)
-        * coordinates.units
+    return unyt_array(
+        smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
+        units=coordinates.units,
     )

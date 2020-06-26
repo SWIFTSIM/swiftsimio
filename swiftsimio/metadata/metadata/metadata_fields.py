@@ -20,14 +20,14 @@ metadata_fields_to_read = {
 
 # These will be unpacked to the top-level object. Be careful not to overwrite
 # things in the same namespace!
-header_unpack_variables = {
+header_unpack_arrays = {
     "BoxSize": "boxsize",
     "NumPart_ThisFile": "num_part",
     "MassTable": "mass_table",
 }
 
 
-def generate_units_header_unpack_variables(m, l, t, I, T) -> dict:
+def generate_units_header_unpack_arrays(m, l, t, I, T) -> dict:
     """
     Generates the unit dictionaries with the:
 
