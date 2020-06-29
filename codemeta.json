@@ -1,0 +1,23 @@
+{
+  "@context": "https://raw.githubusercontent.com/codemeta/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+    {
+      "@id": "https://orcid.org/0000-0002-1327-1921",
+      "@type": "Person",
+      "email": "joshua.borrow@durham.ac.uk",
+      "name": "Josh Borrow",
+      "affiliation": "Institute for Computational Cosmology, Durham University"
+    }
+  ],
+  "identifier": "",
+  "codeRepository": "https://github.com/swiftsim/swiftsimio",
+  "datePublished": "2020-05-04",
+  "dateModified": "2020-05-04",
+  "dateCreated": "2020-05-04",
+  "description": "Python library for reading SWIFT data",
+  "keywords": "Python, astronomy, cosmology, simulation, i/o",
+  "license": "LGPL-3.0",
+  "title": "swiftsimio",
+  "version": "v3.1.1"
+}

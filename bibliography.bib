@@ -1,0 +1,126 @@
+
+@article{yt,
+	title = {yt: {A} {MULTI}-{CODE} {ANALYSIS} {TOOLKIT} {FOR} {ASTROPHYSICAL} {SIMULATION} {DATA}},
+	volume = {192},
+	issn = {0067-0049, 1538-4365},
+	shorttitle = {yt},
+	url = {https://iopscience.iop.org/article/10.1088/0067-0049/192/1/9},
+	doi = {10.1088/0067-0049/192/1/9},
+	abstract = {The analysis of complex multiphysics astrophysical simulations presents a unique and rapidly growing set of challenges: reproducibility, parallelization, and vast increases in data size and complexity chief among them. In order to meet these challenges, and in order to open up new avenues for collaboration between users of multiple simulation platforms, we present yt (available at http://yt.enzotools.org/) an open source, communitydeveloped astrophysical analysis and visualization toolkit. Analysis and visualization with yt are oriented around physically relevant quantities rather than quantities native to astrophysical simulation codes. While originally designed for handling Enzo’s structure adaptive mesh reﬁnement data, yt has been extended to work with several different simulation methods and simulation codes including Orion, RAMSES, and FLASH. We report on its methods for reading, handling, and visualizing data, including projections, multivariate volume rendering, multidimensional histograms, halo ﬁnding, light cone generation, and topologically connected isocontour identiﬁcation. Furthermore, we discuss the underlying algorithms yt uses for processing and visualizing data, and its mechanisms for parallelization of analysis tasks.},
+	language = {en},
+	number = {1},
+	urldate = {2020-04-17},
+	journal = {The Astrophysical Journal Supplement Series},
+	author = {Turk, Matthew J. and Smith, Britton D. and Oishi, Jeffrey S. and Skory, Stephen and Skillman, Samuel W. and Abel, Tom and Norman, Michael L.},
+	month = jan,
+	year = {2011},
+	pages = {9},
+	file = {Turk et al. - 2011 - yt A MULTI-CODE ANALYSIS TOOLKIT FOR ASTROPHYSICA.pdf:/Users/mphf18/Zotero/storage/NRC9WYWY/Turk et al. - 2011 - yt A MULTI-CODE ANALYSIS TOOLKIT FOR ASTROPHYSICA.pdf:application/pdf}
+}
+
+@article{Gadget2,
+	title = {The cosmological simulation code gadget-2},
+	volume = {364},
+	issn = {0035-8711, 1365-2966},
+	url = {https://academic.oup.com/mnras/article-lookup/doi/10.1111/j.1365-2966.2005.09655.x},
+	doi = {10.1111/j.1365-2966.2005.09655.x},
+	abstract = {We discuss the cosmological simulation code GADGET-2, a new massively parallel TreeSPH code, capable of following a collisionless ﬂuid with the N-body method, and an ideal gas by means of smoothed particle hydrodynamics (SPH). Our implementation of SPH manifestly conserves energy and entropy in regions free of dissipation, while allowing for fully adaptive smoothing lengths. Gravitational forces are computed with a hierarchical multipole expansion, which can optionally be applied in the form of a TreePM algorithm, where only short-range forces are computed with the ‘tree’ method while long-range forces are determined with Fourier techniques. Time integration is based on a quasi-symplectic scheme where long-range and short-range forces can be integrated with different time-steps. Individual and adaptive short-range time-steps may also be employed. The domain decomposition used in the parallelization algorithm is based on a space-ﬁlling curve, resulting in high ﬂexibility and tree force errors that do not depend on the way the domains are cut. The code is efﬁcient in terms of memory consumption and required communication bandwidth. It has been used to compute the ﬁrst cosmological N-body simulation with more than 1010 dark matter particles, reaching a homogeneous spatial dynamic range of 105 per dimension in a three-dimensional box. It has also been used to carry out very large cosmological SPH simulations that account for radiative cooling and star formation, reaching total particle numbers of more than 250 million. We present the algorithms used by the code and discuss their accuracy and performance using a number of test problems. GADGET-2 is publicly released to the research community.},
+	language = {en},
+	number = {4},
+	urldate = {2019-06-03},
+	journal = {Monthly Notices of the Royal Astronomical Society},
+	author = {Springel, Volker},
+	month = dec,
+	year = {2005},
+	pages = {1105--1134},
+	file = {Springel - 2005 - The cosmological simulation code gadget-2.pdf:/Users/mphf18/Zotero/storage/HZT7NI4V/Springel - 2005 - The cosmological simulation code gadget-2.pdf:application/pdf}
+}
+
+@misc{pynbody,
+  author = {{Pontzen}, A. and {Ro{\v s}kar}, R. and {Stinson}, G.~S. and {Woods},
+     R. and {Reed}, D.~M. and {Coles}, J. and {Quinn}, T.~R.},
+  title = "{pynbody: Astrophysics Simulation Analysis for Python}",
+  note = {Astrophysics Source Code Library, ascl:1305.002},
+  year = 2013
+}
+
+@misc{pnbody, title={pNbody}, url={http://obswww.unige.ch/~revaz/pNbody/index.html}, journal={pNbody 4.0}, author={Revaz, Yves}}
+
+@book{h5py,
+  title={Python and HDF5: Unlocking Scientific Data},
+  author={Collette, Andrew},
+  year={2013},
+  publisher={" O'Reilly Media, Inc."}
+}
+
+@article{unyt,
+  doi = {10.21105/joss.00809},
+  url = {https://doi.org/10.21105/joss.00809},
+  year = {2018},
+  publisher = {The Open Journal},
+  volume = {3},
+  number = {28},
+  pages = {809},
+  author = {Nathan Goldbaum and John ZuHone and Matthew Turk and Kacper Kowalik and Anna Rosen},
+  title = {unyt: Handle, manipulate, and convert data with units in Python},
+  journal = {Journal of Open Source Software}
+}
+
+@article{SWIFT,
+	title = {{SWIFT}: {Using} task-based parallelism, fully asynchronous communication, and graph partition-based domain decomposition for strong scaling on more than 100,000 cores},
+	shorttitle = {{SWIFT}},
+	url = {http://arxiv.org/abs/1606.02738},
+	doi = {10.1145/2929908.2929916},
+	abstract = {We present a new open-source cosmological code, called SWIFT, designed to solve the equations of hydrodynamics using a particle-based approach (Smooth Particle Hydrodynamics) on hybrid shared/distributed-memory architectures. SWIFT was designed from the bottom up to provide excellent strong scaling on both commodity clusters (Tier-2 systems) and Top100-supercomputers (Tier-0 systems), without relying on architecture-specific features or specialized accelerator hardware. This performance is due to three main computational approaches: (1) Task-based parallelism for shared-memory parallelism, which provides fine-grained load balancing and thus strong scaling on large numbers of cores. (2) Graph-based domain decomposition, which uses the task graph to decompose the simulation domain such that the work, as opposed to just the data, as is the case with most partitioning schemes, is equally distributed across all nodes. (3) Fully dynamic and asynchronous communication, in which communication is modelled as just another task in the task-based scheme, sending data whenever it is ready and deferring on tasks that rely on data from other nodes until it arrives. In order to use these approaches, the code had to be re-written from scratch, and the algorithms therein adapted to the task-based paradigm. As a result, we can show upwards of 60\% parallel efficiency for moderate-sized problems when increasing the number of cores 512-fold, on both x86-based and Power8-based architectures.},
+	language = {en},
+	urldate = {2019-06-03},
+	journal = {Proceedings of the Platform for Advanced Scientific Computing Conference on   - PASC '16},
+	author = {Schaller, Matthieu and Gonnet, Pedro and Chalk, Aidan B. G. and Draper, Peter W.},
+	year = {2016},
+	note = {arXiv: 1606.02738},
+	keywords = {Astrophysics - Instrumentation and Methods for Astrophysics, Computer Science - Distributed, Parallel, and Cluster Computing},
+	pages = {1--10},
+	annote = {Comment: 9 pages, 7 figures. Code, scripts and examples available at http://icc.dur.ac.uk/swift/},
+	file = {Schaller et al. - 2016 - SWIFT Using task-based parallelism, fully asynchr.pdf:/Users/mphf18/Zotero/storage/8C6MVHTL/Schaller et al. - 2016 - SWIFT Using task-based parallelism, fully asynchr.pdf:application/pdf}
+}
+
+@article{dynamicRange,
+	title = {{SWIFT}: {Maintaining} weak-scalability with a dynamic range of \$10{\textasciicircum}4\$ in time-step size to harness extreme adaptivity},
+	shorttitle = {{SWIFT}},
+	url = {https://ui.adsabs.harvard.edu/abs/2018arXiv180701341B/abstract},
+	abstract = {Cosmological simulations require the use of a multiple time-stepping scheme. Without such a scheme, cosmological simulations would be impossible due to their high level of dynamic range; over eleven orders of magnitude in density. Such a large dynamic range leads to a range of over four orders of magnitude in time-step, which presents a significant load-balancing challenge. In this work, the extreme adaptivity that cosmological simulations present is tackled in three main ways through the use of the code SWIFT. First, an adaptive mesh is used to ensure that only the relevant particles are interacted in a given time-step. Second, task-based parallelism is used to ensure efficient load-balancing within a single node, using pthreads and SIMD vectorisation. Finally, a domain decomposition strategy is presented, using the graph domain decomposition library METIS, that bisects the work that must be performed by the simulation between nodes using MPI. These three strategies are shown to give SWIFT near-perfect weak-scaling characteristics, only losing 25\% performance when scaling from 1 to 4096 cores on a representative problem, whilst being more than 30x faster than the de-facto standard Gadget-2 code.},
+	language = {en},
+	urldate = {2019-06-11},
+	journal = {Proceedings of the 13th SPHERIC International Workshop, Galway, Ireland, June 26-28 2018},
+	author = {Borrow, Josh and Bower, Richard G. and Draper, Peter W. and Gonnet, Pedro and Schaller, Matthieu},
+	month = jul,
+	year = {2018},
+	pages = {44--51},
+	file = {Full Text PDF:/Users/mphf18/Zotero/storage/9TBA5JA7/Borrow et al. - 2018 - SWIFT Maintaining weak-scalability with a dynamic.pdf:application/pdf;Snapshot:/Users/mphf18/Zotero/storage/5FBLF5WH/abstract.html:text/html}
+}
+
+@article{EAGLE,
+	title = {The {EAGLE} project: simulating the evolution and assembly of galaxies and their environments},
+	volume = {446},
+	issn = {1365-2966, 0035-8711},
+	shorttitle = {The {EAGLE} project},
+	url = {http://academic.oup.com/mnras/article/446/1/521/1316115/The-EAGLE-project-simulating-the-evolution-and},
+	doi = {10.1093/mnras/stu2058},
+	abstract = {We introduce the Virgo Consortium’s Evolution and Assembly of GaLaxies and their Environments (EAGLE) project, a suite of hydrodynamical simulations that follow the formation of galaxies and supermassive black holes in cosmologically representative volumes of a standard cold dark matter universe. We discuss the limitations of such simulations in light of their ﬁnite resolution and poorly constrained subgrid physics, and how these affect their predictive power. One major improvement is our treatment of feedback from massive stars and active galactic nuclei (AGN) in which thermal energy is injected into the gas without the need to turn off cooling or decouple hydrodynamical forces, allowing winds to develop without predetermined speed or mass loading factors. Because the feedback efﬁciencies cannot be predicted from ﬁrst principles, we calibrate them to the present-day galaxy stellar mass function and the amplitude of the galaxy-central black hole mass relation, also taking galaxy sizes into account. The observed galaxy stellar mass function is reproduced to 0.2 dex over the full resolved mass range, 108 {\textless} M∗/M 1011, a level of agreement close to that attained by semi-analytic models, and unprecedented for hydrodynamical simulations. We compare our results to a representative set of low-redshift observables not considered in the calibration, and ﬁnd good agreement with the observed galaxy speciﬁc star formation rates, passive fractions, Tully–Fisher relation, total stellar luminosities of galaxy clusters, and column density distributions of intergalactic C IV and O VI. While the mass–metallicity relations for gas and stars are consistent with observations for M∗ 109 M (M∗ 1010 M at intermediate resolution), they are insufﬁciently steep at lower masses. For the reference model, the gas fractions and temperatures are too high for clusters of galaxies, but for galaxy groups these discrepancies can be resolved by adopting a higher heating temperature in the subgrid prescription for AGN feedback. The EAGLE simulation suite, which also includes physics variations and higher resolution zoomed-in volumes described elsewhere, constitutes a valuable new resource for studies of galaxy formation.},
+	language = {en},
+	number = {1},
+	urldate = {2019-06-05},
+	journal = {Monthly Notices of the Royal Astronomical Society},
+	author = {Schaye, Joop and Crain, Robert A. and Bower, Richard G. and Furlong, Michelle and Schaller, Matthieu and Theuns, Tom and Dalla Vecchia, Claudio and Frenk, Carlos S. and McCarthy, I. G. and Helly, John C. and Jenkins, Adrian and Rosas-Guevara, Y. M. and White, Simon D. M. and Baes, Maarten and Booth, C. M. and Camps, Peter and Navarro, Julio F. and Qu, Yan and Rahmati, Alireza and Sawala, Till and Thomas, Peter A. and Trayford, James},
+	month = jan,
+	year = {2015},
+	pages = {521--554},
+	file = {Schaye et al. - 2015 - The EAGLE project simulating the evolution and as.pdf:/Users/mphf18/Zotero/storage/RTCRCIFZ/Schaye et al. - 2015 - The EAGLE project simulating the evolution and as.pdf:application/pdf}
+}
+
+@ONLINE{hdf5,
+    author = {{The HDF Group}},
+    title = "{Hierarchical Data Format, version 5}",
+    year = {1997-NNNN},
+    note = {http://www.hdfgroup.org/HDF5/}
+}
