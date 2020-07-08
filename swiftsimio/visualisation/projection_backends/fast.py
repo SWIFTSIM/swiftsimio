@@ -11,7 +11,7 @@ The original smoothing code. This provides no renormalisation.
 
 from typing import Union
 from math import sqrt
-from numpy import float64, float32, int32, zeros,  ndarray
+from numpy import float64, float32, int32, zeros, ndarray
 
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.visualisation.projection_backends.kernels import (
@@ -31,31 +31,40 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
     This ignores boundary effects.
+
     Parameters
     ----------
+
     x : np.array[float64]
         array of x-positions of the particles. Must be bounded by [0, 1].
+
     y : np.array[float64]
         array of y-positions of the particles. Must be bounded by [0, 1].
+
     m : np.array[float32]
         array of masses (or otherwise weights) of the particles
+
     h : np.array[float32]
         array of smoothing lengths of the particles
+
     res : int
         the number of pixels along one axis, i.e. this returns a square
-         of res * res..
+        of res * res.
 
     Returns
     -------
+
     np.array[float32, float32, float32]
         pixel grid of quantity 
 
     See Also
     --------
+
     scatter_parallel : Parallel implementation of this function
 
     Notes
     -----
+    
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
@@ -139,31 +148,39 @@ def scatter_parallel(
     particles with positions (`x`,`y`) with smoothing lengths `h` 
     weighted by quantities `m`.
     This ignores boundary effects.
+
     Parameters
     ----------
     x : np.array[float64]
         array of x-positions of the particles. Must be bounded by [0, 1].
+
     y : np.array[float64]
         array of y-positions of the particles. Must be bounded by [0, 1].
+
     m : np.array[float32]
         array of masses (or otherwise weights) of the particles
+
     h : np.array[float32]
         array of smoothing lengths of the particles
+
     res : int
         the number of pixels along one axis, i.e. this returns a square
-         of res * res..
+        of res * res.
 
     Returns
     -------
+
     np.array[float32, float32, float32]
         pixel grid of quantity 
 
     See Also
     --------
+
     scatter : Creates 2D scatter plot from SWIFT data
 
     Notes
     -----
+    
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.

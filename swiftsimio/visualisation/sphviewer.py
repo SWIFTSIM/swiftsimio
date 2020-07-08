@@ -20,23 +20,6 @@ from .smoothing_length_generation import generate_smoothing_lengths
 class SPHViewerWrapper(object):
     """
     Wrapper for Py-SPHViewer to use SWIFTsimIO data structures.
-
-    Methods
-    -------
-    __set_smoothing_lengths(self, hsml_name: Union[str, None])
-        Set smoothing lengths for particles in SWIFTsimIO dataset
-    __create_particles_instance(self)
-        Creates particles in SWIFTsimIO data structure
-    get_autocamera(self)
-        Set sensible values for the camera automatically
-    get_camera( self, x: Union[None, float] = None, y: Union[None, float] = None, z: Union[None, float] = None, r: Union[None, float] = None, t: Union[None, float] = None, p: Union[None, float] = None, zoom: Union[None, float] = None, roll: Union[None, float] = None, xsize: Union[None, int] = None, ysize: Union[None, int] = None, extent: Union[None, List[float]] = None)
-        Get pysphviewer camera object
-    get_scene(self, camera: Union["viewer.Camera", None] = None)
-        Get the scene for a given camera
-    get_render(self)
-        Returns the render object using the internal scene object.
-    quick_view(self, xsize: int, ysize: int, r: Union[None, float] = None, **kwargs)
-        Analogue to sphviewer.tools.QuickView
     """
 
     # Forward declarations
@@ -195,6 +178,7 @@ class SPHViewerWrapper(object):
         
         Parameters
         ----------
+
         x, y, z : float, optional
             Cartesian co-ordinates of the object being viewed
         r : float, optional
@@ -210,6 +194,7 @@ class SPHViewerWrapper(object):
 
         Notes
         -----
+
         This method also sets self.camera that is used later.
         """
 
@@ -246,8 +231,10 @@ class SPHViewerWrapper(object):
         
         If there is no camera provided, we use the internal self.camera. 
         If this is not set, then we raise an AttributeError.
+
         Parameters
         ----------
+
         camera : viewer.Camera, optional
             Camera object used to render scene
         """
@@ -272,6 +259,7 @@ class SPHViewerWrapper(object):
 
         Notes
         -----
+
         self.image and self.extent are also provided as values that represent the render's
         image and extent including the input units.
         """
@@ -290,10 +278,13 @@ class SPHViewerWrapper(object):
         Simple render of a scene with auto camera setting
 
         Analogous to sphviewer.tools.QuickView but easier to directly call.
+
         Parameters
         ----------
+
         xsize, ysize : int
             camera size in pixels
+            
         r : float, optional
             distance to image centre
             

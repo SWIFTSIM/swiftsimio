@@ -22,22 +22,27 @@ def kernel_single_precision(r: float32, H: float32):
 
     Parameters
     ----------
+
     r : float32
         radius used in kernel computation
+
     H : float32
         kernel width (i.e. radius of compact support for the kernel)
 
     Returns
     -------
+
     float32
         Contribution to the density by the particle
 
     See Also
     --------
+
     kernel_double_precision
 
     References
     ----------
+
     .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = float32(2.22817109)
@@ -64,10 +69,11 @@ def kernel_double_precision(r: float64, H: float64):
     """
     Single precision kernel implementation for swiftsimio. 
     
-    This is the Wendland-C2 kernel as shown in Denhen & Aly (2012) [1]_.
+    This is the Wendland-C2 kernel as shown in Denhen & Aly (2012) [2]_.
 
     Parameters
     ----------
+
     r : float32
         radius used in kernel computation
     H : float32
@@ -75,16 +81,19 @@ def kernel_double_precision(r: float64, H: float64):
 
     Returns
     -------
+    
     float32
         Contribution to the density by the particle
 
     See Also
     --------
+
     kernel_single_precision
 
     References
     ----------
-    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
+
+    .. [2] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = float64(2.22817109)
 
