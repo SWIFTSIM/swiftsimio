@@ -3,6 +3,7 @@ SWIFTsimIO
 
 [![Build Status](https://travis-ci.com/SWIFTSIM/swiftsimio.svg?branch=master)](https://travis-ci.com/SWIFTSIM/swiftsimio)
 [![Documentation Status](https://readthedocs.org/projects/swiftsimio/badge/?version=latest)](https://swiftsimio.readthedocs.io/en/latest/?badge=latest)
+[![JOSS Status](https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331/status.svg)](https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331)
 
 
 The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used
