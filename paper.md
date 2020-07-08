@@ -1,5 +1,5 @@
 ---
-title: "`swiftsimio`: A python library for reading SWIFT data"
+title: "swiftsimio: A Python library for reading SWIFT data"
 tags:
   - Python
   - astronomy
@@ -26,7 +26,7 @@ bibliography: bibliography.bib
 
 # Summary
 
-`swiftsimio` is a python package for reading data created by the SWIFT [@SWIFT]
+`swiftsimio` is a Python package for reading data created by the SWIFT [@SWIFT]
 simulation code. SWIFT is designed to run cosmological hydrodynamics
 simulations that produce petabytes of data, and `swiftsimio` leverages the
 custom metadata that SWIFT produces to allow for chunked loading of the
@@ -34,7 +34,7 @@ particle data and to enable integration with `unyt` [@unyt].
 
 # Background
 
-Cosmological gallaxy formation simulations are used to track simulated galaxies
+Cosmological galaxy formation simulations are used to track simulated galaxies
 across cosmic time in an attempt to better understand the process of galaxy
 formation and evolution. As time has progressed, so has the scale of these
 simulations. The state-of-the-art simulations planned for the next decade,
@@ -131,7 +131,7 @@ requires no extra computation or files to achieve.
 
 # Why swiftsimio?
 
-There are many python libraries that are able to read the Gadget-style
+There are many Python libraries that are able to read the Gadget-style
 formatted HDF5 data that SWIFT outputs, not limited to but including: `yt`
 [@yt], `pynbody` [@pynbody] and `pnbody` [@pnbody]. The other option is simply
 to use the `h5py` library directly, and forgo any extra processing of the data.
