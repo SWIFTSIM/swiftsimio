@@ -57,7 +57,7 @@ our simulation:
 
    print(boxsize)
 
-This will output ``[4.38929954e+26 4.38929954e+26 4.38929954e+26] cm`` - note
+This will output ``[142.24751067 142.24751067 142.24751067] Mpc`` - note
 the units that are attached. These units being attached to everything is one
 of the key advantages of using :mod:`swiftsimio`. It is really easy to convert
 between units; for instance if we want that box-size in kiloparsecs,
@@ -100,7 +100,7 @@ as a summary:
 + Several snapshot-wide parameters, such as ``meta.a`` (current scale factor),
   ``meta.t`` (current time), ``meta.z`` (current redshift), ``meta.run_name``
   (the name of this run, specified in the SWIFT parameter file), and
-  ``meta.snapshot_date`` (a :mod:``datetime`` object describing when the
+  ``meta.snapshot_date`` (a :mod:`datetime` object describing when the
   snapshot was written to disk).
 
 
