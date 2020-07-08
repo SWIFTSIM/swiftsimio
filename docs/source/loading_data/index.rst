@@ -153,13 +153,13 @@ Just like the boxsize, these carry symbolic :mod:`unyt` units,
 
    print(x_gas.units)
 
-will output ``3.08567758e+24*cm``. We can again convert these to whatever units
+will output ``Mpc``. We can again convert these to whatever units
 we like. For instance, should we wish to convert our gas densities to solar
 masses per cubic megaparsec,
 
 .. code-block:: python
 
-   new_density_units = unyt.msun / unyt.Mpc**3
+   new_density_units = unyt.Solar_Mass / unyt.Mpc**3
 
    rho_gas.convert_to_units(new_density_units)
 
