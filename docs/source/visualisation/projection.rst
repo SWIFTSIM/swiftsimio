@@ -82,6 +82,11 @@ this:
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
 
 
+The output from this example, when used with the example data provided in the
+loading data section should look something like:
+
+.. image:: temp_map.png
+
 Backends
 --------
 
@@ -127,7 +132,6 @@ Example:
       parallel=True,
       backend="subsampled"
    )
-
 
 Rotations
 ---------
@@ -209,10 +213,14 @@ creates an edge-on and face-on projection using the integration in
    )
 
    edge_on = project_gas_pixel_grid(
-      **common_argumetns,
+      **common_arguments,
       rotation_center=unyt.unyt_array([x, y, z]),
       rotation_matrix=edge_on_rotation_matrix,
    )
+
+Using this with the provided example data will just show blobs due to its low resolution
+nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
+galaxies, but that data is too large to provide as an example in this tutorial.
 
 
 Other particle types
@@ -264,6 +272,11 @@ mass density map for dark matter. We provide a utility to do this through
 
    # Everyone knows that dark matter is purple
    imsave("dm_mass_map.png", LogNorm()(dm_mass), cmap="inferno")
+
+The output from this example, when used with the example data provided in the
+loading data section should look something like:
+
+.. image:: dm_mass_map.png
 
 
 Lower-level API

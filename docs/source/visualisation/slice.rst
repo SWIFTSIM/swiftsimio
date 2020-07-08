@@ -96,6 +96,11 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
 
 
+The output from this example, when used with the example data provided in the
+loading data section should look something like:
+
+.. image:: temp_slice.png
+
 Rotations
 ---------
 
