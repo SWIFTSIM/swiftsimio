@@ -197,14 +197,14 @@ Non-unyt properties
 Each data array has some custom properties that are not present within the base
 :obj:`unyt.unyt_array` class. We create our own version of this in
 :obj:`swiftsimio.objects.cosmo_array`, which allows each dataset to contain
-its own cosmology and description properties.
+its own cosmology and name properties.
 
 For instance, should you ever need to know what a dataset represents, you can
 ask for a description:
 
 .. code-block:: python
 
-   print(rho_gas.description)
+   print(rho_gas.name)
 
 which will output ``Co-moving mass densities of the particles``. They include
 scale-factor information, too, through the ``cosmo_factor`` object,
