@@ -155,7 +155,7 @@ creates an edge-on and face-on projection using the integration in
    from matplotlib.colors import LogNorm
 
    # Radius around which to load data, we will visualise half of this
-   size = 100 * unyt.kpc
+   size = 1000 * unyt.kpc
 
    snapshot_filename = "eagle.hdf5"
    catalogue_filename = "stf.properties"
@@ -163,17 +163,18 @@ creates an edge-on and face-on projection using the integration in
    catalogue = load_catalogue(catalogue_filename)
 
    # Which halo should we visualise?
-   halo = 25
+   halo = 0
 
    x = catalogue.positions.xcmbp[halo]
    y = catalogue.positions.ycmbp[halo]
    z = catalogue.positions.zcmbp[halo]
 
-   lx = catalogue.angular_momentum.lx_star[halo]
-   ly = catalogue.angular_momentum.ly_star[halo]
-   lz = catalogue.angular_momentum.lz_star[halo]
+   lx = catalogue.angular_momentum.lx[halo]
+   ly = catalogue.angular_momentum.ly[halo]
+   lz = catalogue.angular_momentum.lz[halo]
 
    # The angular momentum vector will point perpendicular to the galaxy disk.
+   # If your simulation contains stars, use lx_star
    angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
 

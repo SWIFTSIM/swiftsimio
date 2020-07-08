@@ -76,7 +76,7 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    )
 
    # Map in msun * K / mpc^3
-   mass_weighted_temp_map = project_gas(
+   mass_weighted_temp_map = slice_gas(
        data,
        slice=0.5,
        resolution=1024,
