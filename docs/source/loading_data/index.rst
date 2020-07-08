@@ -19,11 +19,11 @@ To get started, first locate any SWIFT data that you wish to analyse. If you
 don't have any handy, you can always download our test cosmological volume
 at:
 
-``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmological_volume_example.hdf5``
+``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmo_volume_example.hdf5``
 
 with associated halo catalogue at
 
-``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmological_volume_example.properties``
+``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmo_volume_example.properties``
 
 which is needed should you wish to use the ``velociraptor`` integration library in the
 visualisation examples.
