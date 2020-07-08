@@ -19,7 +19,14 @@ To get started, first locate any SWIFT data that you wish to analyse. If you
 don't have any handy, you can always download our test cosmological volume
 at:
 
-``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmological_volume.hdf5``
+``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmo_volume_example.hdf5``
+
+with associated halo catalogue at
+
+``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/cosmo_volume_example.properties``
+
+which is needed should you wish to use the ``velociraptor`` integration library in the
+visualisation examples.
 
 To create your first instance of :obj:`swiftsimio.reader.SWIFTDataset`, you can
 use the helper function :mod:`swiftsimio.load` as follows:
@@ -57,7 +64,7 @@ our simulation:
 
    print(boxsize)
 
-This will output ``[4.38929954e+26 4.38929954e+26 4.38929954e+26] cm`` - note
+This will output ``[142.24751067 142.24751067 142.24751067] Mpc`` - note
 the units that are attached. These units being attached to everything is one
 of the key advantages of using :mod:`swiftsimio`. It is really easy to convert
 between units; for instance if we want that box-size in kiloparsecs,
@@ -100,7 +107,7 @@ as a summary:
 + Several snapshot-wide parameters, such as ``meta.a`` (current scale factor),
   ``meta.t`` (current time), ``meta.z`` (current redshift), ``meta.run_name``
   (the name of this run, specified in the SWIFT parameter file), and
-  ``meta.snapshot_date`` (a :mod:``datetime`` object describing when the
+  ``meta.snapshot_date`` (a :mod:`datetime` object describing when the
   snapshot was written to disk).
 
 
@@ -153,13 +160,13 @@ Just like the boxsize, these carry symbolic :mod:`unyt` units,
 
    print(x_gas.units)
 
-will output ``3.08567758e+24*cm``. We can again convert these to whatever units
+will output ``Mpc``. We can again convert these to whatever units
 we like. For instance, should we wish to convert our gas densities to solar
 masses per cubic megaparsec,
 
 .. code-block:: python
 
-   new_density_units = unyt.msun / unyt.Mpc**3
+   new_density_units = unyt.Solar_Mass / unyt.Mpc**3
 
    rho_gas.convert_to_units(new_density_units)
 
@@ -197,14 +204,14 @@ Non-unyt properties
 Each data array has some custom properties that are not present within the base
 :obj:`unyt.unyt_array` class. We create our own version of this in
 :obj:`swiftsimio.objects.cosmo_array`, which allows each dataset to contain
-its own cosmology and description properties.
+its own cosmology and name properties.
 
 For instance, should you ever need to know what a dataset represents, you can
 ask for a description:
 
 .. code-block:: python
 
-   print(rho_gas.description)
+   print(rho_gas.name)
 
 which will output ``Co-moving mass densities of the particles``. They include
 scale-factor information, too, through the ``cosmo_factor`` object,

@@ -25,6 +25,7 @@ class InvalidScaleFactor(Exception):
 
         Parameters
         ----------
+
         message : str, optional
             Message to print in case of invalid scale factor
         """
@@ -49,21 +50,15 @@ class cosmo_factor:
 
     r = cosmo_factor * r' with r in physical and r' comoving
 
-    Attributes
-    ----------
-    a_factor
-        the conversion factor based on the unit and current scale factor
-    redshift
-        the redshift of the snapshot
-    
     Examples
     --------
+    
     Typically this would make cosmo_factor = a for the conversion between
     comoving positions r' and physical co-ordinates r.
 
     To do this, use the a imported from objects multiplied as you'd like:
 
-    density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
+    ``density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)``
 
     """
 
@@ -73,8 +68,10 @@ class cosmo_factor:
 
         Parameters
         ----------
+
         expr : sympy.expr
             expression used to convert between comoving and physical coordinates
+
         scale_factor : float
             the scale factor of the simulation data
         """
@@ -88,6 +85,7 @@ class cosmo_factor:
 
         Returns
         -------
+
         str
             string to print exponent and current scale factor
         """
@@ -102,6 +100,7 @@ class cosmo_factor:
 
         Returns
         -------
+
         float
             the a-factor for given unit
         """
@@ -114,13 +113,15 @@ class cosmo_factor:
 
         Returns
         -------
+
         float 
             redshift from the given scale factor
 
         Notes
         -----
+
         Returns the redshift
-        ..math:: z = \frac{1}{a} - 1,
+        ..math:: z = \\frac{1}{a} - 1,
         where :math: `a` is the scale factor
         """
         return (1.0 / self.scale_factor) - 1.0
@@ -218,21 +219,16 @@ class cosmo_array(unyt_array):
 
     Parameters
     ----------
+
     unyt_array : unyt.unyt_array
         the inherited unyt_array
 
     Attributes
     ----------
+
     comoving : bool
         if True then the array is in comoving co-ordinates, and if
         False then it is in physical units.
-
-    Methods
-    -------
-    convert_to_physical() (in-place)
-    convert_to_comoving() (in-pace)
-    to_physical() (returns copy)
-    to_comoving() (returns copy)
 
     """
 

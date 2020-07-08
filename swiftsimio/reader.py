@@ -107,44 +107,13 @@ class SWIFTMetadata(object):
     into dictionaries. 
     
     This also does some extra parsing on some well-used metadata.
-
-    Attributes
-    ----------
-    filename: str
-        name of file to read from
-    units: SWIFTUnits
-        the units being used
-    header: dict
-        stores metadata about snapshot
-    present_particle_names:
-        Get particle names present in snapshot
-    code_info:
-        Print info about SWIFT version used
-    compiler_info:
-        Print info about compilers used
-    library_info:
-        Print info about library versions used
-    hydro_info:
-        Print info about hydro scheme used
-    viscosity_info
-        Print info about viscosity scheme used
-    diffusion_info:
-        Print info about diffusion scheme used
-
-    Methods
-    -------
-    get_metadata(self):
-        Loads the metadata 
-    get_named_column_metadata(self):
-        Loads custom metadata from named columns
-    postprocess_header(self):
-        Postprocesses local variables in header 
-    present_particle_types(self):
-        Get particle types present in snapshot
     """
 
+    # Name of the file that has been read from
     filename: str
+    # Unit instance associated with this file
     units: SWIFTUnits
+    # Header dictionary, metadata about snapshot.
     header: dict
 
     def __init__(self, filename, units: SWIFTUnits):
@@ -153,8 +122,10 @@ class SWIFTMetadata(object):
 
         Parameters
         ----------
+
         filename : str
             name of file to read from
+
         units : SWIFTUnits
             the units being used
         """

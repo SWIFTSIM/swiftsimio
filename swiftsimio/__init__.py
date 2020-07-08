@@ -8,6 +8,7 @@ import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
 import swiftsimio.visualisation as visualisation
 import swiftsimio.units as units
+import swiftsimio.subset_writer as subset_writer
 
 name = "swiftsimio"
 

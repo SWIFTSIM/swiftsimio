@@ -82,6 +82,11 @@ this:
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
 
 
+The output from this example, when used with the example data provided in the
+loading data section should look something like:
+
+.. image:: temp_map.png
+
 Backends
 --------
 
@@ -128,7 +133,6 @@ Example:
       backend="subsampled"
    )
 
-
 Rotations
 ---------
 
@@ -155,7 +159,7 @@ creates an edge-on and face-on projection using the integration in
    from matplotlib.colors import LogNorm
 
    # Radius around which to load data, we will visualise half of this
-   size = 100 * unyt.kpc
+   size = 1000 * unyt.kpc
 
    snapshot_filename = "eagle.hdf5"
    catalogue_filename = "stf.properties"
@@ -163,17 +167,18 @@ creates an edge-on and face-on projection using the integration in
    catalogue = load_catalogue(catalogue_filename)
 
    # Which halo should we visualise?
-   halo = 25
+   halo = 0
 
    x = catalogue.positions.xcmbp[halo]
    y = catalogue.positions.ycmbp[halo]
    z = catalogue.positions.zcmbp[halo]
 
-   lx = catalogue.angular_momentum.lx_star[halo]
-   ly = catalogue.angular_momentum.ly_star[halo]
-   lz = catalogue.angular_momentum.lz_star[halo]
+   lx = catalogue.angular_momentum.lx[halo]
+   ly = catalogue.angular_momentum.ly[halo]
+   lz = catalogue.angular_momentum.lz[halo]
 
    # The angular momentum vector will point perpendicular to the galaxy disk.
+   # If your simulation contains stars, use lx_star
    angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
 
@@ -208,10 +213,14 @@ creates an edge-on and face-on projection using the integration in
    )
 
    edge_on = project_gas_pixel_grid(
-      **common_argumetns,
+      **common_arguments,
       rotation_center=unyt.unyt_array([x, y, z]),
       rotation_matrix=edge_on_rotation_matrix,
    )
+
+Using this with the provided example data will just show blobs due to its low resolution
+nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
+galaxies, but that data is too large to provide as an example in this tutorial.
 
 
 Other particle types
@@ -263,6 +272,11 @@ mass density map for dark matter. We provide a utility to do this through
 
    # Everyone knows that dark matter is purple
    imsave("dm_mass_map.png", LogNorm()(dm_mass), cmap="inferno")
+
+The output from this example, when used with the example data provided in the
+loading data section should look something like:
+
+.. image:: dm_mass_map.png
 
 
 Lower-level API

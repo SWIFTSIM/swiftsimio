@@ -18,37 +18,6 @@ class SWIFTMask(object):
     """
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
-
-    Methods
-    -------
-
-
-    constrain_mask(self, ptype: str, quantity: str,
-        lower: unyt.array.unyt_quantity, upper: unyt.array.unyt_quantity)
-        constrains a particle mask based on the value of a the particle quantity
-
-    constrain_spatial(self, restrict)
-        generates spatially constrained cell mask
-
-    convert_masks_to_ranges(self)
-        converts the masks to range masks so that they take up less space.
-
-    get_masked_counts_offsets(self, restrict)
-
-    Private Methods
-    ---------------
-
-    _generate_empty_masks(self)
-        Create empty masks for all particles
-
-    _unpack_cell_metadata(self)
-        load cell metadata into local class variables
-
-    _generate_cell_mask(self, restrict)
-        generates spatially restricted mask for cell
-
-    _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array)
-        updates the particle mask using the cell mask. 
     """
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
@@ -186,6 +155,7 @@ class SWIFTMask(object):
 
         See Also
         --------
+
         constrain_spatial : method to generate spatially constrained cell mask
 
         """
@@ -197,26 +167,32 @@ class SWIFTMask(object):
 
         current_mask = getattr(self, ptype)
 
-        handle = {v: k for k, v in getattr(metadata.particle_fields, ptype).items()}[
-            quantity
-        ]
-        unit = getattr(self.units, ptype)[quantity]
-        # We use the type and not the number because it is far easier for users to understand.
-        particle_number = {
-            v: k for k, v in metadata.particle_types.particle_name_underscores.items()
-        }[ptype]
+        particle_metadata = getattr(self.metadata, f"{ptype}_properties")
+        unit_dict = {
+            k: v
+            for k, v in zip(
+                particle_metadata.field_names, particle_metadata.field_units
+            )
+        }
+
+        unit = unit_dict[quantity]
+
+        handle_dict = {
+            k: v
+            for k, v in zip(
+                particle_metadata.field_names, particle_metadata.field_paths
+            )
+        }
+
+        handle = handle_dict[quantity]
+
         # Load in the relevant data.
 
         with h5py.File(self.metadata.filename, "r") as file:
             # Surprisingly this is faster than just using the boolean
             # indexing because h5py has slow indexing routines.
             data = unyt.unyt_array(
-                np.take(
-                    file[f"PartType{particle_number}/{handle}"],
-                    np.where(current_mask)[0],
-                    axis=0,
-                ),
-                units=unit,
+                np.take(file[handle], np.where(current_mask)[0], axis=0), units=unit
             )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
@@ -237,6 +213,7 @@ class SWIFTMask(object):
 
         Parameters
         ----------
+
         restrict : list
             Restrict is a 3 length list that contains length two arrays giving 
             the lower and upper bounds for that axis, e.g.
@@ -251,6 +228,7 @@ class SWIFTMask(object):
 
         Returns
         -------
+
         cell_mask : np.array[bool]
             mask to indicate which cells are within the specified spatial range
         """
@@ -310,6 +288,7 @@ class SWIFTMask(object):
 
         Parameters
         ----------
+
         restrict : list
             currently unused
         
@@ -349,6 +328,7 @@ class SWIFTMask(object):
         
         Parameters
         ----------
+
         restrict : list 
             length 3 list of length two arrays giving the lower and 
             upper bounds for that axis, e.g.
@@ -365,6 +345,7 @@ class SWIFTMask(object):
 
         See Also
         -------
+
         constrain_mask : method to further refine mask
         """
 
@@ -415,11 +396,16 @@ class SWIFTMask(object):
 
         Returns
         -------
+
         Dict[str, np.array], Dict[str, np.array]
-            dictionaries containing the particle offets and counts for each particle 
+            Dictionaries containing the particle offets and counts for each particle 
             type. For example, the particle counts dictionary would be of the form 
+
+            .. code-block:: python
+
                 {"gas": [g_0, g_1, ...],
                  "dark matter": [bh_0, bh_1, ...], ...}
+
             where the keys would be each of the particle types and values are arrays 
             of the number of corresponding particles in each cell (in this case there 
             would be g_0 gas particles in the first cell, g_1 in the second, etc.). 
@@ -432,7 +418,8 @@ class SWIFTMask(object):
             current_offsets = {}
             if not hasattr(self, "cell_mask"):
                 raise RuntimeError(
-                    "Subset writing requires specifying a cell mask. Please use constrain_spatial with a suitable restrict array to generate one."
+                    "Subset writing requires specifying a cell mask. Please use "
+                    "constrain_spatial with a suitable restrict array to generate one."
                 )
             for part_type, counts in self.counts.items():
                 masked_counts[part_type] = counts * self.cell_mask

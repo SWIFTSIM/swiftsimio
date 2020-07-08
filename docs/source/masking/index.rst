@@ -57,7 +57,7 @@ to load the bottom left 'half' corner of the box.
    mask.constrain_spatial(load_region)
 
    # Now load the snapshot with this mask
-   data = load(filename, mask=mask)
+   data = sw.load(filename, mask=mask)
 
 ``data`` is now a regular :obj:`swiftsimio.reader.SWIFTDataset` object, but
 it only ever loads particles that are (approximately) inside the

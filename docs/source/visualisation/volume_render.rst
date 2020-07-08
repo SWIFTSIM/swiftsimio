@@ -30,9 +30,9 @@ Example
 
    # This creates a grid that has units msun / Mpc^3, and can be transformed like
    # any other unyt quantity.
-   mass_grid = slice_gas(
+   mass_grid = render_gas(
        data,
-       resolution=1024,
+       resolution=256,
        project="masses",
        parallel=True
    )
@@ -57,7 +57,7 @@ this:
    # Map in msun / mpc^3
    mass_cube = render_gas(
        data,
-       resolution=1024,
+       resolution=256,
        project="masses",
        parallel=True
    )
@@ -65,12 +65,12 @@ this:
    # Map in msun * K / mpc^3
    mass_weighted_temp_cube = render_gas(
        data,
-       resolution=1024,
+       resolution=256,
        project="mass_weighted_temps",
        parallel=True
    )
 
-   # A 1024 x 1024 x 1024 cube with dimensions of temperature
+   # A 256 x 256 x 256 cube with dimensions of temperature
    temp_cube = mass_weighted_temp_cube / mass_cube
 
 Rotations
@@ -90,7 +90,7 @@ the above example is shown below.
 .. code-block:: python
 
    from swiftsimio import load
-   from swiftsimio.visualisation.slice import render_gas
+   from swiftsimio.visualisation.volume_render import render_gas
    from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
 
    data = load("my_snapshot_0000.hdf5")
@@ -106,7 +106,7 @@ the above example is shown below.
    # Map in msun / mpc^3
    mass_cube = render_gas(
        data,
-       resolution=1024,
+       resolution=256,
        project="masses",
        rotation_matrix=matrix,
        rotation_center=center,
@@ -116,22 +116,22 @@ the above example is shown below.
    # Map in msun * K / mpc^3
    mass_weighted_temp_cube = render_gas(
        data, 
-       resolution=1024,
+       resolution=256,
        project="mass_weighted_temps",
        rotation_matrix=matrix,
        rotation_center=center,
        parallel=True
    )
 
-   # A 1024 x 1024 x 1024 cube with dimensions of temperature
+   # A 256 x 256 x 256 cube with dimensions of temperature
    temp_cube = mass_weighted_temp_cube / mass_cube
 
 Lower-level API
 ---------------
 
-The lower-level API for slices allows for any general positions,
+The lower-level API for volume rendering allows for any general positions,
 smoothing lengths, and smoothed quantities, to generate a pixel grid that
-represents the smoothed, sliced, version of the data.
+represents the smoothed, volume rendered, version of the data.
 
 This API is available through
 :meth:`swiftsimio.visualisation.volume_render.scatter` and

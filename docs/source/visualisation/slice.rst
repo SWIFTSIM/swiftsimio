@@ -76,7 +76,7 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    )
 
    # Map in msun * K / mpc^3
-   mass_weighted_temp_map = project_gas(
+   mass_weighted_temp_map = slice_gas(
        data,
        slice=0.5,
        resolution=1024,
@@ -95,6 +95,11 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    # Normalize and save
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
 
+
+The output from this example, when used with the example data provided in the
+loading data section should look something like:
+
+.. image:: temp_slice.png
 
 Rotations
 ---------

@@ -10,7 +10,10 @@ SCREEN_WIDTH = 80
 
 
 def decode(bytestring: bytes) -> str:
-    return bytestring.decode("utf-8")
+    try:
+        return bytestring.decode("utf-8")
+    except AttributeError:
+        return str(bytestring)
 
 
 parser = ap.ArgumentParser(
@@ -169,10 +172,20 @@ if __name__ == "__main__":
         print()
 
         # Physics information
-        print(f"Gravity scheme: {decode(data.gravity_scheme.get('Scheme', b'None'))}")
-        print(
-            f"Hydrodynamics scheme: {decode(data.hydro_scheme.get('Scheme', b'None'))}"
-        )
+        try:
+            print(
+                f"Gravity scheme: {decode(data.gravity_scheme.get('Scheme', b'None'))}"
+            )
+        except:
+            pass
+
+        try:
+            print(
+                f"Hydrodynamics scheme: {decode(data.hydro_scheme.get('Scheme', b'None'))}"
+            )
+        except:
+            pass
+
         for name, scheme in data.subgrid_scheme.items():
             if name != "NamedColumns":
                 print(f"{name.replace('Model', 'model')}: {decode(scheme)}")

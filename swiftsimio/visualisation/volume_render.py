@@ -34,36 +34,45 @@ def scatter(
     Computes contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.
     This ignores boundary effects.
+
     Parameters
     ----------
+
     x : np.array[float64]
         array of x-positions of the particles. Must be bounded by [0, 1].
+
     y : np.array[float64]
         array of y-positions of the particles. Must be bounded by [0, 1].
+
     z : np.array[float64]
         array of z-positions of the particles. Must be bounded by [0, 1].
+
     m : np.array[float32]
         array of masses (or otherwise weights) of the particles
+
     h : np.array[float32]
         array of smoothing lengths of the particles
+
     res : int
         the number of voxels along one axis, i.e. this returns a cube
-         of res * res * res..
+        of res * res * res.
 
     Returns
     -------
+
     np.array[float32, float32, float32]
         voxel grid of quantity 
     
     See Also
     --------
+
     scatter_parallel : Parallel implementation of this function
     slice_scatter : Create scatter plot of a slice of data
     slice_scatter_parallel : Create scatter plot of a slice of data in parallel
 
-
     Notes
     -----
+
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
@@ -151,38 +160,48 @@ def scatter_parallel(
     Compute contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.
     This ignores boundary effects.
+
     Parameters
     ----------
     x : array of float64 
         array of x-positions of the particles. Must be bounded by [0, 1].
+
     y : array of float64 
         array of y-positions of the particles. Must be bounded by [0, 1].
+
     z : array of float64 
         array of z-positions of the particles. Must be bounded by [0, 1].
+
     m : array of float32 
         array of masses (or otherwise weights) of the particles
+
     h : array of float32 
         array of smoothing lengths of the particles
+
     res : int
         the number of voxels along one axis, i.e. this returns a cube
-         of res * res * res..
+        of res * res * res.
 
     Returns
     -------
+
     ndarray of float32
         voxel grid of quantity 
     
     See Also
     --------
+
     scatter : Create voxel grid of quantity
     slice_scatter : Create scatter plot of a slice of data
     slice_scatter_parallel : Create scatter plot of a slice of data in parallel
 
     Notes
     -----
+
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
+    
     """
     # Same as scatter, but executes in parallel! This is actually trivial,
     # we just make NUM_THREADS images and add them together at the end.
@@ -355,6 +374,7 @@ def render_gas(
 
     Parameters
     ----------
+
     data : SWIFTDataset
         Dataset from which slice is extracted
 
@@ -384,27 +404,28 @@ def render_gas(
         (this corresponds to the left and right-hand edges, and top and bottom
         edges, and front and back edges) if it is not None. It should have a
         length of six, and take the form:
-
-        [x_min, x_max, y_min, y_max, z_min, z_max]
-
+        ``[x_min, x_max, y_min, y_max, z_min, z_max]``
         Particles outside of this range are still considered if their
         smoothing lengths overlap with the range.
 
     Returns
     -------
+
     ndarray of float32
         a `resolution` x `resolution` x `resolution` array of the contribution
         of the projected data field to the voxel grid from all of the particles
 
     See Also
     --------
+
     slice_gas : Creates a 2D slice of a SWIFT dataset with appropriate units
     render_gas_voxel_grid : Creates a 3D voxel grid of a SWIFT dataset
 
     Notes
     -----
-    This is a wrapper function for slice_gas_pixel_grid ensuring that output units are
-    appropriate
+
+    This is a wrapper function for slice_gas_pixel_grid ensuring that output
+    units are appropriate
     """
 
     image = render_gas_voxel_grid(

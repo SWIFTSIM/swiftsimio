@@ -1,0 +1,25 @@
+name: swiftsimio
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python>=3.6
+  - black
+  - h5py
+  - ipython
+  - matplotlib
+  - numba>=0.50
+  - numpy
+  - pip
+  - pykdtree
+  - pytest
+  - scipy
+  - tqdm
+  - unyt
+  - pip:
+    - h5glance
+    - py-sphviewer
+    - swiftsimio
+    - velociraptor
+    - wily
