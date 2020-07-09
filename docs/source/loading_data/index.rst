@@ -37,7 +37,7 @@ use the helper function :mod:`swiftsimio.load` as follows:
 
    # Of course, replace this path with your own snapshot should you be using
    # custom data.
-   data = load("cosmological_volume.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
 The type of ``data`` is now :obj:`swiftsimio.reader.SWIFTDataset`. Have a
 quick look around this dataset in an ``iPython`` shell, or a ``jupyter``
@@ -188,11 +188,17 @@ These are then placed in an object hierarchy, as follows:
 
 .. code-block:: python
 
-   data.gas.element_mass_fractions
+   print(data.gas.element_mass_fractions)
 
-   >>> Named columns instance with ['hydrogen', 'helium', 'carbon', 'nitrogen',
-       'oxygen', 'neon', 'magnesium', 'silicon', 'iron'] available for
-       "Fractions of the particles' masses that are in the given element"
+
+This will output: Named columns instance with ['hydrogen', 'helium',
+'carbon', 'nitrogen', 'oxygen', 'neon', 'magnesium', 'silicon', 'iron']
+available for "Fractions of the particles' masses that are in the given
+element"
+
+Then, to access individual columns (in this case element abundances):
+
+.. code-block:: python
 
    # Access the silicon abundance
    data.gas.element_mass_fractions.silicon

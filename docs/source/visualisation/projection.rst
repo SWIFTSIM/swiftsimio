@@ -26,7 +26,7 @@ Example
    from swiftsimio import load
    from swiftsimio.visualisation.projection import project_gas
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # This creates a grid that has units msun / Mpc^2, and can be transformed like
    # any other unyt quantity
@@ -55,7 +55,7 @@ this:
    from swiftsimio import load
    from swiftsimio.visualisation.projection import project_gas
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # First create a mass-weighted temperature dataset
    data.gas.mass_weighted_temps = data.gas.masses * data.gas.temperatures
@@ -123,7 +123,7 @@ Example:
    from swiftsimio import load
    from swiftsimio.visualisation.projection import project_gas
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    subsampled_array = project_gas(
       data,
@@ -161,8 +161,8 @@ creates an edge-on and face-on projection using the integration in
    # Radius around which to load data, we will visualise half of this
    size = 1000 * unyt.kpc
 
-   snapshot_filename = "eagle.hdf5"
-   catalogue_filename = "stf.properties"
+   snapshot_filename = "cosmo_volume_example.hdf5"
+   catalogue_filename = "cosmo_volume_example.properties"
 
    catalogue = load_catalogue(catalogue_filename)
 
@@ -243,7 +243,7 @@ mass density map for dark matter. We provide a utility to do this through
    from swiftsimio.visualisation.projection import project_pixel_grid
    from swiftsimio.visualisation.smoothing_length_generation import generate_smoothing_lengths
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # Generate smoothing lengths for the dark matter
    data.dark_matter.smoothing_lengths = generate_smoothing_lengths(

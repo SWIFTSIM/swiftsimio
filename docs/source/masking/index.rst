@@ -45,7 +45,7 @@ to load the bottom left 'half' corner of the box.
 
    import swiftsimio as sw
 
-   filename = "cosmological_volume.hdf5"
+   filename = "cosmo_volume_example.hdf5"
 
    mask = sw.mask(filename)
    # The full metadata object is available from within the mask
@@ -96,7 +96,7 @@ densities of particles and only load particles within that density window.
    mask.constrain_mask("gas", "density", 0.4 * density_units, 0.8 * density_units)
 
    # Now we can grab the actual data object. This includes the mask as a parameter.
-   data = sw.load("cosmological_volume.hdf5", mask=mask)
+   data = sw.load("cosmo_volume_example.hdf5", mask=mask)
 
 
 When the attributes of this data object are accessed, *only* the ones that

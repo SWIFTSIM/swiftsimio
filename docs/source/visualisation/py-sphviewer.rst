@@ -11,7 +11,7 @@ You can get access to the objects through a sub-module as follows:
    from swiftsimio import load
    from swiftsimio.visualisation.sphviewer import SPHViewerWrapper
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    resolution = 2048
 

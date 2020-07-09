@@ -26,7 +26,7 @@ Example
    from swiftsimio import load
    from swiftsimio.visualisation.slice import slice_gas
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # This creates a grid that has units msun / Mpc^3, and can be transformed like
    # any other unyt quantity. Note that `slice` is given in terms of the box-size,
@@ -61,7 +61,7 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    from swiftsimio import load
    from swiftsimio.visualisation.slice import slice_gas
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # First create a mass-weighted temperature dataset
    data.gas.mass_weighted_temps = data.gas.masses * data.gas.temperatures
@@ -121,7 +121,7 @@ the above example is shown below.
    from swiftsimio.visualisation.slice import slice_gas
    from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # First create a mass-weighted temperature dataset
    data.gas.mass_weighted_temps = data.gas.masses * data.gas.temperatures

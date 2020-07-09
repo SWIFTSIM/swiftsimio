@@ -26,7 +26,7 @@ Example
    from swiftsimio import load
    from swiftsimio.visualisation.volume_render import render_gas
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # This creates a grid that has units msun / Mpc^3, and can be transformed like
    # any other unyt quantity.
@@ -49,7 +49,7 @@ this:
    from swiftsimio import load
    from swiftsimio.visualisation.volume_render import render_gas
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # First create a mass-weighted temperature dataset
    data.gas.mass_weighted_temps = data.gas.masses * data.gas.temperatures
@@ -93,7 +93,7 @@ the above example is shown below.
    from swiftsimio.visualisation.volume_render import render_gas
    from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
 
-   data = load("my_snapshot_0000.hdf5")
+   data = load("cosmo_volume_example.hdf5")
 
    # First create a mass-weighted temperature dataset
    data.gas.mass_weighted_temps = data.gas.masses * data.gas.temperatures
