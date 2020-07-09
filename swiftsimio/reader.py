@@ -275,12 +275,13 @@ class SWIFTMetadata(object):
                 # but is not portable between regions. So if you ran a simulation on
                 # a British (en_GB) machine, and then tried to read on a Dutch
                 # machine (nl_NL), this would _not_ work because %c is different.
-                self.snapshot_date = datetime.strptime(
-                    self.header["Snapshot date"].decode("utf-8"), "%c\n"
-                )
-            except ValueError:
-                # Oh dear this has gone _very_wrong. Let's just keep it as a string.
-                self.snapshot_date = self.header["Snapshot date"].decode("utf-8")
+                try:
+                    self.snapshot_date = datetime.strptime(
+                        self.header["Snapshot date"].decode("utf-8"), "%c\n"
+                    )
+                except ValueError:
+                    # Oh dear this has gone _very_wrong. Let's just keep it as a string.
+                    self.snapshot_date = self.header["Snapshot date"].decode("utf-8")
         except KeyError:
             # Old file
             pass
