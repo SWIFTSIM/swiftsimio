@@ -1,6 +1,12 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.0.2
+-------
+
+Hotfix for documentation and error when loading data in different
+timezones than the one it was created in.
+
 v 4.0.1
 -------
 
