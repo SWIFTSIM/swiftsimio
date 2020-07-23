@@ -1,7 +1,5 @@
 """
-Particle generation code.
-
-TBD
+Generate particle initial conditions that follow some density function.
 """
 
 #--------------------------------------------
@@ -10,6 +8,7 @@ TBD
 
 
 import numpy as np
+from math import erf
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import stats
@@ -19,37 +18,22 @@ from .IC_kernel import get_kernel_data
 
 
 
-IC_ITER_MAX = 2000                  # max numbers of iterations for generating IC conditions
-IC_CONVERGENCE_THRESHOLD = 1e-3     # if enough particles are displaced by distance below threshold * mean interparticle distance, stop iterating.
-IC_TOLERANCE_PART = 1e-2            # tolerance for not converged particle fraction: this fraction of particles can be displaced with distances > threshold
-IC_DISPLACEMENT_THRESHOLD = 1e-2    # Don't even thing about stopping until every particle is displaced by distance < threshold * mean interparticle distance.
-                                    # Only after every particle has moved with distance smaller than this threshold, the IC_CONVERGENCE_THRESHOLD is
-                                    # taken into account.
-IC_REDISTRIBUTE_AT_ITERATION = 10   # redistribute a handful of particles every IC_REDISTRIBUTE_AT_ITERATION iteration
-IC_DELTA_REDUCTION_FACTOR = 0.97    # reduce normalization constant for particle motion by this factor after every iteration
-IC_DELTA_INIT = 0.1                 # initial normalization constant for particle motion in units of mean interparticle distance
-IC_DELTA_MIN = 1e-4                 # minimal normalization constant for particle motion in units of mean interparticle distance
-IC_REDISTRIBUTE_FRACTION = 0.01     # fraction of particles to redistribute when doing so
-IC_NO_REDISTRIBUTION_AFTER = 200    # don't redistribute particles after this iteration
-IC_PLOT_AT_REDISTRIBUTION = True    # create and store a plot of the current situation before redistributing?
-
-
 np.random.seed(666)
 
 
 
 def IC_generation_set_params(
-            iter_max                    = IC_ITER_MAX,
-            convergence_threshold       = IC_CONVERGENCE_THRESHOLD,
-            tolerance_part              = IC_TOLERANCE_PART,
-            displacement_threshold      = IC_DISPLACEMENT_THRESHOLD,
-            redistribute_at_iteration   = IC_REDISTRIBUTE_AT_ITERATION,
-            delta_init                  = IC_DELTA_INIT,
-            delta_reduction_factor      = IC_DELTA_REDUCTION_FACTOR,
-            delta_min                   = IC_DELTA_MIN,
-            redistribute_fraction       = IC_REDISTRIBUTE_FRACTION,
-            no_redistribution_after     = IC_NO_REDISTRIBUTION_AFTER,
-            plot_at_redistribution      = IC_PLOT_AT_REDISTRIBUTION
+            iter_max                    = 2000,
+            convergence_threshold       = 1e-3,
+            tolerance_part              = 1e-2,
+            displacement_threshold      = 1e-2,
+            delta_init                  = 0.1,
+            delta_reduction_factor      = 0.98,
+            delta_min                   = 1e-4,
+            redistribute_frequency      = 20,
+            redistribute_fraction       = 0.01,
+            no_redistribution_after     = 200,
+            plot_at_redistribution      = True
         ):
     """
     Change the global IC generation iteration parameters.
@@ -65,7 +49,7 @@ def IC_generation_set_params(
         <float> displacement_threshold      iteration halt criterion: Don't stop until every particle is 
                                                 displaced by distance < threshold * mean interparticle 
                                                 distance
-        <float> redistribute_at_iteration   redistribute a handful of particles every 
+        <float> redistribute_frequency      redistribute a handful of particles every 
                                                 `redistribute_at_iteration` iteration
         <float> delta_init                  initial normalization constant for particle motion in 
                                                 units of mean interparticle distance
@@ -79,34 +63,24 @@ def IC_generation_set_params(
                                                 redistributing?
 
     return:
-        nothing
+        dictionnary containing all this data.
     """
 
-    global IC_ITER_MAX
-    global IC_CONVERGENCE_THRESHOLD
-    global IC_TOLERANCE_PART
-    global IC_DISPLACEMENT_THRESHOLD
-    global IC_REDISTRIBUTE_AT_ITERATION
-    global IC_DELTA_INIT
-    global IC_DELTA_REDUCTION_FACTOR
-    global IC_DELTA_MIN
-    global IC_REDISTRIBUTE_FRACTION
-    global IC_NO_REDISTRIBUTION_AFTER
-    global IC_PLOT_AT_REDISTRIBUTION
- 
-    IC_ITER_MAX = iter_max
-    IC_CONVERGENCE_THRESHOLD = convergence_threshold
-    IC_TOLERANCE_PART = tolerance_part
-    IC_DISPLACEMENT_THRESHOLD = displacement_threshold
-    IC_REDISTRIBUTE_AT_ITERATION = redistribute_at_iteration
-    IC_DELTA_INIT = delta_init
-    IC_DELTA_REDUCTION_FACTOR = delta_reduction_factor
-    IC_DELTA_MIN = delta_min
-    IC_REDISTRIBUTE_FRACTION = redistribute_fraction
-    IC_NO_REDISTRIBUTION_AFTER = no_redistribution_after
-    IC_PLOT_AT_REDISTRIBUTION = plot_at_redistribution
+    icparams = {}
 
-    return
+    icparams['ITER_MAX'] = iter_max
+    icparams['CONVERGENCE_THRESHOLD'] = convergence_threshold
+    icparams['TOLERANCE_PART'] = tolerance_part
+    icparams['DISPLACEMENT_THRESHOLD'] = displacement_threshold
+    icparams['DELTA_INIT'] = delta_init
+    icparams['DELTA_REDUCTION_FACTOR'] = delta_reduction_factor
+    icparams['DELTA_MIN'] = delta_min
+    icparams['REDISTRIBUTE_FREQUENCY'] = redistribute_frequency
+    icparams['REDISTRIBUTE_FRACTION'] = redistribute_fraction
+    icparams['NO_REDISTRIBUTION_AFTER'] = no_redistribution_after
+    icparams['PLOT_AT_REDISTRIBUTION'] = plot_at_redistribution
+
+    return icparams
 
 
 
@@ -221,7 +195,7 @@ def IC_sample_coordinates(nx, rho_anal, rho_max=None, ndim = 2):
 
 
 
-def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kernel='cubic spline', periodic=True):
+def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generation_set_params(), x=None, m=None, kernel='cubic spline', periodic=True):
     """
     Generate SPH initial conditions following Arth et al 2019 https://arxiv.org/abs/1907.11250
 
@@ -230,6 +204,7 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kerne
     nx:         How many particles you want in each dimension
     ndim:       How many dimensions we're working with
     eta:        "resolution", that defines number of neighbours
+    icparams:   dict containing IC generation parameters as returned from IC_generation_set_params
     x:          Initial guess for coordinates of particles. If none, perturbed uniform initial
                 coordinates will be generated.
                 Should be numpy array or None.
@@ -270,8 +245,6 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kerne
 
     if x is None:
         # generate positions
-        #  x = IC_uniform_coordinates(nx, ndim=ndim, periodic=periodic)
-        #  x = IC_perturbed_coordinates(nx, ndim=ndim, periodic=periodic)
         x = IC_sample_coordinates(nx, rho_anal, ndim=ndim)
 
     npart = x.shape[0]
@@ -295,20 +268,22 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kerne
     delta_r = np.zeros(x.shape, dtype=np.float)
 
     kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(kernel, ndim)
+
+    # expected number of neighbours
     if ndim == 1:
         Nngb = 2 * kernel_gamma * eta
     elif ndim == 2:
         Nngb = np.pi * (kernel_gamma * eta)**2
 
     MID = 1./npart**(1./ndim) # mean interparticle distance
-    delta_r_norm = IC_DELTA_INIT * MID
-    delta_r_min = IC_DELTA_MIN * MID
+    delta_r_norm = icparams['DELTA_INIT'] * MID
+    delta_r_min = icparams['DELTA_MIN'] * MID
 
 
-    if IC_PLOT_AT_REDISTRIBUTION:
+    if icparams['PLOT_AT_REDISTRIBUTION']:
         # drop a first plot
         h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, eta, 
-                    kernel=kernel, ndim=ndim, periodic=periodic, ncells=None)
+                    ndim=ndim, periodic=periodic, ncells=None)
         IC_plot_current_situation(True, 0, x, rho, rho_anal, ndim=ndim)
 
 
@@ -324,20 +299,20 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kerne
         rhoA = rho_anal(x)
 
         # re-distribute particles?
-        if iteration % IC_REDISTRIBUTE_AT_ITERATION == 0:
+        if iteration % icparams['REDISTRIBUTE_FREQUENCY'] == 0:
 
             # do we need to compute current densities and h's?
-            if IC_PLOT_AT_REDISTRIBUTION or IC_NO_REDISTRIBUTION_AFTER >= iteration:
+            if icparams['PLOT_AT_REDISTRIBUTION'] or icparams['NO_REDISTRIBUTION_AFTER'] >= iteration:
                 h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, eta, 
                             kernel=kernel, ndim=ndim, periodic=periodic, ncells=ncells_proper)
 
             # plot the current situation first?
-            if IC_PLOT_AT_REDISTRIBUTION:
+            if icparams['PLOT_AT_REDISTRIBUTION']:
                 IC_plot_current_situation(True, iteration, x, rho, rho_anal, ndim=ndim)
             
             # re-destribute a handful of particles
-            if IC_NO_REDISTRIBUTION_AFTER >= iteration:
-                x = redistribute_particles(x, h, rho, rhoA, iteration, 
+            if icparams['NO_REDISTRIBUTION_AFTER'] >= iteration:
+                x = redistribute_particles(x, h, rho, rhoA, iteration, icparams=icparams,
                             kernel=kernel, ndim=ndim, periodic=periodic)
 
 
@@ -429,7 +404,7 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kerne
             x[x<0.] -= delta_r[x<0.]
 
         # reduce delta_r_norm
-        delta_r_norm *= IC_DELTA_REDUCTION_FACTOR
+        delta_r_norm *= icparams['DELTA_REDUCTION_FACTOR']
         delta_r_norm = max(delta_r_norm, delta_r_min)
 
 
@@ -447,15 +422,14 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kerne
         print("Iteration {0:4d}; Displacement [mean interpart dist] Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
                 iteration, min_deviation, av_deviation, max_deviation))
 
-        if max_deviation < IC_DISPLACEMENT_THRESHOLD: # don't think about stopping until max < threshold
-            unconverged = dev[dev > IC_CONVERGENCE_THRESHOLD].shape[0]
-            print("Unconverged:", unconverged, "threshold:", int(IC_TOLERANCE_PART * npart))
-            if unconverged < IC_TOLERANCE_PART * npart:
+        if max_deviation < icparams['DISPLACEMENT_THRESHOLD']: # don't think about stopping until max < threshold
+            unconverged = dev[dev > icparams['CONVERGENCE_THRESHOLD']].shape[0]
+            if unconverged < icparams['TOLERANCE_PART'] * npart:
                 print("Convergence criteria are met.")
                 break
 
 
-        if iteration == IC_ITER_MAX:
+        if iteration == icparams['ITER_MAX']:
             print("Reached max number of iterations without converging. Returning.")
             break
 
@@ -474,17 +448,16 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, x=None, m=None, kerne
 
 
 
-def redistribute_particles(x, h, rho, rhoA, iteration, kernel='cubic spline', ndim = 2, periodic = True):
+def redistribute_particles(x, h, rho, rhoA, iteration, icparams=IC_generation_set_params(), kernel='cubic spline', ndim = 2, periodic = True):
     """
     Every few steps, manually displace underdense particles into areas of overdense particles
 
         x:          particle coordinates
-        m:          particle masses
         h:          particle smoothing lengths
         rho:        particle densities
         rhoA:       analytical (wanted) density at the particle positions
-        eta:        "resolution", that defines number of neighbours
         iteration:  current iteration of the particle displacement
+        icparams:   dict containing IC generation parameters as returned from IC_generation_set_params
         kernel:     which kernel to use
         ndim:       number of dimensions
         periodic:   whether the gig is periodic
@@ -498,16 +471,12 @@ def redistribute_particles(x, h, rho, rhoA, iteration, kernel='cubic spline', nd
 
     # decrease how many particles you move as number of iterations increases
     npart = x.shape[0]
-    f = IC_REDISTRIBUTE_FRACTION ** (iteration/IC_REDISTRIBUTE_FRACTION)
-    to_move = int(npart * IC_REDISTRIBUTE_FRACTION * (1. - (iteration/IC_NO_REDISTRIBUTION_AFTER)**3))
+    to_move = int(npart * icparams['REDISTRIBUTE_FRACTION'] * (1. - (iteration/icparams['NO_REDISTRIBUTION_AFTER'])**3))
     to_move = max(to_move, 0.)
 
-    if to_move > 0:
-        print("Re-distributing particles.")
-    else:
+    if to_move == 0:
         return x
 
-    from math import erf
 
     kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(kernel, ndim)
 
@@ -517,51 +486,50 @@ def redistribute_particles(x, h, rho, rhoA, iteration, kernel='cubic spline', nd
     touched = np.zeros(npart, dtype=np.bool)    # has this particle been touched as target or as to be moved?
     indices = np.arange(npart)                  # particle indices
 
-
     moved = 0
-    niter = 0
 
-    while niter < 10: #don't do more than 2 attempts to rearrange particles
-        niter += 1
+    xover = x[overdense]
+    xunder = x[underdense]
+    while moved < to_move:
 
-        xover = x[overdense]
-        xunder = x[underdense]
-        for o in range(xover.shape[0]):
-            if moved == to_move: break # exit when you need to
+        o = np.random.randint(0, xover.shape[0])
 
-            oind = indices[overdense][o]
-            if touched[oind]: continue # skip touched particles
+        oind = indices[overdense][o]
+        if touched[oind]: continue # skip touched particles
 
-            # pick an overdense random particle
-            othresh = (rho[oind] - rhoA[oind])/rho[oind]
-            othresh = erf(othresh)
-            if np.random.uniform() < othresh:
-                
-                # pick an underdense random particle
-                ustart = 0 # store where you left off so you don't loop twice over same particle
-                for u in range(ustart, xunder.shape[0]):
-                    uind = indices[underdense][u]
-                    if touched[uind]: continue # skip touched particles
-                    uthresh = (rhoA[uind] - rho[uind]) / rhoA[uind]
+        # pick an overdense random particle
+        othresh = (rho[oind] - rhoA[oind])/rho[oind]
+        othresh = erf(othresh)
+        if np.random.uniform() < othresh:
+            
+            attempts = 0
+            while True:
 
-                    if np.random.uniform() < uthresh:
-                        # we have a match!
-                        # compute displacement for overdense particle
-                        dx = np.zeros(ndim, dtype=np.float)
-                        H = kernel_gamma * h[uind]
-                        for i in range(dx.shape[0]):
-                            sign = 1 if np.random.random() < 0.5 else -1
-                            dx[i] = np.random.uniform() * 0.3 * H * sign
+                attempts += 1
+                if attempts == xunder.shape[0]: break # emergency halt
+            
+                u = np.random.randint(0,xunder.shape[0])
+                uind = indices[underdense][u]
 
-                        x[oind] = x[uind] + dx 
-                        touched[oind] = True
-                        touched[uind] = True
-                        ustart = u
-                        moved += 1
+                if touched[uind]: continue # skip touched particles
 
-                        break # stop loop over underdense
-                
-        if moved == to_move: break # end while loop
+                uthresh = (rhoA[uind] - rho[uind]) / rhoA[uind]
+
+                if np.random.uniform() < uthresh:
+                    # we have a match!
+                    # compute displacement for overdense particle
+                    dx = np.zeros(ndim, dtype=np.float)
+                    H = kernel_gamma * h[uind]
+                    for i in range(dx.shape[0]):
+                        sign = 1 if np.random.random() < 0.5 else -1
+                        dx[i] = np.random.uniform() * 0.3 * H * sign
+
+                    x[oind] = x[uind] + dx 
+                    touched[oind] = True
+                    touched[uind] = True
+                    moved += 1
+                    break
+
 
 
     # check boundary conditions
@@ -575,7 +543,7 @@ def redistribute_particles(x, h, rho, rhoA, iteration, kernel='cubic spline', nd
 
 
 
-    print("Moved", moved, "particles in", niter, "iterations.")
+    print("Moved", moved, " / ", to_move, " total:", npart)
 
 
     return x
