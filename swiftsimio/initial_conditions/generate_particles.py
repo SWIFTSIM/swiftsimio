@@ -242,7 +242,6 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
 
 
     # first some preparations
-
     if x is None:
         # generate positions
         x = IC_sample_coordinates(nx, rho_anal, ndim=ndim)

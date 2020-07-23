@@ -10,7 +10,7 @@ import numpy as np
 import copy
 
 
-from particle_hydro_kernel import get_kernel_data
+from .IC_kernel import get_kernel_data
 
 min_neighbour_fact_for_cells = 2 # require minimum of min_neighbour_fact_for_cells * nngb particles in cells for h iteration
 ITER_MAX = 100 # max number of iterations to do
@@ -351,7 +351,7 @@ def build_grid(x, m, eta, kernel='cubic spline', ndim=2, periodic=True, verbose=
         ncells: number of cells in each dimension
     """
 
-    from particle_hydro_kernel import kernel_gamma_1D, kernel_gamma_2D
+    from .IC_kernel import kernel_gamma_1D, kernel_gamma_2D
 
     nparttot = m.shape[0]
 
@@ -478,7 +478,3 @@ def grid_ind_from_ij(i, j, ncells):
     """
 
     return j * ncells + i
-
-
-
-
