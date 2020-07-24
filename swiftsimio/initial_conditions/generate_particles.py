@@ -16,13 +16,37 @@ from scipy import stats
 from .IC_grid import compute_smoothing_lengths, build_grid
 from .IC_kernel import get_kernel_data
 
+from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 
 
 np.random.seed(666)
 
 
+def IC_set_IC_params(
+            boxsize     = [1, 1], 
+            periodic    = True,
+            nx          = 100,
+            ndim        = 2
+        ):
+    """
+    Change the initial conditions parameters.
 
-def IC_generation_set_params(
+    TODO: docs
+
+    returns:
+        dict with these parameters.
+    """
+
+    icSimParams = {}
+    icSimParams['boxsize'] = boxsize
+    icSimParams['periodic'] = periodic
+    icSimParams['nx'] = nx
+    icSimParams['ndim'] = ndim
+
+    return icSimParams
+
+
+def IC_set_run_params(
             iter_max                    = 2000,
             convergence_threshold       = 1e-3,
             tolerance_part              = 1e-2,
@@ -33,7 +57,9 @@ def IC_generation_set_params(
             redistribute_frequency      = 20,
             redistribute_fraction       = 0.01,
             no_redistribution_after     = 200,
-            plot_at_redistribution      = True
+            plot_at_redistribution      = True, 
+            kernel                      = 'cubic spline',
+            eta                         = 1.2348
         ):
     """
     Change the global IC generation iteration parameters.
@@ -66,45 +92,67 @@ def IC_generation_set_params(
         dictionnary containing all this data.
     """
 
-    icparams = {}
+    icRunParams = {}
 
-    icparams['ITER_MAX'] = iter_max
-    icparams['CONVERGENCE_THRESHOLD'] = convergence_threshold
-    icparams['TOLERANCE_PART'] = tolerance_part
-    icparams['DISPLACEMENT_THRESHOLD'] = displacement_threshold
-    icparams['DELTA_INIT'] = delta_init
-    icparams['DELTA_REDUCTION_FACTOR'] = delta_reduction_factor
-    icparams['DELTA_MIN'] = delta_min
-    icparams['REDISTRIBUTE_FREQUENCY'] = redistribute_frequency
-    icparams['REDISTRIBUTE_FRACTION'] = redistribute_fraction
-    icparams['NO_REDISTRIBUTION_AFTER'] = no_redistribution_after
-    icparams['PLOT_AT_REDISTRIBUTION'] = plot_at_redistribution
+    icRunParams['ITER_MAX'] = iter_max
+    icRunParams['CONVERGENCE_THRESHOLD'] = convergence_threshold
+    icRunParams['TOLERANCE_PART'] = tolerance_part
+    icRunParams['DISPLACEMENT_THRESHOLD'] = displacement_threshold
+    icRunParams['DELTA_INIT'] = delta_init
+    icRunParams['DELTA_REDUCTION_FACTOR'] = delta_reduction_factor
+    icRunParams['DELTA_MIN'] = delta_min
+    icRunParams['REDISTRIBUTE_FREQUENCY'] = redistribute_frequency
+    icRunParams['REDISTRIBUTE_FRACTION'] = redistribute_fraction
+    icRunParams['NO_REDISTRIBUTION_AFTER'] = no_redistribution_after
+    icRunParams['PLOT_AT_REDISTRIBUTION'] = plot_at_redistribution
+    icRunParams['KERNEL'] = kernel
+    icRunParams['ETA'] = eta
 
-    return icparams
+    return icRunParams
 
 
 
-def IC_uniform_coordinates(nx, ndim = 2, periodic = True):
+def IC_uniform_coordinates(nx, ndim = 2, boxsize = [1, 1]):
     """
     Get the coordinates for a uniform particle distribution.
     nx:         number of particles in each dimension
     ndim:       number of dimensions
-    periodic:   whether we have periodic boundary conditions or not
 
     returns:
-        x: np.array((nx**ndim, ndim), dtype=float) of coordinates
+        x: np.array((nx**ndim, 3), dtype=float) of coordinates
     """
 
+    npart = nx**ndim
+    x = np.zeros((npart, 3), dtype=np.float)
+
+    # TODO: fix boxlen here
+
     dxhalf = 0.5/nx
+    dyhalf = 0.5/nx
+    dzhalf = 0.5/nx
 
     if ndim == 1:
-        x = np.linspace(dxhalf, 1-dxhalf, nx)
+        x[:,0] = np.linspace(dxhalf, 1-dxhalf, nx)
 
     elif ndim == 2:
         xcoords = np.linspace(dxhalf, 1-dxhalf, nx)
-        ycoords = np.linspace(dxhalf, 1-dxhalf, nx)
-        x,y = np.meshgrid(xcoords, ycoords)
-        x = np.stack((x.ravel(), y.ravel()), axis=1)
+        ycoords = np.linspace(dyhalf, 1-dyhalf, nx)
+        for i in range(nx):
+            start = i*nx
+            stop = (i+1)*nx
+            x[start:stop, 0] = xcoords
+            x[start:stop, 1] = ycoords[i]
+    elif ndim == 3:
+        xcoords = np.linspace(dxhalf, 1-dxhalf, nx)
+        ycoords = np.linspace(dyhalf, 1-dyhalf, nx)
+        zcoords = np.linspace(dzhalf, 1-dzhalf, nx)
+        for j in range(nx):
+            for i in range(nx):
+                start = j*nx**2 + i*nx
+                stop = j*nx**2 + (i+1)*nx
+                x[start:stop, 0] = xcoords
+                x[start:stop, 1] = ycoords[i]
+                x[start:stop, 2] = zcoords[j]
 
     return x
 
@@ -126,18 +174,23 @@ def IC_perturbed_coordinates(nx, ndim = 2, periodic = True):
         x: np.array((nx**ndim, ndim), dtype=float) of coordinates
     """
 
-    x = IC_uniform_coordinates(nx, ndim=ndim, periodic=periodic)
-    maxdelta = 0.3/nx
-    if ndim == 1:
-        for i in range(nx):
-            sign = 1 if np.random.random() < 0.5 else -1
-            x[i] += sign * np.random.random() * maxdelta
-    elif ndim == 2:
-        for i in range(nx**2):
-            sign = 1 if np.random.random() < 0.5 else -1
-            x[i][0] += sign * np.random.random() * maxdelta
-            sign = 1 if np.random.random() < 0.5 else -1
-            x[i][1] += sign * np.random.random() * maxdelta
+    x = IC_uniform_coordinates(nx, ndim=ndim)
+    maxdelta = 0.4/nx
+
+    npart = nx**ndim 
+    amplitude = np.random.uniform(low = 0.0, high = 1.0, size=(npart, ndim)) * maxdelta
+    sign = 2*np.random.randint(0, 2, size = (npart, ndim)) - 1
+
+    x[:,0] += sign[:,0] * amplitude[:,0]
+    if ndim > 1:
+        x[:,1] += sign[:,1] * amplitude[:,1]
+    if ndim > 2:
+        x[:,2] += sign[:,2] * amplitude[:,2]
+
+    # TODO: boxlen = 1 stuff
+    if periodic:
+        x[x>1] -= 1
+        x[x<0] += 1
 
     return x
 
@@ -164,15 +217,13 @@ def IC_sample_coordinates(nx, rho_anal, rho_max=None, ndim = 2):
     print("Sampling particle coordinates.")
 
     npart = nx**ndim
-    x = np.empty((npart, ndim), dtype=np.float)
+    x = np.zeros((npart, 3), dtype=np.float)
     
     if rho_max is None:
+        # find approximate peak value of rho_max
         nc = max(1000, nx)
         xc = IC_uniform_coordinates(nc, ndim=ndim)
-        rho_max = rho_anal(xc).max()
-
-    printstep = int(0.01 * npart / 1000) * 1000
-    printstep = max(printstep, 1000)
+        rho_max = rho_anal(xc).max() * 1.05 # * 1.05: safety measure
 
     keep = 0
     while keep < npart:
@@ -180,11 +231,8 @@ def IC_sample_coordinates(nx, rho_anal, rho_max=None, ndim = 2):
         xr = np.random.uniform(size=(1, ndim))
 
         if np.random.uniform() <= rho_anal(xr)/rho_max:
-            x[keep] = xr
+            x[keep, :ndim] = xr
             keep += 1
-            if keep % printstep == 0:
-                print("{0:8d} / {1:8d}".format(keep, npart))
-
 
     return x
 
@@ -195,7 +243,7 @@ def IC_sample_coordinates(nx, rho_anal, rho_max=None, ndim = 2):
 
 
 
-def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generation_set_params(), x=None, m=None, kernel='cubic spline', periodic=True):
+def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRunParams=IC_set_run_params(), x=None, m=None):
     """
     Generate SPH initial conditions following Arth et al 2019 https://arxiv.org/abs/1907.11250
 
@@ -204,7 +252,7 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
     nx:         How many particles you want in each dimension
     ndim:       How many dimensions we're working with
     eta:        "resolution", that defines number of neighbours
-    icparams:   dict containing IC generation parameters as returned from IC_generation_set_params
+    icRunParams:   dict containing IC generation parameters as returned from IC_generation_set_params
     x:          Initial guess for coordinates of particles. If none, perturbed uniform initial
                 coordinates will be generated.
                 Should be numpy array or None.
@@ -227,12 +275,20 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
     print("Generating initial conditions")
 
 
+    # shortcuts
+    nx = icSimParams['nx']
+    ndim = icSimParams['ndim']
+    periodic = icSimParams['periodic']
+
+
+    if not TREE_AVAILABLE:
+        raise ImportError(
+            "The scipy.spatial.cKDTree class is required to search for smoothing lengths."
+        )
+
     # safety checks
     try:
-        if ndim == 1:
-            res = rho_anal(np.linspace(0,1,10))
-        if ndim == 2:
-            res = rho_anal(np.ones((10,2), dtype='float'))
+        res = rho_anal(np.ones((10,3), dtype='float'))
     except TypeError:
         print("rho_anal must take only a numpy array x of coordinates as an argument.")
         quit()
@@ -255,33 +311,41 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
         nc = max(1000, nx) # use nc cells for mass integration
         dx = 1./nc
         # integrate total mass in box
-        xc = IC_uniform_coordinates(nc, ndim=ndim, periodic=periodic)
+        xc = IC_uniform_coordinates(nc, ndim=ndim)
         rhotot = rho_anal(xc).sum()
         mtot = rhotot * dx**ndim # go from density to mass
 
         m = np.ones(npart, dtype=np.float) * mtot / npart
         print("Assigning particle mass: {0:.3e}".format(mtot/npart))
 
+    if periodic:
+        # this sets up whether the tree build is periodic or not
+        boxsize = icSimParams['boxsize']
+    else:
+        boxsize = None
+
 
 
     delta_r = np.zeros(x.shape, dtype=np.float)
 
-    kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(kernel, ndim)
+    kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(icRunParams['KERNEL'], ndim)
 
     # expected number of neighbours
     if ndim == 1:
-        Nngb = 2 * kernel_gamma * eta
+        Nngb = 2 * kernel_gamma * icRunParams['ETA']
     elif ndim == 2:
-        Nngb = np.pi * (kernel_gamma * eta)**2
+        Nngb = np.pi * (kernel_gamma * icRunParams['ETA'])**2
+    elif ndim == 3:
+        Nngb = 4 / 3 * np.pi * (kernel_gamma * icRunParams['ETA'])**3
 
     MID = 1./npart**(1./ndim) # mean interparticle distance
-    delta_r_norm = icparams['DELTA_INIT'] * MID
-    delta_r_min = icparams['DELTA_MIN'] * MID
+    delta_r_norm = icRunParams['DELTA_INIT'] * MID
+    delta_r_min = icRunParams['DELTA_MIN'] * MID
 
 
-    if icparams['PLOT_AT_REDISTRIBUTION']:
+    if icRunParams['PLOT_AT_REDISTRIBUTION']:
         # drop a first plot
-        h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, eta, 
+        h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, icRunParams['ETA'], 
                     ndim=ndim, periodic=periodic, ncells=None)
         IC_plot_current_situation(True, 0, x, rho, rho_anal, ndim=ndim)
 
@@ -298,21 +362,20 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
         rhoA = rho_anal(x)
 
         # re-distribute particles?
-        if iteration % icparams['REDISTRIBUTE_FREQUENCY'] == 0:
+        if iteration % icRunParams['REDISTRIBUTE_FREQUENCY'] == 0:
 
             # do we need to compute current densities and h's?
-            if icparams['PLOT_AT_REDISTRIBUTION'] or icparams['NO_REDISTRIBUTION_AFTER'] >= iteration:
-                h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, eta, 
-                            kernel=kernel, ndim=ndim, periodic=periodic, ncells=ncells_proper)
+            if icRunParams['PLOT_AT_REDISTRIBUTION'] or icRunParams['NO_REDISTRIBUTION_AFTER'] >= iteration:
+                h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, icRunParams['ETA'], 
+                            kernel=icRunParams['KERNEL'], ndim=ndim, periodic=periodic, ncells=ncells_proper)
 
             # plot the current situation first?
-            if icparams['PLOT_AT_REDISTRIBUTION']:
+            if icRunParams['PLOT_AT_REDISTRIBUTION']:
                 IC_plot_current_situation(True, iteration, x, rho, rho_anal, ndim=ndim)
             
             # re-destribute a handful of particles
-            if icparams['NO_REDISTRIBUTION_AFTER'] >= iteration:
-                x = redistribute_particles(x, h, rho, rhoA, iteration, icparams=icparams,
-                            kernel=kernel, ndim=ndim, periodic=periodic)
+            if icRunParams['NO_REDISTRIBUTION_AFTER'] >= iteration:
+                x = redistribute_particles(x, h, rho, rhoA, iteration, icRunParams=icRunParams)
 
 
         # compute MODEL smoothing lengths
@@ -323,9 +386,13 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
             hmodel = np.abs(0.5 * Nngb * oneoverrho / oneoverrhosum)
         elif ndim == 2:
             hmodel = np.sqrt(Nngb / np.pi * oneoverrho / oneoverrhosum)
+        elif ndim == 3:
+            hmodel = np.sqrt(Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum)
 
-        # build grid
-        grid, ncells =  build_grid(x, m, eta, kernel=kernel, ndim=ndim, periodic=periodic, verbose=False, ncells=ncells)
+        # build tree
+        #  tree = KDTree(coordinates.value, boxsize=boxsize.to(coordinates.units).value)
+        tree = KDTree(x[:,:ndim], boxsize=boxsize)
+        grid, ncells =  build_grid(x, m, icRunParams['ETA'], kernel=icRunParams['KERNEL'], ndim=ndim, periodic=periodic, verbose=False, ncells=ncells)
 
         # get list of particle neighbours and distances
         neighbours = [[] for p in range(npart)]
@@ -344,22 +411,19 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
 
             # now loop over every particle in this cell
             for p in c.parts:
-                if ndim == 1:
-                    rp = xn - x[p]
-                    if (periodic):
-                        rp[r>0.5] -= 1
-                        rp[r<-0.5] += 1
-                    r2 = np.abs(r)
-                elif ndim == 2:
-                    dx = xn[:,0] - x[p,0]
-                    if (periodic):
-                        dx[dx>0.5] -= 1
-                        dx[dx<-0.5] += 1
-                    dy = xn[:,1] - x[p,1]
-                    if (periodic):
-                        dy[dy>0.5] -= 1
-                        dy[dy<-0.5] += 1
-                    r2 = dx**2 + dy**2
+                dx = xn[:,0] - x[p,0]
+                if (periodic):
+                    dx[dx>0.5] -= 1
+                    dx[dx<-0.5] += 1
+                dy = xn[:,1] - x[p,1]
+                if (periodic):
+                    dy[dy>0.5] -= 1
+                    dy[dy<-0.5] += 1
+                dz = xn[:,2] - x[p,2]
+                if (periodic):
+                    dz[dz>0.5] -= 1
+                    dz[dz<-0.5] += 1
+                r2 = dx**2 + dy**2 + dz**2
 
 
                 for n, N in enumerate(allparts):
@@ -403,7 +467,7 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
             x[x<0.] -= delta_r[x<0.]
 
         # reduce delta_r_norm
-        delta_r_norm *= icparams['DELTA_REDUCTION_FACTOR']
+        delta_r_norm *= icRunParams['DELTA_REDUCTION_FACTOR']
         delta_r_norm = max(delta_r_norm, delta_r_min)
 
 
@@ -421,21 +485,21 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
         print("Iteration {0:4d}; Displacement [mean interpart dist] Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
                 iteration, min_deviation, av_deviation, max_deviation))
 
-        if max_deviation < icparams['DISPLACEMENT_THRESHOLD']: # don't think about stopping until max < threshold
-            unconverged = dev[dev > icparams['CONVERGENCE_THRESHOLD']].shape[0]
-            if unconverged < icparams['TOLERANCE_PART'] * npart:
+        if max_deviation < icRunParams['DISPLACEMENT_THRESHOLD']: # don't think about stopping until max < threshold
+            unconverged = dev[dev > icRunParams['CONVERGENCE_THRESHOLD']].shape[0]
+            if unconverged < icRunParams['TOLERANCE_PART'] * npart:
                 print("Convergence criteria are met.")
                 break
 
 
-        if iteration == icparams['ITER_MAX']:
+        if iteration == icRunParams['ITER_MAX']:
             print("Reached max number of iterations without converging. Returning.")
             break
 
 
     print("Happy?")
-    h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, eta, 
-                kernel=kernel, ndim=ndim, periodic=periodic, ncells=ncells_proper)
+    h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, icRunParams['ETA'], 
+                kernel=icRunParams['KERNEL'], ndim=ndim, periodic=periodic, ncells=ncells_proper)
     IC_plot_current_situation(False, iteration, x, rho, rho_anal, ndim=ndim)
 
 
@@ -447,7 +511,7 @@ def generate_IC_for_given_density(rho_anal, nx, ndim, eta, icparams=IC_generatio
 
 
 
-def redistribute_particles(x, h, rho, rhoA, iteration, icparams=IC_generation_set_params(), kernel='cubic spline', ndim = 2, periodic = True):
+def redistribute_particles(x, h, rho, rhoA, iteration, icRunParams=IC_set_run_params(), icSimParams=IC_set_IC_params()):
     """
     Every few steps, manually displace underdense particles into areas of overdense particles
 
@@ -456,7 +520,7 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icparams=IC_generation_se
         rho:        particle densities
         rhoA:       analytical (wanted) density at the particle positions
         iteration:  current iteration of the particle displacement
-        icparams:   dict containing IC generation parameters as returned from IC_generation_set_params
+        icRunParams:   dict containing IC generation parameters as returned from IC_generation_set_params
         kernel:     which kernel to use
         ndim:       number of dimensions
         periodic:   whether the gig is periodic
@@ -470,14 +534,14 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icparams=IC_generation_se
 
     # decrease how many particles you move as number of iterations increases
     npart = x.shape[0]
-    to_move = int(npart * icparams['REDISTRIBUTE_FRACTION'] * (1. - (iteration/icparams['NO_REDISTRIBUTION_AFTER'])**3))
+    to_move = int(npart * icRunParams['REDISTRIBUTE_FRACTION'] * (1. - (iteration/icRunParams['NO_REDISTRIBUTION_AFTER'])**3))
     to_move = max(to_move, 0.)
 
     if to_move == 0:
         return x
 
 
-    kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(kernel, ndim)
+    kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(icRunParams['KERNEL'], icSimParams['ndim'])
 
 
     underdense = rho < rhoA                     # is this underdense particle?
@@ -517,7 +581,7 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icparams=IC_generation_se
                 if np.random.uniform() < uthresh:
                     # we have a match!
                     # compute displacement for overdense particle
-                    dx = np.zeros(ndim, dtype=np.float)
+                    dx = np.zeros(3, dtype=np.float)
                     H = kernel_gamma * h[uind]
                     for i in range(dx.shape[0]):
                         sign = 1 if np.random.random() < 0.5 else -1
@@ -532,7 +596,7 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icparams=IC_generation_se
 
 
     # check boundary conditions
-    if periodic:
+    if icSimParams['periodic']:
         x[x>1.0] -= 1.0
         x[x<0.] += 1.0
     else:
