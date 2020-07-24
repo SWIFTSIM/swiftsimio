@@ -13,7 +13,6 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import stats
 
-from .IC_grid import compute_smoothing_lengths, build_grid
 from .IC_kernel import get_kernel_data
 
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
@@ -326,8 +325,6 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
 
 
 
-    delta_r = np.zeros(x.shape, dtype=np.float)
-
     kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(icRunParams['KERNEL'], ndim)
 
     # expected number of neighbours
@@ -338,22 +335,32 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
     elif ndim == 3:
         Nngb = 4 / 3 * np.pi * (kernel_gamma * icRunParams['ETA'])**3
 
+    # round it up for cKDTree
+    Nngb_int = int(Nngb + 0.5)
+
     MID = 1./npart**(1./ndim) # mean interparticle distance
     delta_r_norm = icRunParams['DELTA_INIT'] * MID
     delta_r_min = icRunParams['DELTA_MIN'] * MID
 
+    # empty arrays
+    delta_r = np.zeros(x.shape, dtype=np.float)
+    rho = np.zeros(npart, dtype=np.float)
+    h = np.zeros(npart, dtype=np.float)
 
     if icRunParams['PLOT_AT_REDISTRIBUTION']:
         # drop a first plot
-        h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, icRunParams['ETA'], 
-                    ndim=ndim, periodic=periodic, ncells=None)
+        tree = KDTree(x[:,:ndim], boxsize=boxsize)
+        for p in range(npart):
+            dist, neighs = tree.query(x[p, :ndim], k=Nngb_int)
+            h[p] = dist[-1] / kernel_gamma
+            W = kernel_func(dist, dist[-1])
+            rho[p] = (W * m[neighs]).sum()
         IC_plot_current_situation(True, 0, x, rho, rho_anal, ndim=ndim)
 
 
     # start iteration loop
     iteration = 0
-    ncells = None
-    ncells_proper = None
+
     while True:
 
         iteration += 1
@@ -361,13 +368,23 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
         # get analytical density at particle positions
         rhoA = rho_anal(x)
 
+        # reset displacements
+        delta_r.fill(0.)
+
         # re-distribute particles?
         if iteration % icRunParams['REDISTRIBUTE_FREQUENCY'] == 0:
 
             # do we need to compute current densities and h's?
             if icRunParams['PLOT_AT_REDISTRIBUTION'] or icRunParams['NO_REDISTRIBUTION_AFTER'] >= iteration:
-                h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, icRunParams['ETA'], 
-                            kernel=icRunParams['KERNEL'], ndim=ndim, periodic=periodic, ncells=ncells_proper)
+
+                # TODO: move this inside redistribute_particles?
+                # first build new tree
+                tree = KDTree(x[:,:ndim], boxsize=boxsize)
+                for p in range(npart):
+                    dist, neighs = tree.query(x[p, :ndim], k=Nngb_int)
+                    h[p] = dist[-1] / kernel_gamma
+                    W = kernel_func(dist, dist[-1])
+                    rho[p] = (W * m[neighs]).sum()
 
             # plot the current situation first?
             if icRunParams['PLOT_AT_REDISTRIBUTION']:
@@ -387,82 +404,43 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
         elif ndim == 2:
             hmodel = np.sqrt(Nngb / np.pi * oneoverrho / oneoverrhosum)
         elif ndim == 3:
-            hmodel = np.sqrt(Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum)
+            hmodel = np.cbrt(Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum)
 
         # build tree
         #  tree = KDTree(coordinates.value, boxsize=boxsize.to(coordinates.units).value)
         tree = KDTree(x[:,:ndim], boxsize=boxsize)
-        grid, ncells =  build_grid(x, m, icRunParams['ETA'], kernel=icRunParams['KERNEL'], ndim=ndim, periodic=periodic, verbose=False, ncells=ncells)
-
-        # get list of particle neighbours and distances
-        neighbours = [[] for p in range(npart)]
-        r = [[] for p in range(npart)]
-
-        for c in grid:
-            # get all neighbour CELLS of CELL c
-            nbrs = c.get_neighbours(ncells, ndim, periodic=periodic)
-            # get all particles in this neighbourhood
-            allparts = []
-            for n in nbrs:
-                allparts += grid[n].parts
-
-            # get all neighbour particle positions and masses 
-            xn = x[allparts]
-
-            # now loop over every particle in this cell
-            for p in c.parts:
-                dx = xn[:,0] - x[p,0]
-                if (periodic):
-                    dx[dx>0.5] -= 1
-                    dx[dx<-0.5] += 1
-                dy = xn[:,1] - x[p,1]
-                if (periodic):
-                    dy[dy>0.5] -= 1
-                    dy[dy<-0.5] += 1
-                dz = xn[:,2] - x[p,2]
-                if (periodic):
-                    dz[dz>0.5] -= 1
-                    dz[dz<-0.5] += 1
-                r2 = dx**2 + dy**2 + dz**2
-
-
-                for n, N in enumerate(allparts):
-                    if N == p: # skip yourself
-                        continue
-                    if hmodel[p]**2 > r2[n]:
-                        neighbours[p].append(N)
-                        r[p].append(np.sqrt(r2[n]))
- 
-        # get the actual displacements and densities
         for p in range(npart):
-
-            dx = x[neighbours[p]] - x[p]
+            dist, neighs = tree.query(x[p, :ndim], k=Nngb_int)
+            dx = x[p] - x[neighs]
             if periodic:
+                # TODO: boxlen stuff
                 dx[dx > 0.5] -= 1.
                 dx[dx < -0.5] += 1.
-
-            for n,N in enumerate(neighbours[p]):
-                hij = (hmodel[p] + hmodel[N]) * 0.5 
-                Wij = kernel_func(r[p][n], hij)
-                delta_r[p] += hij* Wij / r[p][n] * dx[n]
-                #  rho[p] += Wij * m[N]
+            for n in range(1, len(neighs)): # skip 0: this is particle itself
+                Nind = neighs[n]
+                hij = (hmodel[p] + hmodel[Nind]) * 0.5
+                Wij = kernel_func(dist[n], hij)
+                delta_r[p] += hij* Wij / dist[n] * dx[n]
 
 
         # finally, displace particles
-        delta_r *= -delta_r_norm
+        delta_r *= delta_r_norm
         x += delta_r
 
         # check whether something's out of bounds
         if periodic:
+            # TODO: boxlen != 1
             xmax = 2.
-            xmin = -1.
-            while xmax > 1. or xmin < 0.:
+            while xmax > 1.:
                 x[x>1.0] -= 1.0
-                x[x<0.] += 1.0
                 xmax = x.max()
+            xmin = -1.
+            while xmin < 0.:
+                x[x<0.] += 1.0
                 xmin = x.min()
         else:
             # leave it where it was
+            # TODO: boxlen != 1
             x[x>1.0] -= delta_r[x>1.0]
             x[x<0.] -= delta_r[x<0.]
 
@@ -471,10 +449,7 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
         delta_r_norm = max(delta_r_norm, delta_r_min)
 
 
-        if ndim == 1:
-            dev = np.abs(delta_r)
-        elif ndim == 2:
-            dev = np.sqrt(delta_r[:,0]**2 + delta_r[:,1]**2)
+        dev = np.sqrt(delta_r[:,0]**2 + delta_r[:,1]**2 + delta_r[:,2]**2)
 
         dev /= MID # get deviation in units of mean interparticle distance
 
@@ -495,12 +470,6 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
         if iteration == icRunParams['ITER_MAX']:
             print("Reached max number of iterations without converging. Returning.")
             break
-
-
-    print("Happy?")
-    h, rho, _, ncells_proper, _ = compute_smoothing_lengths(x, m, icRunParams['ETA'], 
-                kernel=icRunParams['KERNEL'], ndim=ndim, periodic=periodic, ncells=ncells_proper)
-    IC_plot_current_situation(False, iteration, x, rho, rho_anal, ndim=ndim)
 
 
     return x, m, rho, h
@@ -543,7 +512,6 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icRunParams=IC_set_run_pa
 
     kernel_func, kernel_derivative, kernel_gamma = get_kernel_data(icRunParams['KERNEL'], icSimParams['ndim'])
 
-
     underdense = rho < rhoA                     # is this underdense particle?
     overdense = rho > rhoA                      # is this overdense particle?
     touched = np.zeros(npart, dtype=np.bool)    # has this particle been touched as target or as to be moved?
@@ -551,16 +519,15 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icRunParams=IC_set_run_pa
 
     moved = 0
 
-    xover = x[overdense]
-    xunder = x[underdense]
+    nover = overdense[overdense].shape[0]
+    nunder = underdense[underdense].shape[0]
     while moved < to_move:
 
-        o = np.random.randint(0, xover.shape[0])
-
-        oind = indices[overdense][o]
+        # pick an overdense random particle
+        oind = indices[overdense][np.random.randint(0, nover)]
         if touched[oind]: continue # skip touched particles
 
-        # pick an overdense random particle
+        # do we work with it?
         othresh = (rho[oind] - rhoA[oind])/rho[oind]
         othresh = erf(othresh)
         if np.random.uniform() < othresh:
@@ -569,9 +536,9 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icRunParams=IC_set_run_pa
             while True:
 
                 attempts += 1
-                if attempts == xunder.shape[0]: break # emergency halt
+                if attempts == nunder: break # emergency halt
             
-                u = np.random.randint(0,xunder.shape[0])
+                u = np.random.randint(0, nunder)
                 uind = indices[underdense][u]
 
                 if touched[uind]: continue # skip touched particles
