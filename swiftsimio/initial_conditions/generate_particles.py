@@ -8,6 +8,7 @@ Generate particle initial conditions that follow some density function.
 
 
 import numpy as np
+import unyt
 from math import erf
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -22,7 +23,7 @@ np.random.seed(666)
 
 
 def IC_set_IC_params(
-            boxsize     = [1, 1], 
+            boxsize     = unyt.unyt_array([1., 1., 1.], "cm"),
             periodic    = True,
             nx          = 100,
             ndim        = 2
@@ -224,6 +225,8 @@ def IC_sample_coordinates(nx, rho_anal, rho_max=None, ndim = 2):
         xc = IC_uniform_coordinates(nc, ndim=ndim)
         rho_max = rho_anal(xc).max() * 1.05 # * 1.05: safety measure
 
+    # TODO: Boxsizes here!
+
     keep = 0
     while keep < npart:
         
@@ -319,9 +322,9 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
 
     if periodic:
         # this sets up whether the tree build is periodic or not
-        boxsize = icSimParams['boxsize']
+        boxsizeForTree = icSimParams['boxsize'].value[:ndim]
     else:
-        boxsize = None
+        boxsizeForTree = None
 
 
 
@@ -349,7 +352,7 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
 
     if icRunParams['PLOT_AT_REDISTRIBUTION']:
         # drop a first plot
-        tree = KDTree(x[:,:ndim], boxsize=boxsize)
+        tree = KDTree(x[:,:ndim], boxsize=boxsizeForTree)
         for p in range(npart):
             dist, neighs = tree.query(x[p, :ndim], k=Nngb_int)
             h[p] = dist[-1] / kernel_gamma
@@ -379,7 +382,7 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
 
                 # TODO: move this inside redistribute_particles?
                 # first build new tree
-                tree = KDTree(x[:,:ndim], boxsize=boxsize)
+                tree = KDTree(x[:,:ndim], boxsize=boxsizeForTree)
                 for p in range(npart):
                     dist, neighs = tree.query(x[p, :ndim], k=Nngb_int)
                     h[p] = dist[-1] / kernel_gamma
@@ -408,7 +411,7 @@ def generate_IC_for_given_density(rho_anal, icSimParams=IC_set_IC_params(), icRu
 
         # build tree
         #  tree = KDTree(coordinates.value, boxsize=boxsize.to(coordinates.units).value)
-        tree = KDTree(x[:,:ndim], boxsize=boxsize)
+        tree = KDTree(x[:,:ndim], boxsize=boxsizeForTree)
         for p in range(npart):
             dist, neighs = tree.query(x[p, :ndim], k=Nngb_int)
             dx = x[p] - x[neighs]
@@ -697,6 +700,3 @@ def IC_plot_current_situation(save, iteration, x, rho, rho_anal, ndim=2):
     plt.close()
     
     return
-
-
-
