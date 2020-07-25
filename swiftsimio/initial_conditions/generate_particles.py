@@ -8,7 +8,7 @@ Generate particle initial conditions that follow some density function.
 
 
 import numpy as np
-import unyt
+from unyt import unyt_array
 from math import erf
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -23,10 +23,11 @@ np.random.seed(666)
 
 
 def IC_set_IC_params(
-            boxsize     = unyt.unyt_array([1., 1., 1.], "cm"),
+            boxsize     = unyt_array([1., 1., 1.], "cm"),
             periodic    = True,
             nx          = 100,
-            ndim        = 2
+            ndim        = 2,
+            coordinate_units = None
         ):
     """
     Change the initial conditions parameters.
@@ -42,6 +43,10 @@ def IC_set_IC_params(
     icSimParams['periodic'] = periodic
     icSimParams['nx'] = nx
     icSimParams['ndim'] = ndim
+    if coordinate_units is None:
+        icSimParams['units'] = boxsize.units
+    else:
+        isCimParams['units'] = coordinate_units
 
     return icSimParams
 
@@ -112,7 +117,7 @@ def IC_set_run_params(
 
 
 
-def IC_uniform_coordinates(nx, ndim = 2, boxsize = [1, 1]):
+def IC_uniform_coordinates(icSimParams=IC_set_IC_params()):
     """
     Get the coordinates for a uniform particle distribution.
     nx:         number of particles in each dimension
@@ -122,30 +127,33 @@ def IC_uniform_coordinates(nx, ndim = 2, boxsize = [1, 1]):
         x: np.array((nx**ndim, 3), dtype=float) of coordinates
     """
 
+    nx = icSimParams['nx']
+    boxsize = icSimParams['boxsize']
+    ndim = icSimParams['ndim']
+
     npart = nx**ndim
-    x = np.zeros((npart, 3), dtype=np.float)
+    x = unyt_array(np.zeros((npart, 3), dtype=np.float), boxsize.units)
 
-    # TODO: fix boxlen here
-
-    dxhalf = 0.5/nx
-    dyhalf = 0.5/nx
-    dzhalf = 0.5/nx
+    dxhalf = 0.5 * boxsize[0]/nx
+    dyhalf = 0.5 * boxsize[1]/nx
+    dzhalf = 0.5 * boxsize[2]/nx
 
     if ndim == 1:
-        x[:,0] = np.linspace(dxhalf, 1-dxhalf, nx)
+        x[:,0] = np.linspace(dxhalf, boxsize[0]-dxhalf, nx)
 
     elif ndim == 2:
-        xcoords = np.linspace(dxhalf, 1-dxhalf, nx)
-        ycoords = np.linspace(dyhalf, 1-dyhalf, nx)
+        xcoords = np.linspace(dxhalf, boxsize[0]-dxhalf, nx)
+        ycoords = np.linspace(dyhalf, boxsize[1]-dyhalf, nx)
         for i in range(nx):
             start = i*nx
             stop = (i+1)*nx
             x[start:stop, 0] = xcoords
             x[start:stop, 1] = ycoords[i]
+
     elif ndim == 3:
-        xcoords = np.linspace(dxhalf, 1-dxhalf, nx)
-        ycoords = np.linspace(dyhalf, 1-dyhalf, nx)
-        zcoords = np.linspace(dzhalf, 1-dzhalf, nx)
+        xcoords = np.linspace(dxhalf, boxsize[0]-dxhalf, nx)
+        ycoords = np.linspace(dyhalf, boxsize[1]-dyhalf, nx)
+        zcoords = np.linspace(dzhalf, boxsize[2]-dzhalf, nx)
         for j in range(nx):
             for i in range(nx):
                 start = j*nx**2 + i*nx
@@ -160,7 +168,7 @@ def IC_uniform_coordinates(nx, ndim = 2, boxsize = [1, 1]):
 
 
 
-def IC_perturbed_coordinates(nx, ndim = 2, periodic = True):
+def IC_perturbed_coordinates(icSimParams):
     """
     Get the coordinates for a perturbed uniform particle distribution.
     The perturbation won't exceed the half interparticle distance
@@ -174,23 +182,53 @@ def IC_perturbed_coordinates(nx, ndim = 2, periodic = True):
         x: np.array((nx**ndim, ndim), dtype=float) of coordinates
     """
 
-    x = IC_uniform_coordinates(nx, ndim=ndim)
-    maxdelta = 0.4/nx
-
+    nx = icSimParams['nx']
+    boxsize = icSimParams['boxsize']
+    ndim = icSimParams['ndim']
+    periodic = icSimParams['periodic']
     npart = nx**ndim 
-    amplitude = np.random.uniform(low = 0.0, high = 1.0, size=(npart, ndim)) * maxdelta
-    sign = 2*np.random.randint(0, 2, size = (npart, ndim)) - 1
+    maxdelta = 0.4*np.mean(boxsize)/nx # maximal deviation from uniform grid of any particle along an axis
 
-    x[:,0] += sign[:,0] * amplitude[:,0]
-    if ndim > 1:
-        x[:,1] += sign[:,1] * amplitude[:,1]
-    if ndim > 2:
-        x[:,2] += sign[:,2] * amplitude[:,2]
+    x = IC_uniform_coordinates(icSimParams) # generate uniform grid first
 
-    # TODO: boxlen = 1 stuff
-    if periodic:
-        x[x>1] -= 1
-        x[x<0] += 1
+    for d in range(ndim):
+        sign = 2*np.random.randint(0, 2, size=npart) - 1 # get +1 or -1
+        amplitude = unyt_array(np.random.uniform(low = 0.0, high = boxsize[d], size=npart)*maxdelta, x.units)
+        x[:,d] += sign * amplitude
+
+        if periodic: # correct where necessary
+            over = x[:,d] > boxsize[d]
+            x[over, d] -= boxsize[d]
+            under = x[:,d] < 0.
+            x[under] += boxsize[d]
+        else:
+            # get new random numbers where necessary
+            xmax = x[:,d].max()
+            xmin = x[:,d].min()
+            sign_redo = None
+            amplitude_redo = None
+            while xmax > boxsize[d] or xmin < 0.:
+                
+                over = x[:,d] > boxsize[d]
+                under = x[:,d] < 0.
+                redo = np.logical_or(over, under)
+
+                if sign_red is None:
+                    # for first iteration, get arrays in proper shape
+                    sign_redo = sign[redo]
+                    amplitude_redo = amplitude[redo]
+
+                # first restore previous state
+                x[redo,d] -= sign_redo * amplitude_redo
+
+                # then get new guesses, but only where necessary
+                nredo = x[redo,d].shape[0]
+                sign = 2*np.random.randint(0, 2, size=nredo) - 1 # get +1 or -1
+                amplitude = unyt_array(np.random.uniform(low = 0.0, high = boxsize[d], size=nredo)*maxdelta, x.units)
+                x[redo,d] += sign_redo * amplitude_redo
+
+                xmax = x[:,d].max()
+                xmin = x[:,d].min()
 
     return x
 
@@ -199,7 +237,7 @@ def IC_perturbed_coordinates(nx, ndim = 2, periodic = True):
 
 
 
-def IC_sample_coordinates(nx, rho_anal, rho_max=None, ndim = 2):
+def IC_sample_coordinates(icSimParams, rho_anal, rho_max = None):
     """
     Randomly sample the density to get initial coordinates    
 
@@ -214,26 +252,29 @@ def IC_sample_coordinates(nx, rho_anal, rho_max=None, ndim = 2):
         x: np.array((nx**ndim, ndim), dtype=float) of coordinates
     """
 
-    print("Sampling particle coordinates.")
+    nx = icSimParams['nx']
+    boxsize = icSimParams['boxsize']
+    ndim = icSimParams['ndim']
+    periodic = icSimParams['periodic']
+    npart = nx**ndim 
 
-    npart = nx**ndim
-    x = np.zeros((npart, 3), dtype=np.float)
-    
+    x = unyt_array(np.empty((npart, 3), dtype=np.float), boxsize.units)
+ 
     if rho_max is None:
         # find approximate peak value of rho_max
-        nc = max(1000, nx)
-        xc = IC_uniform_coordinates(nc, ndim=ndim)
-        rho_max = rho_anal(xc).max() * 1.05 # * 1.05: safety measure
-
-    # TODO: Boxsizes here!
+        nc = 200 # don't cause memory errors with too big of a grid
+        xc = IC_uniform_coordinates(IC_set_IC_params(boxsize=boxsize, periodic=periodic, nx=nc, ndim=ndim))
+        rho_max = rho_anal(xc).max() * 1.05 # * 1.05: safety measure to make sure you're always above the analytical value
 
     keep = 0
     while keep < npart:
         
-        xr = np.random.uniform(size=(1, ndim))
+        xr = unyt_array(np.zeros((1, 3), dtype=np.float), boxsize.units)
+        for d in range(ndim):
+            xr[0,d] = np.random.uniform(low=0.0, high=boxsize[d])
 
         if np.random.uniform() <= rho_anal(xr)/rho_max:
-            x[keep, :ndim] = xr
+            x[keep] = xr
             keep += 1
 
     return x
@@ -578,8 +619,9 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icRunParams=IC_set_run_pa
 
     print("Moved", moved, " / ", to_move, " total:", npart)
 
+    coords = x.to_units(icSimParams['units'])
 
-    return x
+    return coords
 
 
 
