@@ -92,34 +92,23 @@ def dWdr_cubic_spline(r: np.ndarray, H: Union[float, np.ndarray]):
 
 
 # dictionary "pointing" to the correct functions to call
-kernel_funcs = {}
-kernel_funcs["cubic spline"] = W_cubic_spline
+kernel_funcs = {"cubic spline": W_cubic_spline}
 
-kernel_derivatives = {}
-kernel_derivatives["cubic spline"] = dWdr_cubic_spline
-
+kernel_derivatives = {"cubic spline": dWdr_cubic_spline}
 
 # Constants are from Dehnen & Aly 2012
 
-kernel_gamma_1D = {}
-kernel_gamma_1D["cubic spline"] = 1.732051
+kernel_gamma_1D = {"cubic spline": 1.732051}
 
-kernel_norm_1D = {}
-kernel_norm_1D["cubic spline"] = 2.666667
+kernel_norm_1D = {"cubic spline": 2.666667}
 
+kernel_gamma_2D = {"cubic spline": 1.778002}
 
-kernel_gamma_2D = {}
-kernel_gamma_2D["cubic spline"] = 1.778002
+kernel_norm_2D = {"cubic spline": 3.637827}
 
-kernel_norm_2D = {}
-kernel_norm_2D["cubic spline"] = 3.637827
+kernel_gamma_3D = {"cubic spline": 1.825742}
 
-
-kernel_gamma_3D = {}
-kernel_gamma_3D["cubic spline"] = 1.825742
-
-kernel_norm_3D = {}
-kernel_norm_3D["cubic spline"] = 5.092958
+kernel_norm_3D = {"cubic spline": 5.092958}
 
 
 def get_kernel_data(kernel: str, ndim: int):

@@ -1,5 +1,5 @@
-"""
-Generate SPH initial conditions for SPH simulations iteratively for a given density function following Arth et al. 2019 (https://arxiv.org/abs/1907.11250).
+"""Generate SPH initial conditions for SPH simulations iteratively for a given density function following Arth et al.
+2019 (https://arxiv.org/abs/1907.11250).
 
 """
 
@@ -12,13 +12,9 @@ import numpy as np
 import unyt
 from unyt import unyt_array
 from math import erf
-from matplotlib import pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from scipy import stats
 from typing import Union
 
 from .IC_kernel import get_kernel_data
-
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 
 
@@ -300,7 +296,7 @@ def IC_perturbed_coordinates(icSimParams: dict):
                 under = x[:, d] < 0.0
                 redo = np.logical_or(over, under)
 
-                if sign_red is None:
+                if sign_redo is None:
                     # for first iteration, get arrays in proper shape
                     sign_redo = sign[redo]
                     amplitude_redo = amplitude[redo]
@@ -518,6 +514,7 @@ def generate_IC_for_given_density(
     delta_r = np.zeros(x.shape, dtype=np.float)
     rho = np.zeros(npart, dtype=np.float)
     h = np.zeros(npart, dtype=np.float)
+    hmodel = np.zeros(npart, dtype=np.float)
 
     # use unitless arrays from this point on
     x_nounit = x.value
@@ -865,6 +862,9 @@ def IC_plot_current_situation(
 
     + For debugging/checking purposes only, not meant to be called.
     """
+    from matplotlib import pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    from scipy import stats
 
     boxsize = icSimParams["boxsizeToUse"]
     ndim = icSimParams["ndim"]
