@@ -94,7 +94,7 @@ def IC_set_run_params(
     convergence_threshold: float = 1e-3,
     tolerance_part: float = 1e-2,
     displacement_threshold: float = 1e-2,
-    delta_init: Union[float, None] = 0.1,
+    delta_init: Union[float, None] = None,
     delta_reduction_factor: float = 1.0,
     delta_min: float = 1e-4,
     redistribute_frequency: int = 20,
@@ -129,11 +129,11 @@ def IC_set_run_params(
         iteration halt criterion: Don't stop until every particle is displaced 
         by distance < threshold * mean interparticle distance
 
-    delta_init : float or None, optional
+    delta_init: float or None, optional
         initial normalization constant for particle motion in units of mean 
-        interparticle distance. If None (default), delta_init will be set such 
-        that the maximal displacement found in the first iteration is normalized
-        to 1 mean interparticle distance.
+        interparticle distance. If ``None`` (default), delta_init will be set 
+        such that the maximal displacement found in the first iteration is 
+        normalized to 1 mean interparticle distance.
 
     delta_reduction_factor: float, optional
         multiply the normalization constant for particle motion by this factor 
@@ -483,11 +483,11 @@ def generate_IC_for_given_density(
         dict containing particle motion statistics of the last iteration:
 
         - ``stats['min_motion']``: The smallest displacement a particle 
-          experienced
+          experienced in units of mean interparticle distance
         - ``stats['avg_motion']``: The average displacement particles 
-          experienced
+          experienced in units of mean interparticle distance
         - ``stats['max_motion']``: The maximal displacement a particle 
-          experienced
+          experienced in units of mean interparticle distance
         - ``stats['niter']``: Number of iterations performed
     """
 
@@ -515,7 +515,12 @@ def generate_IC_for_given_density(
     boxsize = icSimParams["boxsizeToUse"]
     npart = nx ** ndim
     MID = np.mean(boxsize.value) / nx  # mean interparticle distance
-    delta_r_norm = icRunParams["DELTA_INIT"] * MID
+    if icRunParams["DELTA_INIT"] is None:
+        compute_delta_norm = True
+        delta_r_norm = MID
+    else:
+        compute_delta_norm = False
+        delta_r_norm = icRunParams["DELTA_INIT"] * MID
     delta_r_min = icRunParams["DELTA_MIN"] * MID
     if periodic:  #  this sets up whether the tree build is periodic or not
         boxsizeForTree = boxsize.value[:ndim]
@@ -579,7 +584,7 @@ def generate_IC_for_given_density(
             h[p] = dist[-1] / kernel_gamma
             W = kernel_func(dist, dist[-1])
             rho[p] = (W * m[neighs]).sum()
-        IC_plot_current_situation(True, 0, x_nounit, rho, rho_anal, icSimParams)
+        _plot_current_situation(True, 0, x_nounit, rho, rho_anal, icSimParams)
 
     # start iteration loop
     iteration = 0
@@ -612,7 +617,7 @@ def generate_IC_for_given_density(
 
                 #  plot the current situation first?
                 if icRunParams["PLOT_AT_REDISTRIBUTION"]:
-                    IC_plot_current_situation(
+                    _plot_current_situation(
                         True, iteration, x_nounit, rho, rho_anal, icSimParams
                     )
 
@@ -660,9 +665,18 @@ def generate_IC_for_given_density(
                 Wij = kernel_func(dist[n], hij)
                 delta_r[p] += hij * Wij / dist[n] * dx[n]
 
+        if compute_delta_norm:
+            # set initial delta_norm such that max displacement is 1 mean interparticle distance
+            delrsq = np.zeros(npart, dtype=np.float)
+            for d in range(ndim):
+                delrsq += delta_r[:, d] ** 2
+            delrsq = np.sqrt(delrsq)
+            delta_r_norm = MID / delrsq.max()
+            compute_delta_norm = False
+
         # finally, displace particles
-        delta_r *= delta_r_norm
-        x_nounit += delta_r
+        delta_r[:, :ndim] *= delta_r_norm
+        x_nounit[:, :ndim] += delta_r[:, :ndim]
 
         # check whether something's out of bounds
         if periodic:
@@ -690,10 +704,14 @@ def generate_IC_for_given_density(
 
         # reduce delta_r_norm
         delta_r_norm *= icRunParams["DELTA_REDUCTION_FACTOR"]
+        # assert minimal delta_r
         delta_r_norm = max(delta_r_norm, delta_r_min)
 
-        # get deviation in units of mean interparticle distance
-        dev = np.sqrt(delta_r[:, 0] ** 2 + delta_r[:, 1] ** 2 + delta_r[:, 2] ** 2)
+        # get displacements in units of mean interparticle distance
+        dev = np.zeros(npart, dtype=np.float)
+        for d in range(ndim):
+            dev += delta_r[:, d] ** 2
+        dev = np.sqrt(dev)
         dev /= MID
 
         max_deviation = dev.max()
@@ -877,7 +895,7 @@ def redistribute_particles(
     return x, indices[touched]
 
 
-def IC_plot_current_situation(
+def _plot_current_situation(
     save: bool,
     iteration: int,
     x: np.ndarray,
