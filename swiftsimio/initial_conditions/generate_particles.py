@@ -80,10 +80,10 @@ def IC_set_IC_params(
     icSimParams["ndim"] = ndim
     if unit_l is None:
         icSimParams["unit_l"] = boxsize.units
-        icSimParams["boxsizeToUse"] = boxsize
+        icSimParams["boxsizeToUse"] = boxsize.value  # use only np.array
     else:
         icSimParams["unit_l"] = unit_l
-        icSimParams["boxsizeToUse"] = boxsize.to(unit_l)
+        icSimParams["boxsizeToUse"] = boxsize.to(unit_l).value
     icSimParams["unit_m"] = unit_m
 
     return icSimParams
@@ -235,7 +235,7 @@ def IC_uniform_coordinates(icSimParams: dict):
     ndim = icSimParams["ndim"]
 
     npart = nx ** ndim
-    x = unyt_array(np.zeros((npart, 3), dtype=np.float), boxsize.units)
+    x = unyt_array(np.zeros((npart, 3), dtype=np.float), icSimParams["unit_l"])
 
     dxhalf = 0.5 * boxsize[0] / nx
     dyhalf = 0.5 * boxsize[1] / nx
@@ -400,14 +400,16 @@ def IC_sample_coordinates(
         # find approximate peak value of rho_max
         nc = 200  # don't cause memory errors with too big of a grid. Also don't worry too much about accuracy.
         xc = IC_uniform_coordinates(
-            IC_set_IC_params(boxsize=boxsize, periodic=periodic, nx=nc, ndim=ndim)
+            IC_set_IC_params(
+                boxsize=icSimParams["boxsize"], periodic=periodic, nx=nc, ndim=ndim
+            )
         )
         rho_max = (
             rho_anal(xc.value, ndim).max() * 1.05
         )  # * 1.05: safety measure to make sure you're always above the analytical value
 
     keep = 0
-    coord_threshold = boxsize.value
+    coord_threshold = boxsize
     while keep < npart:
 
         xr = np.zeros((1, 3), dtype=np.float)
@@ -514,7 +516,7 @@ def generate_IC_for_given_density(
     periodic = icSimParams["periodic"]
     boxsize = icSimParams["boxsizeToUse"]
     npart = nx ** ndim
-    MID = np.mean(boxsize.value) / nx  # mean interparticle distance
+    MID = np.mean(boxsize) / nx  # mean interparticle distance
     if icRunParams["DELTA_INIT"] is None:
         compute_delta_norm = True
         delta_r_norm = MID
@@ -523,7 +525,7 @@ def generate_IC_for_given_density(
         delta_r_norm = icRunParams["DELTA_INIT"] * MID
     delta_r_min = icRunParams["DELTA_MIN"] * MID
     if periodic:  #  this sets up whether the tree build is periodic or not
-        boxsizeForTree = boxsize.value[:ndim]
+        boxsizeForTree = boxsize[:ndim]
     else:
         boxsizeForTree = None
     # kernel data
@@ -547,7 +549,7 @@ def generate_IC_for_given_density(
     #  generate masses if necessary
     if m is None:
         nc = 1000 - 250 * ndim  # use nc cells for mass integration
-        dx = boxsize.value / nc
+        dx = boxsize / nc
 
         #  integrate total mass in box
         newparams = icSimParams.copy()
@@ -655,7 +657,7 @@ def generate_IC_for_given_density(
 
             if periodic:
                 for d in range(ndim):
-                    boundary = boxsize[d].value
+                    boundary = boxsize[d]
                     bhalf = 0.5 * boundary
                     dx[dx[:, d] > bhalf, d] -= boundary
                     dx[dx[:, d] < -bhalf, d] += boundary
@@ -682,7 +684,7 @@ def generate_IC_for_given_density(
         if periodic:
             for d in range(ndim):
 
-                boundary = boxsize[d].value
+                boundary = boxsize[d]
 
                 xmax = 2 * boundary
                 while xmax > boundary:
@@ -698,7 +700,7 @@ def generate_IC_for_given_density(
         else:
             # leave it where it was. This is a bit sketchy, better ideas are welcome.
             for d in range(ndim):
-                boundary = boxsize[d].value
+                boundary = boxsize[d]
                 x_nounit[x_nounit > boundary] -= delta_r[x_nounit > boundary]
                 x_nounit[x_nounit < 0.0] -= delta_r[x_nounit < 0.0]
 
@@ -874,8 +876,8 @@ def redistribute_particles(
         # check boundary conditions
         if icSimParams["periodic"]:
             for d in range(ndim):
-                x[x[:, d] > boxsize[d], d] -= boxsize[d].value
-                x[x[:, d] < 0.0, d] += boxsize[d].value
+                x[x[:, d] > boxsize[d], d] -= boxsize[d]
+                x[x[:, d] < 0.0, d] += boxsize[d]
         else:
             for d in range(ndim):
 
