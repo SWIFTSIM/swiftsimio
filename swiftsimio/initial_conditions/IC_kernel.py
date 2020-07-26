@@ -1,27 +1,47 @@
 #!/usr/bin/env python3
 
+"""
+Kernel functions and constants following the Dehnen & Aly 2012 conventions
+ 
+"""
 
 #------------------------------------
 # Kernel related stuffs
 #------------------------------------
 
 import numpy as np
+from typing import Union
 
 
 
-def W_cubic_spline(r, H):
+def W_cubic_spline(
+        r: np.ndarray,
+        H: Union[float, np.ndarray]
+    ):
     """
     Cubic spline kernel.
-    Parameters:
-        r:  numpy array of distances between particles.
-        H:  compact suppor radius of kernel. Scalar or numpy array of same shape as r.
 
-    returns:
-        W:  numpy array of evaluated kernels with same shape as r. It's however still
-            un-normalized and needs to be divided by H^ndim to get the proper values.
+
+    Parameters
+    ------------------
+
+    r:  np.ndarray
+        array of distances between particles.
+
+    H:  np.ndarray or float
+        compact support radius of kernel. Scalar or numpy array of same shape as r.
+
+
+    Returns
+    ------------------
+    W:  np.ndarray 
+        evaluated kernel functions with same shape as ``r``.
+
+
+    Note
+    ------------------
+    + The return value is not normalized. It needs to be divided by H^ndim and multiplied by the kernel norm to get the proper values. 
     """
-    if type(r) != np.ndarray:
-        r = np.array(r)
 
     q = r / H
     W = np.zeros(q.shape)
@@ -38,16 +58,33 @@ def W_cubic_spline(r, H):
 
 
 
-def dWdr_cubic_spline(r, H):
+def dWdr_cubic_spline(
+        r: np.ndarray,
+        H: Union[float, np.ndarray]
+    ):
     """
     Cubic spline kernel derivative.
-    Parameters:
-        r:  numpy array of distances between particles.
-        H:  compact suppor radius of kernel. Scalar or numpy array of same shape as r.
 
-    returns:
-        dWdr:  numpy array of evaluated kernel derivatives with same shape as r. It's
-                however un-normalized and needs to be divided by H^(ndim+1) to get the proper values.
+
+    Parameters
+    ------------------
+
+    r:  np.ndarray
+        array of distances between particles.
+
+    H:  np.ndarray or float
+        compact support radius of kernel. Scalar or numpy array of same shape as r.
+
+
+    Returns
+    ------------------
+    dWdr:  np.ndarray 
+        evaluated kernel derivative functions with same shape as ``r``.
+
+
+    Note
+    ------------------
+    + The return value is not normalized. It needs to be divided by H^(ndim+1) and multiplied by the kernel norm to get the proper values. 
     """
 
     q = r / H
@@ -101,13 +138,47 @@ kernel_norm_3D['cubic spline'] = 5.092958
 
 
 
-def get_kernel_data(kernel, ndim):
+def get_kernel_data(
+        kernel: str,
+        ndim: int
+    ):
     """
     Picks the correct kernel functions and constants for you.
-    Returns:
-        W(r, H):        kernel function
-        dWdr(r, H):     kernel derivative function
-        kernel_gamma:   H/h for given kernel and dimension
+
+
+    Parameters
+    ------------------
+
+    kernel: string {'cubic spline'}
+        which kernel you want to use
+
+    ndim: int
+        dimensionality of the kernel that you want
+
+
+    Returns
+    --------------------
+
+    W(r, H): callable
+        normalized kernel function with two positional arguments:
+
+        - r:  np.ndarray
+            array of distances between particles.
+
+        - H:  np.ndarray or float
+            compact support radius of kernel. Scalar or numpy array of same shape as r.
+
+    dWdr(r, H): callable
+        normalized kernel derivative function with two positional arguments:
+
+        - r:  np.ndarray
+            array of distances between particles.
+
+        - H:  np.ndarray or float
+            compact support radius of kernel. Scalar or numpy array of same shape as r.
+
+    kernel_gamma: float
+        H/h (compact support radius / smoothing length) for given kernel and dimension
     
     """
     if ndim == 1:
@@ -123,4 +194,3 @@ def get_kernel_data(kernel, ndim):
         dWdr = lambda r, H : kernel_norm_3D[kernel]/ H**4 * kernel_derivatives[kernel](r, H)
         kernel_gamma = kernel_gamma_3D[kernel]
     return W, dWdr, kernel_gamma
-

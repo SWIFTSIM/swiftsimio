@@ -1,5 +1,6 @@
 """
-Generate particle initial conditions that follow some density function.
+Generate SPH initial conditions for SPH simulations iteratively for a given density function following Arth et al. 2019 (https://arxiv.org/abs/1907.11250).
+
 """
 
 #--------------------------------------------
@@ -8,11 +9,13 @@ Generate particle initial conditions that follow some density function.
 
 
 import numpy as np
+import unyt
 from unyt import unyt_array
 from math import erf
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy import stats
+from typing import Union
 
 from .IC_kernel import get_kernel_data
 
@@ -23,20 +26,55 @@ np.random.seed(666)
 
 
 def IC_set_IC_params(
-            boxsize     = unyt_array([1., 1., 1.], "cm"),
-            periodic    = True,
-            nx          = 100,
-            ndim        = 2,
-            unit_l      = None,
-            unit_m      = 'g'
+            boxsize: unyt_array = unyt_array([1., 1., 1.], "cm"),
+            periodic: bool = True,
+            nx : int = 100,
+            ndim : int = 2,
+            unit_l: Union[None, unyt.unit_object.Unit, str] = None,
+            unit_m: Union[unyt.unit_object.Unit, str] = 'g'
         ):
-    """
-    Change the initial conditions parameters.
+    r"""
+    Set up the simulation parameters for the initial conditions you want to
+    generate. The dict it returns is a necessary argument to call
+    ``generate_IC_for_given_density()``
 
-    TODO: docs
 
-    returns:
-        dict with these parameters.
+    Parameters
+    -------------
+
+    boxsize: unyt_array, optional
+        The box size of the simulation.
+
+    periodic: bool, optional
+        whether the simulation box is periodic or not
+
+    nx: int, optional
+        how many particles along every dimension you want your simulation
+        to contain
+
+    ndim: int, optional
+        how many dimensions you want your simulation to have
+
+    unit_l:  None or unyt.unit_object.Unit or str, optional
+        unit length for the coordinates. If None, the same unit given for
+        the boxsize will be used.
+
+    unit_m: unyt.unit_object.Unit or str, optional
+        unit mass for the particle masses
+
+
+    Returns
+    ------------
+
+    icSimParams: dict
+        dict containing the parameters stored in a way such that ``generate_IC_for_given_density()``
+        understands them.
+
+
+    Notes
+    -----------
+    
+    + The returned dict is a required argument to call ``generate_IC_for_given_density()``
     """
 
     icSimParams = {}
@@ -55,50 +93,83 @@ def IC_set_IC_params(
     return icSimParams
 
 
+
+
+
+
 def IC_set_run_params(
-            iter_max                    = 2000,
-            convergence_threshold       = 1e-3,
-            tolerance_part              = 1e-2,
-            displacement_threshold      = 1e-2,
-            delta_init                  = 0.1,
-            delta_reduction_factor      = 0.98,
-            delta_min                   = 1e-4,
-            redistribute_frequency      = 20,
-            redistribute_fraction       = 0.01,
-            no_redistribution_after     = 200,
+            iter_max: int = 2000,
+            convergence_threshold: float = 1e-3,
+            tolerance_part: float =  1e-2,
+            displacement_threshold: float =  1e-2,
+            delta_init: Union[float, None] = 0.1,
+            delta_reduction_factor: float = 1.,
+            delta_min: float =  1e-4,
+            redistribute_frequency: int = 20,
+            redistribute_fraction: float = 0.01,
+            redistribute_fraction_reduction: float = 1.0,
+            no_redistribution_after: int = 200,
             plot_at_redistribution      = True, 
-            kernel                      = 'cubic spline',
-            eta                         = 1.2348
+            kernel: str = 'cubic spline',
+            eta: float  = 1.2348
         ):
-    """
-    Change the global IC generation iteration parameters.
+    r"""
+    Set up the runtime parameters for the initial condition generation.
+    The dict it returns is a necessary argument when calling ``generate_IC_for_given_density()``.
 
-    parameters:
+    Parameters
+    --------------
 
-        <int>   iter_max                    max numbers of iterations for generating IC conditions
-        <float> convergence_threshold       if enough particles are displaced by distance below 
-                                                threshold * mean interparticle distance, stop iterating.
-        <float> tolerance_part              tolerance for not converged particle fraction: 
-                                                this fraction of particles can be displaced with 
-                                                distances > threshold
-        <float> displacement_threshold      iteration halt criterion: Don't stop until every particle is 
-                                                displaced by distance < threshold * mean interparticle 
-                                                distance
-        <float> redistribute_frequency      redistribute a handful of particles every 
-                                                `redistribute_at_iteration` iteration
-        <float> delta_init                  initial normalization constant for particle motion in 
-                                                units of mean interparticle distance
-        <float> delta_reduction_factor      reduce normalization constant for particle motion by this 
-                                                factor after every iteration
-        <float> delta_min                   minimal normalization constant for particle motion in units 
-                                                of mean interparticle distance
-        <float> redistribute_fraction       fraction of particles to redistribute when doing so
-        <int>   no_redistribution_after     don't redistribute particles after this iteration
-        <bool>  plot_at_redistribution      create and store a plot of the current situation before 
-                                                redistributing?
+    iter_max: int, optional
+        max numbers of iterations for generating IC conditions
 
-    return:
-        dictionnary containing all this data.
+    convergence_threshold: float, optional
+        if enough particles are displaced by distance below threshold * mean interparticle distance, stop iterating.  
+    
+    tolerance_part: float, optional
+        tolerance for not converged particle fraction: this fraction of particles can be displaced with distances > threshold
+
+    displacement_threshold: float, optional      
+        iteration halt criterion: Don't stop until every particle is displaced by distance < threshold * mean interparticle distance
+
+    delta_init : float or None, optional
+        initial normalization constant for particle motion in units of mean interparticle distance. If None (default), delta_init will be set such that the maximal displacement found in the first iteration is normalized to 1 mean interparticle distance.
+
+    delta_reduction_factor: float, optional
+        multiply the normalization constant for particle motion by this factor after every iteration. In certain difficult cases this might help the generation to converge if set to < 1.
+    
+    delta_min: float, optional
+        minimal normalization constant for particle motion in units of mean interparticle distance.
+   
+    redistribute_frequency: int, optional 
+        redistribute a handful of particles every ``redistribute_frequency`` iteration.
+        How many particles are redistributed is controlled with the ``redistribute_fraction`` parameter.
+
+    redistribute_fraction: float, optional
+        fraction of particles to be redistributed when doing so. 
+
+    redistribute_fraction_reduction: float, optional
+        multiply the ``redistribute_fraction`` parameter by this factor every time particles are being redistributed. In certain difficult cases this might help the generation to converge if set to < 1.
+    
+    no_redistribution_after: int, optional     
+        don't redistribute particles after this iteration.
+ 
+    plot_at_redistribution: bool, optional
+        create and store a plot of the current situation before redistributing?
+
+
+
+    Returns
+    ------------
+
+    icRunParams: dict
+        dict containing the parameters stored in a way such that ``generate_IC_for_given_density()`` understands them.
+
+
+    Notes
+    -----------
+    
+    + The returned dict is a required argument to call ``generate_IC_for_given_density()``
     """
 
     icRunParams = {}
@@ -121,14 +192,26 @@ def IC_set_run_params(
 
 
 
-def IC_uniform_coordinates(icSimParams):
-    """
-    Get the coordinates for a uniform particle distribution.
-    nx:         number of particles in each dimension
-    ndim:       number of dimensions
 
-    returns:
-        x: np.array((nx**ndim, 3), dtype=float) of coordinates
+
+
+def IC_uniform_coordinates(icSimParams: dict):
+    r"""
+    Generate coordinates for a uniform particle distribution.
+
+
+    Parameters
+    ------------------
+
+    icSimParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_IC_params()``.
+
+
+    Returns
+    ------------------
+
+    x: unyt_array 
+        unyt_array(shape=(npart, 3), dtype=float) of coordinates, where ``npart = nx ** ndim``, both of which are set in the ``icSimParams`` dict
     """
 
     nx = icSimParams['nx']
@@ -172,14 +255,25 @@ def IC_uniform_coordinates(icSimParams):
 
 
 
-def IC_perturbed_coordinates(icSimParams):
+def IC_perturbed_coordinates(icSimParams: dict):
     """
-    Get the coordinates for a perturbed uniform particle distribution.
-    The perturbation won't exceed the half interparticle distance
+    Get the coordinates for a randomly perturbed uniform particle distribution.
+    The perturbation won't exceed the 0.4 times the mean interparticle distance
     along an axis.
 
-    returns:
-        x: np.array((nx**ndim, ndim), dtype=float) of coordinates
+
+    Parameters
+    ------------------
+
+    icSimParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_IC_params()``.
+
+
+    Returns
+    ------------------
+
+    x: unyt_array 
+        unyt_array(shape=(npart, 3), dtype=float) of coordinates, where ``npart = nx ** ndim``, both of which are set in the ``icSimParams`` dict
     """
 
     nx = icSimParams['nx']
@@ -237,18 +331,33 @@ def IC_perturbed_coordinates(icSimParams):
 
 
 
-def IC_sample_coordinates(icSimParams, rho_anal, rho_max = None):
-    """
-    Randomly sample the density to get initial coordinates    
+def IC_sample_coordinates(icSimParams: dict, rho_anal: callable, rho_max: Union[None, float] = None):
+    r"""
+    Generate an initial guess for particle coordinates by rejection sampling the density to get initial coordinates    
 
-    parameters:
-        nx:         number of particles in each dimension
-        rho_anal:   function rho_anal(x, ndim). 
-        rho_max:    peak value of the density. If none, an approximate value will be found.
-        ndim:       number of dimensions
 
-    returns:
-        x: np.array((nx**ndim, ndim), dtype=float) of coordinates
+    Parameters
+    ------------------
+
+    icSimParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_IC_params()``.
+
+    rho_anal: callable
+        The density function that is to be reproduced in the initial conditions.
+        It must take two positional arguments:
+        
+        - ``x``: np.ndarray of 3D particle coordinates (even if your initial conditions have lower dimensionality)
+        - ``ndim``: integer, number of dimensions that your simulations is to have
+
+    rho_max: float or None, optional
+        The maximal density within the simulation box. If ``None``, an approximate value will be determined.
+
+
+    Returns
+    ------------------
+
+    x: unyt_array 
+        unyt_array(shape=(npart, 3), dtype=float) of coordinates, where ``npart = nx ** ndim``, both of which are set in the ``icSimParams`` dict
     """
 
     nx = icSimParams['nx']
@@ -286,33 +395,60 @@ def IC_sample_coordinates(icSimParams, rho_anal, rho_max = None):
 
 
 
-def generate_IC_for_given_density(rho_anal, icSimParams, icRunParams, x=None, m=None, rho_max = None):
+def generate_IC_for_given_density(
+        rho_anal: callable, 
+        icSimParams: dict,
+        icRunParams: dict,
+        x: Union[unyt_array, None] = None, 
+        m: Union[unyt_array, None] = None, 
+        rho_max: Union[float, None] = None
+    ):
     """
-    Generate SPH initial conditions following Arth et al 2019 https://arxiv.org/abs/1907.11250
+    Generate SPH initial conditions for SPH simulations iteratively for a given density function ``rho_anal()`` following Arth et al. 2019 (https://arxiv.org/abs/1907.11250).
 
-    rho_anal:   function rho_anal(x, ndim). Should return a numpy array of the analytical function rho(x)
-                for given coordinates x, where x is a numpy array.
-    nx:         How many particles you want in each dimension
-    ndim:       How many dimensions we're working with
-    eta:        "resolution", that defines number of neighbours
-    icRunParams:   dict containing IC generation parameters as returned from IC_generation_set_params
-    x:          Initial guess for coordinates of particles. If none, perturbed uniform initial
-                coordinates will be generated.
-                Should be numpy array or None.
-    m:          Numpy array of particle masses. If None, an array will be created
-                such that the total mass in the simulation box given the
-                analytical density is reproduced, and all particles will
-                have equal masses.
-    kernel:     which kernel to use
-    periodic:   Whether we're having periodic boundary conditions or not.
 
-    
-    returns:
-        x:      particle positions
-        m:      Numpy array of particle masses.
-        rho:    particle densities
-        h:      particle smoothing lengths
+    Parameters
+    ------------------
 
+    rho_anal: callable
+        The density function that is to be reproduced in the initial conditions.
+        It must take two positional arguments:
+        
+        - ``x``: np.ndarray of 3D particle coordinates (even if your initial conditions have lower dimensionality)
+        - ``ndim``: integer, number of dimensions that your simulations is to have
+
+    icSimParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_IC_params()``.
+
+    icRunParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_run_params()``.
+
+    x: unyt_array or None, optional
+        Initial guess for coordinates of particles. If ``None``, the initial guess will
+        be generated by rejection sampling the density function ``rho_anal``
+
+    m: unyt_array or None, optional
+        ``unyt_array`` of particle masses. If ``None``, an array will be created such that the total mass in the simulation box given the analytical density is reproduced, and all particles will have equal masses.
+
+    rho_max: float or None, optional
+        The maximal density within the simulation box. If ``None``, an approximate value will be determined.
+ 
+
+    Returns
+    -----------
+
+    coords: unyt_array
+        Final particle coordinates
+
+    masses: unyt_array
+        Final particle masses
+
+    stats: dict
+        dict containing particle motion statistics of the last iteration:
+
+        - ``stats['min_motion']``: The smallest displacement a particle experienced
+        - ``stats['avg_motion']``: The average displacement particles experienced
+        - ``stats['max_motion']``: The maximal displacement a particle experienced
     """ 
 
     # safety checks first
@@ -535,8 +671,12 @@ def generate_IC_for_given_density(rho_anal, icSimParams, icRunParams, x=None, m=
 
     coords = unyt_array(x_nounit, icSimParams['unit_l'])
     masses = unyt_array(m, icSimParams['unit_m'])
+    stats = {}
+    stats['min_motion'] = min_deviation
+    stats['avg_motion'] = av_deviation
+    stats['max_motion'] = max_deviation
 
-    return coords, masses
+    return coords, masses, stats
 
 
 
@@ -544,21 +684,52 @@ def generate_IC_for_given_density(rho_anal, icSimParams, icRunParams, x=None, m=
 
 
 
-def redistribute_particles(x, h, rho, rhoA, iteration, icRunParams, icSimParams):
+def redistribute_particles(
+        x: np.ndarray, 
+        h: np.ndarray,
+        rho: np.ndarray,
+        rhoA: np.ndarray,
+        iteration: int,
+        icRunParams: dict,
+        icSimParams: dict
+        ):
     """
-    Every few steps, manually displace underdense particles into areas of overdense particles
+    Displace overdense particles into the proximity of underdense particles.
 
-        x:          particle coordinates
-        h:          particle smoothing lengths
-        rho:        particle densities
-        rhoA:       analytical (wanted) density at the particle positions
-        iteration:  current iteration of the particle displacement
-        icRunParams:   dict containing IC generation parameters as returned from IC_set_run_params()
-        icSimParams:   dict containing IC generation parameters as returned from IC_set_IC_params()
 
-    returns:
-        x:      particle coordinates
-        touched: indices of particles that have been moved around
+    Parameters
+    -----------------
+
+    x: np.ndarray
+        numpy array of particle coordinates. Must have shape (npart, 3)
+
+    h: np.ndarray
+        numpy array of particle smoothing lengths
+
+    rho: np.ndarray
+        numpy array of SPH densities at particle positions
+
+    rhoA: np.ndarray
+        numpy array of the model (Analytical) density function evaluated at the particle coordinates
+
+    iteration: int
+        current iteration of the initial condition generation algorithm
+    
+    icSimParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_IC_params()``.
+
+    icSimParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_run_params()``.
+
+
+    Returns
+    -------------------
+
+    x: np.ndarray
+        numpy array of updated particle coordinates
+
+    touched: np.ndarray
+        indices of particles that have been moved around in this routine
     """
 
     # decrease how many particles you move as number of iterations increases
@@ -655,20 +826,48 @@ def redistribute_particles(x, h, rho, rhoA, iteration, icRunParams, icSimParams)
 
 
 
-def IC_plot_current_situation(save, iteration, x, rho, rho_anal, icSimParams):
-    """
+def IC_plot_current_situation(
+        save: bool,
+        iteration: int,
+        x: np.ndarray,
+        rho: np.ndarray,
+        rho_anal: callable,
+        icSimParams: dict
+        ):
+    r"""
     Create a plot of what things look like now. In particular, scatter the
     particle positions and show what the densities currently look like.
 
-    parameters:
-        save:       Boolean. Whether to save to file (if True), or just show a plot.
-        iteration:  Current iteration number.
-        x:          particle positions. Must be numpy array.
-        rho:        particle densities. Must be numpy array.
-        rho_anal:   analytical expression for the density. Must be of the form
-                    rho_anal(x, ndim): return rho; where both x and rho are numpy arrays
-        ndim:       How many dimensions we're working with
-        """
+    Parameters
+    ----------------
+
+    save: bool
+        Whether to save to file (if True), or just show a plot.
+
+    iteration: int 
+        Current iteration number.
+
+    x: np.ndarray 
+        particle positions. Must be numpy array.
+
+    rho: np.ndarray
+        numpy array of SPH densities at particle positions
+
+    rho_anal: callable
+        The density function that is to be reproduced in the initial conditions.
+        It must take two positional arguments:
+        
+        - ``x``: np.ndarray of 3D particle coordinates (even if your initial conditions have lower dimensionality)
+        - ``ndim``: integer, number of dimensions that your simulations is to have
+    
+    icSimParams: dict
+        a dict containing simulation parameters as returned by ``IC_set_IC_params()``.
+
+    Note
+    ---------------
+
+    + For debugging/checking purposes only, not meant to be called.
+    """
 
     boxsize = icSimParams['boxsizeToUse']
     ndim = icSimParams['ndim']
