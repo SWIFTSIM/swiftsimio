@@ -18,7 +18,7 @@ from .IC_kernel import get_kernel_data
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 
 
-np.random.seed(666)
+seed_set = False
 
 
 def IC_set_IC_params(
@@ -104,6 +104,7 @@ def IC_set_run_params(
     plot_at_redistribution=True,
     kernel: str = "cubic spline",
     eta: float = 1.2348,
+    random_seed: int = 666,
 ):
     r"""
     Set up the runtime parameters for the initial condition generation.
@@ -149,6 +150,9 @@ def IC_set_run_params(
     plot_at_redistribution: bool, optional
         create and store a plot of the current situation before redistributing?
 
+    random_seed: int, optional
+        set a specific random seed
+
 
 
     Returns
@@ -179,6 +183,11 @@ def IC_set_run_params(
     icRunParams["PLOT_AT_REDISTRIBUTION"] = plot_at_redistribution
     icRunParams["KERNEL"] = kernel
     icRunParams["ETA"] = eta
+
+    global seed_set
+    if not seed_set:
+        seed_set = True
+        np.random.seed(random_seed)
 
     return icRunParams
 
