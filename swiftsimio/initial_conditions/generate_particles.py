@@ -180,6 +180,7 @@ def IC_set_run_params(
     icRunParams["REDISTRIBUTE_FREQUENCY"] = redistribute_frequency
     icRunParams["REDISTRIBUTE_FRACTION"] = redistribute_fraction
     icRunParams["NO_REDISTRIBUTION_AFTER"] = no_redistribution_after
+    icRunParams["REDISTRIBUTE_FRACTION_REDUCTION"] = redistribute_fraction_reduction
     icRunParams["PLOT_AT_REDISTRIBUTION"] = plot_at_redistribution
     icRunParams["KERNEL"] = kernel
     icRunParams["ETA"] = eta
@@ -729,24 +730,25 @@ def redistribute_particles(
     x: np.ndarray
         numpy array of updated particle coordinates
 
-    touched: np.ndarray
-        indices of particles that have been moved around in this routine
+    touched: np.ndarray or None
+        indices of particles that have been moved around in this routine. If ``None``, 
+        no particles have been moved.
     """
 
-    # decrease how many particles you move as number of iterations increases
     npart = x.shape[0]
     boxsize = icSimParams["boxsizeToUse"]
     ndim = icSimParams["ndim"]
 
-    to_move = int(
-        npart
-        * icRunParams["REDISTRIBUTE_FRACTION"]
-        * (1.0 - (iteration / icRunParams["NO_REDISTRIBUTION_AFTER"]) ** 3)
-    )
+    # how many particles are we moving?
+    to_move = int(npart * icRunParams["REDISTRIBUTE_FRACTION"])
     to_move = max(to_move, 0.0)
-
     if to_move == 0:
         return x, None
+
+    # decrease how many particles you move as number of iterations increases
+    icRunParams["REDISTRIBUTE_FRACTION"] *= icRunParams[
+        "REDISTRIBUTE_FRACTION_REDUCTION"
+    ]
 
     _, _, kernel_gamma = get_kernel_data(icRunParams["KERNEL"], ndim)
 
