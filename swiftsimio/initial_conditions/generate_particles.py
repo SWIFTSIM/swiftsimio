@@ -488,6 +488,7 @@ def generate_IC_for_given_density(
           experienced
         - ``stats['max_motion']``: The maximal displacement a particle 
           experienced
+        - ``stats['niter']``: Number of iterations performed
     """
 
     # safety checks first
@@ -723,6 +724,7 @@ def generate_IC_for_given_density(
     stats["min_motion"] = min_deviation
     stats["avg_motion"] = av_deviation
     stats["max_motion"] = max_deviation
+    stats["niter"] = iteration
 
     return coords, masses, stats
 
