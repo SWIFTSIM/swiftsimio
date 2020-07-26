@@ -5,19 +5,15 @@ Kernel functions and constants following the Dehnen & Aly 2012 conventions
  
 """
 
-#------------------------------------
+# ------------------------------------
 # Kernel related stuffs
-#------------------------------------
+# ------------------------------------
 
 import numpy as np
 from typing import Union
 
 
-
-def W_cubic_spline(
-        r: np.ndarray,
-        H: Union[float, np.ndarray]
-    ):
+def W_cubic_spline(r: np.ndarray, H: Union[float, np.ndarray]):
     """
     Cubic spline kernel.
 
@@ -50,18 +46,13 @@ def W_cubic_spline(
     #      W += (1. - q)**3
     #  if q <= 0.5:
     #      W -= 4*(0.5 - q)**3
-    W[q<=1] += (1. - q[q<=1])**3
-    W[q<=0.5] -= 4*(0.5 - q[q<0.5])**3
+    W[q <= 1] += (1.0 - q[q <= 1]) ** 3
+    W[q <= 0.5] -= 4 * (0.5 - q[q < 0.5]) ** 3
 
     return W
 
 
-
-
-def dWdr_cubic_spline(
-        r: np.ndarray,
-        H: Union[float, np.ndarray]
-    ):
+def dWdr_cubic_spline(r: np.ndarray, H: Union[float, np.ndarray]):
     """
     Cubic spline kernel derivative.
 
@@ -94,54 +85,44 @@ def dWdr_cubic_spline(
     #      W -= 3 * (1. - q)**2
     #  if q <= 0.5:
     #      W += 12*(0.5 - q)**2
-    dW[q<=1] -= 3 * (1. - q[q<=1])**2
-    dW[q<=0.5] += 12 * (0.5 - q[q<=0.5])**2
+    dW[q <= 1] -= 3 * (1.0 - q[q <= 1]) ** 2
+    dW[q <= 0.5] += 12 * (0.5 - q[q <= 0.5]) ** 2
 
     return dW
 
 
 # dictionary "pointing" to the correct functions to call
 kernel_funcs = {}
-kernel_funcs['cubic spline'] = W_cubic_spline
+kernel_funcs["cubic spline"] = W_cubic_spline
 
 kernel_derivatives = {}
-kernel_derivatives['cubic spline'] = dWdr_cubic_spline
-
+kernel_derivatives["cubic spline"] = dWdr_cubic_spline
 
 
 # Constants are from Dehnen & Aly 2012
 
 kernel_gamma_1D = {}
-kernel_gamma_1D['cubic spline'] = 1.732051
+kernel_gamma_1D["cubic spline"] = 1.732051
 
 kernel_norm_1D = {}
-kernel_norm_1D['cubic spline'] = 2.666667
-
+kernel_norm_1D["cubic spline"] = 2.666667
 
 
 kernel_gamma_2D = {}
-kernel_gamma_2D['cubic spline'] = 1.778002
+kernel_gamma_2D["cubic spline"] = 1.778002
 
 kernel_norm_2D = {}
-kernel_norm_2D['cubic spline'] = 3.637827
-
+kernel_norm_2D["cubic spline"] = 3.637827
 
 
 kernel_gamma_3D = {}
-kernel_gamma_3D['cubic spline'] = 1.825742
+kernel_gamma_3D["cubic spline"] = 1.825742
 
 kernel_norm_3D = {}
-kernel_norm_3D['cubic spline'] = 5.092958
+kernel_norm_3D["cubic spline"] = 5.092958
 
 
-
-
-
-
-def get_kernel_data(
-        kernel: str,
-        ndim: int
-    ):
+def get_kernel_data(kernel: str, ndim: int):
     """
     Picks the correct kernel functions and constants for you.
 
@@ -182,15 +163,27 @@ def get_kernel_data(
     
     """
     if ndim == 1:
-        W = lambda r, H :  kernel_norm_1D[kernel] / H * kernel_funcs[kernel](r, H)
-        dWdr = lambda r, H : kernel_norm_1D[kernel] / H**2 * kernel_derivatives[kernel](r, H)
+        W = lambda r, H: kernel_norm_1D[kernel] / H * kernel_funcs[kernel](r, H)
+        dWdr = (
+            lambda r, H: kernel_norm_1D[kernel]
+            / H ** 2
+            * kernel_derivatives[kernel](r, H)
+        )
         kernel_gamma = kernel_gamma_1D[kernel]
     elif ndim == 2:
-        W = lambda r, H : kernel_norm_2D[kernel] / H**2 * kernel_funcs[kernel](r, H)
-        dWdr = lambda r, H : kernel_norm_2D[kernel]/ H**3 * kernel_derivatives[kernel](r, H)
+        W = lambda r, H: kernel_norm_2D[kernel] / H ** 2 * kernel_funcs[kernel](r, H)
+        dWdr = (
+            lambda r, H: kernel_norm_2D[kernel]
+            / H ** 3
+            * kernel_derivatives[kernel](r, H)
+        )
         kernel_gamma = kernel_gamma_2D[kernel]
     elif ndim == 3:
-        W = lambda r, H : kernel_norm_3D[kernel] / H**3 * kernel_funcs[kernel](r, H)
-        dWdr = lambda r, H : kernel_norm_3D[kernel]/ H**4 * kernel_derivatives[kernel](r, H)
+        W = lambda r, H: kernel_norm_3D[kernel] / H ** 3 * kernel_funcs[kernel](r, H)
+        dWdr = (
+            lambda r, H: kernel_norm_3D[kernel]
+            / H ** 4
+            * kernel_derivatives[kernel](r, H)
+        )
         kernel_gamma = kernel_gamma_3D[kernel]
     return W, dWdr, kernel_gamma
