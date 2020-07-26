@@ -25,7 +25,8 @@ def W_cubic_spline(r: np.ndarray, H: Union[float, np.ndarray]):
         array of distances between particles.
 
     H:  np.ndarray or float
-        compact support radius of kernel. Scalar or numpy array of same shape as r.
+        compact support radius of kernel. Scalar or numpy array of same shape 
+        as ``r``.
 
 
     Returns
@@ -36,7 +37,8 @@ def W_cubic_spline(r: np.ndarray, H: Union[float, np.ndarray]):
 
     Note
     ------------------
-    + The return value is not normalized. It needs to be divided by H^ndim and multiplied by the kernel norm to get the proper values. 
+    + The return value is not normalized. It needs to be divided by ``H^ndim`` 
+      and multiplied by the kernel norm to get the proper values. 
     """
 
     q = r / H
@@ -64,18 +66,21 @@ def dWdr_cubic_spline(r: np.ndarray, H: Union[float, np.ndarray]):
         array of distances between particles.
 
     H:  np.ndarray or float
-        compact support radius of kernel. Scalar or numpy array of same shape as r.
+        compact support radius of kernel. Scalar or numpy array of same shape
+        as ``r``
 
 
     Returns
     ------------------
+
     dWdr:  np.ndarray 
         evaluated kernel derivative functions with same shape as ``r``.
 
 
     Note
     ------------------
-    + The return value is not normalized. It needs to be divided by H^(ndim+1) and multiplied by the kernel norm to get the proper values. 
+    + The return value is not normalized. It needs to be divided by 
+      ``H^(ndim+1)`` and multiplied by the kernel norm to get the proper values
     """
 
     q = r / H
@@ -133,22 +138,25 @@ def get_kernel_data(kernel: str, ndim: int):
         normalized kernel function with two positional arguments:
 
         - r:  np.ndarray
-            array of distances between particles.
+          array of distances between particles.
 
         - H:  np.ndarray or float
-            compact support radius of kernel. Scalar or numpy array of same shape as r.
+          compact support radius of kernel. Scalar or numpy array of same shape
+          as ``r``.
 
     dWdr(r, H): callable
         normalized kernel derivative function with two positional arguments:
 
         - r:  np.ndarray
-            array of distances between particles.
+          array of distances between particles.
 
         - H:  np.ndarray or float
-            compact support radius of kernel. Scalar or numpy array of same shape as r.
+          compact support radius of kernel. Scalar or numpy array of same 
+          shape as ``r``.
 
     kernel_gamma: float
-        H/h (compact support radius / smoothing length) for given kernel and dimension
+        H/h (compact support radius / smoothing length) for given kernel and 
+        dimension
     
     """
     if ndim == 1:
