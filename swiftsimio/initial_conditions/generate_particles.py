@@ -510,24 +510,32 @@ def generate_IC_for_given_density(
     if type(res) is not np.ndarray:
         raise TypeError("rho_anal needs to return a numpy array as the result.")
 
-    # shortcuts
+    # shortcuts and constants
     nx = icSimParams["nx"]
     ndim = icSimParams["ndim"]
     periodic = icSimParams["periodic"]
     boxsize = icSimParams["boxsizeToUse"]
     npart = nx ** ndim
-    MID = np.mean(boxsize) / nx  # mean interparticle distance
+
+    MID = 1.0
+    for d in range(ndim):
+        MID *= boxsize[d]
+    MID = MID ** (1.0 / ndim) / nx  # mean interparticle distance
+
     if icRunParams["DELTA_INIT"] is None:
         compute_delta_norm = True
         delta_r_norm = MID
     else:
         compute_delta_norm = False
         delta_r_norm = icRunParams["DELTA_INIT"] * MID
-    delta_r_min = icRunParams["DELTA_MIN"] * MID
+
+    delta_r_norm_min = icRunParams["DELTA_MIN"] * MID
+
     if periodic:  #  this sets up whether the tree build is periodic or not
         boxsizeForTree = boxsize[:ndim]
     else:
         boxsizeForTree = None
+
     # kernel data
     kernel_func, _, kernel_gamma = get_kernel_data(icRunParams["KERNEL"], ndim)
 
@@ -568,6 +576,10 @@ def generate_IC_for_given_density(
 
         m = np.ones(npart, dtype=np.float) * mtot / npart
         print("Assigning particle mass: {0:.3e}".format(mtot / npart))
+
+    else:
+        # switch to numpy arrays
+        m = m.to(icSimParams["unit_m"]).value
 
     # empty arrays
     delta_r = np.zeros(x.shape, dtype=np.float)
@@ -707,7 +719,7 @@ def generate_IC_for_given_density(
         # reduce delta_r_norm
         delta_r_norm *= icRunParams["DELTA_REDUCTION_FACTOR"]
         # assert minimal delta_r
-        delta_r_norm = max(delta_r_norm, delta_r_min)
+        delta_r_norm = max(delta_r_norm, delta_r_norm_min)
 
         # get displacements in units of mean interparticle distance
         dev = np.zeros(npart, dtype=np.float)
