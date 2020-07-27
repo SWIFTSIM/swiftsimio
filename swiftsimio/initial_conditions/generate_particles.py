@@ -102,9 +102,9 @@ def IC_set_IC_params(
 
 def IC_set_run_params(
     iter_max: int = 2000,
-    convergence_threshold: float = 1e-3,
+    convergence_threshold: float = 1e-4,
     tolerance_part: float = 1e-3,
-    displacement_threshold: float = 5e-3,
+    displacement_threshold: float = 1e-3,
     delta_init: Union[float, None] = None,
     delta_reduction_factor: float = 1.0,
     delta_min: float = 1e-6,
@@ -196,16 +196,16 @@ def IC_set_run_params(
     icRunParams = {}
 
     icRunParams["ITER_MAX"] = iter_max
-    icRunParams["CONVERGENCE_THRESHOLD"] = convergence_threshold
+    icRunParams["CONVERGE_THRESH"] = convergence_threshold
     icRunParams["TOLERANCE_PART"] = tolerance_part
-    icRunParams["DISPLACEMENT_THRESHOLD"] = displacement_threshold
+    icRunParams["DISPL_THRESH"] = displacement_threshold
     icRunParams["DELTA_INIT"] = delta_init
-    icRunParams["DELTA_REDUCTION_FACTOR"] = delta_reduction_factor
+    icRunParams["DELTA_REDUCT"] = delta_reduction_factor
     icRunParams["DELTA_MIN"] = delta_min
-    icRunParams["REDISTRIBUTE_FREQUENCY"] = redistribute_frequency
-    icRunParams["REDISTRIBUTE_FRACTION"] = redistribute_fraction
-    icRunParams["NO_REDISTRIBUTION_AFTER"] = no_redistribution_after
-    icRunParams["REDISTRIBUTE_FRACTION_REDUCTION"] = redistribute_fraction_reduction
+    icRunParams["REDIST_FREQ"] = redistribute_frequency
+    icRunParams["REDIST_FRAC"] = redistribute_fraction
+    icRunParams["REDIST_STOP"] = no_redistribution_after
+    icRunParams["REDIST_REDUCT"] = redistribute_fraction_reduction
     icRunParams["DUMPFREQ"] = intermediate_dump_frequency
 
     global seed_set
@@ -627,9 +627,9 @@ def generate_IC_for_given_density(
         # re-distribute and/or dump particles?
         dump_now = icRunParams["DUMPFREQ"] > 0
         dump_now = dump_now and iteration % icRunParams["DUMPFREQ"] == 0
-        redistribute = iteration % icRunParams["REDISTRIBUTE_FREQUENCY"] == 0
+        redistribute = iteration % icRunParams["REDIST_FREQ"] == 0
         redistribute = (
-            redistribute and icRunParams["NO_REDISTRIBUTION_AFTER"] >= iteration
+            redistribute and icRunParams["REDIST_STOP"] >= iteration
         )
 
         if dump_now or redistribute:
@@ -733,7 +733,7 @@ def generate_IC_for_given_density(
                 x_nounit[x_nounit < 0.0] -= delta_r[x_nounit < 0.0]
 
         # reduce delta_r_norm
-        delta_r_norm *= icRunParams["DELTA_REDUCTION_FACTOR"]
+        delta_r_norm *= icRunParams["DELTA_REDUCT"]
         # assert minimal delta_r
         delta_r_norm = max(delta_r_norm, delta_r_norm_min)
 
@@ -755,9 +755,9 @@ def generate_IC_for_given_density(
         )
 
         if (
-            max_deviation < icRunParams["DISPLACEMENT_THRESHOLD"]
+            max_deviation < icRunParams["DISPL_THRESH"]
         ):  # don't think about stopping until max < threshold
-            unconverged = dev[dev > icRunParams["CONVERGENCE_THRESHOLD"]].shape[0]
+            unconverged = dev[dev > icRunParams["CONVERGE_THRESH"]].shape[0]
             if unconverged < icRunParams["TOLERANCE_PART"] * npart:
                 print("Convergence criteria are met.")
                 break
@@ -834,14 +834,14 @@ def redistribute_particles(
     ndim = icSimParams["ndim"]
 
     # how many particles are we moving?
-    to_move = int(npart * icRunParams["REDISTRIBUTE_FRACTION"])
+    to_move = int(npart * icRunParams["REDIST_FRAC"])
     to_move = max(to_move, 0.0)
     if to_move == 0:
         return x, None
 
     # decrease how many particles you move as number of iterations increases
-    icRunParams["REDISTRIBUTE_FRACTION"] *= icRunParams[
-        "REDISTRIBUTE_FRACTION_REDUCTION"
+    icRunParams["REDIST_FRAC"] *= icRunParams[
+        "REDIST_REDUCT"
     ]
 
     _, _, kernel_gamma = get_kernel_data(icSimParams["kernel"], ndim)
