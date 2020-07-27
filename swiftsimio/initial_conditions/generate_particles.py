@@ -1071,7 +1071,7 @@ def _IC_plot_current_situation(
         ax1 = fig.add_subplot(111)
         ax1.scatter(x[:, 0], rho, s=1, c="k", label="IC")
 
-        XA = IC_uniform_coordinates(tempparams)
+        XA = IC_uniform_coordinates(tempparams).value
         ax1.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical")
         ax1.set_xlabel("x")
         ax1.set_ylabel("rho")
@@ -1104,7 +1104,7 @@ def _IC_plot_current_situation(
         ax2.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
         tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][0]
-        XA = IC_uniform_coordinates(tempparams)
+        XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = 0.5 * boxsize[1]
         ax2.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical, y = 0.5")
 
@@ -1140,7 +1140,7 @@ def _IC_plot_current_situation(
         ax3.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
         tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][1]
-        XA = IC_uniform_coordinates(tempparams)
+        XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         xa = XA[:, 0]
@@ -1203,7 +1203,7 @@ def _IC_plot_current_situation(
         ax4.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
         tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][0]
-        XA = IC_uniform_coordinates(tempparams)
+        XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = 0.5 * boxsize[1]
         XA[:, 2] = 0.5 * boxsize[2]
         ax4.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical, y, z = 1/2 boxsize")
@@ -1229,7 +1229,7 @@ def _IC_plot_current_situation(
         ax5.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
         tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][1]
-        XA = IC_uniform_coordinates(tempparams)
+        XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         XA[:, 2] = 0.5 * boxsize[2]
@@ -1256,7 +1256,7 @@ def _IC_plot_current_situation(
         ax6.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
         tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][2]
-        XA = IC_uniform_coordinates(tempparams)
+        XA = IC_uniform_coordinates(tempparams).value
         XA[:, 2] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         XA[:, 1] = 0.5 * boxsize[2]
