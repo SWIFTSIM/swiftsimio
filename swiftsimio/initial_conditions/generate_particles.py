@@ -71,7 +71,7 @@ def IC_set_IC_params(
     Returns
     ------------
 
-    icSimParams: dict
+    ic_sim_params: dict
         dict containing the parameters stored in a way such that ``generate_IC_for_given_density()``
         understands them.
 
@@ -82,22 +82,22 @@ def IC_set_IC_params(
     + The returned dict is a required argument to call ``generate_IC_for_given_density()``
     """
 
-    icSimParams = {}
-    icSimParams["boxsize"] = boxsize
-    icSimParams["periodic"] = periodic
-    icSimParams["nx"] = nx
-    icSimParams["ndim"] = ndim
+    ic_sim_params = {}
+    ic_sim_params["boxsize"] = boxsize
+    ic_sim_params["periodic"] = periodic
+    ic_sim_params["nx"] = nx
+    ic_sim_params["ndim"] = ndim
     if unit_l is None:
-        icSimParams["unit_l"] = boxsize.units
-        icSimParams["boxsizeToUse"] = boxsize.value  # use only np.array
+        ic_sim_params["unit_l"] = boxsize.units
+        ic_sim_params["boxsizeToUse"] = boxsize.value  # use only np.array
     else:
-        icSimParams["unit_l"] = unit_l
-        icSimParams["boxsizeToUse"] = boxsize.to(unit_l).value
-    icSimParams["unit_m"] = unit_m
-    icSimParams["kernel"] = kernel
-    icSimParams["eta"] = eta
+        ic_sim_params["unit_l"] = unit_l
+        ic_sim_params["boxsizeToUse"] = boxsize.to(unit_l).value
+    ic_sim_params["unit_m"] = unit_m
+    ic_sim_params["kernel"] = kernel
+    ic_sim_params["eta"] = eta
 
-    return icSimParams
+    return ic_sim_params
 
 
 def IC_set_run_params(
@@ -181,7 +181,7 @@ def IC_set_run_params(
     Returns
     ------------
 
-    icRunParams: dict
+    ic_run_params: dict
         dict containing the parameters stored in a way such that 
         ``generate_IC_for_given_density()`` understands them.
 
@@ -193,30 +193,30 @@ def IC_set_run_params(
         ``generate_IC_for_given_density()``
     """
 
-    icRunParams = {}
+    ic_run_params = {}
 
-    icRunParams["ITER_MAX"] = iter_max
-    icRunParams["CONVERGE_THRESH"] = convergence_threshold
-    icRunParams["TOLERANCE_PART"] = tolerance_part
-    icRunParams["DISPL_THRESH"] = displacement_threshold
-    icRunParams["DELTA_INIT"] = delta_init
-    icRunParams["DELTA_REDUCT"] = delta_reduction_factor
-    icRunParams["DELTA_MIN"] = delta_min
-    icRunParams["REDIST_FREQ"] = redistribute_frequency
-    icRunParams["REDIST_FRAC"] = redistribute_fraction
-    icRunParams["REDIST_STOP"] = no_redistribution_after
-    icRunParams["REDIST_REDUCT"] = redistribute_fraction_reduction
-    icRunParams["DUMPFREQ"] = intermediate_dump_frequency
+    ic_run_params["ITER_MAX"] = iter_max
+    ic_run_params["CONVERGE_THRESH"] = convergence_threshold
+    ic_run_params["TOLERANCE_PART"] = tolerance_part
+    ic_run_params["DISPL_THRESH"] = displacement_threshold
+    ic_run_params["DELTA_INIT"] = delta_init
+    ic_run_params["DELTA_REDUCT"] = delta_reduction_factor
+    ic_run_params["DELTA_MIN"] = delta_min
+    ic_run_params["REDIST_FREQ"] = redistribute_frequency
+    ic_run_params["REDIST_FRAC"] = redistribute_fraction
+    ic_run_params["REDIST_STOP"] = no_redistribution_after
+    ic_run_params["REDIST_REDUCT"] = redistribute_fraction_reduction
+    ic_run_params["DUMPFREQ"] = intermediate_dump_frequency
 
     global seed_set
     if not seed_set:
         seed_set = True
         np.random.seed(random_seed)
 
-    return icRunParams
+    return ic_run_params
 
 
-def IC_uniform_coordinates(icSimParams: dict):
+def IC_uniform_coordinates(ic_sim_params: dict):
     r"""
     Generate coordinates for a uniform particle distribution.
 
@@ -224,7 +224,7 @@ def IC_uniform_coordinates(icSimParams: dict):
     Parameters
     ------------------
 
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_IC_params()``.
 
@@ -234,16 +234,16 @@ def IC_uniform_coordinates(icSimParams: dict):
 
     x: unyt_array 
         unyt_array(shape=(npart, 3), dtype=float) of coordinates, where 
-        ``npart = nx ** ndim``, both of which are set in the ``icSimParams``
+        ``npart = nx ** ndim``, both of which are set in the ``ic_sim_params``
         dict
     """
 
-    nx = icSimParams["nx"]
-    boxsize = icSimParams["boxsizeToUse"]
-    ndim = icSimParams["ndim"]
+    nx = ic_sim_params["nx"]
+    boxsize = ic_sim_params["boxsizeToUse"]
+    ndim = ic_sim_params["ndim"]
 
     npart = nx ** ndim
-    x = unyt_array(np.zeros((npart, 3), dtype=np.float), icSimParams["unit_l"])
+    x = unyt_array(np.zeros((npart, 3), dtype=np.float), ic_sim_params["unit_l"])
 
     dxhalf = 0.5 * boxsize[0] / nx
     dyhalf = 0.5 * boxsize[1] / nx
@@ -276,7 +276,7 @@ def IC_uniform_coordinates(icSimParams: dict):
     return x
 
 
-def IC_perturbed_coordinates(icSimParams: dict):
+def IC_perturbed_coordinates(ic_sim_params: dict):
     """
     Get the coordinates for a randomly perturbed uniform particle distribution.
     The perturbation won't exceed the 0.4 times the mean interparticle distance
@@ -286,7 +286,7 @@ def IC_perturbed_coordinates(icSimParams: dict):
     Parameters
     ------------------
 
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_IC_params()``.
 
@@ -296,20 +296,20 @@ def IC_perturbed_coordinates(icSimParams: dict):
 
     x: unyt_array 
         unyt_array(shape=(npart, 3), dtype=float) of coordinates, where 
-        ``npart = nx ** ndim``, both of which are set in the ``icSimParams`` 
+        ``npart = nx ** ndim``, both of which are set in the ``ic_sim_params`` 
         dict
     """
 
-    nx = icSimParams["nx"]
-    boxsize = icSimParams["boxsizeToUse"]
-    ndim = icSimParams["ndim"]
-    periodic = icSimParams["periodic"]
+    nx = ic_sim_params["nx"]
+    boxsize = ic_sim_params["boxsizeToUse"]
+    ndim = ic_sim_params["ndim"]
+    periodic = ic_sim_params["periodic"]
     npart = nx ** ndim
     maxdelta = (
         0.4 * np.mean(boxsize) / nx
     )  # maximal deviation from uniform grid of any particle along an axis
 
-    x = IC_uniform_coordinates(icSimParams)  # generate uniform grid first
+    x = IC_uniform_coordinates(ic_sim_params)  # generate uniform grid first
 
     for d in range(ndim):
         sign = 2 * np.random.randint(0, 2, size=npart) - 1  # get +1 or -1
@@ -359,7 +359,7 @@ def IC_perturbed_coordinates(icSimParams: dict):
 
 
 def IC_sample_coordinates(
-    icSimParams: dict, rho_anal: callable, rho_max: Union[None, float] = None
+    ic_sim_params: dict, rho_anal: callable, rho_max: Union[None, float] = None
 ):
     r"""
     Generate an initial guess for particle coordinates by rejection sampling the
@@ -369,7 +369,7 @@ def IC_sample_coordinates(
     Parameters
     ------------------
 
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_IC_params()``.
 
@@ -392,14 +392,14 @@ def IC_sample_coordinates(
 
     x: unyt_array 
         unyt_array(shape=(npart, 3), dtype=float) of coordinates, where 
-        ``npart = nx ** ndim``, both of which are set in the ``icSimParams`` 
+        ``npart = nx ** ndim``, both of which are set in the ``ic_sim_params`` 
         dict
     """
 
-    nx = icSimParams["nx"]
-    boxsize = icSimParams["boxsizeToUse"]
-    ndim = icSimParams["ndim"]
-    periodic = icSimParams["periodic"]
+    nx = ic_sim_params["nx"]
+    boxsize = ic_sim_params["boxsizeToUse"]
+    ndim = ic_sim_params["ndim"]
+    periodic = ic_sim_params["periodic"]
     npart = nx ** ndim
 
     x = np.empty((npart, 3), dtype=np.float)
@@ -409,7 +409,7 @@ def IC_sample_coordinates(
         nc = 200  # don't cause memory errors with too big of a grid. Also don't worry too much about accuracy.
         xc = IC_uniform_coordinates(
             IC_set_IC_params(
-                boxsize=icSimParams["boxsize"], periodic=periodic, nx=nc, ndim=ndim
+                boxsize=ic_sim_params["boxsize"], periodic=periodic, nx=nc, ndim=ndim
             )
         )
         rho_max = (
@@ -428,13 +428,13 @@ def IC_sample_coordinates(
             x[keep] = xr
             keep += 1
 
-    return unyt_array(x, icSimParams["unit_l"])
+    return unyt_array(x, ic_sim_params["unit_l"])
 
 
 def generate_IC_for_given_density(
     rho_anal: callable,
-    icSimParams: dict,
-    icRunParams: dict,
+    ic_sim_params: dict,
+    ic_run_params: dict,
     x: Union[unyt_array, None] = None,
     m: Union[unyt_array, None] = None,
     rho_max: Union[float, None] = None,
@@ -457,11 +457,11 @@ def generate_IC_for_given_density(
         - ``ndim``: integer, number of dimensions that your simulations is to 
           have
 
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_IC_params()``.
 
-    icRunParams: dict
+    ic_run_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_run_params()``.
 
@@ -509,7 +509,7 @@ def generate_IC_for_given_density(
         )
 
     try:
-        res = rho_anal(np.ones((10, 3), dtype="float"), icSimParams["ndim"])
+        res = rho_anal(np.ones((10, 3), dtype="float"), ic_sim_params["ndim"])
     except TypeError:
         errmsg = (
             "rho_anal must take only a numpy array x of coordinates as an argument."
@@ -519,25 +519,25 @@ def generate_IC_for_given_density(
         raise TypeError("rho_anal needs to return a numpy array as the result.")
 
     # shortcuts and constants
-    nx = icSimParams["nx"]
-    ndim = icSimParams["ndim"]
-    periodic = icSimParams["periodic"]
-    boxsize = icSimParams["boxsizeToUse"]
+    nx = ic_sim_params["nx"]
+    ndim = ic_sim_params["ndim"]
+    periodic = ic_sim_params["periodic"]
+    boxsize = ic_sim_params["boxsizeToUse"]
     npart = nx ** ndim
 
-    MID = 1.0
+    mid = 1.0
     for d in range(ndim):
-        MID *= boxsize[d]
-    MID = MID ** (1.0 / ndim) / nx  # mean interparticle distance
+        mid *= boxsize[d]
+    mid = mid ** (1.0 / ndim) / nx  # mean interparticle distance
 
-    if icRunParams["DELTA_INIT"] is None:
+    if ic_run_params["DELTA_INIT"] is None:
         compute_delta_norm = True
-        delta_r_norm = MID
+        delta_r_norm = mid
     else:
         compute_delta_norm = False
-        delta_r_norm = icRunParams["DELTA_INIT"] * MID
+        delta_r_norm = ic_run_params["DELTA_INIT"] * mid
 
-    delta_r_norm_min = icRunParams["DELTA_MIN"] * MID
+    delta_r_norm_min = ic_run_params["DELTA_MIN"] * mid
 
     if periodic:  #  this sets up whether the tree build is periodic or not
         boxsizeForTree = boxsize[:ndim]
@@ -545,22 +545,22 @@ def generate_IC_for_given_density(
         boxsizeForTree = None
 
     # kernel data
-    kernel_func, _, kernel_gamma = get_kernel_data(icSimParams["kernel"], ndim)
+    kernel_func, _, kernel_gamma = get_kernel_data(ic_sim_params["kernel"], ndim)
 
     # expected number of neighbours
     if ndim == 1:
-        Nngb = 2 * kernel_gamma * icSimParams["eta"]
+        Nngb = 2 * kernel_gamma * ic_sim_params["eta"]
     elif ndim == 2:
-        Nngb = np.pi * (kernel_gamma * icSimParams["eta"]) ** 2
+        Nngb = np.pi * (kernel_gamma * ic_sim_params["eta"]) ** 2
     elif ndim == 3:
-        Nngb = 4 / 3 * np.pi * (kernel_gamma * icSimParams["eta"]) ** 3
+        Nngb = 4 / 3 * np.pi * (kernel_gamma * ic_sim_params["eta"]) ** 3
 
     # round it up for cKDTree
     Nngb_int = int(Nngb + 0.5)
 
     # generate first positions if necessary
     if x is None:
-        x = IC_sample_coordinates(icSimParams, rho_anal, rho_max)
+        x = IC_sample_coordinates(ic_sim_params, rho_anal, rho_max)
 
     #  generate masses if necessary
     if m is None:
@@ -568,7 +568,7 @@ def generate_IC_for_given_density(
         dx = boxsize / nc
 
         #  integrate total mass in box
-        newparams = icSimParams.copy()
+        newparams = ic_sim_params.copy()
         newparams["nx"] = nc
         xc = IC_uniform_coordinates(newparams)
         rho_all = rho_anal(xc.value, ndim)
@@ -587,7 +587,7 @@ def generate_IC_for_given_density(
 
     else:
         # switch to numpy arrays
-        m = m.to(icSimParams["unit_m"]).value
+        m = m.to(ic_sim_params["unit_m"]).value
 
     # empty arrays
     delta_r = np.zeros(x.shape, dtype=np.float)
@@ -598,7 +598,7 @@ def generate_IC_for_given_density(
     # use unitless arrays from this point on
     x_nounit = x.value
 
-    if icRunParams["DUMPFREQ"] > 0:
+    if ic_run_params["DUMPFREQ"] > 0:
 
         tree = KDTree(x_nounit[:, :ndim], boxsize=boxsizeForTree)
         for p in range(npart):
@@ -607,10 +607,10 @@ def generate_IC_for_given_density(
             for i, n in enumerate(neighs):
                 W = kernel_func(dist[i], dist[-1])
                 rho[p] += W * m[n]
-        _IC_write_intermediate_output(0, x, m, rho, h, icSimParams)
+        _IC_write_intermediate_output(0, x, m, rho, h, ic_sim_params)
         # drop a first plot
         # TODO: remove the plotting
-        _IC_plot_current_situation(True, 0, x_nounit, rho, rho_anal, icSimParams)
+        _IC_plot_current_situation(True, 0, x_nounit, rho, rho_anal, ic_sim_params)
 
     # start iteration loop
     iteration = 0
@@ -625,10 +625,10 @@ def generate_IC_for_given_density(
         rho.fill(0.0)
 
         # re-distribute and/or dump particles?
-        dump_now = icRunParams["DUMPFREQ"] > 0
-        dump_now = dump_now and iteration % icRunParams["DUMPFREQ"] == 0
-        redistribute = iteration % icRunParams["REDIST_FREQ"] == 0
-        redistribute = redistribute and icRunParams["REDIST_STOP"] >= iteration
+        dump_now = ic_run_params["DUMPFREQ"] > 0
+        dump_now = dump_now and iteration % ic_run_params["DUMPFREQ"] == 0
+        redistribute = iteration % ic_run_params["REDIST_FREQ"] == 0
+        redistribute = redistribute and ic_run_params["REDIST_STOP"] >= iteration
 
         if dump_now or redistribute:
 
@@ -643,17 +643,17 @@ def generate_IC_for_given_density(
 
             if dump_now:
                 _IC_write_intermediate_output(
-                    iteration, x_nounit, m, rho, h, icSimParams
+                    iteration, x_nounit, m, rho, h, ic_sim_params
                 )
                 # TODO: remove the plotting
                 _IC_plot_current_situation(
-                    True, iteration, x_nounit, rho, rho_anal, icSimParams
+                    True, iteration, x_nounit, rho, rho_anal, ic_sim_params
                 )
 
             # re-destribute a handful of particles
             if redistribute:
                 x_nounit, touched = redistribute_particles(
-                    x_nounit, h, rho, rhoA, iteration, icRunParams, icSimParams
+                    x_nounit, h, rho, rhoA, iteration, ic_run_params, ic_sim_params
                 )
                 # updated analytical density computations
                 if touched is not None:
@@ -700,7 +700,7 @@ def generate_IC_for_given_density(
             for d in range(ndim):
                 delrsq += delta_r[:, d] ** 2
             delrsq = np.sqrt(delrsq)
-            delta_r_norm = MID / delrsq.max()
+            delta_r_norm = mid / delrsq.max()
             compute_delta_norm = False
 
         # finally, displace particles
@@ -732,7 +732,7 @@ def generate_IC_for_given_density(
                 x_nounit[x_nounit < 0.0] -= delta_r[x_nounit < 0.0]
 
         # reduce delta_r_norm
-        delta_r_norm *= icRunParams["DELTA_REDUCT"]
+        delta_r_norm *= ic_run_params["DELTA_REDUCT"]
         # assert minimal delta_r
         delta_r_norm = max(delta_r_norm, delta_r_norm_min)
 
@@ -741,7 +741,7 @@ def generate_IC_for_given_density(
         for d in range(ndim):
             dev += delta_r[:, d] ** 2
         dev = np.sqrt(dev)
-        dev /= MID
+        dev /= mid
 
         max_deviation = dev.max()
         min_deviation = dev.min()
@@ -754,19 +754,19 @@ def generate_IC_for_given_density(
         )
 
         if (
-            max_deviation < icRunParams["DISPL_THRESH"]
+            max_deviation < ic_run_params["DISPL_THRESH"]
         ):  # don't think about stopping until max < threshold
-            unconverged = dev[dev > icRunParams["CONVERGE_THRESH"]].shape[0]
-            if unconverged < icRunParams["TOLERANCE_PART"] * npart:
+            unconverged = dev[dev > ic_run_params["CONVERGE_THRESH"]].shape[0]
+            if unconverged < ic_run_params["TOLERANCE_PART"] * npart:
                 print("Convergence criteria are met.")
                 break
 
-        if iteration == icRunParams["ITER_MAX"]:
+        if iteration == ic_run_params["ITER_MAX"]:
             print("Reached max number of iterations without converging. Returning.")
             break
 
-    coords = unyt_array(x_nounit, icSimParams["unit_l"])
-    masses = unyt_array(m, icSimParams["unit_m"])
+    coords = unyt_array(x_nounit, ic_sim_params["unit_l"])
+    masses = unyt_array(m, ic_sim_params["unit_m"])
     stats = {}
     stats["min_motion"] = min_deviation
     stats["avg_motion"] = av_deviation
@@ -782,8 +782,8 @@ def redistribute_particles(
     rho: np.ndarray,
     rhoA: np.ndarray,
     iteration: int,
-    icRunParams: dict,
-    icSimParams: dict,
+    ic_run_params: dict,
+    ic_sim_params: dict,
 ):
     """
     Displace overdense particles into the proximity of underdense particles.
@@ -808,11 +808,11 @@ def redistribute_particles(
     iteration: int
         current iteration of the initial condition generation algorithm
     
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_IC_params()``.
 
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_run_params()``.
 
@@ -829,19 +829,19 @@ def redistribute_particles(
     """
 
     npart = x.shape[0]
-    boxsize = icSimParams["boxsizeToUse"]
-    ndim = icSimParams["ndim"]
+    boxsize = ic_sim_params["boxsizeToUse"]
+    ndim = ic_sim_params["ndim"]
 
     # how many particles are we moving?
-    to_move = int(npart * icRunParams["REDIST_FRAC"])
+    to_move = int(npart * ic_run_params["REDIST_FRAC"])
     to_move = max(to_move, 0.0)
     if to_move == 0:
         return x, None
 
     # decrease how many particles you move as number of iterations increases
-    icRunParams["REDIST_FRAC"] *= icRunParams["REDIST_REDUCT"]
+    ic_run_params["REDIST_FRAC"] *= ic_run_params["REDIST_REDUCT"]
 
-    _, _, kernel_gamma = get_kernel_data(icSimParams["kernel"], ndim)
+    _, _, kernel_gamma = get_kernel_data(ic_sim_params["kernel"], ndim)
 
     underdense = rho < rhoA  # is this underdense particle?
     overdense = rho > rhoA  # is this overdense particle?
@@ -902,7 +902,7 @@ def redistribute_particles(
     if moved > 0:
 
         # check boundary conditions
-        if icSimParams["periodic"]:
+        if ic_sim_params["periodic"]:
             for d in range(ndim):
                 x[x[:, d] > boxsize[d], d] -= boxsize[d]
                 x[x[:, d] < 0.0, d] += boxsize[d]
@@ -931,7 +931,7 @@ def _IC_write_intermediate_output(
     m: np.ndarray,
     rho: np.ndarray,
     h: np.ndarray,
-    icSimParams: dict,
+    ic_sim_params: dict,
 ):
     r"""
     Write an intermediate output of current particle positions, densities,
@@ -955,7 +955,7 @@ def _IC_write_intermediate_output(
     h: np.ndarray
         particle smoothing lengths
 
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_IC_params()``.
 
@@ -970,18 +970,18 @@ def _IC_write_intermediate_output(
 
     from swiftsimio import Writer
 
-    nx = icSimParams["nx"]
-    ndim = icSimParams["ndim"]
+    nx = ic_sim_params["nx"]
+    ndim = ic_sim_params["ndim"]
     npart = nx ** ndim
 
     ICunits = unyt.UnitSystem(
-        "IC_generation", icSimParams["unit_l"], icSimParams["unit_m"], unyt.s
+        "IC_generation", ic_sim_params["unit_l"], ic_sim_params["unit_m"], unyt.s
     )
 
-    W = Writer(ICunits, icSimParams["boxsize"])
-    W.gas.coordinates = unyt_array(x, icSimParams["unit_l"])
-    W.gas.smoothing_length = unyt_array(h, icSimParams["unit_l"])
-    W.gas.masses = unyt_array(m, icSimParams["unit_m"])
+    W = Writer(ICunits, ic_sim_params["boxsize"])
+    W.gas.coordinates = unyt_array(x, ic_sim_params["unit_l"])
+    W.gas.smoothing_length = unyt_array(h, ic_sim_params["unit_l"])
+    W.gas.masses = unyt_array(m, ic_sim_params["unit_m"])
     W.gas.densities = unyt_array(
         rho, W.gas.masses.units / W.gas.coordinates.units ** ndim
     )
@@ -1005,7 +1005,7 @@ def _IC_plot_current_situation(
     x: np.ndarray,
     rho: np.ndarray,
     rho_anal: callable,
-    icSimParams: dict,
+    ic_sim_params: dict,
 ):
     r"""
     Create a plot of what things look like now. In particular, scatter the
@@ -1035,7 +1035,7 @@ def _IC_plot_current_situation(
         - ``ndim``: integer, number of dimensions that your simulations is to 
           have
     
-    icSimParams: dict
+    ic_sim_params: dict
         a dict containing simulation parameters as returned by 
         ``IC_set_IC_params()``.
 
@@ -1047,9 +1047,9 @@ def _IC_plot_current_situation(
     from matplotlib import pyplot as plt
     from scipy import stats
 
-    boxsize = icSimParams["boxsizeToUse"]
-    ndim = icSimParams["ndim"]
-    nx = icSimParams["nx"]
+    boxsize = ic_sim_params["boxsizeToUse"]
+    ndim = ic_sim_params["ndim"]
+    nx = ic_sim_params["nx"]
 
     if x.shape[0] > 5000:
         marker = ","
@@ -1058,11 +1058,11 @@ def _IC_plot_current_situation(
 
     # dict to generate coordinates to compute analytical solution
     tempparams = IC_set_IC_params(
-        boxsize=icSimParams["boxsize"],
-        periodic=icSimParams["periodic"],
+        boxsize=ic_sim_params["boxsize"],
+        periodic=ic_sim_params["periodic"],
         nx=200,
         ndim=1,
-        unit_l=icSimParams["unit_l"],
+        unit_l=ic_sim_params["unit_l"],
     )
 
     if ndim == 1:
@@ -1103,7 +1103,7 @@ def _IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax2.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][0]
+        tempparams["boxsizeToUse"][0] = ic_sim_params["boxsizeToUse"][0]
         XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = 0.5 * boxsize[1]
         ax2.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical, y = 0.5")
@@ -1139,7 +1139,7 @@ def _IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax3.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][1]
+        tempparams["boxsizeToUse"][0] = ic_sim_params["boxsizeToUse"][1]
         XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
@@ -1202,7 +1202,7 @@ def _IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax4.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][0]
+        tempparams["boxsizeToUse"][0] = ic_sim_params["boxsizeToUse"][0]
         XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = 0.5 * boxsize[1]
         XA[:, 2] = 0.5 * boxsize[2]
@@ -1228,7 +1228,7 @@ def _IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax5.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][1]
+        tempparams["boxsizeToUse"][0] = ic_sim_params["boxsizeToUse"][1]
         XA = IC_uniform_coordinates(tempparams).value
         XA[:, 1] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
@@ -1255,7 +1255,7 @@ def _IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax6.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams["boxsizeToUse"][0] = icSimParams["boxsizeToUse"][2]
+        tempparams["boxsizeToUse"][0] = ic_sim_params["boxsizeToUse"][2]
         XA = IC_uniform_coordinates(tempparams).value
         XA[:, 2] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
