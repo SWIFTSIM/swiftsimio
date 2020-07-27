@@ -28,6 +28,8 @@ def IC_set_IC_params(
     ndim: int = 2,
     unit_l: Union[None, unyt.unit_object.Unit, str] = None,
     unit_m: Union[unyt.unit_object.Unit, str] = "g",
+    kernel: str = "cubic spline",
+    eta: float = 1.2348,
 ):
     r"""
     Set up the simulation parameters for the initial conditions you want to
@@ -58,6 +60,13 @@ def IC_set_IC_params(
     unit_m: unyt.unit_object.Unit or str, optional
         unit mass for the particle masses
 
+    kernel: str {'cubic spline',}, optional
+        which kernel to use
+
+    eta: float, optional
+        resolution eta, which defines the number of neighbours used
+        independently of dimensionality
+
 
     Returns
     ------------
@@ -85,6 +94,8 @@ def IC_set_IC_params(
         icSimParams["unit_l"] = unit_l
         icSimParams["boxsizeToUse"] = boxsize.to(unit_l).value
     icSimParams["unit_m"] = unit_m
+    icSimParams["kernel"] = kernel
+    icSimParams["eta"] = eta
 
     return icSimParams
 
@@ -92,18 +103,16 @@ def IC_set_IC_params(
 def IC_set_run_params(
     iter_max: int = 2000,
     convergence_threshold: float = 1e-3,
-    tolerance_part: float = 1e-2,
-    displacement_threshold: float = 1e-2,
+    tolerance_part: float = 1e-3,
+    displacement_threshold: float = 5e-3,
     delta_init: Union[float, None] = None,
     delta_reduction_factor: float = 1.0,
-    delta_min: float = 1e-4,
+    delta_min: float = 1e-6,
     redistribute_frequency: int = 20,
     redistribute_fraction: float = 0.01,
     redistribute_fraction_reduction: float = 1.0,
     no_redistribution_after: int = 200,
-    plot_at_redistribution=True,
-    kernel: str = "cubic spline",
-    eta: float = 1.2348,
+    intermediate_dump_frequency: int = 50,
     random_seed: int = 666,
 ):
     r"""
@@ -160,8 +169,9 @@ def IC_set_run_params(
     no_redistribution_after: int, optional     
         don't redistribute particles after this iteration.
  
-    plot_at_redistribution: bool, optional
-        create and store a plot of the current situation before redistributing?
+    intermediate_dump_frequency: int, optional
+        frequency of dumps of the current state of the iteration. If set to zero,
+        no intermediate results will be stored.
 
     random_seed: int, optional
         set a specific random seed
@@ -196,9 +206,7 @@ def IC_set_run_params(
     icRunParams["REDISTRIBUTE_FRACTION"] = redistribute_fraction
     icRunParams["NO_REDISTRIBUTION_AFTER"] = no_redistribution_after
     icRunParams["REDISTRIBUTE_FRACTION_REDUCTION"] = redistribute_fraction_reduction
-    icRunParams["PLOT_AT_REDISTRIBUTION"] = plot_at_redistribution
-    icRunParams["KERNEL"] = kernel
-    icRunParams["ETA"] = eta
+    icRunParams["DUMPFREQ"] = intermediate_dump_frequency
 
     global seed_set
     if not seed_set:
@@ -537,15 +545,15 @@ def generate_IC_for_given_density(
         boxsizeForTree = None
 
     # kernel data
-    kernel_func, _, kernel_gamma = get_kernel_data(icRunParams["KERNEL"], ndim)
+    kernel_func, _, kernel_gamma = get_kernel_data(icSimParams["kernel"], ndim)
 
     # expected number of neighbours
     if ndim == 1:
-        Nngb = 2 * kernel_gamma * icRunParams["ETA"]
+        Nngb = 2 * kernel_gamma * icSimParams["eta"]
     elif ndim == 2:
-        Nngb = np.pi * (kernel_gamma * icRunParams["ETA"]) ** 2
+        Nngb = np.pi * (kernel_gamma * icSimParams["eta"]) ** 2
     elif ndim == 3:
-        Nngb = 4 / 3 * np.pi * (kernel_gamma * icRunParams["ETA"]) ** 3
+        Nngb = 4 / 3 * np.pi * (kernel_gamma * icSimParams["eta"]) ** 3
 
     # round it up for cKDTree
     Nngb_int = int(Nngb + 0.5)
@@ -590,15 +598,18 @@ def generate_IC_for_given_density(
     # use unitless arrays from this point on
     x_nounit = x.value
 
-    #  if icRunParams["PLOT_AT_REDISTRIBUTION"]:
-    #      # drop a first plot
-    #      tree = KDTree(x_nounit[:, :ndim], boxsize=boxsizeForTree)
-    #      for p in range(npart):
-    #          dist, neighs = tree.query(x_nounit[p, :ndim], k=Nngb_int)
-    #          h[p] = dist[-1] / kernel_gamma
-    #          W = kernel_func(dist, dist[-1])
-    #          rho[p] = (W * m[neighs]).sum()
-    #      _plot_current_situation(True, 0, x_nounit, rho, rho_anal, icSimParams)
+    if icRunParams["DUMPFREQ"] > 0:
+
+        tree = KDTree(x_nounit[:, :ndim], boxsize=boxsizeForTree)
+        for p in range(npart):
+            dist, neighs = tree.query(x_nounit[p, :ndim], k=Nngb_int)
+            h[p] = dist[-1] / kernel_gamma
+            W = kernel_func(dist, dist[-1])
+            rho[p] = (W * m[neighs]).sum()
+        _IC_write_intermediate_output(0, x, m, rho, h, icSimParams)
+        # drop a first plot
+        # TODO: remove the plotting
+        _IC_plot_current_situation(True, 0, x_nounit, rho, rho_anal, icSimParams)
 
     # start iteration loop
     iteration = 0
@@ -613,36 +624,41 @@ def generate_IC_for_given_density(
         # reset displacements
         delta_r.fill(0.0)
 
-        # re-distribute particles?
-        if iteration % icRunParams["REDISTRIBUTE_FREQUENCY"] == 0:
+        # re-distribute and/or dump particles?
+        dump_now = icRunParams["DUMPFREQ"] > 0
+        dump_now = dump_now and iteration % icRunParams["DUMPFREQ"] == 0
+        redistribute = iteration % icRunParams["REDISTRIBUTE_FREQUENCY"] == 0
+        redistribute = (
+            redistribute and icRunParams["NO_REDISTRIBUTION_AFTER"] >= iteration
+        )
 
-            # do we need to compute current densities and h's?
-            if (
-                icRunParams["PLOT_AT_REDISTRIBUTION"]
-                or icRunParams["NO_REDISTRIBUTION_AFTER"] >= iteration
-            ):
-                # first build new tree
-                tree = KDTree(x_nounit[:, :ndim], boxsize=boxsizeForTree)
-                for p in range(npart):
-                    dist, neighs = tree.query(x_nounit[p, :ndim], k=Nngb_int)
-                    h[p] = dist[-1] / kernel_gamma
-                    W = kernel_func(dist, dist[-1])
-                    rho[p] = (W * m[neighs]).sum()
+        if dump_now or redistribute:
 
-                #  plot the current situation first?
-                if icRunParams["PLOT_AT_REDISTRIBUTION"]:
-                    _plot_current_situation(
-                        True, iteration, x_nounit, rho, rho_anal, icSimParams
-                    )
+            # first build new tree
+            tree = KDTree(x_nounit[:, :ndim], boxsize=boxsizeForTree)
+            for p in range(npart):
+                dist, neighs = tree.query(x_nounit[p, :ndim], k=Nngb_int)
+                h[p] = dist[-1] / kernel_gamma
+                W = kernel_func(dist, dist[-1])
+                rho[p] = (W * m[neighs]).sum()
 
-                # re-destribute a handful of particles
-                if icRunParams["NO_REDISTRIBUTION_AFTER"] >= iteration:
-                    x_nounit, touched = redistribute_particles(
-                        x_nounit, h, rho, rhoA, iteration, icRunParams, icSimParams
-                    )
-                    # updated analytical density computations
-                    if touched is not None:
-                        rhoA[touched] = rho_anal(x_nounit[touched], ndim)
+            if dump_now:
+                _IC_write_intermediate_output(
+                    iteration, x_nounit, m, rho, h, icSimParams
+                )
+                # TODO: remove the plotting
+                _IC_plot_current_situation(
+                    True, iteration, x_nounit, rho, rho_anal, icSimParams
+                )
+
+            # re-destribute a handful of particles
+            if redistribute:
+                x_nounit, touched = redistribute_particles(
+                    x_nounit, h, rho, rhoA, iteration, icRunParams, icSimParams
+                )
+                # updated analytical density computations
+                if touched is not None:
+                    rhoA[touched] = rho_anal(x_nounit[touched], ndim)
 
         # compute MODEL smoothing lengths
         oneoverrho = 1.0 / rhoA
@@ -828,7 +844,7 @@ def redistribute_particles(
         "REDISTRIBUTE_FRACTION_REDUCTION"
     ]
 
-    _, _, kernel_gamma = get_kernel_data(icRunParams["KERNEL"], ndim)
+    _, _, kernel_gamma = get_kernel_data(icSimParams["kernel"], ndim)
 
     underdense = rho < rhoA  # is this underdense particle?
     overdense = rho > rhoA  # is this overdense particle?
@@ -909,7 +925,81 @@ def redistribute_particles(
     return x, indices[touched]
 
 
-def _plot_current_situation(
+def _IC_write_intermediate_output(
+    iteration: int,
+    x: np.ndarray,
+    m: np.ndarray,
+    rho: np.ndarray,
+    h: np.ndarray,
+    icSimParams: dict,
+):
+    r"""
+    Write an intermediate output of current particle positions, densities,
+    masses, and smoothing lengths.
+
+    Parameters
+    ----------------
+
+    iteration: int
+        current iteration number
+
+    x: np.ndarray
+        current particle coordinates
+
+    m: np.ndarray
+        particle masses
+
+    rho: np.ndarray
+        particle densities
+
+    h: np.ndarray
+        particle smoothing lengths
+
+    icSimParams: dict
+        a dict containing simulation parameters as returned by 
+        ``IC_set_IC_params()``.
+
+
+
+    Returns
+    -------------------
+
+    Nothing.
+
+    """
+
+    from swiftsimio import Writer
+
+    nx = icSimParams["nx"]
+    ndim = icSimParams["ndim"]
+    npart = nx ** ndim
+
+    ICunits = unyt.UnitSystem(
+        "IC_generation", icSimParams["unit_l"], icSimParams["unit_m"], unyt.s
+    )
+
+    W = Writer(ICunits, icSimParams["boxsize"])
+    W.gas.coordinates = unyt_array(x, icSimParams["unit_l"])
+    W.gas.smoothing_length = unyt_array(h, icSimParams["unit_l"])
+    W.gas.masses = unyt_array(m, icSimParams["unit_m"])
+    W.gas.densities = unyt_array(
+        rho, W.gas.masses.units / W.gas.coordinates.units ** ndim
+    )
+
+    # invent some junk to fill up necessary arrays
+    W.gas.internal_energy = unyt_array(
+        np.zeros(npart, dtype=np.float), unyt.m ** 2 / unyt.s ** 2
+    )
+    W.gas.velocities = unyt_array(np.zeros(npart, dtype=np.float), unyt.m / unyt.s)
+
+    # If IDs are not present, this automatically generates
+    fname = "IC-generation-iteration-" + str(iteration).zfill(5) + ".hdf5"
+    W.write(fname)
+
+    return
+
+
+def _IC_plot_current_situation(
     save: bool,
     iteration: int,
     x: np.ndarray,
