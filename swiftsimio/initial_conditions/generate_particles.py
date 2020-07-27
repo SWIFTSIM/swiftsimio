@@ -134,18 +134,18 @@ class ic_run_params(object):
     Objects containing run parameters for IC generation
     """
     iter_max: int = 2000
-    convergence_threshold: float = 1e-4
+    converge_thresh: float = 1e-4
     tolerance_part: float = 1e-3
-    displacement_threshold: float = 1e-3
+    displ_thresh: float = 1e-3
     delta_init: Union[float, None] = None
-    delta_reduction_factor: float = 1.0
+    delta_reduct: float = 1.0
     delta_min: float = 1e-6
-    redistribute_frequency: int = 20
-    redistribute_fraction: float = 0.01
-    redistribute_fraction_reduction: float = 1.0
+    redist_freq: int = 20
+    redist_frac: float = 0.01
+    redist_reduct: float = 1.0
     no_redistribution_after: int = 200
-    intermediate_dump_frequency: int = 50
-    random_seed: int = 666
+    dump_basename: str = "IC-generation-iteration-"
+    dumpfreq: int = 50
 
     def __init__(
         self,
@@ -161,6 +161,7 @@ class ic_run_params(object):
         redistribute_fraction_reduction: float = 1.0,
         no_redistribution_after: int = 200,
         intermediate_dump_frequency: int = 50,
+        dump_basename: str = "IC-generation-iteration-",
         random_seed: int = 666,
     ):
         r"""
@@ -221,6 +222,10 @@ class ic_run_params(object):
             frequency of dumps of the current state of the iteration. If set to zero,
             no intermediate results will be stored.
 
+        dump_basename: str
+            Basename for intermediate dumps. The filename will be constructed as
+            ``basename + <5 digit zero padded iteration number> + .hdf5``
+
         random_seed: int, optional
             set a specific random seed
 
@@ -253,6 +258,7 @@ class ic_run_params(object):
         self.redist_stop = no_redistribution_after
         self.redist_reduct = redistribute_fraction_reduction
         self.dumpfreq = intermediate_dump_frequency
+        self.dump_basename = dump_basename
 
         global seed_set
         if not seed_set:
@@ -649,7 +655,7 @@ def generate_IC_for_given_density(
             for i, n in enumerate(neighs):
                 W = kernel_func(dist[i], dist[-1])
                 rho[p] += W * m[n]
-        _IC_write_intermediate_output(0, x, m, rho, h, ic_sim_params)
+        _IC_write_intermediate_output(0, x, m, rho, h, ic_sim_params, ic_run_params)
         # drop a first plot
         # TODO: remove the plotting
         _IC_plot_current_situation(True, 0, x_nounit, rho, rho_anal, ic_sim_params)
@@ -685,7 +691,7 @@ def generate_IC_for_given_density(
 
             if dump_now:
                 _IC_write_intermediate_output(
-                    iteration, x_nounit, m, rho, h, ic_sim_params
+                    iteration, x_nounit, m, rho, h, ic_sim_params, ic_run_params
                 )
                 # TODO: remove the plotting
                 _IC_plot_current_situation(
@@ -970,6 +976,7 @@ def _IC_write_intermediate_output(
     rho: np.ndarray,
     h: np.ndarray,
     ic_sim_params: ic_sim_params,
+    ic_run_params: ic_run_params,
 ):
     r"""
     Write an intermediate output of current particle positions, densities,
@@ -996,6 +1003,8 @@ def _IC_write_intermediate_output(
     ic_sim_params: ic_sim_params
         an ic_sim_params instance containing simulation parameters
 
+    ic_run_params: ic_run_params
+        an ic_run_params instance containing simulation parameters
 
 
     Returns
@@ -1028,7 +1037,7 @@ def _IC_write_intermediate_output(
     W.gas.velocities = unyt_array(np.zeros(npart, dtype=np.float), unyt.m / unyt.s)
 
     # If IDs are not present, this automatically generates
-    fname = "IC-generation-iteration-" + str(iteration).zfill(5) + ".hdf5"
+    fname = ic_run_params.dump_basename + str(iteration).zfill(5) + ".hdf5"
     W.write(fname)
 
     return
