@@ -604,8 +604,9 @@ def generate_IC_for_given_density(
         for p in range(npart):
             dist, neighs = tree.query(x_nounit[p, :ndim], k=Nngb_int)
             h[p] = dist[-1] / kernel_gamma
-            W = kernel_func(dist, dist[-1])
-            rho[p] = (W * m[neighs]).sum()
+            for i, n in enumerate(neighs):
+                W = kernel_func(dist[i], dist[-1])
+                rho[p] += W * m[n]
         _IC_write_intermediate_output(0, x, m, rho, h, icSimParams)
         # drop a first plot
         # TODO: remove the plotting
@@ -618,19 +619,16 @@ def generate_IC_for_given_density(
 
         iteration += 1
 
-        # get analytical density at particle positions
+        # reset arrays
         rhoA = rho_anal(x_nounit, ndim)
-
-        # reset displacements
         delta_r.fill(0.0)
+        rho.fill(0.0)
 
         # re-distribute and/or dump particles?
         dump_now = icRunParams["DUMPFREQ"] > 0
         dump_now = dump_now and iteration % icRunParams["DUMPFREQ"] == 0
         redistribute = iteration % icRunParams["REDIST_FREQ"] == 0
-        redistribute = (
-            redistribute and icRunParams["REDIST_STOP"] >= iteration
-        )
+        redistribute = redistribute and icRunParams["REDIST_STOP"] >= iteration
 
         if dump_now or redistribute:
 
@@ -639,8 +637,9 @@ def generate_IC_for_given_density(
             for p in range(npart):
                 dist, neighs = tree.query(x_nounit[p, :ndim], k=Nngb_int)
                 h[p] = dist[-1] / kernel_gamma
-                W = kernel_func(dist, dist[-1])
-                rho[p] = (W * m[neighs]).sum()
+                for i, n in enumerate(neighs):
+                    W = kernel_func(dist[i], dist[-1])
+                    rho[p] += W * m[n]
 
             if dump_now:
                 _IC_write_intermediate_output(
@@ -840,9 +839,7 @@ def redistribute_particles(
         return x, None
 
     # decrease how many particles you move as number of iterations increases
-    icRunParams["REDIST_FRAC"] *= icRunParams[
-        "REDIST_REDUCT"
-    ]
+    icRunParams["REDIST_FRAC"] *= icRunParams["REDIST_REDUCT"]
 
     _, _, kernel_gamma = get_kernel_data(icSimParams["kernel"], ndim)
 
@@ -857,6 +854,9 @@ def redistribute_particles(
 
     nover = overdense[overdense].shape[0]
     nunder = underdense[underdense].shape[0]
+    if nover == 0 or nunder == 0:
+        return x, None
+
     while moved < to_move:
 
         # pick an overdense random particle
