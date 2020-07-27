@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-#---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
 # Create a plot of kernels and kernel derivatives to check their validity
-#---------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------
 
 
 import numpy as np
@@ -11,9 +11,8 @@ from swiftsimio import initial_conditions as ic
 
 
 kernellist = [
-                'cubic spline',
-            ]
-
+    "cubic spline",
+]
 
 
 r = np.linspace(0, 1.1, 200)
@@ -45,7 +44,7 @@ ax6.set_ylabel(r"$\frac{dW}{dr}$")
 
 
 for kernel in kernellist:
-    
+
     Wf1, dWdrf1, _, = ic.get_kernel_data(kernel, 1)
     Wf2, dWdrf2, _, = ic.get_kernel_data(kernel, 2)
     Wf3, dWdrf3, _, = ic.get_kernel_data(kernel, 3)
@@ -56,12 +55,12 @@ for kernel in kernellist:
     dWdr2 = dWdrf2(r, H)
     dWdr3 = dWdrf3(r, H)
 
-    ax1.plot(r, W1, label = kernel)
-    ax2.plot(r, W2, label = kernel)
-    ax3.plot(r, W3, label = kernel)
-    ax4.plot(r, dWdr1, label = kernel)
-    ax5.plot(r, dWdr2, label = kernel)
-    ax6.plot(r, dWdr3, label = kernel)
+    ax1.plot(r, W1, label=kernel)
+    ax2.plot(r, W2, label=kernel)
+    ax3.plot(r, W3, label=kernel)
+    ax4.plot(r, dWdr1, label=kernel)
+    ax5.plot(r, dWdr2, label=kernel)
+    ax6.plot(r, dWdr3, label=kernel)
 
 for ax in fig.axes:
     ax.grid()
