@@ -48,12 +48,12 @@ for kernel in kernellist:
     Wf1, dWdrf1, _, = ic.get_kernel_data(kernel, 1)
     Wf2, dWdrf2, _, = ic.get_kernel_data(kernel, 2)
     Wf3, dWdrf3, _, = ic.get_kernel_data(kernel, 3)
-    W1 = Wf1(r, H)
-    W2 = Wf2(r, H)
-    W3 = Wf3(r, H)
-    dWdr1 = dWdrf1(r, H)
-    dWdr2 = dWdrf2(r, H)
-    dWdr3 = dWdrf3(r, H)
+    W1 = [Wf1(R, H) for R in r]
+    W2 = [Wf2(R, H) for R in r]
+    W3 = [Wf3(R, H) for R in r]
+    dWdr1 = [dWdrf1(R, H) for R in r]
+    dWdr2 = [dWdrf2(R, H) for R in r]
+    dWdr3 = [dWdrf3(R, H) for R in r]
 
     ax1.plot(r, W1, label=kernel)
     ax2.plot(r, W2, label=kernel)

@@ -36,36 +36,36 @@ ndim = 2
 nx = int(npart ** (1.0 / ndim) + 0.5)
 
 
-# you need to call this first
-icSimParams = IC.IC_set_IC_params(
+ic_sim_params = IC.ic_sim_params(
     boxsize=unyt_array([1.0, 1.0, 1.0], "cm"),
     periodic=True,
     nx=nx,
     ndim=ndim,
-    unit_l="cm",
-    unit_m="g",
+    kernel="cubic spline",
+    eta=1.2348,
 )
 
 
-# this too
-icRunParams = IC.IC_set_run_params(
-    iter_max=2000,
+ic_run_params = IC.ic_run_params(
+    iter_max=20,
     convergence_threshold=1e-5,
     tolerance_part=1e-3,
     displacement_threshold=1e-4,
-    delta_init=None,
+    #  delta_init                  = 0.01,
     delta_reduction_factor=1.0,
     delta_min=1e-6,
-    redistribute_frequency=20,
+    redistribute_frequency=5,
     redistribute_fraction=0.01,
-    redistribute_fraction_reduction=1.0,
     no_redistribution_after=200,
-    intermediate_dump_frequency=50,
+    intermediate_dump_frequency=5,
+    dump_basename="iteration-",
 )
 
 
 # the party starts here
-x, m, stats = IC.generate_IC_for_given_density(rho_parabola, icSimParams, icRunParams)
+x, m, stats = IC.generate_IC_for_given_density(
+    rho_parabola, ic_sim_params, ic_run_params
+)
 
 print("Stats of last iteration:")
 print("Number of iterations: {0:6d}".format(stats["niter"]))
