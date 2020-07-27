@@ -97,6 +97,9 @@ class ic_sim_params(object):
         + The returned dict is a required argument to call ``generate_IC_for_given_density()``
         """
 
+        if not isinstance(boxsize, unyt.unyt_array):
+            raise TypeError("boxsize needs to be a unyt array.")
+
         self.boxsize = boxsize
         self.periodic = periodic
         self.nx = nx
