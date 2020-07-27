@@ -16,6 +16,7 @@ from typing import Union
 
 from .IC_kernel import get_kernel_data
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
+from swiftsimio import Writer
 
 
 seed_set = False
@@ -509,13 +510,13 @@ def generate_IC_for_given_density(
         )
 
     try:
-        res = rho_anal(np.ones((10, 3), dtype="float"), ic_sim_params["ndim"])
+        res = rho_anal(np.ones((10, 3), dtype=np.float), ic_sim_params["ndim"])
     except TypeError:
         errmsg = (
             "rho_anal must take only a numpy array x of coordinates as an argument."
         )
         raise TypeError(errmsg)
-    if type(res) is not np.ndarray:
+    if not isinstance(res, np.ndarray):
         raise TypeError("rho_anal needs to return a numpy array as the result.")
 
     # shortcuts and constants
@@ -870,11 +871,9 @@ def redistribute_particles(
         if np.random.uniform() < othresh:
 
             attempts = 0
-            while True:
+            while attempts < nunder:
 
                 attempts += 1
-                if attempts == nunder:
-                    break  # emergency halt
 
                 u = np.random.randint(0, nunder)
                 uind = indices[underdense][u]
@@ -967,8 +966,6 @@ def _IC_write_intermediate_output(
     Nothing.
 
     """
-
-    from swiftsimio import Writer
 
     nx = ic_sim_params["nx"]
     ndim = ic_sim_params["ndim"]
