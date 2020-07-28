@@ -1,6 +1,6 @@
 import numpy as np
 import unyt
-from .generate_particles import ic_sim_params
+from .generate_particles import ParticleGenerator
 
 
 def IC_plot_current_situation(
@@ -9,7 +9,7 @@ def IC_plot_current_situation(
     x: np.ndarray,
     rho: np.ndarray,
     rho_anal: callable,
-    ic_sim_params: ic_sim_params,
+    generator: ParticleGenerator,
 ):
     r"""
     Create a plot of what things look like now. In particular, scatter the
@@ -50,12 +50,9 @@ def IC_plot_current_situation(
     from matplotlib import pyplot as plt
     from scipy import stats
 
-    # do this here to avoid circular imports
-    from .generate_particles import IC_uniform_coordinates
-
-    boxsize = ic_sim_params.boxsize_to_use
-    ndim = ic_sim_params.ndim
-    nx = ic_sim_params.nx
+    boxsize = generator.boxsize_to_use
+    ndim = generator.ndim
+    nx = generator.nx
 
     if x.shape[0] > 5000:
         marker = ","
@@ -63,9 +60,6 @@ def IC_plot_current_situation(
         marker = "."
 
     # dict to generate coordinates to compute analytical solution
-    tempparams = ic_sim_params.copy()
-    tempparams.ndim = 1
-    tempparams.nx = 200
 
     if ndim == 1:
 
@@ -73,7 +67,7 @@ def IC_plot_current_situation(
         ax1 = fig.add_subplot(111)
         ax1.scatter(x[:, 0], rho, s=1, c="k", label="IC")
 
-        XA = IC_uniform_coordinates(tempparams).value
+        XA = generator.IC_uniform_coordinates(nx=200, ndim=1).value
         ax1.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical")
         ax1.set_xlabel("x")
         ax1.set_ylabel("rho")
@@ -105,8 +99,7 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax2.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams.boxsize_to_use[0] = ic_sim_params.boxsize_to_use[0]
-        XA = IC_uniform_coordinates(tempparams).value
+        XA = generator.IC_uniform_coordinates(nx=200).value
         XA[:, 1] = 0.5 * boxsize[1]
         ax2.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical, y = 0.5")
 
@@ -141,8 +134,7 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax3.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams.boxsize_to_use[0] = ic_sim_params.boxsize_to_use[1]
-        XA = IC_uniform_coordinates(tempparams).value
+        XA = generator.IC_uniform_coordinates(nx=200).value
         XA[:, 1] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         xa = XA[:, 0]
@@ -204,8 +196,7 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax4.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams.boxsize_to_use[0] = ic_sim_params.boxsize_to_use[0]
-        XA = IC_uniform_coordinates(tempparams).value
+        XA = generator.IC_uniform_coordinates(nx=200).value
         XA[:, 1] = 0.5 * boxsize[1]
         XA[:, 2] = 0.5 * boxsize[2]
         ax4.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical, y, z = 1/2 boxsize")
@@ -230,8 +221,7 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax5.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams.boxsize_to_use[0] = ic_sim_params.boxsize_to_use[1]
-        XA = IC_uniform_coordinates(tempparams).value
+        XA = generator.IC_uniform_coordinates(nx=200).value
         XA[:, 1] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         XA[:, 2] = 0.5 * boxsize[2]
@@ -257,8 +247,7 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax6.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        tempparams.boxsize_to_use[0] = ic_sim_params.boxsize_to_use[2]
-        XA = IC_uniform_coordinates(tempparams).value
+        XA = generator.IC_uniform_coordinates(nx=200).value
         XA[:, 2] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         XA[:, 1] = 0.5 * boxsize[2]
