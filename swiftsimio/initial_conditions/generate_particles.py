@@ -699,8 +699,8 @@ def generate_IC_for_given_density(
                 )
                 # TODO: remove the plotting
                 #  IC_plot_current_situation(
-                    True, iteration, x_nounit, rho, rho_anal, ic_sim_params
-                )
+                    #  True, iteration, x_nounit, rho, rho_anal, ic_sim_params
+                #  )
 
             # re-destribute a handful of particles
             if redistribute:
@@ -820,6 +820,7 @@ def generate_IC_for_given_density(
 
     coords = unyt_array(x_nounit, ic_sim_params.unit_l)
     masses = unyt_array(m, ic_sim_params.unit_m)
+
     stats = {}
     stats["min_motion"] = min_deviation
     stats["avg_motion"] = av_deviation
