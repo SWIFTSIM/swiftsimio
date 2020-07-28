@@ -662,7 +662,7 @@ def generate_IC_for_given_density(
         IC_write_intermediate_output(0, x, m, rho, h, ic_sim_params, ic_run_params)
         # drop a first plot
         # TODO: remove the plotting
-        IC_plot_current_situation(True, 0, x_nounit, rho, rho_anal, ic_sim_params)
+        #  IC_plot_current_situation(True, 0, x_nounit, rho, rho_anal, ic_sim_params)
 
     # start iteration loop
     iteration = 0
@@ -698,7 +698,7 @@ def generate_IC_for_given_density(
                     iteration, x_nounit, m, rho, h, ic_sim_params, ic_run_params
                 )
                 # TODO: remove the plotting
-                IC_plot_current_situation(
+                #  IC_plot_current_situation(
                     True, iteration, x_nounit, rho, rho_anal, ic_sim_params
                 )
 
@@ -799,11 +799,12 @@ def generate_IC_for_given_density(
         min_deviation = dev.min()
         av_deviation = dev.sum() / dev.shape[0]
 
-        print(
-            "Iteration {0:4d}; Displacement [mean interpart dist] Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
-                iteration, min_deviation, av_deviation, max_deviation
+        if iteration % 10 == 0:
+            print(
+                "Iteration {0:4d}; Displ: Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
+                    iteration, min_deviation, av_deviation, max_deviation
+                )
             )
-        )
 
         if (
             max_deviation < ic_run_params.displ_thresh
