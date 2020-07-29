@@ -2,4 +2,4 @@
 Initial conditions generation.
 """
 
-from .generate_particles import *
+from .generate_particles import ParticleGenerator
