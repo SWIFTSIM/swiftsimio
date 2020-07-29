@@ -5,13 +5,6 @@ Kernel functions and constants following the Dehnen & Aly 2012 conventions
  
 """
 
-# ------------------------------------
-# Kernel related stuffs
-# ------------------------------------
-
-import numpy as np
-from typing import Union
-
 
 def W_cubic_spline(r: float, H: float):
     """
