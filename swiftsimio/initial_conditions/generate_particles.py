@@ -79,7 +79,8 @@ class RunParams(object):
 
     """
     # iteration parameters
-    iter_max: int = 2000
+    iter_max: int = 10000
+    iter_min: int = 0
     converge_thresh: float = 1e-4
     tolerance_part: float = 1e-3
     displ_thresh: float = 1e-3
@@ -319,6 +320,8 @@ class ParticleGenerator(object):
         rhofunc = self.rhofunc
         boxsize = self.boxsize_to_use
         npart = self.npart
+        ip = self.iterparams
+        runparams = self.runparams
 
         # safety checks first
         if not TREE_AVAILABLE:
@@ -383,9 +386,15 @@ class ParticleGenerator(object):
         self.x = self.coordinates.value
         self.m = self.masses.value
 
+        # check consistency of runtime params
+
+        if runparams.iter_max < runparams.iter_min:
+            raise ValueError("runparams.iter_max must be >= runparams.iter_min")
+        if runparams.delta_init is not None:
+            if runparams.delta_init < runparams.delta_min:
+                raise ValueError("runparams.delta_init must be >= runparams.delta_min")
+
         # set up iteration related stuff
-        ip = self.iterparams
-        runparams = self.runparams
 
         # get mean interparticle distance
         mid = 1.0
@@ -827,7 +836,7 @@ class ParticleGenerator(object):
             warnmsg += "runparams.delta_init = {0:.6e}".format(dinit)
             warnings.warn(warnmsg, RuntimeWarning)
 
-        stop = False
+        converged = False
         if (
             max_displacement < runparams.displ_thresh
         ):  # don't think about stopping until max < threshold
@@ -835,13 +844,14 @@ class ParticleGenerator(object):
                 0
             ]
             if unconverged < runparams.tolerance_part * npart:
-                stop = True
+                converged = True
 
         # store stats
         self.stats.add_stat(
             iteration, min_displacement, max_displacement, avg_displacement
         )
-        return stop
+
+        return converged
 
     def generate_IC_for_given_density(self):
         """
@@ -860,22 +870,6 @@ class ParticleGenerator(object):
         Returns
         -----------
 
-        coords: unyt.unyt_array
-            Final particle coordinates
-
-        masses: unyt.unyt_array
-            Final particle masses
-
-        stats: dict
-            dict containing particle motion statistics of the last iteration:
-
-            - ``stats['min_motion']``: The smallest displacement a particle 
-              experienced in units of mean interparticle distance
-            - ``stats['avg_motion']``: The average displacement particles 
-              experienced in units of mean interparticle distance
-            - ``stats['max_motion']``: The maximal displacement a particle 
-              experienced in units of mean interparticle distance
-            - ``stats['niter']``: Number of iterations performed
         """
         # this import is only temporary to avoid circular imports.
         # it will be removed before the merge.
@@ -889,10 +883,10 @@ class ParticleGenerator(object):
 
         while iteration < self.runparams.iter_max:
 
-            stop = self.perform_iteration(iteration)
+            converged = self.perform_iteration(iteration)
             iteration += 1
 
-            if stop:
+            if converged and self.runparams.iter_min < iteration:
                 break
 
         # convert results to unyt arrays
