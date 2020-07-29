@@ -92,7 +92,7 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax2.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        XA = generator.IC_uniform_coordinates(nx=100).value
+        XA = generator.IC_uniform_coordinates(nx=200).value
         XA[:, 1] = 0.5 * boxsize[1]
         ax2.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical, y = 0.5")
 
@@ -187,7 +187,7 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax4.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        XA = generator.IC_uniform_coordinates(nx=100).value
+        XA = generator.IC_uniform_coordinates(nx=200, ndim=1).value
         XA[:, 1] = 0.5 * boxsize[1]
         XA[:, 2] = 0.5 * boxsize[2]
         ax4.plot(XA[:, 0], rho_anal(XA, ndim), label="analytical, y, z = 1/2 boxsize")
@@ -212,7 +212,8 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax5.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        XA = generator.IC_uniform_coordinates(nx=100).value
+        XA = generator.IC_uniform_coordinates(nx=200, ndim=1).value
+        XA[:, 1] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         XA[:, 2] = 0.5 * boxsize[2]
         ax5.plot(XA[:, 1], rho_anal(XA, ndim), label="analytical, x, z = 1/2 boxsize")
@@ -237,7 +238,8 @@ def IC_plot_current_situation(
         r = 0.5 * (edges[:-1] + edges[1:])
         ax6.errorbar(r, rho_mean, yerr=rho_std, label="average all ptcls", lw=1)
 
-        XA = generator.IC_uniform_coordinates(nx=100).value
+        XA = generator.IC_uniform_coordinates(nx=200, ndim=1).value
+        XA[:, 2] = XA[:, 0]
         XA[:, 0] = 0.5 * boxsize[0]
         XA[:, 1] = 0.5 * boxsize[2]
         ax6.plot(XA[:, 2], rho_anal(XA, ndim), label="analytical, x, y = 1/2 boxsize")
