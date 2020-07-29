@@ -124,6 +124,41 @@ class IterData(object):
         return
 
 
+class IterStats(object):
+    r"""
+    used to store stats of the iteration.
+    """
+
+    max_displacement: np.ndarray
+    min_displacement: np.ndarray
+    avg_displacement: np.ndarray
+    niter: int
+
+    def __init__(self, iter_max):
+        self.max_displacement = np.zeros(iter_max, dtype=np.float)
+        self.min_displacement = np.zeros(iter_max, dtype=np.float)
+        self.avg_displacement = np.zeros(iter_max, dtype=np.float)
+        self.niter = 0
+        return
+
+    def add_stat(
+        self,
+        iteration,
+        min_displacement: float,
+        max_displacement: float,
+        avg_displacement: float,
+    ):
+        r"""
+        Store new stats at the appropriate place.
+        """
+
+        self.max_displacement[iteration] = max_displacement
+        self.min_displacement[iteration] = min_displacement
+        self.avg_displacement[iteration] = avg_displacement
+        self.niter = iteration
+        return
+
+
 class ParticleGenerator(object):
     r"""
 
@@ -195,6 +230,7 @@ class ParticleGenerator(object):
 
     runparams: RunParams = RunParams()
     iterparams: IterData = IterData()
+    stats: IterStats
 
     # derived variables
     npart = 0
@@ -317,7 +353,7 @@ class ParticleGenerator(object):
 
         #  generate masses if necessary
         if m is None:
-            nc = 1000 - 400 * (ndim - 1)  # use nc cells for mass integration
+            nc = int(10000 ** (1.0 / ndim) + 0.5)  # always use ~ 10000 mesh points
             dx = boxsize / nc
 
             #  integrate total mass in box
@@ -387,6 +423,9 @@ class ParticleGenerator(object):
             ip.boxsize_for_tree = self.boxsize_to_use[:ndim]
         else:
             ip.boxsize_for_tree = None
+
+        # set up stats
+        self.stats = IterStats(self.runparams.iter_max)
 
         # take note that we did this
         self._set_up = True
@@ -651,7 +690,7 @@ class ParticleGenerator(object):
 
         if dump_now or redistribute:
 
-            # first build new tree
+            # first build new tree, get smoothing lengths and densities
             h, rho = self.compute_h_and_rho()
 
             if dump_now:
@@ -669,13 +708,19 @@ class ParticleGenerator(object):
         # compute MODEL smoothing lengths
         oneoverrho = 1.0 / rho_model
         oneoverrhosum = np.sum(oneoverrho)
+        vol = 0.0
+        for d in range(ndim):
+            vol *= boxsize[d]
 
         if ndim == 1:
             hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum
+            #  hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum * vol
         elif ndim == 2:
             hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum)
+            #  hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum * vol)
         else:
             hmodel = np.cbrt(ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum)
+            #  hmodel = np.cbrt(ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum * vol)
 
         # init delta_r array
         delta_r = np.zeros(self.x.shape, dtype=np.float)
@@ -712,6 +757,7 @@ class ParticleGenerator(object):
                 delrsq += delta_r[:, d] ** 2
             delrsq = np.sqrt(delrsq)
             ipars.delta_r_norm = ipars.mean_interparticle_distance / delrsq.max()
+            #  ipars.delta_r_norm *= 1e-2
             ipars.compute_delta_norm = False
 
         # finally, displace particles
@@ -763,7 +809,7 @@ class ParticleGenerator(object):
         avg_displacement /= ipars.mean_interparticle_distance
 
         print(
-            "Iteration {0:4d}; Displacement [mean interpart dist] Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
+            "Iteration {0:4d}; Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
                 iteration, min_displacement, avg_displacement, max_displacement
             )
         )
@@ -773,7 +819,7 @@ class ParticleGenerator(object):
             # need to know what value to start with in your next run.
             dinit = (
                 ipars.delta_r_norm
-                * runparams.delta_reduct ** (-iteration)
+                * runparams.delta_reduct ** (-max(iteration, 1))
                 / ipars.mean_interparticle_distance
             )
             warnmsg = "Found max displacements > 5 mean interparticle distances. "
@@ -791,6 +837,10 @@ class ParticleGenerator(object):
             if unconverged < runparams.tolerance_part * npart:
                 stop = True
 
+        # store stats
+        self.stats.add_stat(
+            iteration, min_displacement, max_displacement, avg_displacement
+        )
         return stop
 
     def generate_IC_for_given_density(self):
@@ -834,39 +884,34 @@ class ParticleGenerator(object):
         if not self._set_up:
             self.initial_setup()
 
-        # shortcuts and constants
-        rhofunc = self.rhofunc
-        x = self.x
-        m = self.m
-        runparams = self.runparams
-
-        if runparams.dumpfreq > 0:
-            h, rho = self.compute_h_and_rho()
-            self.IC_write_intermediate_output(0, h, rho)
-            # drop a first plot
-            # TODO: remove the plotting
-            IC_plot_current_situation(True, 0, x, rho, rhofunc, self)
-
         # start iteration loop
         iteration = 0
 
-        while True:
+        while iteration < self.runparams.iter_max:
 
-            iteration += 1
             stop = self.perform_iteration(iteration)
+            iteration += 1
 
-            if iteration == runparams.iter_max or stop:
+            if stop:
                 break
 
-        self.coords = unyt.unyt_array(x, self.unitsys["length"])
-        self.masses = unyt.unyt_array(m, self.unitsys["mass"])
-        stats = {}
-        stats["min_motion"] = 0.0
-        stats["avg_motion"] = 0.0
-        stats["max_motion"] = 0.0
-        stats["niter"] = iteration
+        # convert results to unyt arrays
+        self.coords = unyt.unyt_array(self.x, self.unitsys["length"])
+        self.masses = unyt.unyt_array(self.m, self.unitsys["mass"])
 
-        return self.coords, self.masses, stats
+        # compute densities and smoothing lengths before you finish
+        h, rho = self.compute_h_and_rho()
+        self.smoothing_lengths = unyt.unyt_array(h, self.unitsys["length"])
+        self.densities = unyt.unyt_array(
+            rho, self.unitsys["mass"] / self.unitsys["length"] ** self.ndim
+        )
+
+        # trim stats
+        self.stats.max_displacement = self.stats.max_displacement[: self.stats.niter]
+        self.stats.min_displacement = self.stats.min_displacement[: self.stats.niter]
+        self.stats.avg_displacement = self.stats.avg_displacement[: self.stats.niter]
+
+        return
 
     def redistribute_particles(
         self, h: np.ndarray, rho: np.ndarray, rhoA: np.ndarray,
@@ -931,7 +976,12 @@ class ParticleGenerator(object):
         if nover == 0 or nunder == 0:
             return None
 
-        while nmoved < to_move:
+        max_attempts_over = 10 * to_move  # only try your luck, don't force
+        attempts_over = 0
+
+        while nmoved < to_move and attempts_over < max_attempts_over:
+
+            attempts_over += 1
 
             # pick an overdense random particle
             oind = indices[overdense][np.random.randint(0, nover)]
@@ -943,10 +993,10 @@ class ParticleGenerator(object):
             othresh = erf(othresh)
             if np.random.uniform() < othresh:
 
-                attempts = 0
-                while attempts < nunder:
+                attempts_under = 0
+                while attempts_under < nunder:  # only try your luck, don't force
 
-                    attempts += 1
+                    attempts_under += 1
 
                     u = np.random.randint(0, nunder)
                     uind = indices[underdense][u]
@@ -972,6 +1022,7 @@ class ParticleGenerator(object):
                         nmoved += 1
                         break
 
+        print("Moved:", nmoved)
         if nmoved > 0:
 
             # check boundary conditions
