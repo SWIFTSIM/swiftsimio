@@ -146,30 +146,26 @@ class ParticleGenerator(object):
         - ``ndim``: integer, number of dimensions that your simulations is to 
           have
 
-    rho_max: float or None, optional
-        The maximal density within the simulation box. If ``None``, an 
-        approximate value will be determined if the rejection sampling to obtain
-        an initial particle configuration guess is used.
-
-    boxsize: unyt_array, optional
+    boxsize: unyt_array
         The box size of the simulation.
+
+    nx: int
+        how many particles along every dimension you want your simulation
+        to contain
+
+    ndim: int
+        how many dimensions you want your simulation to have
+
+    unitsys: unyt.unit_systems.UnitSystem
+        a unit system that contains the units you want your ICs to have
 
     periodic: bool, optional
         whether the simulation box is periodic or not
 
-    nx: int, optional
-        how many particles along every dimension you want your simulation
-        to contain
-
-    ndim: int, optional
-        how many dimensions you want your simulation to have
-
-    unit_l:  None or unyt.unit_object.Unit or str, optional
-        unit length for the coordinates. If None, the same unit given for
-        the boxsize will be used.
-
-    unit_m: unyt.unit_object.Unit or str, optional
-        unit mass for the particle masses
+    rho_max: float or None, optional
+        The maximal density within the simulation box. If ``None``, an 
+        approximate value will be determined if the rejection sampling to obtain
+        an initial particle configuration guess is used.
 
     kernel: str {'cubic spline',}, optional
         which kernel to use
@@ -188,15 +184,14 @@ class ParticleGenerator(object):
 
     # simulation parameters
     rhofunc: callable
-    rhomax: Union[float, None] = None
-    boxsize: unyt_array = unyt_array([1.0, 1.0, 1.0], "cm")
+    boxsize: unyt_array
+    nx: int
+    ndim: int
     periodic: bool = True
-    nx: int = 100
-    ndim: int = 2
-    unit_l: Union[None, unyt.unit_object.Unit, str] = None
-    unit_m: Union[unyt.unit_object.Unit, str] = "g"
+    unitsys: unyt.unit_systems.UnitSystem
     kernel: str = "cubic spline"
     eta: float = 1.2348
+    rhomax: Union[float, None] = None
 
     runparams: RunParams = RunParams()
     iterparams: IterData = IterData()
@@ -220,13 +215,12 @@ class ParticleGenerator(object):
     def __init__(
         self,
         rho: callable,
-        rho_max: Union[float, None] = None,
-        boxsize: unyt_array = unyt_array([1.0, 1.0, 1.0], "cm"),
+        boxsize: unyt_array,
+        unitsys: unyt.unit_systems.UnitSystem,
+        nx: int,
+        ndim: int,
         periodic: bool = True,
-        nx: int = 100,
-        ndim: int = 2,
-        unit_l: Union[None, unyt.unit_object.Unit, str] = None,
-        unit_m: Union[unyt.unit_object.Unit, str] = "g",
+        rho_max: Union[float, None] = None,
         kernel: str = "cubic spline",
         eta: float = 1.2348,
     ):
@@ -234,24 +228,29 @@ class ParticleGenerator(object):
         if not isinstance(boxsize, unyt.unyt_array):
             raise TypeError("boxsize needs to be a unyt array.")
 
+        if not isinstance(unitsys, unyt.unit_systems.UnitSystem):
+            raise TypeError("unitsys needs to be a unyt UnitSystem.")
+
+        if not isinstance(nx, int):
+            raise TypeError("nx needs to be an integer")
+
+        if not isinstance(ndim, int):
+            raise TypeError("ndim needs to be an integer")
+
+        # TODO: order!
         self.rhofunc = rho
-        self.rho_max = rho_max
         self.boxsize = boxsize
+        self.unitsys = unitsys
+        self.rho_max = rho_max
         self.periodic = periodic
         self.nx = nx
         self.ndim = ndim
-        if unit_l is None:
-            self.unit_l = boxsize.units
-            self.boxsize_to_use = boxsize.value  # use only np.array
-        else:
-            self.unit_l = unit_l
-            self.boxsize_to_use = boxsize.to(unit_l).value
-        self.unit_m = unit_m
         self.kernel = kernel
         self.eta = eta
 
-        # get npart
+        # get some derived quantities
         self.npart = self.nx ** self.ndim
+        self.boxsize_to_use = boxsize.to(unitsys["length"]).value
 
         return
 
@@ -335,14 +334,14 @@ class ParticleGenerator(object):
             mtot = rhotot * area  # go from density to mass
 
             self.m = np.ones(npart, dtype=np.float) * mtot / npart
-            self.masses = unyt_array(self.m, self.unit_m)
+            self.masses = unyt_array(self.m, self.unitsys["mass"])
             print("Assigning particle mass: {0:.3e}".format(mtot / npart))
 
         else:
             # TODO: compare given mass array units with unit system first
             if not isinstance(m, unyt_array):
                 raise TypeError("m must be an unyt array")
-            self.masses = m.to(self.unit_m).value
+            self.masses = m.to(self.unitsys["mass"]).value
 
         # make sure unitless arrays exist, others are allocated
         self.x = self.coordinates.value
@@ -421,7 +420,7 @@ class ParticleGenerator(object):
         # get npart here, nx and ndim might be different from global class values
         npart = nx ** ndim
 
-        x = unyt_array(np.zeros((npart, 3), dtype=np.float), self.unit_l)
+        x = unyt_array(np.zeros((npart, 3), dtype=np.float), self.unitsys["length"])
 
         dxhalf = 0.5 * boxsize[0] / nx
         dyhalf = 0.5 * boxsize[1] / nx
@@ -582,7 +581,7 @@ class ParticleGenerator(object):
                 x[keep] = xr
                 keep += 1
 
-        return unyt_array(x, self.unit_l)
+        return unyt_array(x, self.unitsys["length"])
 
     def compute_h_and_rho(
         self, nngb: Union[int, None] = None, boxsize: Union[np.ndarray, None] = None
@@ -837,8 +836,8 @@ class ParticleGenerator(object):
             if iteration == runparams.iter_max or stop:
                 break
 
-        self.coords = unyt_array(x, self.unit_l)
-        self.masses = unyt_array(m, self.unit_m)
+        self.coords = unyt_array(x, self.unitsys["length"])
+        self.masses = unyt_array(m, self.unitsys["mass"])
         stats = {}
         stats["min_motion"] = 0.0
         stats["avg_motion"] = 0.0
@@ -1003,21 +1002,21 @@ class ParticleGenerator(object):
         x = self.x
         m = self.m
 
-        ICunits = unyt.UnitSystem("IC_generation", self.unit_l, self.unit_m, unyt.s)
+        uL = self.unitsys["length"]
+        uM = self.unitsys["mass"]
+        uT = self.unitsys["time"]
 
-        W = Writer(ICunits, self.boxsize)
-        W.gas.coordinates = unyt_array(x, self.unit_l)
-        W.gas.smoothing_length = unyt_array(h, self.unit_l)
-        W.gas.masses = unyt_array(m, self.unit_m)
-        W.gas.densities = unyt_array(
-            rho, W.gas.masses.units / W.gas.coordinates.units ** ndim
-        )
+        W = Writer(self.unitsys, self.boxsize)
+        W.gas.coordinates = unyt_array(x, uL)
+        W.gas.smoothing_length = unyt_array(h, uL)
+        W.gas.masses = unyt_array(m, uM)
+        W.gas.densities = unyt_array(rho, uM / uL ** ndim)
 
         # invent some junk to fill up necessary arrays
         W.gas.internal_energy = unyt_array(
-            np.zeros(npart, dtype=np.float), unyt.m ** 2 / unyt.s ** 2
+            np.ones(npart, dtype=np.float), uL ** 2 / uT ** 2
         )
-        W.gas.velocities = unyt_array(np.zeros(npart, dtype=np.float), unyt.m / unyt.s)
+        W.gas.velocities = unyt_array(np.zeros(npart, dtype=np.float), uL / uT)
 
         # If IDs are not present, this automatically generates
         fname = self.runparams.dump_basename + str(iteration).zfill(5) + ".hdf5"
