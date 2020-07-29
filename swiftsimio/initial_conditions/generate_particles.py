@@ -167,7 +167,7 @@ class ParticleGenerator(object):
 
     Set up the simulation parameters for the initial conditions you want to
     generate. The dict it returns is a necessary argument to call
-    ``generate_IC_for_given_density()``
+    ``run_iteration()``
 
 
     Parameters
@@ -215,7 +215,7 @@ class ParticleGenerator(object):
     Notes
     -----------
     
-    + The returned dict is a required argument to call ``generate_IC_for_given_density()``
+    + The returned dict is a required argument to call ``run_iteration()``
     """
 
     # simulation parameters
@@ -341,11 +341,13 @@ class ParticleGenerator(object):
         # generate first positions if necessary
         if x is None:
             if method == "rejection":
-                self.coordinates = self.IC_sample_coordinates()
+                self.coordinates = self.rejection_sample_coords()
             elif method == "displaced":
-                self.coordinates = self.IC_perturbed_coordinates(max_displ=max_displ)
+                self.coordinates = self.generate_displaced_uniform_coords(
+                    max_displ=max_displ
+                )
             elif method == "uniform":
-                self.coordinates = self.IC_uniform_coordinates()
+                self.coordinates = self.generate_uniform_coords()
             else:
                 raise ValueError("Unknown coordinate generation method:", method)
         else:
@@ -360,7 +362,7 @@ class ParticleGenerator(object):
             dx = boxsize / nc
 
             #  integrate total mass in box
-            xc = self.IC_uniform_coordinates(nx=nc)
+            xc = self.generate_uniform_coords(nx=nc)
             rho_all = rhofunc(xc.value, ndim)
             if rho_all.any() < 0:
                 raise ValueError(
@@ -441,7 +443,7 @@ class ParticleGenerator(object):
 
         return
 
-    def IC_uniform_coordinates(
+    def generate_uniform_coords(
         self, nx: Union[None, int] = None, ndim: Union[None, int] = None
     ):
         r"""
@@ -502,7 +504,7 @@ class ParticleGenerator(object):
 
         return x
 
-    def IC_perturbed_coordinates(self, max_displ: float = 0.4):
+    def generate_displaced_uniform_coords(self, max_displ: float = 0.4):
         """
         Get the coordinates for a randomly perturbed uniform particle distribution.
         The perturbation won't exceed ``max_displ`` times the interparticle distance
@@ -537,7 +539,7 @@ class ParticleGenerator(object):
         maxdelta = max_displ * boxsize / nx
 
         # generate uniform grid (including units) first
-        x = self.IC_uniform_coordinates()
+        x = self.generate_uniform_coords()
 
         for d in range(ndim):
             amplitude = unyt.unyt_array(
@@ -584,7 +586,7 @@ class ParticleGenerator(object):
 
         return x
 
-    def IC_sample_coordinates(self):
+    def rejection_sample_coords(self):
         r"""
         Generate an initial guess for particle coordinates by rejection sampling the
         density
@@ -614,7 +616,7 @@ class ParticleGenerator(object):
             # don't cause memory errors with too big of a grid.
             #  Also don't worry too much about accuracy.
             nc = 200
-            xc = self.IC_uniform_coordinates(nx=nc)
+            xc = self.generate_uniform_coords(nx=nc)
             self.rho_max = rhofunc(xc.value, ndim).max() * 1.05
             # * 1.05: safety measure to make sure you're always above the
             #  analytical value. Takes a tad more time, but we're gonna be safe.
@@ -668,7 +670,7 @@ class ParticleGenerator(object):
 
         return h, rho
 
-    def perform_iteration(
+    def iteration_step(
         self, iteration: int,
     ):
         """
@@ -853,7 +855,7 @@ class ParticleGenerator(object):
 
         return converged
 
-    def generate_IC_for_given_density(self):
+    def run_iteration(self):
         """
         Generate SPH initial conditions for SPH simulations iteratively for a given
         density function ``rhofunc()`` following Arth et al. 2019 
@@ -883,7 +885,7 @@ class ParticleGenerator(object):
 
         while iteration < self.runparams.iter_max:
 
-            converged = self.perform_iteration(iteration)
+            converged = self.iteration_step(iteration)
             iteration += 1
 
             if converged and self.runparams.iter_min < iteration:
