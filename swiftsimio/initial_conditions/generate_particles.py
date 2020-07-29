@@ -1,4 +1,5 @@
-"""Generate SPH initial conditions for SPH simulations iteratively for a given density function following Arth et al.
+"""
+Generate SPH initial conditions for SPH simulations iteratively for a given density function following Arth et al.
 2019 (https://arxiv.org/abs/1907.11250).
 
 """
@@ -15,67 +16,84 @@ from swiftsimio import Writer
 
 class RunParams(object):
     r"""
-    TODO: dox
+    A class to store iteration runtime parameters. Before running the iteration,
+    these parameters are intended to be direcly accessed by the user.
 
 
     Attributes
     ---------------
-    iter_max: int, optional
-        max numbers of iterations for generating IC conditions
+    self.iter_max: int
+        maximal numbers of iterations to run for generating IC conditions
 
-    converge_thresh: float, optional
-        if enough particles are displaced by distance below threshold * mean
-        interparticle distance, stop iterating.
+    self.iter_min: int
+        minimal numbers of iterations to run for generating IC conditions
 
-    tolerance_part: float, optional
+    self.converge_thresh: float
+        upper threshold for what displacement is supposed to be considered as
+        converged. If enough particles are displaced by distance below
+        ``self.converge_thresh * mean interparticle distance``, stop iterating.
+        ``self.tolerance_part`` defines, what "enough particles" is.
+
+    self.tolerance_part: float
         tolerance for not converged particle fraction: this fraction of
-        particles can be displaced with distances > threshold
+        particles can be displaced with distances > self.converge_thresh
 
-    displacement_threshold: float, optional
-        iteration halt criterion: Don't stop until every particle is displaced
-        by distance < threshold * mean interparticle distance
+    self.displ_thresh: float
+        displacement threshold. It's an iteration continuation criterion: Don't
+        stop until every particle is displaced by a distance < `` self.displ_thresh
+        * mean interparticle distance``
 
-    delta_init: float or None, optional
+    self.delta_init: float or None
         initial normalization constant for particle motion in units of mean
-        interparticle distance. If ``None`` (default), delta_init will be set
+        interparticle distance. If ``None`` (default), ``self.delta_init`` will be set
         such that the maximal displacement found in the first iteration is
         normalized to 1 mean interparticle distance.
 
-    delta_reduction_factor: float, optional
-        multiply the normalization constant for particle motion by this factor
+    self.delta_reduct: float
+        normalization constant reduction factor. Intended to be > 0 and < 1.
+        Multiply the normalization constant for particle motion by this factor
         after every iteration. In certain difficult cases this might help the
         generation to converge if set to < 1.
 
-    delta_min: float, optional
+    self.delta_min: float
         minimal normalization constant for particle motion in units of mean
         interparticle distance.
 
-    redistribute_frequency: int, optional
-        redistribute a handful of particles every ``redistribute_frequency``
+    self.redist_freq: int
+        particle redistribution frequency.
+        Redistribute a handful of particles every ``self.redistribute_frequency``
         iteration. How many particles are redistributed is controlled with the
-        ``redistribute_fraction`` parameter.
+        ``self.redistribute_frac`` parameter.
 
-    redistribute_fraction: float, optional
+    self.redist_frac: float
         fraction of particles to be redistributed when doing so.
 
-    redistribute_fraction_reduction: float, optional
-        multiply the ``redistribute_fraction`` parameter by this factor every
+    self.redist_reduct: float
+        multiply the ``self.redistribute_fraction`` parameter by this factor every
         time particles are being redistributed. In certain difficult cases this
         might help the generation to converge if set to < 1.
 
-    no_redistribution_after: int, optional
-        don't redistribute particles after this iteration.
+    self.redist_stop: int
+        don't redistribute particles after this many iterations.
 
-    intermediate_dump_frequency: int, optional
+    self.dumpfreq: int
         frequency of dumps of the current state of the iteration. If set to zero,
         no intermediate results will be stored.
 
-    Tdump_basename: str
+    self.dump_basename: str
         Basename for intermediate dumps. The filename will be constructed as
         ``basename + <5 digit zero padded iteration number> + .hdf5``
 
-    random_seed: int, optional
+    self.random_seed: int, optional
         set a specific random seed
+
+
+
+    Methods
+    ----------
+
+    self.set_random_seed(seed: int)
+        set the random seed to whatever pleases you.
 
     """
     # iteration parameters
@@ -101,7 +119,13 @@ class RunParams(object):
 
     def set_random_seed(self, seed: int = 666):
         r"""
-        TODO: dox
+        Set the random seed to whatever pleases you.
+
+        Parameters
+        --------------
+
+        seed: int, optional
+            seed to use.
         """
         np.random.seed(seed)
         return
@@ -109,8 +133,36 @@ class RunParams(object):
 
 class IterData(object):
     r"""
-    TODO: dox
-    contains data relevant during the iteration
+    contains data relevant during the iteration. This data is
+    automatically set up, and no user is supposed to tinker
+    with this data during/before the iteration.
+
+    Attributes
+    -------------
+
+    self.mean_interparticle_distance: float
+        the mean interparticle distance
+
+    self.delta_r_norm: float
+        norm to be used to compute the displacement "force"
+
+    self.delta_r_norm_min: float
+        lower threshold for "force" normalisation.
+
+    self.compute_delta_r_norm: bool
+        whether the user wants the code to compute an appropriate
+        normalisation.
+
+    self.Nngb: float
+        number of neighbours to be searched for
+
+    self.Nngb_int: int
+        number of neighbours to be searched for. Integer, to be used
+        as argument for scipy.spatial.cKDTree.query().
+
+    self.boxsize_for_tree: None or np.ndarray
+        boxsize parameter to be used as argument for scipy.spatioal.cKDTree.
+
     """
 
     mean_interparticle_distance: float = 1.0
@@ -127,7 +179,30 @@ class IterData(object):
 
 class IterStats(object):
     r"""
-    used to store stats of the iteration.
+    used to store stats of the iteration so they will be accessible after the
+    iteration is finished.
+
+    Attributes
+    ---------------
+
+    max_displacement: np.ndarray
+        stores the maximal displacement of every iteration step.
+
+    min_displacement: np.ndarray
+        stores the minimal displacement of every iteration step.
+
+    avg_displacement: np.ndarray
+        stores the average displacement of every iteration step.
+
+    niter: int
+        number of iterations performed.
+
+
+    Methods
+    -------------
+
+    self.add_stat:
+        add a new statistic for iteration ``iteration``.
     """
 
     max_displacement: np.ndarray
@@ -144,13 +219,29 @@ class IterStats(object):
 
     def add_stat(
         self,
-        iteration,
+        iteration: int,
         min_displacement: float,
         max_displacement: float,
         avg_displacement: float,
     ):
         r"""
         Store new stats at the appropriate place.
+
+        Parameters
+        ---------------
+
+        iteration: int
+            iteration number
+
+        max_displacement: float
+           maximal displacement of this iteration step.
+
+        min_displacement: float
+           minimal displacement of this iteration step.
+
+        avg_displacement: float
+           average displacement of this iteration step.
+
         """
 
         self.max_displacement[iteration] = max_displacement
@@ -162,88 +253,129 @@ class IterStats(object):
 
 class ParticleGenerator(object):
     r"""
+    Main class for generating initial conditions for SPH simulations for
+    a given density function ``rho(x, ndim)`` following Arth et al. 2019
+    (https://arxiv.org/abs/1907.11250).
 
-    TODO: dox
-
-    Set up the simulation parameters for the initial conditions you want to
-    generate. The dict it returns is a necessary argument to call
-    ``run_iteration()``
-
-
-    Parameters
+    Attributes
     -------------
 
-    rho: callable
+    self.rhofunc: callable
         The density function that is to be reproduced in the initial conditions.
         It must take two positional arguments:
         
         - ``x``: np.ndarray of 3D particle coordinates (even if your initial 
           conditions have lower dimensionality)
-        - ``ndim``: integer, number of dimensions that your simulations is to 
-          have
+        - ``ndim``: integer, number of dimensions that your simulations is to have
 
-    boxsize: unyt.unyt_array
+    self.boxsize: unyt.unyt_array
         The box size of the simulation.
 
-    nx: int
+    self.nx: int
         how many particles along every dimension you want your simulation
         to contain
 
-    ndim: int
+    self.ndim: int
         how many dimensions you want your simulation to have
 
-    unitsys: unyt.unit_systems.UnitSystem
+    self.unitsys: unyt.unit_systems.UnitSystem
         a unit system that contains the units you want your ICs to have
 
-    periodic: bool, optional
+    self.periodic: bool
         whether the simulation box is periodic or not
 
-    rho_max: float or None, optional
+    self.kernel: str {'cubic spline',}
+        which kernel to use
+
+    self.eta: float, optional
+        resolution eta, which defines the number of neighbours used
+        independently of dimensionality
+
+    self.rho_max: float or None
         The maximal density within the simulation box. If ``None``, an 
         approximate value will be determined if the rejection sampling to obtain
         an initial particle configuration guess is used.
 
-    kernel: str {'cubic spline',}, optional
-        which kernel to use
+    self.runparams: RunParams
+        A ``RunParams`` instance that contains runtime parameters for the generator.
+        The user is encouraged to tinker with these parameters before the iteration
+        is commenced.
 
-    eta: float, optional
-        resolution eta, which defines the number of neighbours used
-        independently of dimensionality
+    self.iterparams: IterData
+        An ``IterData`` instance that holds data relevant for iteration steps. The
+        user is *strongly discouraged* of fiddling with this.
+
+    self.stats: IterStats
+        An ``IterStats`` instance that holds iteration statistics that should be
+        accessible after the iteration finished.
+
+    self.npart: int
+        total number of particles in simulation
+
+    self.coordinates: unyt.unyt_array
+        unyt_array containing the final particle coordinates with shape (self.npart, 3).
+
+    self.masses: unyt.unyt_array
+        unyt_array containing the final particle masses with shape (self.npart).
+
+    self.smoothing_lengths: unyt.unyt_array
+        unyt_array containing the final particle smoothing lengths with shape (self.npart, 3).
+
+    self.densities: unyt.unyt_array
+        unyt_array containing the final particle densities with shape (self.npart).
+
+    self.x: np.ndarray
+        unitless particle coordinates that will be worked with/on with shape (self.npart, 3).
+
+    self.m: np.ndarray
+        unitless particle masses that will be worked with/on with shape (self.npart).
+
 
 
 
     Notes
     -----------
     
-    + The returned dict is a required argument to call ``run_iteration()``
+    + The default workflow should be something like
+        ``pg = ParticleGenerator(...)``
+
+        ``pg.runparams.iter_max = 10000``
+
+        ``pg.runparams.whatever_parameter = ...``
+
+        ``pg.initial_setup(...)``
+
+        ``pg.run_iteration()``
+
+        ``print("profit")``
     """
 
     # simulation parameters
     rhofunc: callable
     boxsize: unyt.unyt_array
+    unitsys: unyt.unit_systems.UnitSystem
     nx: int
     ndim: int
-    periodic: bool = True
-    unitsys: unyt.unit_systems.UnitSystem
-    kernel: str = "cubic spline"
-    eta: float = 1.2348
-    rhomax: Union[float, None] = None
+    periodic: bool
+    kernel: str
+    eta: float
+    rho_max: Union[float, None]
 
-    runparams: RunParams = RunParams()
-    iterparams: IterData = IterData()
+    runparams: RunParams
+    iterparams: IterData
     stats: IterStats
 
     # derived variables
-    npart = 0
+    npart: int
 
     # internal checks
     _set_up = False
 
     # unyt/result arrays
-    coordinates: Union[unyt.unyt_array, None] = None
-    masses: Union[unyt.unyt_array, None] = None
-    smoothing_lengths: Union[unyt.unyt_array, None] = None
-    densities: Union[unyt.unyt_array, None] = None
+    coordinates: unyt.unyt_array
+    masses: unyt.unyt_array
+    smoothing_lengths: unyt.unyt_array
+    densities: unyt.unyt_array
 
     # unitless arrays to work with
     x: np.array
@@ -257,10 +389,52 @@ class ParticleGenerator(object):
         nx: int,
         ndim: int,
         periodic: bool = True,
-        rho_max: Union[float, None] = None,
         kernel: str = "cubic spline",
         eta: float = 1.2348,
+        rho_max: Union[float, None] = None,
     ):
+        r"""
+
+        Parameters
+        ---------------
+
+        rho: callable
+            The density function that is to be reproduced in the initial conditions.
+            It must take two positional arguments:
+            
+            - ``x``: np.ndarray of 3D particle coordinates (even if your initial 
+              conditions have lower dimensionality)
+            - ``ndim``: integer, number of dimensions that your simulations is to have
+
+        boxsize: unyt.unyt_array
+            The box size of the simulation.
+
+        nx: int
+            how many particles along every dimension you want your simulation
+            to contain
+
+        ndim: int
+            how many dimensions you want your simulation to have
+
+        unitsys: unyt.unit_systems.UnitSystem
+            a unit system that contains the units you want your ICs to have
+
+        periodic: bool
+            whether the simulation box is periodic or not
+
+        kernel: str {'cubic spline',}
+            which kernel to use
+
+        eta: float, optional
+            resolution eta, which defines the number of neighbours used
+            independently of dimensionality
+
+        rho_max: float or None
+            The maximal density within the simulation box. If ``None``, an 
+            approximate value will be determined if the rejection sampling to obtain
+            an initial particle configuration guess is used.
+
+        """
 
         if not isinstance(boxsize, unyt.unyt_array):
             raise TypeError("boxsize needs to be a unyt array.")
@@ -274,20 +448,22 @@ class ParticleGenerator(object):
         if not isinstance(ndim, int):
             raise TypeError("ndim needs to be an integer")
 
-        # TODO: order!
         self.rhofunc = rho
         self.boxsize = boxsize
         self.unitsys = unitsys
-        self.rho_max = rho_max
-        self.periodic = periodic
         self.nx = nx
         self.ndim = ndim
+        self.periodic = periodic
         self.kernel = kernel
         self.eta = eta
+        self.rho_max = rho_max
 
         # get some derived quantities
         self.npart = self.nx ** self.ndim
         self.boxsize_to_use = boxsize.to(unitsys["length"]).value
+        self.runparams = RunParams()
+        self.iterparams = IterData()
+        # set up self.stats later tho
 
         return
 
@@ -299,21 +475,49 @@ class ParticleGenerator(object):
         max_displ: float = 0.4,
     ):
         r"""
-        TODO: dox
+        Run an initial setup for the generator. Allocate arrays, prepare paremeter,
+        check whether the given parameters make sense.
+        Must be called AFTER the ``self.runparams`` paramters have been tweaked by
+        the user.
+
+        Parameters
+        -------------
+
+        method: str {"rejection", "uniform", "displaced"}
+            If no ``x`` is given, create an initial guess for particle coordinates.
+            ``method`` defines which method will be used:
+
+            - ``"rejection"``: Use rejection sampling of the model density function
+
+            - ``"uniform"``: Start off with a uniformly distributed particle configuration
+
+            - ``"displaced"``: Displace particles from an initially uniform distribution
+              randomly up to a distance ``max_displ * particle distance along axis`` from
+              their original position on the grid
+
         x: unyt.unyt_array or None, optional
             Initial guess for coordinates of particles. If ``None``, the initial
-            guess will be generated by rejection sampling the density function
-            ``rhofunc``
+            guess will be generated by rejection sampling the model density function
+            ``self.rhofunc``
 
         m: unyt.unyt_array or None, optional
             ``unyt.unyt_array`` of particle masses. If ``None``, an array will be created
             such that the total mass in the simulation box given the analytical
             density is reproduced, and all particles will have equal masses.
 
-        max_displ: float
+        max_displ: float, optional
             maximal displacement of a particle initially on an uniform grid along 
             any axis, in units of particle distance along that axis. Is only used
             if ``method = 'displaced'``
+
+
+
+        Notes
+        -------------------
+
+            + Must be called AFTER the ``self.runparams`` paramters have been tweaked by
+        the user.
+
         """
 
         ndim = self.ndim
@@ -352,9 +556,8 @@ class ParticleGenerator(object):
                 raise ValueError("Unknown coordinate generation method:", method)
         else:
             if not isinstance(x, unyt.unyt_array):
-                raise TypeError("x must be an unyt array")
-            # TODO: compare given x array units with unit system first
-            self.coordinates = x
+                raise TypeError("x must be an unyt_array")
+            self.coordinates = x.to(self.unitsys["length"])
 
         #  generate masses if necessary
         if m is None:
@@ -379,10 +582,9 @@ class ParticleGenerator(object):
             print("Assigning particle mass: {0:.3e}".format(mtot / npart))
 
         else:
-            # TODO: compare given mass array units with unit system first
             if not isinstance(m, unyt.unyt_array):
-                raise TypeError("m must be an unyt array")
-            self.masses = m.to(self.unitsys["mass"]).value
+                raise TypeError("m must be an unyt_array")
+            self.masses = m.to(self.unitsys["mass"])
 
         # make sure unitless arrays exist, others are allocated
         self.x = self.coordinates.value
@@ -448,18 +650,22 @@ class ParticleGenerator(object):
     ):
         r"""
         Generate coordinates for a uniform particle distribution.
-        TODO: fix dox
 
         Parameters
         ------------------
 
+        nx: int or None, optional
+            How many particles to generate in every dimension. If ``None``, use
+            ``self.nx`` grid points.
+
+        ndim: int or None, optional
+            How many dimensions to use. If ``None``, use ``self.ndim`` dimensions.
 
         Returns
         ------------------
 
         x: unyt.unyt_array 
-            unyt.unyt_array(shape=(npart, 3), dtype=float) of coordinates, where 
-            ``npart = nx ** ndim``, both of which are set in ``self``
+            unyt.unyt_array of paricle coordinates with shape (``nx**ndim``, 3)
         """
         if nx is None:
             nx = self.nx
@@ -510,23 +716,19 @@ class ParticleGenerator(object):
         The perturbation won't exceed ``max_displ`` times the interparticle distance
         along an axis.
 
-        TODO: check dox
-
 
         Parameters
         ------------------
 
-        max_displ: float
+        max_displ: float, optional
             maximal displacement of a particle initially on an uniform grid along 
-            any axis, in units of particle distance along that axis
-
+            any axis, in units of particle distance along that axis.
 
         Returns
         ------------------
 
         x: unyt.unyt_array 
-            unyt.unyt_array(shape=(npart, 3), dtype=float) of coordinates, where 
-            ``npart = nx ** ndim``, both of which are set in the ``self`` 
+            unyt.unyt_array of particle coordinates with shape (self.npart, 3)
         """
 
         nx = self.nx
@@ -589,19 +791,13 @@ class ParticleGenerator(object):
     def rejection_sample_coords(self):
         r"""
         Generate an initial guess for particle coordinates by rejection sampling the
-        density
-
-
-        Parameters
-        ------------------
-
+        model density function ``self.rhofunc``.
 
         Returns
         ------------------
 
         x: unyt.unyt_array 
-            unyt.unyt_array(shape=(npart, 3), dtype=float) of coordinates, where 
-            ``npart = nx ** ndim``, both of which are set in ``self`` 
+            unyt.unyt_array of particle coordinates with shape (self.npart, 3)
         """
 
         boxsize = self.boxsize_to_use
@@ -639,15 +835,33 @@ class ParticleGenerator(object):
         self, nngb: Union[int, None] = None, boxsize: Union[np.ndarray, None] = None
     ):
         r"""
-        TODO: DOCS
-        make sure to call self.initial_setup() first to allocate arrays
+        Compute actual smoothing lengths and particle densities.
 
         Parameters
         -----------------
 
-        boxsize: None or np.ndarray
+        nngb: integer or None, optional
+            number of neighbours to search for for each particle. If ``None``,
+            ``self.iterparams.Nngb_int``  will be used, which is
+            the automatically set up value for given parameters during
+            initialisation.
 
-        nngb: integer
+        boxsize: np.ndarray or None, optional
+            boxsize to be used to generate the tree. If ``None``,
+            ``self.iterparams.boxsize_for_tree`` will be used, which is
+            the automatically set up value for given parameters during
+            initialisation.
+
+
+        Returns
+        --------------
+
+        h: np.ndarray
+            numpy array of particle smoothing lengths with shape (``self.npart``)
+
+        rho: np.ndarray
+            numpy array of particle densities with shape (``self.npart``)
+
         """
         if nngb is None:
             nngb = self.iterparams.Nngb_int
@@ -674,7 +888,21 @@ class ParticleGenerator(object):
         self, iteration: int,
     ):
         """
-        TODO: DOX
+        Perform one step of the actual iteration.
+
+        Parameters
+        -------------
+
+        iteration: int
+            current iteration number
+
+
+        Returns
+        --------------
+
+        converged: bool
+            Whether the iteration satisfies convergence criteria.
+
         """
         ndim = self.ndim
         periodic = self.periodic
@@ -705,7 +933,7 @@ class ParticleGenerator(object):
             h, rho = self.compute_h_and_rho()
 
             if dump_now:
-                self.IC_write_intermediate_output(iteration, h, rho)
+                self.dump_current_state(iteration, h, rho)
                 # TODO: remove the plotting
                 IC_plot_current_situation(True, iteration, x, rho, rhofunc, self)
 
@@ -724,14 +952,16 @@ class ParticleGenerator(object):
             vol *= boxsize[d]
 
         if ndim == 1:
-            hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum
-            #  hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum * vol
+            # hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum
+            hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum * vol
         elif ndim == 2:
-            hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum)
-            #  hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum * vol)
-        else:
-            hmodel = np.cbrt(ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum)
-            #  hmodel = np.cbrt(ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum * vol)
+            # hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum)
+            hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum * vol)
+        elif ndim == 3:
+            # hmodel = np.cbrt(ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum)
+            hmodel = np.cbrt(
+                ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum * vol
+            )
 
         # init delta_r array
         delta_r = np.zeros(self.x.shape, dtype=np.float)
@@ -857,25 +1087,10 @@ class ParticleGenerator(object):
 
     def run_iteration(self):
         """
-        Generate SPH initial conditions for SPH simulations iteratively for a given
-        density function ``rhofunc()`` following Arth et al. 2019 
-        (https://arxiv.org/abs/1907.11250).
-
-        TODO: Check dox
-
-
-        Parameters
-        ------------------
-
-
-
-        Returns
-        -----------
-
+        Run the actual iteration algorithm to generate initial conditions.
         """
         # this import is only temporary to avoid circular imports.
         # it will be removed before the merge.
-        from .IC_plotting import IC_plot_current_situation
 
         if not self._set_up:
             self.initial_setup()
@@ -919,7 +1134,7 @@ class ParticleGenerator(object):
         Parameters
         -----------------
 
-        rho: np.ndarray
+        h: np.ndarray
             numpy array of particle smoothing lenghts
 
         rho: np.ndarray
@@ -939,7 +1154,6 @@ class ParticleGenerator(object):
         """
 
         x = self.x
-
         npart = x.shape[0]
         boxsize = self.boxsize_to_use
         ndim = self.ndim
@@ -972,7 +1186,7 @@ class ParticleGenerator(object):
         if nover == 0 or nunder == 0:
             return None
 
-        max_attempts_over = 10 * to_move  # only try your luck, don't force
+        max_attempts_over = 10 * to_move  # only try your luck, don't force it
         attempts_over = 0
 
         while nmoved < to_move and attempts_over < max_attempts_over:
@@ -990,7 +1204,7 @@ class ParticleGenerator(object):
             if np.random.uniform() < othresh:
 
                 attempts_under = 0
-                while attempts_under < nunder:  # only try your luck, don't force
+                while attempts_under < nunder:  # only try your luck, don't force it
 
                     attempts_under += 1
 
@@ -1041,12 +1255,14 @@ class ParticleGenerator(object):
 
         return moved[:nmoved]
 
-    def IC_write_intermediate_output(
+    def dump_current_state(
         self, iteration: int, h: np.ndarray, rho: np.ndarray,
     ):
         r"""
         Write an intermediate output of current particle positions, densities,
         masses, and smoothing lengths.
+        Use the default swift IC format for the dump, so invent meaningless
+        values for required quantities ``velocity`` and ``internal_energy``.
 
         Parameters
         ----------------
@@ -1060,34 +1276,28 @@ class ParticleGenerator(object):
         rho: np.ndarray
             particle densities
 
-        Returns
-        -------------------
-
-        Nothing.
-
         """
         ndim = self.ndim
         npart = self.npart
         x = self.x
         m = self.m
 
-        uL = self.unitsys["length"]
-        uM = self.unitsys["mass"]
-        uT = self.unitsys["time"]
+        u_l = self.unitsys["length"]
+        u_m = self.unitsys["mass"]
+        u_t = self.unitsys["time"]
 
         W = Writer(self.unitsys, self.boxsize)
-        W.gas.coordinates = unyt.unyt_array(x, uL)
-        W.gas.smoothing_length = unyt.unyt_array(h, uL)
-        W.gas.masses = unyt.unyt_array(m, uM)
-        W.gas.densities = unyt.unyt_array(rho, uM / uL ** ndim)
+        W.gas.coordinates = unyt.unyt_array(x, u_l)
+        W.gas.smoothing_length = unyt.unyt_array(h, u_l)
+        W.gas.masses = unyt.unyt_array(m, u_m)
+        W.gas.densities = unyt.unyt_array(rho, u_m / u_l ** ndim)
 
         # invent some junk to fill up necessary arrays
         W.gas.internal_energy = unyt.unyt_array(
-            np.ones(npart, dtype=np.float), uL ** 2 / uT ** 2
+            np.ones(npart, dtype=np.float), u_l ** 2 / u_t ** 2
         )
-        W.gas.velocities = unyt.unyt_array(np.zeros(npart, dtype=np.float), uL / uT)
+        W.gas.velocities = unyt.unyt_array(np.zeros(npart, dtype=np.float), u_l / u_t)
 
-        # If IDs are not present, this automatically generates
         fname = self.runparams.dump_basename + str(iteration).zfill(5) + ".hdf5"
         W.write(fname)
 
