@@ -22,112 +22,114 @@ class RunParams(object):
 
 
     Attributes
-    ---------------
-    self.iter_max: int
+    ----------
+
+    max_iterations: int
         maximal numbers of iterations to run for generating IC conditions
 
-    self.iter_min: int
+    min_iterations: int
         minimal numbers of iterations to run for generating IC conditions
 
-    self.converge_thresh: float
+    convergence_threshold: float
         upper threshold for what displacement is supposed to be considered as
         converged. If enough particles are displaced by distance below
-        ``self.converge_thresh * mean interparticle distance``, stop iterating.
-        ``self.tolerance_part`` defines, what "enough particles" is.
+        ``self.convergence_threshold * mean interparticle distance``, stop 
+        iterating. ``self.unconverged_particle_number_tolerance`` defines, what
+        "enough particles" is.
 
-    self.tolerance_part: float
+    unconverged_particle_number_tolerance: float
         tolerance for not converged particle fraction: this fraction of
-        particles can be displaced with distances > self.converge_thresh
+        particles can be displaced with distances > self.convergence_threshold
 
-    self.displ_thresh: float
-        displacement threshold. It's an iteration continuation criterion: Don't
-        stop until every particle is displaced by a distance < `` self.displ_thresh
-        * mean interparticle distance``
+    displacement_threshold: float
+        It's an iteration continuation criterion: Don't
+        stop until every particle is displaced by a distance < 
+        ``self.displacement_threshold * mean interparticle distance``
 
-    self.delta_init: float or None
+    delta_init: float or None
         initial normalization constant for particle motion in units of mean
-        interparticle distance. If ``None`` (default), ``self.delta_init`` will be set
-        such that the maximal displacement found in the first iteration is
-        normalized to 1 mean interparticle distance.
+        interparticle distance. If ``None`` (default), ``self.delta_init`` will 
+        be set such that the maximal displacement found in the first iteration 
+        is normalized to 1 mean interparticle distance.
 
-    self.delta_reduct: float
+    delta_r_norm_reduction_factor: float
         normalization constant reduction factor. Intended to be > 0 and < 1.
         Multiply the normalization constant for particle motion by this factor
         after every iteration. In certain difficult cases this might help the
         generation to converge if set to < 1.
 
-    self.delta_min: float
+    min_delta_r_norm: float
         minimal normalization constant for particle motion in units of mean
         interparticle distance.
 
-    self.redist_freq: int
+    particle_redistribution_frequency: int
         particle redistribution frequency.
         Redistribute a handful of particles every ``self.redistribute_frequency``
         iteration. How many particles are redistributed is controlled with the
         ``self.redistribute_frac`` parameter. If = 0, no redistributions will be
         performed.
 
-    self.redist_frac: float
+    particle_redistribution_number_fraction: float
         fraction of particles to be redistributed when doing so.
 
-    self.redist_reduct: float
-        multiply the ``self.redistribute_fraction`` parameter by this factor every
-        time particles are being redistributed. In certain difficult cases this
-        might help the generation to converge if set to < 1.
+    particle_redistribution_number_reduction_factor: float
+        multiply the ``self.redistribute_fraction`` parameter by this factor 
+        every time particles are being redistributed. In certain difficult 
+        cases this might help the generation to converge if set to < 1.
 
-    self.redist_stop: int
+    no_particle_redistribution_after: int
         don't redistribute particles after this many iterations.
 
-    self.dumpfreq: int
-        frequency of dumps of the current state of the iteration. If set to zero,
-        no intermediate results will be stored. If > 0, it will also create a 
-        dump after the last iteration so a restart is possible.
+    state_dump_frequency: int
+        frequency of dumps of the current state of the iteration. If set to 
+        zero, no intermediate results will be stored. If > 0, it will also 
+        create a dump after the last iteration so a restart is possible.
 
-    self.dump_basename: str
+    state_dump_basename: str
         Basename for intermediate dumps. The filename will be constructed as
-        ``basename + <5 digit zero padded iteration number> + .hdf5``
+        ``<basename>_<5 digit zero padded iteration number>.hdf5``
 
-    self.random_seed: int, optional
+    random_seed: int, optional
         set a specific random seed
 
 
 
     Methods
-    ----------
+    -------
 
-    self.set_random_seed(seed: int)
+    set_random_seed(seed: int)
         set the random seed to whatever pleases you.
 
     """
     # iteration parameters
-    iter_max: int = 10000
-    iter_min: int = 0
-    converge_thresh: float = 1e-4
-    tolerance_part: float = 1e-3
-    displ_thresh: float = 1e-3
+    max_iterations: int = 10000
+    min_iterations: int = 0
+    convergence_threshold: float = 1e-4
+    unconverged_particle_number_tolerance: float = 1e-3
+    displacement_threshold: float = 1e-3
     delta_init: Union[float, None] = None
-    delta_reduct: float = 1.0
-    delta_min: float = 1e-6
-    redist_freq: int = 20
-    redist_frac: float = 0.01
-    redist_reduct: float = 1.0
-    redist_stop: int = 200
-    dump_basename: str = "IC-generation-iteration-"
-    dumpfreq: int = 50
+    delta_r_norm_reduction_factor: float = 1.0
+    min_delta_r_norm: float = 1e-6
+    particle_redistribution_frequency: int = 20
+    particle_redistribution_number_fraction: float = 0.01
+    particle_redistribution_number_reduction_factor: float = 1.0
+    no_particle_redistribution_after: int = 200
+    state_dump_basename: str = "IC_generation_iteration"
+    state_dump_frequency: int = 50
 
     def __init__(self):
         # always set one random seed.
         self.set_random_seed(666)
         return
 
-    def set_random_seed(self, seed: int = 666):
+    def set_random_seed(self, seed: int):
         r"""
         Set the random seed to whatever pleases you.
 
         Parameters
-        --------------
+        ----------
 
-        seed: int, optional
+        seed: int
             seed to use.
         """
         np.random.seed(seed)
@@ -136,34 +138,29 @@ class RunParams(object):
 
 class IterData(object):
     r"""
-    contains data relevant during the iteration. This data is
-    automatically set up, and no user is supposed to tinker
-    with this data during/before the iteration.
+    contains data relevant during the iteration. This data is automatically set
+    up, and no user is supposed to tinker with this data during/before the
+    iteration.
 
     Attributes
-    -------------
+    ----------
 
-    self.mean_interparticle_distance: float
+    mean_interparticle_distance: float
         the mean interparticle distance
 
-    self.delta_r_norm: float
+    delta_r_norm: float
         norm to be used to compute the displacement "force"
 
-    self.delta_r_norm_min: float
+    delta_r_norm_min: float
         lower threshold for "force" normalisation.
 
-    self.compute_delta_r_norm: bool
-        whether the user wants the code to compute an appropriate
-        normalisation.
+    compute_delta_r_norm: bool
+        whether the user wants the code to compute an appropriate normalisation.
 
-    self.Nngb: float
+    neighbours: float
         number of neighbours to be searched for
 
-    self.Nngb_int: int
-        number of neighbours to be searched for. Integer, to be used
-        as argument for scipy.spatial.cKDTree.query().
-
-    self.boxsize_for_tree: None or np.ndarray
+    boxsize_for_tree: None or np.ndarray
         boxsize parameter to be used as argument for scipy.spatioal.cKDTree.
 
     """
@@ -172,8 +169,7 @@ class IterData(object):
     delta_r_norm: float = 1.0
     delta_r_norm_min: float = 1e-2
     compute_delta_r_norm: bool = True
-    Nngb: float = 20.0
-    Nngb_int: int = 20
+    neighbours: float = 20.0
     boxsize_for_tree: np.ndarray = np.ones(3, dtype=float)
 
     def __init__(self):
@@ -185,8 +181,9 @@ class IterStats(object):
     used to store stats of the iteration so they will be accessible after the
     iteration is finished.
 
+
     Attributes
-    ---------------
+    ----------
 
     max_displacement: np.ndarray
         stores the maximal displacement of every iteration step.
@@ -197,27 +194,27 @@ class IterStats(object):
     avg_displacement: np.ndarray
         stores the average displacement of every iteration step.
 
-    niter: int
+    number_of_iterations: int
         number of iterations performed.
 
 
     Methods
     -------------
 
-    self.add_stat:
+    add_stat():
         add a new statistic for iteration ``iteration``.
     """
 
     max_displacement: np.ndarray
     min_displacement: np.ndarray
     avg_displacement: np.ndarray
-    niter: int
+    number_of_iterations: int
 
-    def __init__(self, iter_max):
-        self.max_displacement = np.zeros(iter_max, dtype=np.float)
-        self.min_displacement = np.zeros(iter_max, dtype=np.float)
-        self.avg_displacement = np.zeros(iter_max, dtype=np.float)
-        self.niter = 0
+    def __init__(self, max_iterations):
+        self.max_displacement = np.zeros(max_iterations, dtype=np.float)
+        self.min_displacement = np.zeros(max_iterations, dtype=np.float)
+        self.avg_displacement = np.zeros(max_iterations, dtype=np.float)
+        self.number_of_iterations = 0
         return
 
     def add_stat(
@@ -231,7 +228,7 @@ class IterStats(object):
         Store new stats at the appropriate place.
 
         Parameters
-        ---------------
+        ----------
 
         iteration: int
             iteration number
@@ -250,7 +247,7 @@ class IterStats(object):
         self.max_displacement[iteration] = max_displacement
         self.min_displacement[iteration] = min_displacement
         self.avg_displacement[iteration] = avg_displacement
-        self.niter = iteration
+        self.number_of_iterations = iteration
         return
 
 
@@ -261,9 +258,9 @@ class ParticleGenerator(object):
     (https://arxiv.org/abs/1907.11250).
 
     Attributes
-    -------------
+    ----------
 
-    self.rhofunc: callable
+    density_function: callable
         The density function that is to be reproduced in the initial conditions.
         It must take two positional arguments:
         
@@ -271,101 +268,104 @@ class ParticleGenerator(object):
           conditions have lower dimensionality)
         - ``ndim``: integer, number of dimensions that your simulations is to have
 
-    self.boxsize: unyt.unyt_array
+    boxsize: unyt.unyt_array
         The box size of the simulation.
 
-    self.nx: int
-        how many particles along every dimension you want your simulation
-        to contain
+    number_of_particles: int
+        how many particles along every dimension you want your simulation to 
+        contain
 
-    self.ndim: int
+    ndim: int
         how many dimensions you want your simulation to have
 
-    self.unitsys: unyt.unit_systems.UnitSystem
+    unit_system: unyt.unit_systems.UnitSystem
         a unit system that contains the units you want your ICs to have
 
-    self.periodic: bool
+    periodic: bool
         whether the simulation box is periodic or not
 
-    self.kernel: str {'cubic spline',}
+    kernel: str {'cubic spline',}
         which kernel to use
 
-    self.eta: float, optional
+    eta: float, optional
         resolution eta, which defines the number of neighbours used
         independently of dimensionality
 
-    self.rho_max: float or None
+    rho_max: float or None
         The maximal density within the simulation box. If ``None``, an 
         approximate value will be determined if the rejection sampling to obtain
         an initial particle configuration guess is used.
 
-    self.runparams: RunParams
-        A ``RunParams`` instance that contains runtime parameters for the generator.
-        The user is encouraged to tinker with these parameters before the iteration
-        is commenced.
+    run_params: RunParams
+        A ``RunParams`` instance that contains runtime parameters for the 
+        generator. The user is encouraged to tinker with these parameters 
+        before the iteration is commenced.
 
-    self.iterparams: IterData
-        An ``IterData`` instance that holds data relevant for iteration steps. The
-        user is *strongly discouraged* of fiddling with this.
+    iter_params: IterData
+        An ``IterData`` instance that holds data relevant for iteration steps. 
+        The user is *strongly discouraged* of fiddling with this.
 
-    self.stats: IterStats
+    stats: IterStats
         An ``IterStats`` instance that holds iteration statistics that should be
         accessible after the iteration finished.
 
-    self.npart: int
+    npart: int
         total number of particles in simulation
 
-    self.coordinates: unyt.unyt_array
-        unyt_array containing the final particle coordinates with shape (self.npart, 3).
+    coordinates: unyt.unyt_array
+        unyt_array containing the final particle coordinates with shape 
+        (self.npart, 3).
 
-    self.masses: unyt.unyt_array
-        unyt_array containing the final particle masses with shape (self.npart).
+    masses: unyt.unyt_array
+        unyt_array containing the final particle masses with shape 
+        (self.npart).
 
-    self.smoothing_lengths: unyt.unyt_array
-        unyt_array containing the final particle smoothing lengths with shape (self.npart, 3).
+    smoothing_lengths: unyt.unyt_array
+        unyt_array containing the final particle smoothing lengths with shape 
+        (self.npart, 3).
 
-    self.densities: unyt.unyt_array
-        unyt_array containing the final particle densities with shape (self.npart).
+    densities: unyt.unyt_array
+        unyt_array containing the final particle densities with shape 
+        (self.npart).
 
-    self.x: np.ndarray
-        unitless particle coordinates that will be worked with/on with shape (self.npart, 3).
+    x: np.ndarray
+        unitless particle coordinates that will be worked with/on with shape 
+        (self.npart, 3).
 
-    self.m: np.ndarray
-        unitless particle masses that will be worked with/on with shape (self.npart).
+    m: np.ndarray
+        unitless particle masses that will be worked with/on with shape 
+        (self.npart).
 
 
 
 
     Notes
-    -----------
+    -----
     
-    + The default workflow should be something like
-        ``pg = ParticleGenerator(...)``
+    The default workflow should be something like
 
-        ``pg.runparams.iter_max = 10000``
+    .. code-block:: python
 
-        ``pg.runparams.whatever_parameter = ...``
-
-        ``pg.initial_setup(...)``
-
-        ``pg.run_iteration()``
-
-        ``print("profit")``
+        pg = ParticleGenerator(...)
+        pg.run_params.max_iterations = 10000
+        pg.run_params.whatever_parameter = ...
+        pg.initial_setup(...)
+        pg.run_iteration()
     """
 
     # simulation parameters
-    rhofunc: callable
+    density_function: callable
     boxsize: unyt.unyt_array
-    unitsys: unyt.unit_systems.UnitSystem
-    nx: int
+    unit_system: unyt.unit_systems.UnitSystem
+    number_of_particles: int
     ndim: int
     periodic: bool
     kernel: str
     eta: float
     rho_max: Union[float, None]
 
-    runparams: RunParams
-    iterparams: IterData
+    run_params: RunParams
+    iter_params: IterData
     stats: IterStats
 
     # derived variables
@@ -390,8 +390,8 @@ class ParticleGenerator(object):
         self,
         rho: callable,
         boxsize: unyt.unyt_array,
-        unitsys: unyt.unit_systems.UnitSystem,
-        nx: int,
+        unit_system: unyt.unit_systems.UnitSystem,
+        number_of_particles: int,
         ndim: int,
         periodic: bool = True,
         kernel: str = "cubic spline",
@@ -401,7 +401,7 @@ class ParticleGenerator(object):
         r"""
 
         Parameters
-        ---------------
+        ----------
 
         rho: callable
             The density function that is to be reproduced in the initial conditions.
@@ -409,19 +409,20 @@ class ParticleGenerator(object):
             
             - ``x``: np.ndarray of 3D particle coordinates (even if your initial 
               conditions have lower dimensionality)
-            - ``ndim``: integer, number of dimensions that your simulations is to have
+            - ``ndim``: integer, number of dimensions that your simulations is 
+              to have
 
         boxsize: unyt.unyt_array
             The box size of the simulation.
 
-        nx: int
+        number_of_particles: int
             how many particles along every dimension you want your simulation
             to contain
 
         ndim: int
             how many dimensions you want your simulation to have
 
-        unitsys: unyt.unit_systems.UnitSystem
+        unit_system: unyt.unit_systems.UnitSystem
             a unit system that contains the units you want your ICs to have
 
         periodic: bool
@@ -444,19 +445,19 @@ class ParticleGenerator(object):
         if not isinstance(boxsize, unyt.unyt_array):
             raise TypeError("boxsize needs to be a unyt array.")
 
-        if not isinstance(unitsys, unyt.unit_systems.UnitSystem):
-            raise TypeError("unitsys needs to be a unyt UnitSystem.")
+        if not isinstance(unit_system, unyt.unit_systems.UnitSystem):
+            raise TypeError("unit_system needs to be a unyt UnitSystem.")
 
-        if not isinstance(nx, (int, np.integer)):
-            raise TypeError("nx needs to be an integer")
+        if not isinstance(number_of_particles, (int, np.integer)):
+            raise TypeError("number_of_particles needs to be an integer")
 
         if not isinstance(ndim, (int, np.integer)):
             raise TypeError("ndim needs to be an integer")
 
-        self.rhofunc = rho
+        self.density_function = rho
         self.boxsize = boxsize
-        self.unitsys = unitsys
-        self.nx = nx
+        self.unit_system = unit_system
+        self.number_of_particles = number_of_particles
         self.ndim = ndim
         self.periodic = periodic
         self.kernel = kernel
@@ -464,10 +465,10 @@ class ParticleGenerator(object):
         self.rho_max = rho_max
 
         # get some derived quantities
-        self.npart = self.nx ** self.ndim
-        self.boxsize_to_use = boxsize.to(unitsys["length"]).value
-        self.runparams = RunParams()
-        self.iterparams = IterData()
+        self.npart = self.number_of_particles ** self.ndim
+        self.boxsize_to_use = boxsize.to(unit_system["length"]).value
+        self.run_params = RunParams()
+        self.iter_params = IterData()
         # set up self.stats later tho
 
         return
@@ -482,11 +483,11 @@ class ParticleGenerator(object):
         r"""
         Run an initial setup for the generator. Allocate arrays, prepare paremeter,
         check whether the given parameters make sense.
-        Must be called AFTER the ``self.runparams`` paramters have been tweaked by
+        Must be called AFTER the ``self.run_params`` paramters have been tweaked by
         the user.
 
         Parameters
-        -------------
+        ----------
 
         method: str {"rejection", "uniform", "displaced"}
             If no ``x`` is given, create an initial guess for particle coordinates.
@@ -494,21 +495,23 @@ class ParticleGenerator(object):
 
             - ``"rejection"``: Use rejection sampling of the model density function
 
-            - ``"uniform"``: Start off with a uniformly distributed particle configuration
+            - ``"uniform"``: Start off with a uniformly distributed particle 
+              configuration
 
-            - ``"displaced"``: Displace particles from an initially uniform distribution
-              randomly up to a distance ``max_displ * particle distance along axis`` from
-              their original position on the grid
+            - ``"displaced"``: Displace particles from an initially uniform 
+              distribution randomly up to a distance ``max_displ * particle 
+              distance along axis`` from their original position on the grid
 
         x: unyt.unyt_array or None, optional
             Initial guess for coordinates of particles. If ``None``, the initial
             guess will be generated by rejection sampling the model density function
-            ``self.rhofunc``
+            ``self.density_function``
 
         m: unyt.unyt_array or None, optional
-            ``unyt.unyt_array`` of particle masses. If ``None``, an array will be created
-            such that the total mass in the simulation box given the analytical
-            density is reproduced, and all particles will have equal masses.
+            ``unyt.unyt_array`` of particle masses. If ``None``, an array will be 
+            created such that the total mass in the simulation box given the 
+            analytical density is reproduced, and all particles will have equal
+            masses.
 
         max_displ: float, optional
             maximal displacement of a particle initially on an uniform grid along 
@@ -518,19 +521,19 @@ class ParticleGenerator(object):
 
 
         Notes
-        -------------------
+        -----
 
-            + Must be called AFTER the ``self.runparams`` paramters have been tweaked by
-        the user.
+            + Must be called AFTER the ``self.run_params`` paramters have been 
+              tweaked by the user.
 
         """
 
         ndim = self.ndim
-        rhofunc = self.rhofunc
+        density_function = self.density_function
         boxsize = self.boxsize_to_use
         npart = self.npart
-        ip = self.iterparams
-        runparams = self.runparams
+        ip = self.iter_params
+        run_params = self.run_params
 
         # safety checks first
         if not TREE_AVAILABLE:
@@ -539,7 +542,7 @@ class ParticleGenerator(object):
             )
 
         try:
-            res = self.rhofunc(np.ones((10, 3), dtype=np.float), self.ndim)
+            res = self.density_function(np.ones((10, 3), dtype=np.float), self.ndim)
         except TypeError:
             raise TypeError(
                 "rho(x, ndim) must take only a numpy array x of coordinates as an argument."
@@ -567,7 +570,7 @@ class ParticleGenerator(object):
             else:
                 if not isinstance(x, unyt.unyt_array):
                     raise TypeError("x must be an unyt_array")
-                self.coordinates = x.to(self.unitsys["length"])
+                self.coordinates = x.to(self.unit_system["length"])
 
             #  generate masses if necessary
             if m is None:
@@ -575,8 +578,8 @@ class ParticleGenerator(object):
                 dx = boxsize / nc
 
                 #  integrate total mass in box
-                xc = self.generate_uniform_coords(nx=nc)
-                rho_all = rhofunc(xc.value, ndim)
+                xc = self.generate_uniform_coords(number_of_particles=nc)
+                rho_all = density_function(xc.value, ndim)
                 if rho_all.any() < 0:
                     raise ValueError(
                         "Found negative densities inside box using the analytical function you provided"
@@ -588,13 +591,13 @@ class ParticleGenerator(object):
                 mtot = rhotot * area  # go from density to mass
 
                 self.m = np.ones(npart, dtype=np.float) * mtot / npart
-                self.masses = unyt.unyt_array(self.m, self.unitsys["mass"])
+                self.masses = unyt.unyt_array(self.m, self.unit_system["mass"])
                 print("Assigning particle mass: {0:.3e}".format(mtot / npart))
 
             else:
                 if not isinstance(m, unyt.unyt_array):
                     raise TypeError("m must be an unyt_array")
-                self.masses = m.to(self.unitsys["mass"])
+                self.masses = m.to(self.unit_system["mass"])
 
         # make sure unitless arrays exist, others are allocated
         self.x = self.coordinates.value
@@ -602,11 +605,15 @@ class ParticleGenerator(object):
 
         # check consistency of runtime params
 
-        if runparams.iter_max < runparams.iter_min:
-            raise ValueError("runparams.iter_max must be >= runparams.iter_min")
-        if runparams.delta_init is not None:
-            if runparams.delta_init < runparams.delta_min:
-                raise ValueError("runparams.delta_init must be >= runparams.delta_min")
+        if run_params.max_iterations < run_params.min_iterations:
+            raise ValueError(
+                "run_params.max_iterations must be >= run_params.min_iterations"
+            )
+        if run_params.delta_init is not None:
+            if run_params.delta_init < run_params.min_delta_r_norm:
+                raise ValueError(
+                    "run_params.delta_init must be >= run_params.min_delta_r_norm"
+                )
 
         # set up iteration related stuff
 
@@ -614,36 +621,33 @@ class ParticleGenerator(object):
         mid = 1.0
         for d in range(ndim):
             mid *= boxsize[d]
-        mid = mid ** (1.0 / ndim) / self.nx
+        mid = mid ** (1.0 / ndim) / self.number_of_particles
         ip.mean_interparticle_distance = mid
 
         # get normalisation constants for displacement force
         if not self._restarting:
-            if runparams.delta_init is None:
+            if run_params.delta_init is None:
                 ip.compute_delta_norm = True
                 ip.delta_r_norm = mid
             else:
                 # deleta_init is set = -1 during restart.
                 # > 0 (or None) means user changed it.
-                if runparams.delta_init > 0:
+                if run_params.delta_init > 0:
                     ip.compute_delta_norm = False
-                    ip.delta_r_norm = runparams.delta_init * mid
+                    ip.delta_r_norm = run_params.delta_init * mid
 
-        ip.delta_r_norm_min = runparams.delta_min * mid
+        ip.delta_r_norm_min = run_params.min_delta_r_norm * mid
 
         # kernel data
         _, _, kernel_gamma = get_kernel_data(self.kernel, ndim)
 
         # get expected number of neighbours
         if ndim == 1:
-            ip.Nngb = 1 * kernel_gamma * self.eta
+            ip.neighbours = 1 * kernel_gamma * self.eta
         elif ndim == 2:
-            ip.Nngb = np.pi * (kernel_gamma * self.eta) ** 2
+            ip.neighbours = np.pi * (kernel_gamma * self.eta) ** 2
         elif ndim == 3:
-            ip.Nngb = 4 / 3 * np.pi * (kernel_gamma * self.eta) ** 3
-
-        # round it up for cKDTree
-        ip.Nngb_int = int(ip.Nngb + 0.5)
+            ip.neighbours = 4 / 3 * np.pi * (kernel_gamma * self.eta) ** 3
 
         #  this sets up whether the tree build is periodic or not
         if self.periodic:
@@ -652,7 +656,7 @@ class ParticleGenerator(object):
             ip.boxsize_for_tree = None
 
         # set up stats
-        self.stats = IterStats(self.runparams.iter_max)
+        self.stats = IterStats(self.run_params.max_iterations)
 
         # take note that we did this
         self._set_up = True
@@ -660,64 +664,67 @@ class ParticleGenerator(object):
         return
 
     def generate_uniform_coords(
-        self, nx: Union[None, int] = None, ndim: Union[None, int] = None
+        self,
+        number_of_particles: Union[None, int] = None,
+        ndim: Union[None, int] = None,
     ):
         r"""
         Generate coordinates for a uniform particle distribution.
 
         Parameters
-        ------------------
+        ----------
 
-        nx: int or None, optional
+        number_of_particles: int or None, optional
             How many particles to generate in every dimension. If ``None``, use
-            ``self.nx`` grid points.
+            ``self.number_of_particles`` grid points.
 
         ndim: int or None, optional
             How many dimensions to use. If ``None``, use ``self.ndim`` dimensions.
 
         Returns
-        ------------------
+        -------
 
         x: unyt.unyt_array 
-            unyt.unyt_array of paricle coordinates with shape (``nx**ndim``, 3)
+            unyt.unyt_array of paricle coordinates with shape 
+            (``number_of_particles**ndim``, 3)
         """
-        if nx is None:
-            nx = self.nx
+        if number_of_particles is None:
+            number_of_particles = self.number_of_particles
         if ndim is None:
             ndim = self.ndim
         boxsize = self.boxsize_to_use
 
-        # get npart here, nx and ndim might be different from global class values
-        npart = nx ** ndim
+        # get npart here, number_of_particles and ndim might be different from global class values
+        npart = number_of_particles ** ndim
 
         x = unyt.unyt_array(
-            np.zeros((npart, 3), dtype=np.float), self.unitsys["length"]
+            np.zeros((npart, 3), dtype=np.float), self.unit_system["length"]
         )
 
-        dxhalf = 0.5 * boxsize[0] / nx
-        dyhalf = 0.5 * boxsize[1] / nx
-        dzhalf = 0.5 * boxsize[2] / nx
+        dxhalf = 0.5 * boxsize[0] / number_of_particles
+        dyhalf = 0.5 * boxsize[1] / number_of_particles
+        dzhalf = 0.5 * boxsize[2] / number_of_particles
 
         if ndim == 1:
-            x[:, 0] = np.linspace(dxhalf, boxsize[0] - dxhalf, nx)
+            x[:, 0] = np.linspace(dxhalf, boxsize[0] - dxhalf, number_of_particles)
 
         elif ndim == 2:
-            xcoords = np.linspace(dxhalf, boxsize[0] - dxhalf, nx)
-            ycoords = np.linspace(dyhalf, boxsize[1] - dyhalf, nx)
-            for i in range(nx):
-                start = i * nx
-                stop = (i + 1) * nx
+            xcoords = np.linspace(dxhalf, boxsize[0] - dxhalf, number_of_particles)
+            ycoords = np.linspace(dyhalf, boxsize[1] - dyhalf, number_of_particles)
+            for i in range(number_of_particles):
+                start = i * number_of_particles
+                stop = (i + 1) * number_of_particles
                 x[start:stop, 0] = xcoords
                 x[start:stop, 1] = ycoords[i]
 
         elif ndim == 3:
-            xcoords = np.linspace(dxhalf, boxsize[0] - dxhalf, nx)
-            ycoords = np.linspace(dyhalf, boxsize[1] - dyhalf, nx)
-            zcoords = np.linspace(dzhalf, boxsize[2] - dzhalf, nx)
-            for j in range(nx):
-                for i in range(nx):
-                    start = j * nx ** 2 + i * nx
-                    stop = j * nx ** 2 + (i + 1) * nx
+            xcoords = np.linspace(dxhalf, boxsize[0] - dxhalf, number_of_particles)
+            ycoords = np.linspace(dyhalf, boxsize[1] - dyhalf, number_of_particles)
+            zcoords = np.linspace(dzhalf, boxsize[2] - dzhalf, number_of_particles)
+            for j in range(number_of_particles):
+                for i in range(number_of_particles):
+                    start = j * number_of_particles ** 2 + i * number_of_particles
+                    stop = j * number_of_particles ** 2 + (i + 1) * number_of_particles
                     x[start:stop, 0] = xcoords
                     x[start:stop, 1] = ycoords[i]
                     x[start:stop, 2] = zcoords[j]
@@ -732,27 +739,28 @@ class ParticleGenerator(object):
 
 
         Parameters
-        ------------------
+        ----------
 
         max_displ: float, optional
             maximal displacement of a particle initially on an uniform grid along 
             any axis, in units of particle distance along that axis.
 
+
         Returns
-        ------------------
+        -------
 
         x: unyt.unyt_array 
             unyt.unyt_array of particle coordinates with shape (self.npart, 3)
         """
 
-        nx = self.nx
+        number_of_particles = self.number_of_particles
         boxsize = self.boxsize_to_use
         ndim = self.ndim
         periodic = self.periodic
-        npart = nx ** ndim
+        npart = number_of_particles ** ndim
 
         # get maximal displacement from uniform grid of any particle along an axis
-        maxdelta = max_displ * boxsize / nx
+        maxdelta = max_displ * boxsize / number_of_particles
 
         # generate uniform grid (including units) first
         x = self.generate_uniform_coords()
@@ -805,10 +813,10 @@ class ParticleGenerator(object):
     def rejection_sample_coords(self):
         r"""
         Generate an initial guess for particle coordinates by rejection sampling the
-        model density function ``self.rhofunc``.
+        model density function ``self.density_function``.
 
         Returns
-        ------------------
+        -------
 
         x: unyt.unyt_array 
             unyt.unyt_array of particle coordinates with shape (self.npart, 3)
@@ -817,7 +825,7 @@ class ParticleGenerator(object):
         boxsize = self.boxsize_to_use
         ndim = self.ndim
         npart = self.npart
-        rhofunc = self.rhofunc
+        density_function = self.density_function
 
         x = np.empty((npart, 3), dtype=np.float)
 
@@ -826,8 +834,8 @@ class ParticleGenerator(object):
             # don't cause memory errors with too big of a grid.
             #  Also don't worry too much about accuracy.
             nc = 200
-            xc = self.generate_uniform_coords(nx=nc)
-            self.rho_max = rhofunc(xc.value, ndim).max() * 1.05
+            xc = self.generate_uniform_coords(number_of_particles=nc)
+            self.rho_max = density_function(xc.value, ndim).max() * 1.05
             # * 1.05: safety measure to make sure you're always above the
             #  analytical value. Takes a tad more time, but we're gonna be safe.
 
@@ -839,36 +847,36 @@ class ParticleGenerator(object):
             for d in range(ndim):
                 xr[0, d] = np.random.uniform(low=0.0, high=coord_threshold[d])
 
-            if np.random.uniform() <= rhofunc(xr, ndim) / self.rho_max:
+            if np.random.uniform() <= density_function(xr, ndim) / self.rho_max:
                 x[keep] = xr
                 keep += 1
 
-        return unyt.unyt_array(x, self.unitsys["length"])
+        return unyt.unyt_array(x, self.unit_system["length"])
 
     def compute_h_and_rho(
-        self, nngb: Union[int, None] = None, boxsize: Union[np.ndarray, None] = None
+        self,
+        neighbours: Union[int, None] = None,
+        boxsize: Union[np.ndarray, None] = None,
     ):
         r"""
         Compute actual smoothing lengths and particle densities.
 
         Parameters
-        -----------------
+        ----------
 
-        nngb: integer or None, optional
+        neighbours: integer or None, optional
             number of neighbours to search for for each particle. If ``None``,
-            ``self.iterparams.Nngb_int``  will be used, which is
-            the automatically set up value for given parameters during
-            initialisation.
+            ``self.iter_params.neighbours``  will be used, which is the automatically 
+            set up value for given parameters during initialisation.
 
         boxsize: np.ndarray or None, optional
             boxsize to be used to generate the tree. If ``None``,
-            ``self.iterparams.boxsize_for_tree`` will be used, which is
-            the automatically set up value for given parameters during
-            initialisation.
+            ``self.iter_params.boxsize_for_tree`` will be used, which is the 
+            automatically set up value for given parameters during initialisation.
 
 
         Returns
-        --------------
+        -------
 
         h: np.ndarray
             numpy array of particle smoothing lengths with shape (``self.npart``)
@@ -877,10 +885,10 @@ class ParticleGenerator(object):
             numpy array of particle densities with shape (``self.npart``)
 
         """
-        if nngb is None:
-            nngb = self.iterparams.Nngb_int
+        if neighbours is None:
+            neighbours = int(self.iter_params.neighbours) + 1
         if boxsize is None:
-            boxsize = self.iterparams.boxsize_for_tree
+            boxsize = self.iter_params.boxsize_for_tree
 
         ndim = self.ndim
         kernel_func, _, kernel_gamma = get_kernel_data(self.kernel, ndim)
@@ -890,7 +898,7 @@ class ParticleGenerator(object):
 
         tree = KDTree(self.x[:, :ndim], boxsize=boxsize)
         for p in range(self.npart):
-            dist, neighs = tree.query(self.x[p, :ndim], k=nngb)
+            dist, neighs = tree.query(self.x[p, :ndim], k=neighbours)
             # tree.query returns index nparts+1 if not enough neighbours were found
             mask = neighs < self.npart
             dist = dist[mask]
@@ -911,14 +919,14 @@ class ParticleGenerator(object):
         Perform one step of the actual iteration.
 
         Parameters
-        -------------
+        ----------
 
         iteration: int
             current iteration number
 
 
         Returns
-        --------------
+        -------
 
         converged: bool
             Whether the iteration satisfies convergence criteria.
@@ -928,26 +936,29 @@ class ParticleGenerator(object):
         periodic = self.periodic
         boxsize = self.boxsize_to_use
         npart = self.npart
-        rhofunc = self.rhofunc
+        density_function = self.density_function
         x = self.x
-        runparams = self.runparams
-        ipars = self.iterparams
+        run_params = self.run_params
+        ipars = self.iter_params
 
         from .IC_plotting import IC_plot_current_situation
 
         # kernel data
-        kernel_func, _, kernel_gamma = get_kernel_data(self.kernel, ndim)
+        kernel_func, _, _ = get_kernel_data(self.kernel, ndim)
 
         # update model density at current particle positions
-        rho_model = rhofunc(x, ndim)
+        rho_model = density_function(x, ndim)
 
         # re-distribute and/or dump particles?
-        dump_now = runparams.dumpfreq > 0
-        dump_now = dump_now and iteration % runparams.dumpfreq == 0
-        redistribute = runparams.redist_freq > 0
+        dump_now = run_params.state_dump_frequency > 0
+        dump_now = dump_now and iteration % run_params.state_dump_frequency == 0
+        redistribute = run_params.particle_redistribution_frequency > 0
         if redistribute:
-            redistribute = iteration % runparams.redist_freq == 0
-            redistribute = redistribute and runparams.redist_stop >= iteration
+            redistribute = iteration % run_params.particle_redistribution_frequency == 0
+            redistribute = (
+                redistribute
+                and run_params.no_particle_redistribution_after >= iteration
+            )
 
         if dump_now or redistribute:
 
@@ -957,14 +968,16 @@ class ParticleGenerator(object):
             if dump_now:
                 self.dump_current_state(iteration, h, rho)
                 # TODO: remove the plotting
-                IC_plot_current_situation(True, iteration, x, rho, rhofunc, self)
+                IC_plot_current_situation(
+                    True, iteration, x, rho, density_function, self
+                )
 
             # re-destribute a handful of particles
             if redistribute:
                 moved = self.redistribute_particles(h, rho, rho_model)
                 #  update analytical density computations
                 if moved is not None:
-                    rho_model[moved] = rhofunc(x[moved], ndim)
+                    rho_model[moved] = density_function(x[moved], ndim)
 
         # compute MODEL smoothing lengths
         oneoverrho = 1.0 / rho_model
@@ -974,12 +987,14 @@ class ParticleGenerator(object):
             vol *= boxsize[d]
 
         if ndim == 1:
-            hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum * vol
+            hmodel = 0.5 * ipars.neighbours * oneoverrho / oneoverrhosum * vol
         elif ndim == 2:
-            hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum * vol)
+            hmodel = np.sqrt(
+                ipars.neighbours / np.pi * oneoverrho / oneoverrhosum * vol
+            )
         elif ndim == 3:
             hmodel = np.cbrt(
-                ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum * vol
+                ipars.neighbours * 3 / 4 / np.pi * oneoverrho / oneoverrhosum * vol
             )
 
         # init delta_r array
@@ -990,7 +1005,7 @@ class ParticleGenerator(object):
 
         for p in range(npart):
 
-            dist, neighs = tree.query(x[p, :ndim], k=ipars.Nngb_int)
+            dist, neighs = tree.query(x[p, :ndim], k=int(ipars.neighbours) + 1)
             # tree.query returns index npart where not enough neighbours are found
             correct = neighs < npart
             dist = dist[correct][1:]  # skip first neighbour: that's particle itself
@@ -1052,22 +1067,19 @@ class ParticleGenerator(object):
                 x[x < 0.0] -= delta_r[x < 0.0]
 
         # reduce delta_r_norm
-        ipars.delta_r_norm *= runparams.delta_reduct
+        ipars.delta_r_norm *= run_params.delta_r_norm_reduction_factor
         # assert minimal delta_r
         ipars.delta_r_norm = max(ipars.delta_r_norm, ipars.delta_r_norm_min)
 
         # get displacements in units of mean interparticle distance
-        displacement = np.zeros(npart, dtype=np.float)
-        for d in range(ndim):
-            displacement += delta_r[:, d] ** 2
-        displacement = np.sqrt(displacement)
+        displacement = (
+            np.sqrt(np.sum(delta_r * delta_r, axis=1))
+            / ipars.mean_interparticle_distance
+        )
 
         max_displacement = displacement.max()
-        max_displacement /= ipars.mean_interparticle_distance
         min_displacement = displacement.min()
-        min_displacement /= ipars.mean_interparticle_distance
-        avg_displacement = displacement.sum() / displacement.shape[0]
-        avg_displacement /= ipars.mean_interparticle_distance
+        avg_displacement = displacement.mean()
 
         print(
             "Iteration {0:4d}; Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
@@ -1080,22 +1092,22 @@ class ParticleGenerator(object):
             # need to know what value to start with in your next run.
             dinit = (
                 ipars.delta_r_norm
-                * runparams.delta_reduct ** (-max(iteration, 1))
+                * run_params.delta_r_norm_reduction_factor ** (-max(iteration, 1))
                 / ipars.mean_interparticle_distance
             )
             warnmsg = "Found max displacements > 5 mean interparticle distances. "
-            warnmsg += "Maybe try again with smaller runparams.delta_init? "
-            warnmsg += "runparams.delta_init = {0:.6e}".format(dinit)
+            warnmsg += "Maybe try again with smaller run_params.delta_init? "
+            warnmsg += "run_params.delta_init = {0:.6e}".format(dinit)
             warnings.warn(warnmsg, RuntimeWarning)
 
         converged = False
         if (
-            max_displacement < runparams.displ_thresh
+            max_displacement < run_params.displacement_threshold
         ):  # don't think about stopping until max < threshold
-            unconverged = displacement[displacement > runparams.converge_thresh].shape[
-                0
-            ]
-            if unconverged < runparams.tolerance_part * npart:
+            unconverged = displacement[
+                displacement > run_params.convergence_threshold
+            ].shape[0]
+            if unconverged < run_params.unconverged_particle_number_tolerance * npart:
                 converged = True
 
         # store stats
@@ -1118,32 +1130,38 @@ class ParticleGenerator(object):
         # start iteration loop
         iteration = 0
 
-        while iteration < self.runparams.iter_max:
+        while iteration < self.run_params.max_iterations:
 
             iteration += 1
             converged = self.iteration_step(iteration)
 
-            if converged and self.runparams.iter_min < iteration:
+            if converged and self.run_params.min_iterations < iteration:
                 break
 
         # convert results to unyt arrays
-        self.coords = unyt.unyt_array(self.x, self.unitsys["length"])
-        self.masses = unyt.unyt_array(self.m, self.unitsys["mass"])
+        self.coords = unyt.unyt_array(self.x, self.unit_system["length"])
+        self.masses = unyt.unyt_array(self.m, self.unit_system["mass"])
 
         # compute densities and smoothing lengths before you finish
         h, rho = self.compute_h_and_rho()
-        self.smoothing_lengths = unyt.unyt_array(h, self.unitsys["length"])
+        self.smoothing_lengths = unyt.unyt_array(h, self.unit_system["length"])
         self.densities = unyt.unyt_array(
-            rho, self.unitsys["mass"] / self.unitsys["length"] ** self.ndim
+            rho, self.unit_system["mass"] / self.unit_system["length"] ** self.ndim
         )
 
         # trim stats
-        self.stats.max_displacement = self.stats.max_displacement[: self.stats.niter]
-        self.stats.min_displacement = self.stats.min_displacement[: self.stats.niter]
-        self.stats.avg_displacement = self.stats.avg_displacement[: self.stats.niter]
+        self.stats.max_displacement = self.stats.max_displacement[
+            : self.stats.number_of_iterations
+        ]
+        self.stats.min_displacement = self.stats.min_displacement[
+            : self.stats.number_of_iterations
+        ]
+        self.stats.avg_displacement = self.stats.avg_displacement[
+            : self.stats.number_of_iterations
+        ]
 
         # if you're dumping intermediate outputs, dump the last one for restarts:
-        if self.runparams.dumpfreq > 0:
+        if self.run_params.state_dump_frequency > 0:
             self.dump_current_state(iteration, h, rho)
 
         return
@@ -1156,7 +1174,7 @@ class ParticleGenerator(object):
 
 
         Parameters
-        -----------------
+        ----------
 
         h: np.ndarray
             numpy array of particle smoothing lenghts
@@ -1170,7 +1188,7 @@ class ParticleGenerator(object):
 
 
         Returns
-        -------------------
+        -------
 
         moved: np.ndarray or None
             indices of particles that have been moved around in this routine. If 
@@ -1183,13 +1201,16 @@ class ParticleGenerator(object):
         ndim = self.ndim
 
         # how many particles are we moving?
-        to_move = int(npart * self.runparams.redist_frac + 0.5)
-        to_move = max(to_move, 0)
-        if to_move == 0:
+        to_move = int(
+            npart * self.run_params.particle_redistribution_number_fraction + 0.5
+        )
+        if to_move <= 0:
             return None
 
         # decrease how many particles you move as number of iterations increases
-        self.runparams.redist_frac *= self.runparams.redist_reduct
+        self.run_params.particle_redistribution_number_fraction *= (
+            self.run_params.particle_redistribution_number_reduction_factor
+        )
 
         _, _, kernel_gamma = get_kernel_data(self.kernel, ndim)
 
@@ -1285,7 +1306,7 @@ class ParticleGenerator(object):
         dump created with self.dump_current_state().
 
         Parameters
-        ----------------
+        ----------
 
         filename: str
             filename of the dump to restart from.
@@ -1301,7 +1322,7 @@ class ParticleGenerator(object):
         boxsize = unyt.unyt_array(
             partgen.attrs["boxsize"], partgen.attrs["boxsize_units"]
         )
-        nx = partgen.attrs["nx"].astype(int)
+        number_of_particles = partgen.attrs["number_of_particles"].astype(int)
         ndim = partgen.attrs["ndim"]
         usys = unyt.unit_systems.UnitSystem(
             "ParticleGenerator UnitSystem",
@@ -1315,30 +1336,42 @@ class ParticleGenerator(object):
 
         # re-init yourself
         self.__init__(
-            self.rhofunc,
+            self.density_function,
             boxsize,
             usys,
-            nx,
+            number_of_particles,
             ndim,
             periodic=periodic,
             kernel=kernel,
             eta=eta,
         )
 
-        # now set up self.runparams
-        self.runparams.iter_max = partgen.attrs["iter_max"]
-        self.runparams.iter_min = partgen.attrs["iter_min"]
-        self.runparams.converge_thresh = partgen.attrs["converge_thresh"]
+        # now set up self.run_params
+        self.run_params.max_iterations = partgen.attrs["max_iterations"]
+        self.run_params.min_iterations = partgen.attrs["min_iterations"]
+        self.run_params.convergence_threshold = partgen.attrs["convergence_threshold"]
 
-        self.runparams.tolerance_part = partgen.attrs["tolerance_part"]
-        self.runparams.tolerance_part = partgen.attrs["displ_thresh"]
+        self.run_params.unconverged_particle_number_tolerance = partgen.attrs[
+            "unconverged_particle_number_tolerance"
+        ]
+        self.run_params.unconverged_particle_number_tolerance = partgen.attrs[
+            "displacement_threshold"
+        ]
 
-        self.runparams.delta_reduct = partgen.attrs["delta_reduct"]
-        self.runparams.delta_min = partgen.attrs["delta_min"]
-        self.runparams.redist_freq = partgen.attrs["redist_freq"]
-        self.runparams.redist_frac = partgen.attrs["redist_frac"]
-        self.runparams.redist_reduct = partgen.attrs["redist_reduct"]
-        self.runparams.dumpfreq = partgen.attrs["dumpfreq"]
+        self.run_params.delta_r_norm_reduction_factor = partgen.attrs[
+            "delta_r_norm_reduction_factor"
+        ]
+        self.run_params.min_delta_r_norm = partgen.attrs["min_delta_r_norm"]
+        self.run_params.particle_redistribution_frequency = partgen.attrs[
+            "particle_redistribution_frequency"
+        ]
+        self.run_params.particle_redistribution_number_fraction = partgen.attrs[
+            "particle_redistribution_number_fraction"
+        ]
+        self.run_params.particle_redistribution_number_reduction_factor = partgen.attrs[
+            "particle_redistribution_number_reduction_factor"
+        ]
+        self.run_params.state_dump_frequency = partgen.attrs["state_dump_frequency"]
 
         dnorm = partgen.attrs["delta_r_norm"]
         dnorm_min = partgen.attrs["delta_r_norm_min"]
@@ -1352,14 +1385,14 @@ class ParticleGenerator(object):
         # call initial_setup with given x and m
         self.initial_setup(x=x, m=m)
 
-        # overwrite iterparams
-        self.iterparams.delta_r_norm = dnorm
-        self.iterparams.delta_r_norm_min = dnorm_min
+        # overwrite iter_params
+        self.iter_params.delta_r_norm = dnorm
+        self.iter_params.delta_r_norm_min = dnorm_min
 
         # make sure that you don't accidentally overwrite delta_r_norm
         # if self.initial_setup is called again
-        self.runparams.delta_init = -1
-        self.iterparams.compute_delta_norm = False
+        self.run_params.delta_init = -1
+        self.iter_params.compute_delta_norm = False
 
         # mark that we're finished with the restart
         self._restart_finished = True
@@ -1377,7 +1410,7 @@ class ParticleGenerator(object):
         values for required quantities ``velocity`` and ``internal_energy``.
 
         Parameters
-        ----------------
+        ----------
 
         iteration: int
             current iteration number
@@ -1394,11 +1427,11 @@ class ParticleGenerator(object):
         x = self.x
         m = self.m
 
-        u_l = self.unitsys["length"]
-        u_m = self.unitsys["mass"]
-        u_t = self.unitsys["time"]
+        u_l = self.unit_system["length"]
+        u_m = self.unit_system["mass"]
+        u_t = self.unit_system["time"]
 
-        w = Writer(self.unitsys, self.boxsize)
+        w = Writer(self.unit_system, self.boxsize)
         w.gas.coordinates = unyt.unyt_array(x, u_l)
         w.gas.smoothing_length = unyt.unyt_array(h, u_l)
         w.gas.masses = unyt.unyt_array(m, u_m)
@@ -1410,7 +1443,7 @@ class ParticleGenerator(object):
         )
         w.gas.velocities = unyt.unyt_array(np.zeros(npart, dtype=np.float), u_l / u_t)
 
-        fname = self.runparams.dump_basename + str(iteration).zfill(5) + ".hdf5"
+        fname = f"{self.run_params.state_dump_basename}_{iteration:05d}.hdf5"
         w.write(fname)
 
         # Now add extra particle generator data to enable restart
@@ -1418,31 +1451,41 @@ class ParticleGenerator(object):
         pg = f.create_group("ParticleGenerator")
         pg.attrs["boxsize"] = self.boxsize.value
         pg.attrs["boxsize_units"] = str(self.boxsize.units)
-        pg.attrs["nx"] = self.nx
+        pg.attrs["number_of_particles"] = self.number_of_particles
         pg.attrs["ndim"] = self.ndim
-        pg.attrs["unit_l"] = str(self.unitsys["length"])
-        pg.attrs["unit_m"] = str(self.unitsys["mass"])
-        pg.attrs["unit_t"] = str(self.unitsys["time"])
+        pg.attrs["unit_l"] = str(self.unit_system["length"])
+        pg.attrs["unit_m"] = str(self.unit_system["mass"])
+        pg.attrs["unit_t"] = str(self.unit_system["time"])
         pg.attrs["periodic"] = self.periodic
         pg.attrs["kernel"] = self.kernel
         pg.attrs["eta"] = self.eta
 
-        pg.attrs["iter_max"] = self.runparams.iter_max
-        pg.attrs["iter_min"] = self.runparams.iter_min
-        pg.attrs["converge_thresh"] = self.runparams.converge_thresh
-        pg.attrs["tolerance_part"] = self.runparams.tolerance_part
-        pg.attrs["displ_thresh"] = self.runparams.displ_thresh
-        pg.attrs["delta_reduct"] = self.runparams.delta_reduct
-        pg.attrs["delta_min"] = self.runparams.delta_min
-        pg.attrs["redist_freq"] = self.runparams.redist_freq
-        pg.attrs["redist_frac"] = self.runparams.redist_frac
-        pg.attrs["redist_reduct"] = self.runparams.redist_reduct
-        pg.attrs["dumpfreq"] = self.runparams.dumpfreq
-        pg.attrs["dump_basename"] = self.runparams.dump_basename
+        pg.attrs["max_iterations"] = self.run_params.max_iterations
+        pg.attrs["min_iterations"] = self.run_params.min_iterations
+        pg.attrs["convergence_threshold"] = self.run_params.convergence_threshold
+        pg.attrs[
+            "unconverged_particle_number_tolerance"
+        ] = self.run_params.unconverged_particle_number_tolerance
+        pg.attrs["displacement_threshold"] = self.run_params.displacement_threshold
+        pg.attrs[
+            "delta_r_norm_reduction_factor"
+        ] = self.run_params.delta_r_norm_reduction_factor
+        pg.attrs["min_delta_r_norm"] = self.run_params.min_delta_r_norm
+        pg.attrs[
+            "particle_redistribution_frequency"
+        ] = self.run_params.particle_redistribution_frequency
+        pg.attrs[
+            "particle_redistribution_number_fraction"
+        ] = self.run_params.particle_redistribution_number_fraction
+        pg.attrs[
+            "particle_redistribution_number_reduction_factor"
+        ] = self.run_params.particle_redistribution_number_reduction_factor
+        pg.attrs["state_dump_frequency"] = self.run_params.state_dump_frequency
+        pg.attrs["state_dump_basename"] = self.run_params.state_dump_basename
 
         # store IterData attributes
-        pg.attrs["delta_r_norm"] = self.iterparams.delta_r_norm
-        pg.attrs["delta_r_norm_min"] = self.iterparams.delta_r_norm_min
+        pg.attrs["delta_r_norm"] = self.iter_params.delta_r_norm
+        pg.attrs["delta_r_norm_min"] = self.iter_params.delta_r_norm_min
 
         # add gas adabatic index so when you read the file in in self.restart()
         # you don't get a warning. Note: This will not affect the initial
