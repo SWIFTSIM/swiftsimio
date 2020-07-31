@@ -10,6 +10,7 @@ You can get access to the objects through a sub-module as follows:
 
    from swiftsimio import load
    from swiftsimio.visualisation.sphviewer import SPHViewerWrapper
+   import matplotlib.pyplot as plt
 
    data = load("cosmo_volume_example.hdf5")
 
