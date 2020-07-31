@@ -1,6 +1,11 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.0.3
+-------
+
+Documentation changes to address JOSS review comments.
+
 v 4.0.2
 -------
 
