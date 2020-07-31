@@ -23,5 +23,5 @@ setuptools.setup(
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
         "Operating System :: OS Independent",
     ],
-    install_requires=["numpy", "unyt>=2.3.0", "h5py"],
+    install_requires=["numpy", "unyt>=2.3.0", "h5py", "numba>=0.50.0"],
 )
