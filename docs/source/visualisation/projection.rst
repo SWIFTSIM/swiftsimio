@@ -128,10 +128,14 @@ Example:
    subsampled_array = project_gas(
       data,
       resolution=1024,
-      project="star_formation_rates",
+      project="entropies",
       parallel=True,
       backend="subsampled"
    )
+
+This will likely look very similar to the image that you make with the default
+``backend="fast"``, but will have a well-converged distribution at any resolution
+level.
 
 Rotations
 ---------
