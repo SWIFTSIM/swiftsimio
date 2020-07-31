@@ -186,8 +186,13 @@ creates an edge-on and face-on projection using the integration in
    angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
 
-   face_on_rotation_matrix = rotation_matrix_from_vector(vector)
-   edge_on_rotation_matrix = rotation_matrix_from_vector(vector, axis="y")
+   face_on_rotation_matrix = rotation_matrix_from_vector(
+      angular_momentum_vector
+   )
+   edge_on_rotation_matrix = rotation_matrix_from_vector(
+      angular_momentum_vector,
+      axis="y"
+   )
 
    region = [
       [x - size, x + size],
