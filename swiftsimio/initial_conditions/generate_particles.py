@@ -8,10 +8,11 @@ import unyt
 from math import erf
 from typing import Union
 import warnings
+import h5py
 
 from .IC_kernel import get_kernel_data
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
-from swiftsimio import Writer
+from swiftsimio import Writer, load
 
 
 class RunParams(object):
@@ -63,7 +64,8 @@ class RunParams(object):
         particle redistribution frequency.
         Redistribute a handful of particles every ``self.redistribute_frequency``
         iteration. How many particles are redistributed is controlled with the
-        ``self.redistribute_frac`` parameter.
+        ``self.redistribute_frac`` parameter. If = 0, no redistributions will be
+        performed.
 
     self.redist_frac: float
         fraction of particles to be redistributed when doing so.
@@ -78,7 +80,8 @@ class RunParams(object):
 
     self.dumpfreq: int
         frequency of dumps of the current state of the iteration. If set to zero,
-        no intermediate results will be stored.
+        no intermediate results will be stored. If > 0, it will also create a 
+        dump after the last iteration so a restart is possible.
 
     self.dump_basename: str
         Basename for intermediate dumps. The filename will be constructed as
@@ -370,6 +373,8 @@ class ParticleGenerator(object):
 
     # internal checks
     _set_up = False
+    _restart_finished = False
+    _restarting = False
 
     # unyt/result arrays
     coordinates: unyt.unyt_array
@@ -442,10 +447,10 @@ class ParticleGenerator(object):
         if not isinstance(unitsys, unyt.unit_systems.UnitSystem):
             raise TypeError("unitsys needs to be a unyt UnitSystem.")
 
-        if not isinstance(nx, int):
+        if not isinstance(nx, (int, np.integer)):
             raise TypeError("nx needs to be an integer")
 
-        if not isinstance(ndim, int):
+        if not isinstance(ndim, (int, np.integer)):
             raise TypeError("ndim needs to be an integer")
 
         self.rhofunc = rho
@@ -542,49 +547,54 @@ class ParticleGenerator(object):
         if not isinstance(res, np.ndarray):
             raise TypeError("rho(x, ndim) needs to return a numpy array as the result.")
 
-        # generate first positions if necessary
-        if x is None:
-            if method == "rejection":
-                self.coordinates = self.rejection_sample_coords()
-            elif method == "displaced":
-                self.coordinates = self.generate_displaced_uniform_coords(
-                    max_displ=max_displ
-                )
-            elif method == "uniform":
-                self.coordinates = self.generate_uniform_coords()
+        # if you are restarting, and did this already, don't do it again.
+        # this way, the user still can change parameters however they want
+        # and call self.initial_setup again.
+        if not self._restart_finished:
+
+            # generate first positions if necessary
+            if x is None:
+                if method == "rejection":
+                    self.coordinates = self.rejection_sample_coords()
+                elif method == "displaced":
+                    self.coordinates = self.generate_displaced_uniform_coords(
+                        max_displ=max_displ
+                    )
+                elif method == "uniform":
+                    self.coordinates = self.generate_uniform_coords()
+                else:
+                    raise ValueError("Unknown coordinate generation method:", method)
             else:
-                raise ValueError("Unknown coordinate generation method:", method)
-        else:
-            if not isinstance(x, unyt.unyt_array):
-                raise TypeError("x must be an unyt_array")
-            self.coordinates = x.to(self.unitsys["length"])
+                if not isinstance(x, unyt.unyt_array):
+                    raise TypeError("x must be an unyt_array")
+                self.coordinates = x.to(self.unitsys["length"])
 
-        #  generate masses if necessary
-        if m is None:
-            nc = int(10000 ** (1.0 / ndim) + 0.5)  # always use ~ 10000 mesh points
-            dx = boxsize / nc
+            #  generate masses if necessary
+            if m is None:
+                nc = int(10000 ** (1.0 / ndim) + 0.5)  # always use ~ 10000 mesh points
+                dx = boxsize / nc
 
-            #  integrate total mass in box
-            xc = self.generate_uniform_coords(nx=nc)
-            rho_all = rhofunc(xc.value, ndim)
-            if rho_all.any() < 0:
-                raise ValueError(
-                    "Found negative densities inside box using the analytical function you provided"
-                )
-            rhotot = rho_all.sum()
-            area = 1.0
-            for d in range(ndim):
-                area *= dx[d]
-            mtot = rhotot * area  # go from density to mass
+                #  integrate total mass in box
+                xc = self.generate_uniform_coords(nx=nc)
+                rho_all = rhofunc(xc.value, ndim)
+                if rho_all.any() < 0:
+                    raise ValueError(
+                        "Found negative densities inside box using the analytical function you provided"
+                    )
+                rhotot = rho_all.sum()
+                area = 1.0
+                for d in range(ndim):
+                    area *= dx[d]
+                mtot = rhotot * area  # go from density to mass
 
-            self.m = np.ones(npart, dtype=np.float) * mtot / npart
-            self.masses = unyt.unyt_array(self.m, self.unitsys["mass"])
-            print("Assigning particle mass: {0:.3e}".format(mtot / npart))
+                self.m = np.ones(npart, dtype=np.float) * mtot / npart
+                self.masses = unyt.unyt_array(self.m, self.unitsys["mass"])
+                print("Assigning particle mass: {0:.3e}".format(mtot / npart))
 
-        else:
-            if not isinstance(m, unyt.unyt_array):
-                raise TypeError("m must be an unyt_array")
-            self.masses = m.to(self.unitsys["mass"])
+            else:
+                if not isinstance(m, unyt.unyt_array):
+                    raise TypeError("m must be an unyt_array")
+                self.masses = m.to(self.unitsys["mass"])
 
         # make sure unitless arrays exist, others are allocated
         self.x = self.coordinates.value
@@ -608,12 +618,16 @@ class ParticleGenerator(object):
         ip.mean_interparticle_distance = mid
 
         # get normalisation constants for displacement force
-        if runparams.delta_init is None:
-            ip.compute_delta_norm = True
-            ip.delta_r_norm = mid
-        else:
-            ip.compute_delta_norm = False
-            ip.delta_r_norm = runparams.delta_init * mid
+        if not self._restarting:
+            if runparams.delta_init is None:
+                ip.compute_delta_norm = True
+                ip.delta_r_norm = mid
+            else:
+                # deleta_init is set = -1 during restart.
+                # > 0 (or None) means user changed it.
+                if runparams.delta_init > 0:
+                    ip.compute_delta_norm = False
+                    ip.delta_r_norm = runparams.delta_init * mid
 
         ip.delta_r_norm_min = runparams.delta_min * mid
 
@@ -877,6 +891,12 @@ class ParticleGenerator(object):
         tree = KDTree(self.x[:, :ndim], boxsize=boxsize)
         for p in range(self.npart):
             dist, neighs = tree.query(self.x[p, :ndim], k=nngb)
+            # tree.query returns index nparts+1 if not enough neighbours were found
+            mask = neighs < self.npart
+            dist = dist[mask]
+            neighs = neighs[mask]
+            if neighs.shape[0] == 0:
+                raise RuntimeError("Found no neighbour for a particle.")
             h[p] = dist[-1] / kernel_gamma
             for i, n in enumerate(neighs):
                 W = kernel_func(dist[i], dist[-1])
@@ -924,8 +944,10 @@ class ParticleGenerator(object):
         # re-distribute and/or dump particles?
         dump_now = runparams.dumpfreq > 0
         dump_now = dump_now and iteration % runparams.dumpfreq == 0
-        redistribute = iteration % runparams.redist_freq == 0
-        redistribute = redistribute and runparams.redist_stop >= iteration
+        redistribute = runparams.redist_freq > 0
+        if redistribute:
+            redistribute = iteration % runparams.redist_freq == 0
+            redistribute = redistribute and runparams.redist_stop >= iteration
 
         if dump_now or redistribute:
 
@@ -947,18 +969,15 @@ class ParticleGenerator(object):
         # compute MODEL smoothing lengths
         oneoverrho = 1.0 / rho_model
         oneoverrhosum = np.sum(oneoverrho)
-        vol = 0.0
+        vol = 1.0
         for d in range(ndim):
             vol *= boxsize[d]
 
         if ndim == 1:
-            # hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum
             hmodel = 0.5 * ipars.Nngb * oneoverrho / oneoverrhosum * vol
         elif ndim == 2:
-            # hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum)
             hmodel = np.sqrt(ipars.Nngb / np.pi * oneoverrho / oneoverrhosum * vol)
         elif ndim == 3:
-            # hmodel = np.cbrt(ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum)
             hmodel = np.cbrt(
                 ipars.Nngb * 3 / 4 / np.pi * oneoverrho / oneoverrhosum * vol
             )
@@ -976,6 +995,8 @@ class ParticleGenerator(object):
             correct = neighs < npart
             dist = dist[correct][1:]  # skip first neighbour: that's particle itself
             neighs = neighs[correct][1:]
+            if neighs.shape[0] == 0:
+                raise RuntimeError("Found no neighbour for a particle.")
             dx = x[p] - x[neighs]
 
             if periodic:
@@ -1008,7 +1029,6 @@ class ParticleGenerator(object):
         # check whether something's out of bounds
         if periodic:
             for d in range(ndim):
-
                 boundary = boxsize[d]
 
                 xmax = 2 * boundary
@@ -1080,7 +1100,7 @@ class ParticleGenerator(object):
 
         # store stats
         self.stats.add_stat(
-            iteration, min_displacement, max_displacement, avg_displacement
+            iteration - 1, min_displacement, max_displacement, avg_displacement
         )
 
         return converged
@@ -1100,8 +1120,8 @@ class ParticleGenerator(object):
 
         while iteration < self.runparams.iter_max:
 
-            converged = self.iteration_step(iteration)
             iteration += 1
+            converged = self.iteration_step(iteration)
 
             if converged and self.runparams.iter_min < iteration:
                 break
@@ -1121,6 +1141,10 @@ class ParticleGenerator(object):
         self.stats.max_displacement = self.stats.max_displacement[: self.stats.niter]
         self.stats.min_displacement = self.stats.min_displacement[: self.stats.niter]
         self.stats.avg_displacement = self.stats.avg_displacement[: self.stats.niter]
+
+        # if you're dumping intermediate outputs, dump the last one for restarts:
+        if self.runparams.dumpfreq > 0:
+            self.dump_current_state(iteration, h, rho)
 
         return
 
@@ -1255,6 +1279,94 @@ class ParticleGenerator(object):
 
         return moved[:nmoved]
 
+    def restart(self, filename: str):
+        r"""
+        Load up settings and particle properties from an intermediate
+        dump created with self.dump_current_state().
+
+        Parameters
+        ----------------
+
+        filename: str
+            filename of the dump to restart from.
+        """
+
+        self._restarting = True
+
+        # First load up old arguments
+
+        dumpfile = h5py.File(filename, "r")
+        partgen = dumpfile["ParticleGenerator"]
+
+        boxsize = unyt.unyt_array(
+            partgen.attrs["boxsize"], partgen.attrs["boxsize_units"]
+        )
+        nx = partgen.attrs["nx"].astype(int)
+        ndim = partgen.attrs["ndim"]
+        usys = unyt.unit_systems.UnitSystem(
+            "ParticleGenerator UnitSystem",
+            partgen.attrs["unit_l"],
+            partgen.attrs["unit_m"],
+            partgen.attrs["unit_t"],
+        )
+        periodic = partgen.attrs["periodic"]
+        kernel = partgen.attrs["kernel"]
+        eta = partgen.attrs["eta"]
+
+        # re-init yourself
+        self.__init__(
+            self.rhofunc,
+            boxsize,
+            usys,
+            nx,
+            ndim,
+            periodic=periodic,
+            kernel=kernel,
+            eta=eta,
+        )
+
+        # now set up self.runparams
+        self.runparams.iter_max = partgen.attrs["iter_max"]
+        self.runparams.iter_min = partgen.attrs["iter_min"]
+        self.runparams.converge_thresh = partgen.attrs["converge_thresh"]
+
+        self.runparams.tolerance_part = partgen.attrs["tolerance_part"]
+        self.runparams.tolerance_part = partgen.attrs["displ_thresh"]
+
+        self.runparams.delta_reduct = partgen.attrs["delta_reduct"]
+        self.runparams.delta_min = partgen.attrs["delta_min"]
+        self.runparams.redist_freq = partgen.attrs["redist_freq"]
+        self.runparams.redist_frac = partgen.attrs["redist_frac"]
+        self.runparams.redist_reduct = partgen.attrs["redist_reduct"]
+        self.runparams.dumpfreq = partgen.attrs["dumpfreq"]
+
+        dnorm = partgen.attrs["delta_r_norm"]
+        dnorm_min = partgen.attrs["delta_r_norm_min"]
+        dumpfile.close()
+
+        # read in particle positions and masses
+        dump = load(filename)
+        x = dump.gas.coordinates
+        m = dump.gas.masses
+
+        # call initial_setup with given x and m
+        self.initial_setup(x=x, m=m)
+
+        # overwrite iterparams
+        self.iterparams.delta_r_norm = dnorm
+        self.iterparams.delta_r_norm_min = dnorm_min
+
+        # make sure that you don't accidentally overwrite delta_r_norm
+        # if self.initial_setup is called again
+        self.runparams.delta_init = -1
+        self.iterparams.compute_delta_norm = False
+
+        # mark that we're finished with the restart
+        self._restart_finished = True
+        self._restarting = False
+
+        return
+
     def dump_current_state(
         self, iteration: int, h: np.ndarray, rho: np.ndarray,
     ):
@@ -1286,19 +1398,58 @@ class ParticleGenerator(object):
         u_m = self.unitsys["mass"]
         u_t = self.unitsys["time"]
 
-        W = Writer(self.unitsys, self.boxsize)
-        W.gas.coordinates = unyt.unyt_array(x, u_l)
-        W.gas.smoothing_length = unyt.unyt_array(h, u_l)
-        W.gas.masses = unyt.unyt_array(m, u_m)
-        W.gas.densities = unyt.unyt_array(rho, u_m / u_l ** ndim)
+        w = Writer(self.unitsys, self.boxsize)
+        w.gas.coordinates = unyt.unyt_array(x, u_l)
+        w.gas.smoothing_length = unyt.unyt_array(h, u_l)
+        w.gas.masses = unyt.unyt_array(m, u_m)
+        w.gas.densities = unyt.unyt_array(rho, u_m / u_l ** ndim)
 
         # invent some junk to fill up necessary arrays
-        W.gas.internal_energy = unyt.unyt_array(
+        w.gas.internal_energy = unyt.unyt_array(
             np.ones(npart, dtype=np.float), u_l ** 2 / u_t ** 2
         )
-        W.gas.velocities = unyt.unyt_array(np.zeros(npart, dtype=np.float), u_l / u_t)
+        w.gas.velocities = unyt.unyt_array(np.zeros(npart, dtype=np.float), u_l / u_t)
 
         fname = self.runparams.dump_basename + str(iteration).zfill(5) + ".hdf5"
-        W.write(fname)
+        w.write(fname)
+
+        # Now add extra particle generator data to enable restart
+        f = h5py.File(fname, "r+")
+        pg = f.create_group("ParticleGenerator")
+        pg.attrs["boxsize"] = self.boxsize.value
+        pg.attrs["boxsize_units"] = str(self.boxsize.units)
+        pg.attrs["nx"] = self.nx
+        pg.attrs["ndim"] = self.ndim
+        pg.attrs["unit_l"] = str(self.unitsys["length"])
+        pg.attrs["unit_m"] = str(self.unitsys["mass"])
+        pg.attrs["unit_t"] = str(self.unitsys["time"])
+        pg.attrs["periodic"] = self.periodic
+        pg.attrs["kernel"] = self.kernel
+        pg.attrs["eta"] = self.eta
+
+        pg.attrs["iter_max"] = self.runparams.iter_max
+        pg.attrs["iter_min"] = self.runparams.iter_min
+        pg.attrs["converge_thresh"] = self.runparams.converge_thresh
+        pg.attrs["tolerance_part"] = self.runparams.tolerance_part
+        pg.attrs["displ_thresh"] = self.runparams.displ_thresh
+        pg.attrs["delta_reduct"] = self.runparams.delta_reduct
+        pg.attrs["delta_min"] = self.runparams.delta_min
+        pg.attrs["redist_freq"] = self.runparams.redist_freq
+        pg.attrs["redist_frac"] = self.runparams.redist_frac
+        pg.attrs["redist_reduct"] = self.runparams.redist_reduct
+        pg.attrs["dumpfreq"] = self.runparams.dumpfreq
+        pg.attrs["dump_basename"] = self.runparams.dump_basename
+
+        # store IterData attributes
+        pg.attrs["delta_r_norm"] = self.iterparams.delta_r_norm
+        pg.attrs["delta_r_norm_min"] = self.iterparams.delta_r_norm_min
+
+        # add gas adabatic index so when you read the file in in self.restart()
+        # you don't get a warning. Note: This will not affect the initial
+        # conditions in any way.
+        f.create_group("HydroScheme")
+        f["HydroScheme"].attrs["Adiabatic index"] = 5.0 / 3
+
+        f.close()
 
         return
