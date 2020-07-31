@@ -10,17 +10,18 @@ You can get access to the objects through a sub-module as follows:
 
    from swiftsimio import load
    from swiftsimio.visualisation.sphviewer import SPHViewerWrapper
+   import matplotlib.pyplot as plt
 
    data = load("cosmo_volume_example.hdf5")
 
    resolution = 2048
 
-   gas = SPHViewer(data.gas, smooth_over="masses")
-   gas_temp = SPHViewer(
+   gas = SPHViewerWrapper(data.gas, smooth_over="masses")
+   gas_temp = SPHViewerWrapper(
        data.gas,
        smooth_over=data.gas.masses * data.gas.temperatures
    )
-   dark_matter = SPHViewer(data.dark_matter, smooth_over="masses")
+   dark_matter = SPHViewerWrapper(data.dark_matter, smooth_over="masses")
 
    gas.quick_view(xsize=resolution, ysize=resolution, r="infinity")
    gas_temp.quick_view(xsize=resolution, ysize=resolution, r="infinity")

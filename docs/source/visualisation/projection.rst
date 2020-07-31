@@ -128,10 +128,14 @@ Example:
    subsampled_array = project_gas(
       data,
       resolution=1024,
-      project="star_formation_rates",
+      project="entropies",
       parallel=True,
       backend="subsampled"
    )
+
+This will likely look very similar to the image that you make with the default
+``backend="fast"``, but will have a well-converged distribution at any resolution
+level.
 
 Rotations
 ---------
@@ -144,7 +148,8 @@ provided to the ``rotation_matrix`` argument of :meth:`project_gas` (and
 ``rotation_center`` argument, as the rotation takes place around this given
 point. The example code below loads a snapshot, and a halo catalogue, and
 creates an edge-on and face-on projection using the integration in
-``velociraptor``.
+``velociraptor``. More information on possible integrations with this library
+is shown in the ``velociraptor`` section.
 
 .. code-block:: python
 
@@ -182,8 +187,13 @@ creates an edge-on and face-on projection using the integration in
    angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
 
-   face_on_rotation_matrix = rotation_matrix_from_vector(vector)
-   edge_on_rotation_matrix = rotation_matrix_from_vector(vector, axis="y")
+   face_on_rotation_matrix = rotation_matrix_from_vector(
+      angular_momentum_vector
+   )
+   edge_on_rotation_matrix = rotation_matrix_from_vector(
+      angular_momentum_vector,
+      axis="y"
+   )
 
    region = [
       [x - size, x + size],
