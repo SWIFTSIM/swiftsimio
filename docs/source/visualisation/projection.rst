@@ -148,7 +148,8 @@ provided to the ``rotation_matrix`` argument of :meth:`project_gas` (and
 ``rotation_center`` argument, as the rotation takes place around this given
 point. The example code below loads a snapshot, and a halo catalogue, and
 creates an edge-on and face-on projection using the integration in
-``velociraptor``.
+``velociraptor``. More information on possible integrations with this library
+is shown in the ``velociraptor`` section.
 
 .. code-block:: python
 

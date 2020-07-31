@@ -19,6 +19,7 @@ snapshots to enable partial reading.
    loading_data/index
    masking/index
    visualisation/index
+   velociraptor/index
    creating_initial_conditions/index
    command_line/index
 
