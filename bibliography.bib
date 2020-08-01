@@ -1,21 +1,23 @@
 
-@article{yt,
-	title = {yt: {A} {MULTI}-{CODE} {ANALYSIS} {TOOLKIT} {FOR} {ASTROPHYSICAL} {SIMULATION} {DATA}},
-	volume = {192},
-	issn = {0067-0049, 1538-4365},
-	shorttitle = {yt},
-	url = {https://iopscience.iop.org/article/10.1088/0067-0049/192/1/9},
-	doi = {10.1088/0067-0049/192/1/9},
-	abstract = {The analysis of complex multiphysics astrophysical simulations presents a unique and rapidly growing set of challenges: reproducibility, parallelization, and vast increases in data size and complexity chief among them. In order to meet these challenges, and in order to open up new avenues for collaboration between users of multiple simulation platforms, we present yt (available at http://yt.enzotools.org/) an open source, communitydeveloped astrophysical analysis and visualization toolkit. Analysis and visualization with yt are oriented around physically relevant quantities rather than quantities native to astrophysical simulation codes. While originally designed for handling Enzo’s structure adaptive mesh reﬁnement data, yt has been extended to work with several different simulation methods and simulation codes including Orion, RAMSES, and FLASH. We report on its methods for reading, handling, and visualizing data, including projections, multivariate volume rendering, multidimensional histograms, halo ﬁnding, light cone generation, and topologically connected isocontour identiﬁcation. Furthermore, we discuss the underlying algorithms yt uses for processing and visualizing data, and its mechanisms for parallelization of analysis tasks.},
-	language = {en},
-	number = {1},
-	urldate = {2020-04-17},
-	journal = {The Astrophysical Journal Supplement Series},
-	author = {Turk, Matthew J. and Smith, Britton D. and Oishi, Jeffrey S. and Skory, Stephen and Skillman, Samuel W. and Abel, Tom and Norman, Michael L.},
-	month = jan,
-	year = {2011},
-	pages = {9},
-	file = {Turk et al. - 2011 - yt A MULTI-CODE ANALYSIS TOOLKIT FOR ASTROPHYSICA.pdf:/Users/mphf18/Zotero/storage/NRC9WYWY/Turk et al. - 2011 - yt A MULTI-CODE ANALYSIS TOOLKIT FOR ASTROPHYSICA.pdf:application/pdf}
+@ARTICLE{yt,
+       author = {{Turk}, Matthew J. and {Smith}, Britton D. and {Oishi}, Jeffrey S. and
+         {Skory}, Stephen and {Skillman}, Samuel W. and {Abel}, Tom and
+         {Norman}, Michael L.},
+        title = "{yt: A Multi-code Analysis Toolkit for Astrophysical Simulation Data}",
+      journal = {The Astrophysical Journal Supplement Series},
+     keywords = {cosmology: theory, methods: data analysis, methods: numerical, Astrophysics - Instrumentation and Methods for Astrophysics, Astrophysics - Cosmology and Nongalactic Astrophysics},
+         year = 2011,
+        month = jan,
+       volume = {192},
+       number = {1},
+          eid = {9},
+        pages = {9},
+          doi = {10.1088/0067-0049/192/1/9},
+archivePrefix = {arXiv},
+       eprint = {1011.3514},
+ primaryClass = {astro-ph.IM},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2011ApJS..192....9T},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 
 @article{Gadget2,
@@ -37,11 +39,19 @@
 }
 
 @misc{pynbody,
-  author = {{Pontzen}, A. and {Ro{\v s}kar}, R. and {Stinson}, G.~S. and {Woods},
-     R. and {Reed}, D.~M. and {Coles}, J. and {Quinn}, T.~R.},
-  title = "{pynbody: Astrophysics Simulation Analysis for Python}",
-  note = {Astrophysics Source Code Library, ascl:1305.002},
-  year = 2013
+       author = {{Pontzen}, Andrew and {Ro{\v{s}}kar}, Rok and {Stinson}, Greg and
+         {Woods}, Rory},
+        title = "{pynbody: N-Body/SPH analysis for python}",
+     keywords = {Software},
+         year = 2013,
+        month = may,
+          eid = {ascl:1305.002},
+        pages = {ascl:1305.002},
+archivePrefix = {ascl},
+       eprint = {1305.002},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2013ascl.soft05002P},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System},
+ howpublished = {\url{http://ascl.net/1305.002}}
 }
 
 @MISC{pnbody,
@@ -55,7 +65,8 @@
 archivePrefix = {ascl},
        eprint = {1302.004},
        adsurl = {https://ui.adsabs.harvard.edu/abs/2013ascl.soft02004R},
-      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System},
+ howpublished = {\url{http://ascl.net/1302.004}}
 }
 
 @book{h5py,
@@ -74,7 +85,7 @@ archivePrefix = {ascl},
   number = {28},
   pages = {809},
   author = {Nathan Goldbaum and John ZuHone and Matthew Turk and Kacper Kowalik and Anna Rosen},
-  title = {unyt: Handle, manipulate, and convert data with units in Python},
+  title = {unyt: Handle, manipulate, and convert data with units in {P}ython},
   journal = {Journal of Open Source Software}
 }
 
@@ -97,7 +108,7 @@ archivePrefix = {ascl},
 }
 
 @article{dynamicRange,
-	title = {{SWIFT}: {Maintaining} weak-scalability with a dynamic range of \$10{\textasciicircum}4\$ in time-step size to harness extreme adaptivity},
+	title = {{SWIFT}: {Maintaining} weak-scalability with a dynamic range of $10^4$ in time-step size to harness extreme adaptivity},
 	shorttitle = {{SWIFT}},
 	url = {https://ui.adsabs.harvard.edu/abs/2018arXiv180701341B/abstract},
 	abstract = {Cosmological simulations require the use of a multiple time-stepping scheme. Without such a scheme, cosmological simulations would be impossible due to their high level of dynamic range; over eleven orders of magnitude in density. Such a large dynamic range leads to a range of over four orders of magnitude in time-step, which presents a significant load-balancing challenge. In this work, the extreme adaptivity that cosmological simulations present is tackled in three main ways through the use of the code SWIFT. First, an adaptive mesh is used to ensure that only the relevant particles are interacted in a given time-step. Second, task-based parallelism is used to ensure efficient load-balancing within a single node, using pthreads and SIMD vectorisation. Finally, a domain decomposition strategy is presented, using the graph domain decomposition library METIS, that bisects the work that must be performed by the simulation between nodes using MPI. These three strategies are shown to give SWIFT near-perfect weak-scaling characteristics, only losing 25\% performance when scaling from 1 to 4096 cores on a representative problem, whilst being more than 30x faster than the de-facto standard Gadget-2 code.},
