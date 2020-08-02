@@ -2,6 +2,7 @@ from .reader import *
 from .writer import SWIFTWriterDataset
 from .masks import SWIFTMask
 from .__version__ import __version__
+from .__cite__ import __cite__
 
 import swiftsimio.metadata as metadata
 import swiftsimio.accelerated as accelerated
