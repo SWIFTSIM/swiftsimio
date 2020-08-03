@@ -468,6 +468,9 @@ class ParticleGenerator(object):
         self.run_params = RunParams()
         self.iter_params = IterData()
 
+        self.npart = self.number_of_particles ** self.ndim
+        self.boxsize_to_use = self.boxsize.to(self.unit_system["length"]).value
+
         return
 
     def initial_setup(
@@ -524,9 +527,8 @@ class ParticleGenerator(object):
               tweaked by the user.
 
         """
-
-        # first set up some derived quantities so they'll always
-        # be updated when initial_setup is called
+        # do this again in case some brainiac has the
+        # bright idea to change it in the meantime
         self.npart = self.number_of_particles ** self.ndim
         self.boxsize_to_use = self.boxsize.to(self.unit_system["length"]).value
 
