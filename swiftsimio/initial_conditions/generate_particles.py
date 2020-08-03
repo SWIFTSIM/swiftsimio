@@ -34,22 +34,23 @@ class RunParams(object):
         upper threshold for what displacement is supposed to be considered as
         converged. If enough particles are displaced by distance below
         ``self.convergence_threshold * mean interparticle distance``, stop 
-        iterating. ``self.unconverged_particle_number_tolerance`` defines, what
+        iterating. ``self.unconverged_particle_number_tolerance`` defines what
         "enough particles" is.
 
     unconverged_particle_number_tolerance: float
         tolerance for not converged particle fraction: this fraction of
-        particles can be displaced with distances > self.convergence_threshold
+        particles can be displaced with distances > ``self.convergence_threshold``
+        and the generation will be considered as converged nevertheless
 
     displacement_threshold: float
-        It's an iteration continuation criterion: Don't
-        stop until every particle is displaced by a distance < 
-        ``self.displacement_threshold * mean interparticle distance``
+        Iteration continuation criterion: Don't stop until every particle is 
+        displaced by a distance < ``self.displacement_threshold * mean interparticle
+        distance``
 
     delta_init: float or None
         initial normalization constant for particle motion in units of mean
         interparticle distance. If ``None`` (default), ``self.delta_init`` will 
-        be set such that the maximal displacement found in the first iteration 
+        be set such that the *maximal* displacement found in the first iteration 
         is normalized to 1 mean interparticle distance.
 
     delta_r_norm_reduction_factor: float
