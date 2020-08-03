@@ -272,6 +272,10 @@ class ParticleGenerator(object):
     boxsize: unyt.unyt_array
         The box size of the simulation.
 
+    boxsize_to_use: np.ndarray
+        Unitless numpy array of the boxsize, for internal use. It's the boxsize
+        converted to units given by the unit_system
+
     number_of_particles: int
         how many particles along every dimension you want your simulation to 
         contain
@@ -357,6 +361,7 @@ class ParticleGenerator(object):
     # simulation parameters
     density_function: callable
     boxsize: unyt.unyt_array
+    boxsize_to_use: np.ndarray
     unit_system: unyt.unit_systems.UnitSystem
     number_of_particles: int
     ndim: int
@@ -656,7 +661,7 @@ class ParticleGenerator(object):
 
         #  this sets up whether the tree build is periodic or not
         if self.periodic:
-            ip.boxsize_for_tree = self.boxsize_to_use[:ndim]
+            ip.boxsize_for_tree = np.atleast_1d(self.boxsize_to_use)
         else:
             ip.boxsize_for_tree = None
 
@@ -901,9 +906,9 @@ class ParticleGenerator(object):
         rho = np.zeros(self.npart, dtype=np.float)
         h = np.zeros(self.npart, dtype=np.float)
 
-        tree = KDTree(self.x[:, :ndim], boxsize=boxsize)
+        tree = KDTree(self.x, boxsize=boxsize)
         for p in range(self.npart):
-            dist, neighs = tree.query(self.x[p, :ndim], k=neighbours)
+            dist, neighs = tree.query(self.x[p], k=neighbours)
             # tree.query returns index nparts+1 if not enough neighbours were found
             mask = neighs < self.npart
             dist = dist[mask]
@@ -1006,11 +1011,11 @@ class ParticleGenerator(object):
         delta_r = np.zeros(self.x.shape, dtype=np.float)
 
         # build tree, do neighbour loops
-        tree = KDTree(x[:, :ndim], boxsize=ipars.boxsize_for_tree)
+        tree = KDTree(x, boxsize=ipars.boxsize_for_tree)
 
         for p in range(npart):
 
-            dist, neighs = tree.query(x[p, :ndim], k=int(ipars.neighbours) + 1)
+            dist, neighs = tree.query(x[p], k=int(ipars.neighbours) + 1)
             # tree.query returns index npart where not enough neighbours are found
             correct = neighs < npart
             dist = dist[correct][1:]  # skip first neighbour: that's particle itself

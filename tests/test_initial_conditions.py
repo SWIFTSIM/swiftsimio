@@ -183,7 +183,7 @@ def test_initial_conditions_iteration_runs():
                     rho_nonuniform,
                     t.boxsize,
                     t.unit_system,
-                    int(200.0 ** (1.0 / ndim)),
+                    int(100.0 ** (1.0 / ndim))+1,
                     ndim,
                     periodic=periodic,
                     eta=2,
