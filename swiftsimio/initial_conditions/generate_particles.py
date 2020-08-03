@@ -465,12 +465,8 @@ class ParticleGenerator(object):
         self.eta = eta
         self.rho_max = rho_max
 
-        # get some derived quantities
-        self.npart = self.number_of_particles ** self.ndim
-        self.boxsize_to_use = boxsize.to(unit_system["length"]).value
         self.run_params = RunParams()
         self.iter_params = IterData()
-        # set up self.stats later tho
 
         return
 
@@ -529,6 +525,11 @@ class ParticleGenerator(object):
 
         """
 
+        # first set up some derived quantities so they'll always
+        # be updated when initial_setup is called
+        self.npart = self.number_of_particles ** self.ndim
+        self.boxsize_to_use = self.boxsize.to(self.unit_system["length"]).value
+
         ndim = self.ndim
         density_function = self.density_function
         boxsize = self.boxsize_to_use
@@ -556,24 +557,8 @@ class ParticleGenerator(object):
         # and call self.initial_setup again.
         if not self._restart_finished:
 
-            # generate first positions if necessary
-            if x is None:
-                if method == "rejection":
-                    self.coordinates = self.rejection_sample_coords()
-                elif method == "displaced":
-                    self.coordinates = self.generate_displaced_uniform_coords(
-                        max_displ=max_displ
-                    )
-                elif method == "uniform":
-                    self.coordinates = self.generate_uniform_coords()
-                else:
-                    raise ValueError("Unknown coordinate generation method:", method)
-            else:
-                if not isinstance(x, unyt.unyt_array):
-                    raise TypeError("x must be an unyt_array")
-                self.coordinates = x.to(self.unit_system["length"])
-
-            #  generate masses if necessary
+            # generate masses if necessary
+            # do this first to check for negative densities
             if m is None:
                 nc = int(10000 ** (1.0 / ndim) + 0.5)  # always use ~ 10000 mesh points
                 dx = boxsize / nc
@@ -581,7 +566,7 @@ class ParticleGenerator(object):
                 #  integrate total mass in box
                 xc = self.generate_uniform_coords(number_of_particles=nc)
                 rho_all = density_function(xc.value, ndim)
-                if rho_all.any() < 0:
+                if rho_all[rho_all < 0].any():
                     raise ValueError(
                         "Found negative densities inside box using the analytical function you provided"
                     )
@@ -599,6 +584,23 @@ class ParticleGenerator(object):
                 if not isinstance(m, unyt.unyt_array):
                     raise TypeError("m must be an unyt_array")
                 self.masses = m.to(self.unit_system["mass"])
+
+            # generate first positions if necessary
+            if x is None:
+                if method == "rejection":
+                    self.coordinates = self.rejection_sample_coords()
+                elif method == "displaced":
+                    self.coordinates = self.generate_displaced_uniform_coords(
+                        max_displ=max_displ
+                    )
+                elif method == "uniform":
+                    self.coordinates = self.generate_uniform_coords()
+                else:
+                    raise ValueError("Unknown coordinate generation method:", method)
+            else:
+                if not isinstance(x, unyt.unyt_array):
+                    raise TypeError("x must be an unyt_array")
+                self.coordinates = x.to(self.unit_system["length"])
 
         # make sure unitless arrays exist, others are allocated
         self.x = self.coordinates.value
@@ -1022,10 +1024,17 @@ class ParticleGenerator(object):
                     dx[dx[:, d] > bhalf, d] -= boundary
                     dx[dx[:, d] < -bhalf, d] += boundary
 
-            for n, Nind in enumerate(neighs):  # skip 0: this is particle itself
+            for n, Nind in enumerate(neighs):
+                # safety check: whether two particles are on top of each other.
+                if dist[n] < 1e-6 * ipars.mean_interparticle_distance:
+                    warnmsg = "Found two particles closer to each other than 1e-6 mean interprt. distances."
+                    warnmsg += " This will most likely lead to problems."
+                    warnmsg += " Maybe try some other random seed?"
+                    warnings.warn(warnmsg, RuntimeWarning)
+
                 hij = (hmodel[p] + hmodel[Nind]) * 0.5
                 Wij = kernel_func(dist[n], hij)
-                delta_r[p] += hij * Wij / dist[n] * dx[n]
+                delta_r[p] += hij * Wij * dx[n] / dist[n]
 
         if ipars.compute_delta_norm:
             # set initial delta_norm such that max displacement is
@@ -1035,7 +1044,6 @@ class ParticleGenerator(object):
                 delrsq += delta_r[:, d] ** 2
             delrsq = np.sqrt(delrsq)
             ipars.delta_r_norm = ipars.mean_interparticle_distance / delrsq.max()
-            #  ipars.delta_r_norm *= 1e-2
             ipars.compute_delta_norm = False
 
         # finally, displace particles
@@ -1064,8 +1072,10 @@ class ParticleGenerator(object):
             # leave it where it was. This is a bit sketchy, better ideas are welcome.
             for d in range(ndim):
                 boundary = boxsize[d]
-                x[x > boundary] -= delta_r[x > boundary]
-                x[x < 0.0] -= delta_r[x < 0.0]
+                mask = x[:, d] > boundary
+                x[mask, d] -= delta_r[mask, d]
+                mask = x[:, d] < 0.0
+                x[mask, d] -= delta_r[mask, d]
 
         # reduce delta_r_norm
         ipars.delta_r_norm *= run_params.delta_r_norm_reduction_factor
@@ -1197,7 +1207,7 @@ class ParticleGenerator(object):
         """
 
         x = self.x
-        npart = x.shape[0]
+        npart = self.npart
         boxsize = self.boxsize_to_use
         ndim = self.ndim
 
@@ -1293,7 +1303,7 @@ class ParticleGenerator(object):
                     # move them away from the edge by a random factor of mean "cell size" boxsize/npart^ndim
                     mask = x[:, d] > boxsize[d]
                     x[mask, d] = boxsize[d] * (
-                        1.0 - np.random.uniform(x[mask].shape) * temp
+                        1.0 - np.random.uniform(x[mask, d].shape) * temp
                     )
 
                     mask = x[:, d] < 0.0
