@@ -653,7 +653,7 @@ class ParticleGenerator(object):
 
         # get expected number of neighbours
         if ndim == 1:
-            ip.neighbours = 1 * kernel_gamma * self.eta
+            ip.neighbours = 2 * kernel_gamma * self.eta
         elif ndim == 2:
             ip.neighbours = np.pi * (kernel_gamma * self.eta) ** 2
         elif ndim == 3:
