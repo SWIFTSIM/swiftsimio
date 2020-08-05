@@ -90,9 +90,14 @@ class RunParams(object):
         Basename for intermediate dumps. The filename will be constructed as
         ``<basename>_<5 digit zero padded iteration number>.hdf5``
 
-    random_seed: int, optional
+    random_seed: int
         set a specific random seed
 
+    check_particle_proximity: bool
+        if set to True, before every iteration step particles are being checked
+        for being too close to each other and if that is the case, they are
+        moved a tiny bit apart in order to avoid undefined behaviour like zero
+        divisions.
 
 
     Methods
@@ -117,6 +122,7 @@ class RunParams(object):
     no_particle_redistribution_after: int = 200
     state_dump_basename: str = "IC_generation_iteration"
     state_dump_frequency: int = 50
+    check_particle_proximity: bool = False
 
     def __init__(self):
         # always set one random seed.
@@ -914,6 +920,7 @@ class ParticleGenerator(object):
             dist = dist[mask]
             neighs = neighs[mask]
             if neighs.shape[0] == 0:
+                print("coords:", self.x[p])
                 raise RuntimeError("Found no neighbour for a particle.")
             h[p] = dist[-1] / kernel_gamma
             for i, n in enumerate(neighs):
@@ -952,6 +959,31 @@ class ParticleGenerator(object):
         ipars = self.iter_params
 
         from .IC_plotting import IC_plot_current_situation
+
+        # build tree
+        tree = KDTree(x, boxsize=ipars.boxsize_for_tree)
+
+        # move particles that are at the same position
+        if run_params.check_particle_proximity:
+            cleaned_up = False
+            tol = 1e-4 * ipars.mean_interparticle_distance
+            first = 0
+            while not cleaned_up:
+                for p in range(first, npart):
+                    dist, neighs = tree.query(x[p], k=2)
+                    d = dist[1]
+                    n = neighs[1]
+                    if d < tol:
+                        smaller = min(p, n)
+                        larger = max(p, n)
+                        x[smaller] -= tol
+                        x[larger] += tol
+                        tree = KDTree(x, boxsize=ipars.boxsize_for_tree)
+                        first -= 1  # check again just to be sure
+                        break
+                    first += 1
+                if first == npart:
+                    cleaned_up = True
 
         # kernel data
         kernel_func, _, _ = get_kernel_data(self.kernel, ndim)
@@ -1010,9 +1042,7 @@ class ParticleGenerator(object):
         # init delta_r array
         delta_r = np.zeros(self.x.shape, dtype=np.float)
 
-        # build tree, do neighbour loops
-        tree = KDTree(x, boxsize=ipars.boxsize_for_tree)
-
+        # do neighbour loops
         for p in range(npart):
 
             dist, neighs = tree.query(x[p], k=int(ipars.neighbours) + 1)
@@ -1034,9 +1064,14 @@ class ParticleGenerator(object):
             for n, Nind in enumerate(neighs):
                 # safety check: whether two particles are on top of each other.
                 if dist[n] < 1e-6 * ipars.mean_interparticle_distance:
-                    warnmsg = "Found two particles closer to each other than 1e-6 mean interprt. distances."
-                    warnmsg += " This will most likely lead to problems."
-                    warnmsg += " Maybe try some other random seed?"
+                    warnmsg = " ".join(
+                        [
+                            "Found two particles closer to each other than 1e-6 mean",
+                            "interprt. distances. This will most likely lead to ",
+                            "problems. Maybe try again with ",
+                            "ParticleGenerator.run_params.check_particle_proximity = True",
+                        ]
+                    )
                     warnings.warn(warnmsg, RuntimeWarning)
 
                 hij = (hmodel[p] + hmodel[Nind]) * 0.5

@@ -183,10 +183,10 @@ def test_initial_conditions_iteration_runs():
                     rho_nonuniform,
                     t.boxsize,
                     t.unit_system,
-                    int(100.0 ** (1.0 / ndim))+1,
+                    int(100.0 ** (1.0 / ndim)) + 1,
                     ndim,
                     periodic=periodic,
-                    eta=2,
+                    eta=2.0,
                 )
                 g.run_params.min_iterations = 4
                 g.run_params.max_iterations = 5
@@ -194,6 +194,7 @@ def test_initial_conditions_iteration_runs():
                 g.run_params.particle_redistribution_number_fraction = 0.2
                 g.run_params.state_dump_frequency = 4  # do one dump
                 g.run_params.state_dump_basename = "restart"
+                g.run_params.check_particle_proximity = True
 
                 g.initial_setup(method=method, x=None, m=None)
                 g.run_iteration()
@@ -216,3 +217,9 @@ def test_initial_conditions_iteration_runs():
                     assert r.boxsize[d] == g.boxsize[d]
                 assert r.eta == g.eta
                 assert r.periodic == g.periodic
+
+
+if __name__ == "__main__":
+    test_initial_conditions_raising_exceptions()
+    test_initial_conditions_coordinate_generation()
+    test_initial_conditions_iteration_runs()
