@@ -489,7 +489,7 @@ class ParticleGenerator(object):
         method: str = "rejection",
         x: Union[unyt.unyt_array, None] = None,
         m: Union[unyt.unyt_array, None] = None,
-        max_displ: float = 0.4,
+        max_perturbation: float = 0.4,
     ):
         r"""
         Run an initial setup for the generator. Allocate arrays, prepare paremeter,
@@ -510,7 +510,7 @@ class ParticleGenerator(object):
               configuration
 
             - ``"displaced"``: Displace particles from an initially uniform 
-              distribution randomly up to a distance ``max_displ * particle 
+              distribution randomly up to a distance ``max_perturbation * particle 
               distance along axis`` from their original position on the grid
 
         x: unyt.unyt_array or None, optional
@@ -524,7 +524,7 @@ class ParticleGenerator(object):
             analytical density is reproduced, and all particles will have equal
             masses.
 
-        max_displ: float, optional
+        max_perturbation: float, optional
             maximal displacement of a particle initially on an uniform grid along 
             any axis, in units of particle distance along that axis. Is only used
             if ``method = 'displaced'``
@@ -591,7 +591,6 @@ class ParticleGenerator(object):
 
                 self.m = np.ones(npart, dtype=np.float) * mtot / npart
                 self.masses = unyt.unyt_array(self.m, self.unit_system["mass"])
-                print("Assigning particle mass: {0:.3e}".format(mtot / npart))
 
             else:
                 if not isinstance(m, unyt.unyt_array):
@@ -604,7 +603,7 @@ class ParticleGenerator(object):
                     self.coordinates = self.rejection_sample_coords()
                 elif method == "displaced":
                     self.coordinates = self.generate_displaced_uniform_coords(
-                        max_displ=max_displ
+                        max_perturbation=max_perturbation
                     )
                 elif method == "uniform":
                     self.coordinates = self.generate_uniform_coords()
@@ -747,17 +746,17 @@ class ParticleGenerator(object):
 
         return x
 
-    def generate_displaced_uniform_coords(self, max_displ: float = 0.4):
+    def generate_displaced_uniform_coords(self, max_perturbation: float = 0.4):
         """
         Get the coordinates for a randomly perturbed uniform particle distribution.
-        The perturbation won't exceed ``max_displ`` times the interparticle distance
+        The perturbation won't exceed ``max_perturbation`` times the interparticle distance
         along an axis.
 
 
         Parameters
         ----------
 
-        max_displ: float, optional
+        max_perturbation: float, optional
             maximal displacement of a particle initially on an uniform grid along 
             any axis, in units of particle distance along that axis.
 
@@ -776,7 +775,7 @@ class ParticleGenerator(object):
         npart = number_of_particles ** ndim
 
         # get maximal displacement from uniform grid of any particle along an axis
-        maxdelta = max_displ * boxsize / number_of_particles
+        maxdelta = max_perturbation * boxsize / number_of_particles
 
         # generate uniform grid (including units) first
         x = self.generate_uniform_coords()
@@ -920,7 +919,6 @@ class ParticleGenerator(object):
             dist = dist[mask]
             neighs = neighs[mask]
             if neighs.shape[0] == 0:
-                print("coords:", self.x[p])
                 raise RuntimeError("Found no neighbour for a particle.")
             h[p] = dist[-1] / kernel_gamma
             for i, n in enumerate(neighs):
@@ -957,8 +955,6 @@ class ParticleGenerator(object):
         x = self.x
         run_params = self.run_params
         ipars = self.iter_params
-
-        from .IC_plotting import IC_plot_current_situation
 
         # build tree
         tree = KDTree(x, boxsize=ipars.boxsize_for_tree)
@@ -1009,10 +1005,6 @@ class ParticleGenerator(object):
 
             if dump_now:
                 self.dump_current_state(iteration, h, rho)
-                # TODO: remove the plotting
-                IC_plot_current_situation(
-                    True, iteration, x, rho, density_function, self
-                )
 
             # re-destribute a handful of particles
             if redistribute:
@@ -1134,12 +1126,6 @@ class ParticleGenerator(object):
         min_displacement = displacement.min()
         avg_displacement = displacement.mean()
 
-        print(
-            "Iteration {0:4d}; Min: {1:8.5f} Average: {2:8.5f}; Max: {3:8.5f};".format(
-                iteration, min_displacement, avg_displacement, max_displacement
-            )
-        )
-
         if max_displacement > 5.0:
             # get the initial value. If delta_init was None, as is default, you
             # need to know what value to start with in your next run.
@@ -1192,7 +1178,7 @@ class ParticleGenerator(object):
                 break
 
         # convert results to unyt arrays
-        self.coords = unyt.unyt_array(self.x, self.unit_system["length"])
+        self.coordinates = unyt.unyt_array(self.x, self.unit_system["length"])
         self.masses = unyt.unyt_array(self.m, self.unit_system["mass"])
 
         # compute densities and smoothing lengths before you finish
@@ -1330,7 +1316,6 @@ class ParticleGenerator(object):
                         nmoved += 1
                         break
 
-        print("Moved:", nmoved)
         if nmoved > 0:
 
             # check boundary conditions

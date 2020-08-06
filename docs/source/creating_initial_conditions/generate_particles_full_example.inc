@@ -29,7 +29,7 @@ Full Example
             )
 
     # set up run parameters
-    generator.run_params.max_iterations = 1
+    generator.run_params.max_iterations = 2000
     generator.run_params.convergence_threshold = 1e-4
     generator.run_params.unconverged_particle_number_tolerance = 5e-3
     generator.run_params.displacement_threshold = 1e-3
@@ -54,7 +54,7 @@ Full Example
     w = Writer(unit_system, boxsize)
 
     # accessing the results from the generator
-    w.gas.coordinates = generator.coords
+    w.gas.coordinates = generator.coordinates
     w.gas.masses = generator.masses
     w.gas.smoothing_length = generator.smoothing_lengths
     w.gas.densities = generator.densities

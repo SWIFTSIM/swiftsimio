@@ -83,7 +83,7 @@ function:
 
     from swiftsimio import load
     data = load("my_ic_file.hdf5")
-    x = data.gas.coords
+    x = data.gas.coordinates
     m = data.gas.masses
 
     generator.initial_setup(x=x, m=m)

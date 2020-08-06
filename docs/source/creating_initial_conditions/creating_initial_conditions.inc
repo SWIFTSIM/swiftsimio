@@ -72,7 +72,6 @@ maximal number of iterations has been completed.
 
 The normalisation constant :math:`C_{\Delta r}` in eq. :eq:`delta_r` is 
 defined in units of the mean interparticle distance in the code.
-
 How large the :math:`\Delta r` without the constant :math:`C_{\Delta r}` will be 
 depends on multiple factors, like what density function you're trying to 
 reproduce, how many neighbours you include in your kernel summation, etc.
@@ -169,7 +168,7 @@ The essential steps are as follows:
     w = Writer(unit_system, boxsize)
 
     # accessing the results from the generator
-    w.gas.coordinates = generator.coords
+    w.gas.coordinates = generator.coordinates
     w.gas.masses = generator.masses
     w.gas.smoothing_length = generator.smoothing_lengths
     w.gas.densities = generator.densities
