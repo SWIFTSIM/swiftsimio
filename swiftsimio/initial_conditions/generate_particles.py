@@ -1323,10 +1323,6 @@ class ParticleGenerator(object):
             ):
                 break
 
-        # convert results to unyt arrays
-        # self.coordinates = unyt.unyt_array(self.x, self.unit_system["length"])
-        # self.masses = unyt.unyt_array(self.m, self.unit_system["mass"])
-
         # compute densities and smoothing lengths before you finish
         h, rho = self.compute_h_and_rho()
         self.smoothing_length = unyt.unyt_array(h, self.unit_system["length"])
