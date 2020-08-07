@@ -331,7 +331,7 @@ class ParticleGenerator(object):
         unyt_array containing the final particle masses with shape 
         (self.npart).
 
-    smoothing_lengths: unyt.unyt_array
+    smoothing_length: unyt.unyt_array
         unyt_array containing the final particle smoothing lengths with shape 
         (self.npart, 3).
 
@@ -391,7 +391,7 @@ class ParticleGenerator(object):
     # unyt/result arrays
     coordinates: unyt.unyt_array
     masses: unyt.unyt_array
-    smoothing_lengths: unyt.unyt_array
+    smoothing_length: unyt.unyt_array
     densities: unyt.unyt_array
 
     # unitless arrays to work with
@@ -1183,7 +1183,7 @@ class ParticleGenerator(object):
 
         # compute densities and smoothing lengths before you finish
         h, rho = self.compute_h_and_rho()
-        self.smoothing_lengths = unyt.unyt_array(h, self.unit_system["length"])
+        self.smoothing_length = unyt.unyt_array(h, self.unit_system["length"])
         self.densities = unyt.unyt_array(
             rho, self.unit_system["mass"] / self.unit_system["length"] ** self.ndim
         )
@@ -1474,6 +1474,7 @@ class ParticleGenerator(object):
         w.gas.smoothing_length = unyt.unyt_array(h, u_l)
         w.gas.masses = unyt.unyt_array(m, u_m)
         w.gas.densities = unyt.unyt_array(rho, u_m / u_l ** ndim)
+        w.dimension = ndim
 
         # invent some junk to fill up necessary arrays
         w.gas.internal_energy = unyt.unyt_array(

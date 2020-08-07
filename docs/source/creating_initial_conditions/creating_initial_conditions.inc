@@ -166,11 +166,12 @@ The essential steps are as follows:
     # Finally, write down the data
     from swiftsimio import Writer
     w = Writer(unit_system, boxsize)
+    w.dimension = ndim
 
     # accessing the results from the generator
     w.gas.coordinates = generator.coordinates
     w.gas.masses = generator.masses
-    w.gas.smoothing_length = generator.smoothing_lengths
+    w.gas.smoothing_length = generator.smoothing_length
     w.gas.densities = generator.densities
 
     # required to write IC files, but not generated:

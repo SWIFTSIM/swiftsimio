@@ -52,15 +52,16 @@ Full Example
 
     # Finally, write down the data
     w = Writer(unit_system, boxsize)
+    w.dimension = ndim
 
     # accessing the results from the generator
     w.gas.coordinates = generator.coordinates
     w.gas.masses = generator.masses
-    w.gas.smoothing_length = generator.smoothing_lengths
+    w.gas.smoothing_length = generator.smoothing_length
     w.gas.densities = generator.densities
 
     # required to write IC files, but not generated:
-    w.gas.velocities = np.random.random(number_of_particles**ndim) * unyt.cm / unyt.s
+    w.gas.velocities = np.random.random((number_of_particles**ndim, 3) * unyt.cm / unyt.s
     w.gas.internal_energy = np.random.random(number_of_particles**ndim) * unyt.cm**2/unyt.s**2
 
     w.write("my_ic_file.hdf5")
