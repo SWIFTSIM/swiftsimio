@@ -6,7 +6,7 @@ Generate SPH initial conditions for SPH simulations iteratively for a given dens
 import numpy as np
 import unyt
 from math import erf
-from typing import Union
+from typing import Union, Optional
 import warnings
 import h5py
 
@@ -142,6 +142,28 @@ class RunParams(object):
         np.random.seed(seed)
         return
 
+    def check_consistency(self) -> None:
+        """
+        Checks internal consistency of variables.
+        
+        Raises
+        ------
+
+        ValueError
+            If any of the internal variables are inconsistent.
+        """
+
+        if self.max_iterations < self.min_iterations:
+            raise ValueError(
+                "run_params.max_iterations must be >= run_params.min_iterations"
+            )
+
+        if self.delta_init is not None:
+            if self.delta_init < self.min_delta_r_norm:
+                raise ValueError(
+                    "run_params.delta_init must be >= run_params.min_delta_r_norm"
+                )
+
 
 class IterData(object):
     r"""
@@ -181,6 +203,117 @@ class IterData(object):
 
     def __init__(self):
         return
+
+    def calculate_interparticle_distance(
+        self, boxsize: unyt.unyt_array, ndim: int, number_of_particles: int
+    ) -> unyt.unyt_quantity:
+        """
+        Calculates the interparticle distance and saves it in
+        ``self.mean_interparticle_distance``.
+
+        Parameters
+        ----------
+
+        boxsize: unyt.unyt_array
+            The box-size of the simulation (1D array)
+        
+        ndim: int
+            Number of spatial dimensions
+
+        number_of_particles: int
+            Total number of particles in the volume.
+
+        
+        Returns
+        -------
+
+        mips: unyt.unyt_quantity
+            The mean inter-particle separation
+        """
+
+        mips = np.prod(boxsize[:ndim]) ** (1 / ndim) / number_of_particles
+
+        self.mean_interparticle_distance = mips
+
+        return mips
+
+    def calculate_normalisation_constants(
+        self, min_delta_r_norm: float, delta_init: Optional[float] = None
+    ):
+        """
+        Parameters
+        ----------
+        
+        delta_init: Optional[float]
+            Value of ``RunParams.delta_init``
+
+        min_delta_r_norm: float
+            Value of ``RunParams.min_delta_r_norm``
+        """
+
+        if delta_init is None:
+            self.compute_delta_norm = True
+            self.delta_r_norm = self.mean_interparticle_distance
+        elif delta_init > 0:
+            if delta_init > 0:
+                self.compute_delta_norm = False
+                self.delta_r_norm = delta_init * self.mean_interparticle_distance
+        else:
+            # delta_init is set = -1 during restart.
+            # > 0 (or None) means user changed it.
+            pass
+
+        self.delta_r_norm_min = min_delta_r_norm * self.mean_interparticle_distance
+
+        return
+
+    def calculate_number_of_neighbours(
+        self, kernel_gamma: float, eta: float, ndim: int
+    ):
+        """
+        Calculates the number of neighbours expected within H and stores it in
+        ``self.neighbours``.
+
+        Parameters
+        ----------
+
+        kernel_gamma: float
+            Kernel gamma associated with your choice of kernel.
+
+        eta: float
+            Eta determining your ratio of H to MIPS.
+
+        ndim: int
+            Number of spatial dimensions.
+        """
+
+        # get expected number of neighbours
+        if ndim == 1:
+            self.neighbours = 2 * kernel_gamma * eta
+        elif ndim == 2:
+            self.neighbours = np.pi * (kernel_gamma * eta) ** 2
+        elif ndim == 3:
+            self.neighbours = 4 / 3 * np.pi * (kernel_gamma * eta) ** 3
+
+        return
+
+    def calculate_boxsize_for_tree(self, boxsize: unyt.unyt_array, periodic: bool):
+        """
+        Sets the ``boxsize_for_tree`` property.
+
+        Parameters
+        ----------
+
+        boxsize: unyt.unyt_array
+            Box-size to be used in the cKDTree
+        
+        periodic: bool
+            Is the simulation periodic or not?
+        """
+        if periodic:
+            self.boxsize_for_tree = self.boxsize_for_tree
+        else:
+            self.boxsize_for_tree = None
 
 
 class IterStats(object):
@@ -256,6 +389,14 @@ class IterStats(object):
         self.avg_displacement[iteration] = avg_displacement
         self.number_of_iterations = iteration
         return
+
+    def trim_self(self):
+        """
+        Trims the arrays down once complete.
+        """
+        self.max_displacement = self.max_displacement[: self.number_of_iterations]
+        self.min_displacement = self.min_displacement[: self.number_of_iterations]
+        self.avg_displacement = self.avg_displacement[: self.number_of_iterations]
 
 
 class ParticleGenerator(object):
@@ -347,9 +488,7 @@ class ParticleGenerator(object):
         unitless particle masses that will be worked with/on with shape 
         (self.npart).
 
-
-
-
+    
     Notes
     -----
     
@@ -367,7 +506,6 @@ class ParticleGenerator(object):
     # simulation parameters
     density_function: callable
     boxsize: unyt.unyt_array
-    boxsize_to_use: np.ndarray
     unit_system: unyt.unit_systems.UnitSystem
     number_of_particles: int
     ndim: int
@@ -379,9 +517,6 @@ class ParticleGenerator(object):
     run_params: RunParams
     iter_params: IterData
     stats: IterStats
-
-    # derived variables
-    npart: int
 
     # internal checks
     _set_up = False
@@ -479,10 +614,21 @@ class ParticleGenerator(object):
         self.run_params = RunParams()
         self.iter_params = IterData()
 
-        self.npart = self.number_of_particles ** self.ndim
-        self.boxsize_to_use = self.boxsize.to(self.unit_system["length"]).value
-
         return
+
+    @property
+    def npart(self):
+        """
+        Total number of particles (``number_of_particles`` is the number along one axis)
+        """
+        return self.number_of_particles ** self.ndim
+
+    @property
+    def boxsize_to_use(self):
+        """
+        Boxsize in the internal unit length.
+        """
+        return self.boxsize.to(self.unit_system["length"]).value
 
     def initial_setup(
         self,
@@ -529,26 +675,13 @@ class ParticleGenerator(object):
             any axis, in units of particle distance along that axis. Is only used
             if ``method = 'displaced'``
 
-
-
         Notes
         -----
 
-            + Must be called AFTER the ``self.run_params`` paramters have been 
-              tweaked by the user.
+        + Must be called AFTER the ``self.run_params`` paramters have been 
+        tweaked by the user.
 
         """
-        # do this again in case some brainiac has the
-        # bright idea to change it in the meantime
-        self.npart = self.number_of_particles ** self.ndim
-        self.boxsize_to_use = self.boxsize.to(self.unit_system["length"]).value
-
-        ndim = self.ndim
-        density_function = self.density_function
-        boxsize = self.boxsize_to_use
-        npart = self.npart
-        ip = self.iter_params
-        run_params = self.run_params
 
         # safety checks first
         if not TREE_AVAILABLE:
@@ -569,28 +702,31 @@ class ParticleGenerator(object):
         # this way, the user still can change parameters however they want
         # and call self.initial_setup again.
         if not self._restart_finished:
-
             # generate masses if necessary
             # do this first to check for negative densities
             if m is None:
-                nc = int(10000 ** (1.0 / ndim) + 0.5)  # always use ~ 10000 mesh points
-                dx = boxsize / nc
+                nc = int(
+                    10000 ** (1.0 / self.ndim) + 0.5
+                )  # always use ~ 10000 mesh points
+                dx = self.boxsize_to_use / nc
 
                 #  integrate total mass in box
                 xc = self.generate_uniform_coords(number_of_particles=nc)
-                rho_all = density_function(xc.value, ndim)
-                if rho_all[rho_all < 0].any():
+                rho_all = self.density_function(xc.value, self.ndim)
+
+                if (rho_all < 0).any():
                     raise ValueError(
                         "Found negative densities inside box using the analytical function you provided"
                     )
+
                 rhotot = rho_all.sum()
-                area = 1.0
-                for d in range(ndim):
-                    area *= dx[d]
+                area = np.prod(dx[: self.ndim])
                 mtot = rhotot * area  # go from density to mass
 
-                self.m = np.ones(npart, dtype=np.float) * mtot / npart
-                self.masses = unyt.unyt_array(self.m, self.unit_system["mass"])
+                self.masses = unyt.unyt_array(
+                    np.ones(self.npart, dtype=np.float) * mtot / self.npart,
+                    self.unit_system["mass"],
+                )
 
             else:
                 if not isinstance(m, unyt.unyt_array):
@@ -615,60 +751,41 @@ class ParticleGenerator(object):
                 self.coordinates = x.to(self.unit_system["length"])
 
         # make sure unitless arrays exist, others are allocated
-        self.x = self.coordinates.value
-        self.m = self.masses.value
+        self.x = self.coordinates.v
+        self.m = self.masses.v
 
         # check consistency of runtime params
 
-        if run_params.max_iterations < run_params.min_iterations:
-            raise ValueError(
-                "run_params.max_iterations must be >= run_params.min_iterations"
-            )
-        if run_params.delta_init is not None:
-            if run_params.delta_init < run_params.min_delta_r_norm:
-                raise ValueError(
-                    "run_params.delta_init must be >= run_params.min_delta_r_norm"
-                )
+        self.run_params.check_consistency()
 
         # set up iteration related stuff
 
         # get mean interparticle distance
-        mid = 1.0
-        for d in range(ndim):
-            mid *= boxsize[d]
-        mid = mid ** (1.0 / ndim) / self.number_of_particles
-        ip.mean_interparticle_distance = mid
+        self.iter_params.calculate_interparticle_distance(
+            boxsize=self.boxsize_to_use,
+            ndim=self.ndim,
+            number_of_particles=self.number_of_particles,
+        )
 
         # get normalisation constants for displacement force
-        if not self._restarting:
-            if run_params.delta_init is None:
-                ip.compute_delta_norm = True
-                ip.delta_r_norm = mid
-            else:
-                # deleta_init is set = -1 during restart.
-                # > 0 (or None) means user changed it.
-                if run_params.delta_init > 0:
-                    ip.compute_delta_norm = False
-                    ip.delta_r_norm = run_params.delta_init * mid
 
-        ip.delta_r_norm_min = run_params.min_delta_r_norm * mid
+        if not self._restarting:
+            self.iter_params.calculate_normalisation_constants(
+                min_delta_r_norm=self.run_params.min_delta_r_norm,
+                delta_init=self.run_params.delta_init,
+            )
 
         # kernel data
-        _, _, kernel_gamma = get_kernel_data(self.kernel, ndim)
+        _, _, kernel_gamma = get_kernel_data(self.kernel, self.ndim)
 
-        # get expected number of neighbours
-        if ndim == 1:
-            ip.neighbours = 2 * kernel_gamma * self.eta
-        elif ndim == 2:
-            ip.neighbours = np.pi * (kernel_gamma * self.eta) ** 2
-        elif ndim == 3:
-            ip.neighbours = 4 / 3 * np.pi * (kernel_gamma * self.eta) ** 3
+        self.iter_params.calculate_number_of_neighbours(
+            kernel_gamma=kernel_gamma, eta=self.eta, ndim=self.ndim
+        )
 
         #  this sets up whether the tree build is periodic or not
-        if self.periodic:
-            ip.boxsize_for_tree = np.atleast_1d(self.boxsize_to_use)
-        else:
-            ip.boxsize_for_tree = None
+        self.iter_params.calculate_boxsize_for_tree(
+            boxsize=np.atleast_1d(self.boxsize_to_use), periodic=self.periodic,
+        )
 
         # set up stats
         self.stats = IterStats(self.run_params.max_iterations)
@@ -703,10 +820,13 @@ class ParticleGenerator(object):
             unyt.unyt_array of paricle coordinates with shape 
             (``number_of_particles**ndim``, 3)
         """
+
         if number_of_particles is None:
             number_of_particles = self.number_of_particles
+
         if ndim is None:
             ndim = self.ndim
+
         boxsize = self.boxsize_to_use
 
         # get npart here, number_of_particles and ndim might be different from global class values
@@ -716,9 +836,7 @@ class ParticleGenerator(object):
             np.zeros((npart, 3), dtype=np.float), self.unit_system["length"]
         )
 
-        dxhalf = 0.5 * boxsize[0] / number_of_particles
-        dyhalf = 0.5 * boxsize[1] / number_of_particles
-        dzhalf = 0.5 * boxsize[2] / number_of_particles
+        dxhalf, dyhalf, dzhalf = 0.5 * boxsize / number_of_particles
 
         if ndim == 1:
             x[:, 0] = np.linspace(dxhalf, boxsize[0] - dxhalf, number_of_particles)
@@ -798,8 +916,8 @@ class ParticleGenerator(object):
                 xmax = x[:, d].max()
                 xmin = x[:, d].min()
                 amplitude_redo = None
-                while xmax > boxsize[d] or xmin < 0.0:
 
+                while xmax > boxsize[d] or xmin < 0.0:
                     over = x[:, d] > boxsize[d]
                     under = x[:, d] < 0.0
                     redo = np.logical_or(over, under)
@@ -813,11 +931,13 @@ class ParticleGenerator(object):
 
                     # then get new guesses, but only where necessary
                     nredo = x[redo, d].shape[0]
+
                     amplitude_redo = unyt.unyt_array(
                         np.random.uniform(low=-boxsize[d], high=boxsize[d], size=nredo)
                         * maxdelta[d],
                         x.units,
                     )
+
                     x[redo, d] += amplitude_redo
 
                     xmax = x[:, d].max()
@@ -847,7 +967,7 @@ class ParticleGenerator(object):
         if self.rho_max is None:
             # find approximate peak value of rho_max
             # don't cause memory errors with too big of a grid.
-            #  Also don't worry too much about accuracy.
+            # Also don't worry too much about accuracy.
             nc = 200
             xc = self.generate_uniform_coords(number_of_particles=nc)
             self.rho_max = density_function(xc.value, ndim).max() * 1.05
@@ -856,9 +976,10 @@ class ParticleGenerator(object):
 
         keep = 0
         coord_threshold = boxsize
-        while keep < npart:
 
+        while keep < npart:
             xr = np.zeros((1, 3), dtype=np.float)
+
             for d in range(ndim):
                 xr[0, d] = np.random.uniform(low=0.0, high=coord_threshold[d])
 
@@ -900,27 +1021,32 @@ class ParticleGenerator(object):
             numpy array of particle densities with shape (``self.npart``)
 
         """
+
         if neighbours is None:
             neighbours = int(self.iter_params.neighbours) + 1
+
         if boxsize is None:
             boxsize = self.iter_params.boxsize_for_tree
 
-        ndim = self.ndim
-        kernel_func, _, kernel_gamma = get_kernel_data(self.kernel, ndim)
+        kernel_func, _, kernel_gamma = get_kernel_data(self.kernel, self.ndim)
 
         rho = np.zeros(self.npart, dtype=np.float)
         h = np.zeros(self.npart, dtype=np.float)
 
         tree = KDTree(self.x, boxsize=boxsize)
+
         for p in range(self.npart):
             dist, neighs = tree.query(self.x[p], k=neighbours)
             # tree.query returns index nparts+1 if not enough neighbours were found
             mask = neighs < self.npart
             dist = dist[mask]
             neighs = neighs[mask]
+
             if neighs.shape[0] == 0:
                 raise RuntimeError("Found no neighbour for a particle.")
+
             h[p] = dist[-1] / kernel_gamma
+
             for i, n in enumerate(neighs):
                 W = kernel_func(dist[i], dist[-1])
                 rho[p] += W * self.m[n]
@@ -947,59 +1073,57 @@ class ParticleGenerator(object):
             Whether the iteration satisfies convergence criteria.
 
         """
-        ndim = self.ndim
-        periodic = self.periodic
-        boxsize = self.boxsize_to_use
-        npart = self.npart
-        density_function = self.density_function
-        x = self.x
-        run_params = self.run_params
-        ipars = self.iter_params
 
         # build tree
-        tree = KDTree(x, boxsize=ipars.boxsize_for_tree)
+        tree = KDTree(self.x, boxsize=self.iter_params.boxsize_for_tree)
 
         # move particles that are at the same position
-        if run_params.check_particle_proximity:
-            cleaned_up = False
-            tol = 1e-4 * ipars.mean_interparticle_distance
+        if self.run_params.check_particle_proximity:
+            tol = 1e-4 * self.iter_params.mean_interparticle_distance
             first = 0
-            while not cleaned_up:
-                for p in range(first, npart):
-                    dist, neighs = tree.query(x[p], k=2)
+            while first != self.npart:
+                for p in range(first, self.npart):
+                    dist, neighs = tree.query(self.x[p], k=2)
+
                     d = dist[1]
                     n = neighs[1]
+
                     if d < tol:
                         smaller = min(p, n)
                         larger = max(p, n)
-                        x[smaller] -= tol
-                        x[larger] += tol
-                        tree = KDTree(x, boxsize=ipars.boxsize_for_tree)
+
+                        self.x[smaller] -= tol
+                        self.x[larger] += tol
+
+                        # We've moved the particles - must rebuild the tree
+                        tree = KDTree(self.x, boxsize=self.iter_params.boxsize_for_tree)
                         first -= 1  # check again just to be sure
                         break
+
                     first += 1
-                if first == npart:
-                    cleaned_up = True
 
         # kernel data
-        kernel_func, _, _ = get_kernel_data(self.kernel, ndim)
+        kernel_func, _, _ = get_kernel_data(self.kernel, self.ndim)
 
         # update model density at current particle positions
-        rho_model = density_function(x, ndim)
+        rho_model = self.density_function(self.x, self.ndim)
 
         # re-distribute and/or dump particles?
-        dump_now = run_params.state_dump_frequency > 0
-        dump_now = dump_now and iteration % run_params.state_dump_frequency == 0
-        redistribute = run_params.particle_redistribution_frequency > 0
-        if redistribute:
-            redistribute = iteration % run_params.particle_redistribution_frequency == 0
-            redistribute = (
-                redistribute
-                and run_params.no_particle_redistribution_after >= iteration
+        dump_now = (
+            self.run_params.state_dump_frequency > 0
+            and iteration % self.run_params.state_dump_frequency == 0
+        )
+
+        redistribute = (
+            (
+                iteration % self.run_params.particle_redistribution_frequency == 0
+                and self.run_params.no_particle_redistribution_after >= iteration
             )
+            if self.run_params.particle_redistribution_frequency > 0
+            else False
+        )
 
         if dump_now or redistribute:
-
             # first build new tree, get smoothing lengths and densities
             h, rho = self.compute_h_and_rho()
 
@@ -1011,115 +1135,135 @@ class ParticleGenerator(object):
                 moved = self.redistribute_particles(h, rho, rho_model)
                 #  update analytical density computations
                 if moved is not None:
-                    rho_model[moved] = density_function(x[moved], ndim)
+                    rho_model[moved] = self.density_function(self.x[moved], self.ndim)
 
         # compute MODEL smoothing lengths
-        oneoverrho = 1.0 / rho_model
-        oneoverrhosum = np.sum(oneoverrho)
-        vol = 1.0
-        for d in range(ndim):
-            vol *= boxsize[d]
+        one_over_rho = 1.0 / rho_model
+        one_over_rho_sum = np.sum(one_over_rho)
 
-        if ndim == 1:
-            hmodel = 0.5 * ipars.neighbours * oneoverrho / oneoverrhosum * vol
-        elif ndim == 2:
-            hmodel = np.sqrt(
-                ipars.neighbours / np.pi * oneoverrho / oneoverrhosum * vol
+        vol = np.prod(self.boxsize_to_use[: self.ndim])
+
+        if self.ndim == 1:
+            hmodel = (
+                0.5
+                * self.iter_params.neighbours
+                * one_over_rho
+                / one_over_rho_sum
+                * vol
             )
-        elif ndim == 3:
+        elif self.ndim == 2:
+            hmodel = np.sqrt(
+                self.iter_params.neighbours
+                / np.pi
+                * one_over_rho
+                / one_over_rho_sum
+                * vol
+            )
+        elif self.ndim == 3:
             hmodel = np.cbrt(
-                ipars.neighbours * 3 / 4 / np.pi * oneoverrho / oneoverrhosum * vol
+                self.iter_params.neighbours
+                * 3
+                / 4
+                / np.pi
+                * one_over_rho
+                / one_over_rho_sum
+                * vol
             )
 
         # init delta_r array
         delta_r = np.zeros(self.x.shape, dtype=np.float)
 
         # do neighbour loops
-        for p in range(npart):
-
-            dist, neighs = tree.query(x[p], k=int(ipars.neighbours) + 1)
+        for p in range(self.npart):
+            dist, neighs = tree.query(self.x[p], k=int(self.iter_params.neighbours) + 1)
             # tree.query returns index npart where not enough neighbours are found
-            correct = neighs < npart
+            correct = neighs < self.npart
             dist = dist[correct][1:]  # skip first neighbour: that's particle itself
             neighs = neighs[correct][1:]
+
             if neighs.shape[0] == 0:
                 raise RuntimeError("Found no neighbour for a particle.")
-            dx = x[p] - x[neighs]
 
-            if periodic:
-                for d in range(ndim):
-                    boundary = boxsize[d]
+            dx = self.x[p] - self.x[neighs]
+
+            # Correct dx for periodic boundaries
+            if self.periodic:
+                for d in range(self.ndim):
+                    boundary = self.boxsize_to_use[d]
                     bhalf = 0.5 * boundary
                     dx[dx[:, d] > bhalf, d] -= boundary
                     dx[dx[:, d] < -bhalf, d] += boundary
 
             for n, Nind in enumerate(neighs):
                 # safety check: whether two particles are on top of each other.
-                if dist[n] < 1e-6 * ipars.mean_interparticle_distance:
-                    warnmsg = " ".join(
-                        [
-                            "Found two particles closer to each other than 1e-6 mean",
-                            "interprt. distances. This will most likely lead to ",
-                            "problems. Maybe try again with ",
-                            "ParticleGenerator.run_params.check_particle_proximity = True",
-                        ]
+                if dist[n] < 1e-6 * self.iter_params.mean_interparticle_distance:
+                    warnings.warn(
+                        "Found two particles closer to each other than 1e-6 mean "
+                        "interprt. distances. This will most likely lead to "
+                        "problems. Maybe try again with "
+                        "ParticleGenerator.run_params.check_particle_proximity = True",
+                        RuntimeWarning,
                     )
-                    warnings.warn(warnmsg, RuntimeWarning)
 
                 hij = (hmodel[p] + hmodel[Nind]) * 0.5
                 Wij = kernel_func(dist[n], hij)
                 delta_r[p] += hij * Wij * dx[n] / dist[n]
 
-        if ipars.compute_delta_norm:
+        if self.iter_params.compute_delta_norm:
             # set initial delta_norm such that max displacement is
             # = 1 mean interparticle distance
-            delrsq = np.zeros(npart, dtype=np.float)
-            for d in range(ndim):
+            delrsq = np.zeros(self.npart, dtype=np.float)
+
+            for d in range(self.ndim):
                 delrsq += delta_r[:, d] ** 2
+
             delrsq = np.sqrt(delrsq)
-            ipars.delta_r_norm = ipars.mean_interparticle_distance / delrsq.max()
-            ipars.compute_delta_norm = False
+            self.iter_params.delta_r_norm = (
+                self.iter_params.mean_interparticle_distance / delrsq.max()
+            )
+            self.iter_params.compute_delta_norm = False
 
         # finally, displace particles
-        delta_r[:, :ndim] *= ipars.delta_r_norm
-        x[:, :ndim] += delta_r[:, :ndim]
+        delta_r[:, : self.ndim] *= self.iter_params.delta_r_norm
+        self.x[:, : self.ndim] += delta_r[:, : self.ndim]
 
         # check whether something's out of bounds
-        if periodic:
-            for d in range(ndim):
-                boundary = boxsize[d]
+        if self.periodic:
+            for d in range(self.ndim):
+                boundary = self.boxsize_to_use[d]
 
                 xmax = 2 * boundary
                 while xmax > boundary:
-                    over = x[:, d] > boundary
-                    x[over, d] -= boundary
-                    xmax = x[:, d].max()
+                    over = self.x[:, d] > boundary
+                    self.x[over, d] -= boundary
+                    xmax = self.x[:, d].max()
 
                 xmin = -1.0
                 while xmin < 0.0:
-                    under = x[:, d] < 0.0
-                    x[under, d] += boundary
-                    xmin = x[:, d].min()
+                    under = self.x[:, d] < 0.0
+                    self.x[under, d] += boundary
+                    xmin = self.x[:, d].min()
 
         else:
-
             # leave it where it was. This is a bit sketchy, better ideas are welcome.
-            for d in range(ndim):
-                boundary = boxsize[d]
-                mask = x[:, d] > boundary
-                x[mask, d] -= delta_r[mask, d]
-                mask = x[:, d] < 0.0
-                x[mask, d] -= delta_r[mask, d]
+            for d in range(self.ndim):
+                boundary = self.boxsize_to_use[d]
+                mask = self.x[:, d] > boundary
+                self.x[mask, d] -= delta_r[mask, d]
+                mask = self.x[:, d] < 0.0
+                self.x[mask, d] -= delta_r[mask, d]
 
         # reduce delta_r_norm
-        ipars.delta_r_norm *= run_params.delta_r_norm_reduction_factor
+        self.iter_params.delta_r_norm *= self.run_params.delta_r_norm_reduction_factor
         # assert minimal delta_r
-        ipars.delta_r_norm = max(ipars.delta_r_norm, ipars.delta_r_norm_min)
+        self.iter_params.delta_r_norm = max(
+            self.iter_params.delta_r_norm, self.iter_params.delta_r_norm_min
+        )
 
         # get displacements in units of mean interparticle distance
         displacement = (
             np.sqrt(np.sum(delta_r * delta_r, axis=1))
-            / ipars.mean_interparticle_distance
+            / self.iter_params.mean_interparticle_distance
         )
 
         max_displacement = displacement.max()
@@ -1130,23 +1274,28 @@ class ParticleGenerator(object):
             # get the initial value. If delta_init was None, as is default, you
             # need to know what value to start with in your next run.
             dinit = (
-                ipars.delta_r_norm
-                * run_params.delta_r_norm_reduction_factor ** (-max(iteration, 1))
-                / ipars.mean_interparticle_distance
+                self.iter_params.delta_r_norm
+                * self.run_params.delta_r_norm_reduction_factor ** (-max(iteration, 1))
+                / self.iter_params.mean_interparticle_distance
             )
-            warnmsg = "Found max displacements > 5 mean interparticle distances. "
-            warnmsg += "Maybe try again with smaller run_params.delta_init? "
-            warnmsg += "run_params.delta_init = {0:.6e}".format(dinit)
-            warnings.warn(warnmsg, RuntimeWarning)
+            warnings.warn(
+                "Found max displacements > 5 mean interparticle distances. "
+                "Maybe try again with smaller run_params.delta_init? "
+                "run_params.delta_init = {0:.6e}".format(dinit),
+                RuntimeWarning,
+            )
 
         converged = False
         if (
-            max_displacement < run_params.displacement_threshold
+            max_displacement < self.run_params.displacement_threshold
         ):  # don't think about stopping until max < threshold
             unconverged = displacement[
-                displacement > run_params.convergence_threshold
+                displacement > self.run_params.convergence_threshold
             ].shape[0]
-            if unconverged < run_params.unconverged_particle_number_tolerance * npart:
+            if (
+                unconverged
+                < self.run_params.unconverged_particle_number_tolerance * self.npart
+            ):
                 converged = True
 
         # store stats
@@ -1167,19 +1316,12 @@ class ParticleGenerator(object):
             self.initial_setup()
 
         # start iteration loop
-        iteration = 0
-
-        while iteration < self.run_params.max_iterations:
-
-            iteration += 1
-            converged = self.iteration_step(iteration)
-
-            if converged and self.run_params.min_iterations < iteration:
+        for iteration in range(self.run_params.max_iterations + 1):
+            if (
+                self.iteration_step(iteration)
+                and iteration > self.run_params.min_iterations
+            ):
                 break
-
-        # convert results to unyt arrays
-        self.coordinates = unyt.unyt_array(self.x, self.unit_system["length"])
-        self.masses = unyt.unyt_array(self.m, self.unit_system["mass"])
 
         # compute densities and smoothing lengths before you finish
         h, rho = self.compute_h_and_rho()
@@ -1188,16 +1330,7 @@ class ParticleGenerator(object):
             rho, self.unit_system["mass"] / self.unit_system["length"] ** self.ndim
         )
 
-        # trim stats
-        self.stats.max_displacement = self.stats.max_displacement[
-            : self.stats.number_of_iterations
-        ]
-        self.stats.min_displacement = self.stats.min_displacement[
-            : self.stats.number_of_iterations
-        ]
-        self.stats.avg_displacement = self.stats.avg_displacement[
-            : self.stats.number_of_iterations
-        ]
+        self.stats.trim_self()
 
         # if you're dumping intermediate outputs, dump the last one for restarts:
         if self.run_params.state_dump_frequency > 0:
@@ -1234,15 +1367,11 @@ class ParticleGenerator(object):
             ``None``, no particles have been moved.
         """
 
-        x = self.x
-        npart = self.npart
-        boxsize = self.boxsize_to_use
-        ndim = self.ndim
-
         # how many particles are we moving?
         to_move = int(
-            npart * self.run_params.particle_redistribution_number_fraction + 0.5
+            self.npart * self.run_params.particle_redistribution_number_fraction + 0.5
         )
+
         if to_move <= 0:
             return None
 
@@ -1251,14 +1380,14 @@ class ParticleGenerator(object):
             self.run_params.particle_redistribution_number_reduction_factor
         )
 
-        _, _, kernel_gamma = get_kernel_data(self.kernel, ndim)
+        _, _, kernel_gamma = get_kernel_data(self.kernel, self.ndim)
 
-        indices = np.arange(npart)  # particle indices
+        indices = np.arange(self.npart)  # particle indices
         underdense = rho < rhoA  # is this underdense particle?
         overdense = rho > rhoA  # is this overdense particle?
 
         # has this particle been touched as target or as to be moved?
-        touched = np.zeros(npart, dtype=np.bool)
+        touched = np.zeros(self.npart, dtype=np.bool)
 
         # indices of particles that have been moved
         moved = np.empty(to_move, dtype=np.int)
@@ -1274,20 +1403,21 @@ class ParticleGenerator(object):
         attempts_over = 0
 
         while nmoved < to_move and attempts_over < max_attempts_over:
-
             attempts_over += 1
 
             # pick an overdense random particle
             oind = indices[overdense][np.random.randint(0, nover)]
+
             if touched[oind]:
                 continue  # skip touched particles
 
             # do we work with it?
             othresh = (rho[oind] - rhoA[oind]) / rho[oind]
             othresh = erf(othresh)
-            if np.random.uniform() < othresh:
 
+            if np.random.uniform() < othresh:
                 attempts_under = 0
+
                 while attempts_under < nunder:  # only try your luck, don't force it
 
                     attempts_under += 1
@@ -1305,11 +1435,12 @@ class ParticleGenerator(object):
                         # compute displacement for overdense particle
                         dx = np.zeros(3, dtype=np.float)
                         H = kernel_gamma * h[uind]
-                        for d in range(ndim):
+
+                        for d in range(self.ndim):
                             sign = 1 if np.random.random() < 0.5 else -1
                             dx[d] = np.random.uniform() * 0.3 * H * sign
 
-                        x[oind] = x[uind] + dx
+                        self.x[oind] = self.x[uind] + dx
                         touched[oind] = True
                         touched[uind] = True
                         moved[nmoved] = oind
@@ -1317,24 +1448,29 @@ class ParticleGenerator(object):
                         break
 
         if nmoved > 0:
-
             # check boundary conditions
             if self.periodic:
-                for d in range(ndim):
-                    x[x[:, d] > boxsize[d], d] -= boxsize[d]
-                    x[x[:, d] < 0.0, d] += boxsize[d]
+                for d in range(self.ndim):
+                    self.x[
+                        self.x[:, d] > self.boxsize_to_use[d], d
+                    ] -= self.boxsize_to_use[d]
+                    self.x[self.x[:, d] < 0.0, d] += self.boxsize_to_use[d]
             else:
-                temp = 1.0 / npart ** (1.0 / ndim)
-                for d in range(ndim):
+                temp = 1.0 / self.npart ** (1.0 / self.ndim)
+                for d in range(self.ndim):
 
                     # move them away from the edge by a random factor of mean "cell size" boxsize/npart^ndim
-                    mask = x[:, d] > boxsize[d]
-                    x[mask, d] = boxsize[d] * (
-                        1.0 - np.random.uniform(x[mask, d].shape) * temp
+                    mask = self.x[:, d] > self.boxsize_to_use[d]
+                    self.x[mask, d] = self.boxsize_to_use[d] * (
+                        1.0 - np.random.uniform(self.x[mask, d].shape) * temp
                     )
 
-                    mask = x[:, d] < 0.0
-                    x[mask, d] = np.random.uniform(x[mask, d].shape) * boxsize[d] * temp
+                    mask = self.x[:, d] < 0.0
+                    self.x[mask, d] = (
+                        np.random.uniform(self.x[mask, d].shape)
+                        * self.boxsize_to_use[d]
+                        * temp
+                    )
 
         return moved[:nmoved]
 
