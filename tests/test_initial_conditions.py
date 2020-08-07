@@ -141,6 +141,53 @@ def test_initial_conditions_coordinate_generation():
     return
 
 
+def test_random_seed():
+    """
+    Test that the random seed is local and doesn't
+    affect global numpy seeds and vice versa.
+        """
+
+    t = ICTemplate()
+
+    # set a global seed
+    np.random.seed(123)
+
+    # print some sequence
+    # This sequence needs to be reproduced before and after running the generator
+    should = np.random.randint(100, size=100)
+
+    # re-set global seed, get first half of sequence, just to
+    # check that we are actually using this one
+    np.random.seed(123)
+    is_first_half = np.random.randint(100, size=should.shape[0] // 2)
+    assert (should[: should.shape[0] // 2] == is_first_half).all()
+
+    # get a generator, set a local seed, and run
+    generator = ParticleGenerator(t.rho, t.boxsize, t.unit_system, t.nx, t.ndim,)
+    generator.run_params.max_iterations = 1
+    generator.run_params.set_random_seed(20)
+    generator.initial_setup()
+    generator.run_iteration()
+
+    # after the generator thing, use global seed again
+    is_second_half = np.random.randint(100, size=should.shape[0] // 2)
+    assert (should[should.shape[0] // 2 :] == is_second_half).all()
+
+    # store coordinates
+    coords1 = generator.coordinates[:]
+
+    # set different global seed
+    np.random.seed(234)
+
+    # re-run with same local seed
+    generator.run_params.set_random_seed(20)
+    generator.initial_setup()  # re-create initial conditions
+    generator.run_iteration()
+    coords2 = generator.coordinates[:]
+
+    assert (coords1 == coords2).all()
+
+
 def test_initial_conditions_iteration_runs():
     """
     Run the iterations
@@ -211,15 +258,17 @@ def test_initial_conditions_iteration_runs():
                 g.run_params.min_iterations = 1
                 g.run_params.max_iterations = 1
 
-                assert r.npart == g.npart
-                assert r.ndim == g.ndim
+                assert(r.npart == g.npart)
+                assert(r.ndim == g.ndim)
                 for d in range(ndim):
-                    assert r.boxsize[d] == g.boxsize[d]
-                assert r.eta == g.eta
-                assert r.periodic == g.periodic
+                    assert(r.boxsize[d] == g.boxsize[d])
+                assert(r.eta == g.eta)
+                assert(r.periodic == g.periodic)
+                assert(r.iter_params.delta_r_norm == g.iter_params.delta_r_norm)
 
 
 if __name__ == "__main__":
     test_initial_conditions_raising_exceptions()
     test_initial_conditions_coordinate_generation()
     test_initial_conditions_iteration_runs()
+    test_random_seed()
