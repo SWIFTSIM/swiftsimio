@@ -262,14 +262,14 @@ class IterData(object):
         if delta_init is None:
             self.compute_delta_norm = True
             self.delta_r_norm = self.mean_interparticle_distance
-        elif delta_init > 0:
-            if delta_init > 0:
-                self.compute_delta_norm = False
-                self.delta_r_norm = delta_init * self.mean_interparticle_distance
         else:
-            # delta_init is set = -1 during restart.
-            # > 0 (or None) means user changed it.
-            pass
+            self.compute_delta_norm = False
+            if delta_init > 0:
+                self.delta_r_norm = delta_init * self.mean_interparticle_distance
+            else:
+                # delta_init is set = -1 during restart.
+                # > 0 (or None) means user changed it.
+                pass
 
         self.delta_r_norm_min = min_delta_r_norm * self.mean_interparticle_distance
 
@@ -894,42 +894,35 @@ class ParticleGenerator(object):
             unyt.unyt_array of particle coordinates with shape (self.npart, 3)
         """
 
-        number_of_particles = self.number_of_particles
-        boxsize = self.boxsize_to_use
-        ndim = self.ndim
-        periodic = self.periodic
-        npart = number_of_particles ** ndim
-        rand = self.run_params._rng
-
         # get maximal displacement from uniform grid of any particle along an axis
-        maxdelta = max_perturbation * boxsize / number_of_particles
+        maxdelta = max_perturbation * self.boxsize_to_use / self.number_of_particles
 
         # generate uniform grid (including units) first
         x = self.generate_uniform_coords()
 
-        for d in range(ndim):
+        for d in range(self.ndim):
             amplitude = unyt.unyt_array(
                 self.run_params._rng.uniform(
-                    low=-boxsize[d], high=boxsize[d], size=npart
+                    low=-self.boxsize_to_use[d], high=self.boxsize_to_use[d], size=self.npart
                 )
                 * maxdelta[d],
                 x.units,
             )
             x[:, d] += amplitude
 
-            if periodic:  # correct where necessary
-                over = x[:, d] > boxsize[d]
-                x[over, d] -= boxsize[d]
+            if self.periodic:  # correct where necessary
+                over = x[:, d] > self.boxsize_to_use[d]
+                x[over, d] -= self.boxsize_to_use[d]
                 under = x[:, d] < 0.0
-                x[under] += boxsize[d]
+                x[under] += self.boxsize_to_use[d]
             else:
                 # get new random numbers where necessary
                 xmax = x[:, d].max()
                 xmin = x[:, d].min()
                 amplitude_redo = None
 
-                while xmax > boxsize[d] or xmin < 0.0:
-                    over = x[:, d] > boxsize[d]
+                while xmax > self.boxsize_to_use[d] or xmin < 0.0:
+                    over = x[:, d] > self.boxsize_to_use[d]
                     under = x[:, d] < 0.0
                     redo = np.logical_or(over, under)
 
