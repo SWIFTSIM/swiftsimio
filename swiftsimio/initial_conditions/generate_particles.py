@@ -9,6 +9,8 @@ from math import erf
 from typing import Union, Optional
 import warnings
 import h5py
+from packaging import version
+from copy import deepcopy
 
 from .IC_kernel import get_kernel_data
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
@@ -90,9 +92,6 @@ class RunParams(object):
         Basename for intermediate dumps. The filename will be constructed as
         ``<basename>_<5 digit zero padded iteration number>.hdf5``
 
-    random_seed: int
-        set a specific random seed
-
     check_particle_proximity: bool
         if set to True, before every iteration step particles are being checked
         for being too close to each other and if that is the case, they are
@@ -124,7 +123,11 @@ class RunParams(object):
     state_dump_frequency: int = 50
     check_particle_proximity: bool = False
 
+    _rng = None  # random number generator
+
     def __init__(self):
+        self._rng = np.random.RandomState()
+
         # always set one random seed.
         self.set_random_seed(666)
         return
@@ -139,7 +142,12 @@ class RunParams(object):
         seed: int
             seed to use.
         """
-        np.random.seed(seed)
+        if version.parse(np.__version__) < version.parse("1.17"):
+            self._rng.seed(seed)
+        else:
+            self._rng = np.random.RandomState(
+                np.random.MT19937(np.random.SeedSequence(seed))
+            )
         return
 
     def check_consistency(self) -> None:
@@ -254,14 +262,14 @@ class IterData(object):
         if delta_init is None:
             self.compute_delta_norm = True
             self.delta_r_norm = self.mean_interparticle_distance
-        elif delta_init > 0:
-            if delta_init > 0:
-                self.compute_delta_norm = False
-                self.delta_r_norm = delta_init * self.mean_interparticle_distance
         else:
-            # delta_init is set = -1 during restart.
-            # > 0 (or None) means user changed it.
-            pass
+            self.compute_delta_norm = False
+            if delta_init > 0:
+                self.delta_r_norm = delta_init * self.mean_interparticle_distance
+            else:
+                # delta_init is set = -1 during restart.
+                # > 0 (or None) means user changed it.
+                pass
 
         self.delta_r_norm_min = min_delta_r_norm * self.mean_interparticle_distance
 
@@ -886,39 +894,35 @@ class ParticleGenerator(object):
             unyt.unyt_array of particle coordinates with shape (self.npart, 3)
         """
 
-        number_of_particles = self.number_of_particles
-        boxsize = self.boxsize_to_use
-        ndim = self.ndim
-        periodic = self.periodic
-        npart = number_of_particles ** ndim
-
         # get maximal displacement from uniform grid of any particle along an axis
-        maxdelta = max_perturbation * boxsize / number_of_particles
+        maxdelta = max_perturbation * self.boxsize_to_use / self.number_of_particles
 
         # generate uniform grid (including units) first
         x = self.generate_uniform_coords()
 
-        for d in range(ndim):
+        for d in range(self.ndim):
             amplitude = unyt.unyt_array(
-                np.random.uniform(low=-boxsize[d], high=boxsize[d], size=npart)
+                self.run_params._rng.uniform(
+                    low=-self.boxsize_to_use[d], high=self.boxsize_to_use[d], size=self.npart
+                )
                 * maxdelta[d],
                 x.units,
             )
             x[:, d] += amplitude
 
-            if periodic:  # correct where necessary
-                over = x[:, d] > boxsize[d]
-                x[over, d] -= boxsize[d]
+            if self.periodic:  # correct where necessary
+                over = x[:, d] > self.boxsize_to_use[d]
+                x[over, d] -= self.boxsize_to_use[d]
                 under = x[:, d] < 0.0
-                x[under] += boxsize[d]
+                x[under] += self.boxsize_to_use[d]
             else:
                 # get new random numbers where necessary
                 xmax = x[:, d].max()
                 xmin = x[:, d].min()
                 amplitude_redo = None
 
-                while xmax > boxsize[d] or xmin < 0.0:
-                    over = x[:, d] > boxsize[d]
+                while xmax > self.boxsize_to_use[d] or xmin < 0.0:
+                    over = x[:, d] > self.boxsize_to_use[d]
                     under = x[:, d] < 0.0
                     redo = np.logical_or(over, under)
 
@@ -933,7 +937,9 @@ class ParticleGenerator(object):
                     nredo = x[redo, d].shape[0]
 
                     amplitude_redo = unyt.unyt_array(
-                        np.random.uniform(low=-boxsize[d], high=boxsize[d], size=nredo)
+                        self.run_params._rng.uniform(
+                            low=-boxsize[d], high=boxsize[d], size=nredo
+                        )
                         * maxdelta[d],
                         x.units,
                     )
@@ -961,6 +967,7 @@ class ParticleGenerator(object):
         ndim = self.ndim
         npart = self.npart
         density_function = self.density_function
+        rand = self.run_params._rng
 
         x = np.empty((npart, 3), dtype=np.float)
 
@@ -981,9 +988,14 @@ class ParticleGenerator(object):
             xr = np.zeros((1, 3), dtype=np.float)
 
             for d in range(ndim):
-                xr[0, d] = np.random.uniform(low=0.0, high=coord_threshold[d])
+                xr[0, d] = self.run_params._rng.uniform(
+                    low=0.0, high=coord_threshold[d]
+                )
 
-            if np.random.uniform() <= density_function(xr, ndim) / self.rho_max:
+            if (
+                self.run_params._rng.uniform()
+                <= density_function(xr, ndim) / self.rho_max
+            ):
                 x[keep] = xr
                 keep += 1
 
@@ -1074,36 +1086,7 @@ class ParticleGenerator(object):
 
         """
 
-        # build tree
-        tree = KDTree(self.x, boxsize=self.iter_params.boxsize_for_tree)
-
-        # move particles that are at the same position
-        if self.run_params.check_particle_proximity:
-            tol = 1e-4 * self.iter_params.mean_interparticle_distance
-            first = 0
-            while first != self.npart:
-                for p in range(first, self.npart):
-                    dist, neighs = tree.query(self.x[p], k=2)
-
-                    d = dist[1]
-                    n = neighs[1]
-
-                    if d < tol:
-                        smaller = min(p, n)
-                        larger = max(p, n)
-
-                        self.x[smaller] -= tol
-                        self.x[larger] += tol
-
-                        # We've moved the particles - must rebuild the tree
-                        tree = KDTree(self.x, boxsize=self.iter_params.boxsize_for_tree)
-                        first -= 1  # check again just to be sure
-                        break
-
-                    first += 1
-
-        # kernel data
-        kernel_func, _, _ = get_kernel_data(self.kernel, self.ndim)
+        corrected_particle_proximity = False
 
         # update model density at current particle positions
         rho_model = self.density_function(self.x, self.ndim)
@@ -1137,6 +1120,57 @@ class ParticleGenerator(object):
                 if moved is not None:
                     rho_model[moved] = self.density_function(self.x[moved], self.ndim)
 
+        # build tree
+        tree = KDTree(self.x, boxsize=self.iter_params.boxsize_for_tree)
+
+        # move particles that are at the same position
+        if self.run_params.check_particle_proximity:
+            moved = []
+            cleaned_up = False
+            tol = 1e-3 * self.iter_params.mean_interparticle_distance
+            first = 0
+            while not cleaned_up:
+                for p in range(first, self.npart):
+                    first += 1
+                    dist, neighs = tree.query(self.x[p], k=2)
+                    d = dist[neighs != p][0]
+                    n = neighs[neighs != p][0]
+                    if d < tol:
+                        corrected_particle_proximity = True
+                        smaller = min(p, n)
+                        larger = max(p, n)
+                        moved.append(p)
+                        moved.append(n)
+
+                        for dim in range(self.ndim):
+
+                            self.x[smaller, dim] -= tol
+                            self.x[larger, dim] += tol
+
+                            boundary = self.boxsize_to_use[dim]
+                            for i in [p, n]:
+                                if self.periodic:
+                                    if self.x[i, dim] > boundary:
+                                        self.x[i, dim] -= boundary
+                                    if self.x[i, dim] < 0.0:
+                                        self.x[i, dim] += boundary
+                                else:
+                                    while self.x[i, dim] > boundary:
+                                        self.x[i, dim] -= tol / 3
+                                    while self.x[i, dim] < 0.0:
+                                        self.x[i, dim] += tol / 3
+
+                        tree = KDTree(self.x, boxsize=self.iter_params.boxsize_for_tree)
+                        first -= 1  # check again just to be sure
+                        break
+                if first == self.npart:
+                    cleaned_up = True
+                    # re-compute model density of moved particles
+                    if len(moved) > 0:
+                        rho_model[moved] = self.density_function(
+                            self.x[moved], self.ndim
+                        )
+
         # compute MODEL smoothing lengths
         one_over_rho = 1.0 / rho_model
         one_over_rho_sum = np.sum(one_over_rho)
@@ -1169,6 +1203,9 @@ class ParticleGenerator(object):
                 / one_over_rho_sum
                 * vol
             )
+
+        # kernel data
+        kernel_func, _, _ = get_kernel_data(self.kernel, self.ndim)
 
         # init delta_r array
         delta_r = np.zeros(self.x.shape, dtype=np.float)
@@ -1270,9 +1307,10 @@ class ParticleGenerator(object):
         min_displacement = displacement.min()
         avg_displacement = displacement.mean()
 
-        if max_displacement > 5.0:
+        if max_displacement > 5.0 and not corrected_particle_proximity:
             # get the initial value. If delta_init was None, as is default, you
             # need to know what value to start with in your next run.
+            # if we needed to correct overlying particles, ignore the warning.
             dinit = (
                 self.iter_params.delta_r_norm
                 * self.run_params.delta_r_norm_reduction_factor ** (-max(iteration, 1))
@@ -1406,23 +1444,21 @@ class ParticleGenerator(object):
             attempts_over += 1
 
             # pick an overdense random particle
-            oind = indices[overdense][np.random.randint(0, nover)]
-
+            oind = indices[overdense][self.run_params._rng.randint(0, nover)]
             if touched[oind]:
                 continue  # skip touched particles
 
             # do we work with it?
             othresh = (rho[oind] - rhoA[oind]) / rho[oind]
             othresh = erf(othresh)
-
-            if np.random.uniform() < othresh:
+            if self.run_params._rng.uniform() < othresh:
                 attempts_under = 0
 
                 while attempts_under < nunder:  # only try your luck, don't force it
 
                     attempts_under += 1
 
-                    u = np.random.randint(0, nunder)
+                    u = self.run_params._rng.randint(0, nunder)
                     uind = indices[underdense][u]
 
                     if touched[uind]:
@@ -1430,15 +1466,14 @@ class ParticleGenerator(object):
 
                     uthresh = (rhoA[uind] - rho[uind]) / rhoA[uind]
 
-                    if np.random.uniform() < uthresh:
+                    if self.run_params._rng.uniform() < uthresh:
                         # we have a match!
                         # compute displacement for overdense particle
                         dx = np.zeros(3, dtype=np.float)
                         H = kernel_gamma * h[uind]
-
+                        maxd = 0.3 * H
                         for d in range(self.ndim):
-                            sign = 1 if np.random.random() < 0.5 else -1
-                            dx[d] = np.random.uniform() * 0.3 * H * sign
+                            dx[d] = self.run_params._rng.uniform(low=-maxd, high=maxd)
 
                         self.x[oind] = self.x[uind] + dx
                         touched[oind] = True
@@ -1462,12 +1497,12 @@ class ParticleGenerator(object):
                     # move them away from the edge by a random factor of mean "cell size" boxsize/npart^ndim
                     mask = self.x[:, d] > self.boxsize_to_use[d]
                     self.x[mask, d] = self.boxsize_to_use[d] * (
-                        1.0 - np.random.uniform(self.x[mask, d].shape) * temp
+                        1.0 - self.run_params._rng.uniform(self.x[mask, d].shape) * temp
                     )
 
                     mask = self.x[:, d] < 0.0
                     self.x[mask, d] = (
-                        np.random.uniform(self.x[mask, d].shape)
+                        self.run_params._rng.uniform(self.x[mask, d].shape)
                         * self.boxsize_to_use[d]
                         * temp
                     )
@@ -1598,17 +1633,17 @@ class ParticleGenerator(object):
         """
         ndim = self.ndim
         npart = self.npart
-        x = self.x
-        m = self.m
+        x = deepcopy(self.x)
+        m = deepcopy(self.m)
 
         u_l = self.unit_system["length"]
         u_m = self.unit_system["mass"]
         u_t = self.unit_system["time"]
 
         w = Writer(self.unit_system, self.boxsize)
-        w.gas.coordinates = unyt.unyt_array(x, u_l)
+        w.gas.coordinates = unyt.unyt_array(x[:], u_l)
         w.gas.smoothing_length = unyt.unyt_array(h, u_l)
-        w.gas.masses = unyt.unyt_array(m, u_m)
+        w.gas.masses = unyt.unyt_array(m[:], u_m)
         w.gas.densities = unyt.unyt_array(rho, u_m / u_l ** ndim)
         w.dimension = ndim
 
@@ -1616,7 +1651,9 @@ class ParticleGenerator(object):
         w.gas.internal_energy = unyt.unyt_array(
             np.ones(npart, dtype=np.float), u_l ** 2 / u_t ** 2
         )
-        w.gas.velocities = unyt.unyt_array(np.zeros(npart, dtype=np.float), u_l / u_t)
+        w.gas.velocities = unyt.unyt_array(
+            np.zeros((npart, 3), dtype=np.float), u_l / u_t
+        )
 
         fname = f"{self.run_params.state_dump_basename}_{iteration:05d}.hdf5"
         w.write(fname)
