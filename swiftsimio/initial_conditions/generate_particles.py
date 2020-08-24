@@ -319,7 +319,7 @@ class IterData(object):
             Is the simulation periodic or not?
         """
         if periodic:
-            self.boxsize_for_tree = self.boxsize_for_tree
+            self.boxsize_for_tree = boxsize
         else:
             self.boxsize_for_tree = None
 
