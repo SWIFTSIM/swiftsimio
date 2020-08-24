@@ -126,10 +126,8 @@ class RunParams(object):
     _rng = None  # random number generator
 
     def __init__(self):
+        # set internal random number generator
         self._rng = np.random.RandomState()
-
-        # always set one random seed.
-        self.set_random_seed(666)
         return
 
     def set_random_seed(self, seed: int):
@@ -903,7 +901,9 @@ class ParticleGenerator(object):
         for d in range(self.ndim):
             amplitude = unyt.unyt_array(
                 self.run_params._rng.uniform(
-                    low=-self.boxsize_to_use[d], high=self.boxsize_to_use[d], size=self.npart
+                    low=-self.boxsize_to_use[d],
+                    high=self.boxsize_to_use[d],
+                    size=self.npart,
                 )
                 * maxdelta[d],
                 x.units,
