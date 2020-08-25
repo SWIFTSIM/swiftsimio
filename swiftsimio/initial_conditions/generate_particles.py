@@ -15,6 +15,14 @@ from copy import deepcopy
 from .IC_kernel import get_kernel_data
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 from swiftsimio import Writer, load
+from swiftsimio.accelerated import jit
+
+@jit(nopython=True, fastmath=True)
+def correct_for_periodic(dx, ndim, boxsize):
+    for d in range(ndim):
+        bhalf = 0.5 * boxsize[d]
+        dx[dx[:, d] > bhalf, d] -= boxsize[d]
+        dx[dx[:, d] < -bhalf, d] += boxsize[d]
 
 
 class RunParams(object):
@@ -903,7 +911,9 @@ class ParticleGenerator(object):
         for d in range(self.ndim):
             amplitude = unyt.unyt_array(
                 self.run_params._rng.uniform(
-                    low=-self.boxsize_to_use[d], high=self.boxsize_to_use[d], size=self.npart
+                    low=-self.boxsize_to_use[d],
+                    high=self.boxsize_to_use[d],
+                    size=self.npart,
                 )
                 * maxdelta[d],
                 x.units,
@@ -1047,21 +1057,44 @@ class ParticleGenerator(object):
 
         tree = KDTree(self.x, boxsize=boxsize)
 
-        for p in range(self.npart):
-            dist, neighs = tree.query(self.x[p], k=neighbours)
-            # tree.query returns index nparts+1 if not enough neighbours were found
-            mask = neighs < self.npart
-            dist = dist[mask]
-            neighs = neighs[mask]
+        # do neighbour loops
+        block_size = 65536
+        number_of_blocks = 1 + self.npart // block_size
 
-            if neighs.shape[0] == 0:
-                raise RuntimeError("Found no neighbour for a particle.")
+        for block in range(number_of_blocks):
+            starting_index = block * block_size
+            ending_index = (block + 1) * (block_size)
 
-            h[p] = dist[-1] / kernel_gamma
+            if ending_index > self.npart:
+                ending_index = self.npart + 1
 
-            for i, n in enumerate(neighs):
-                W = kernel_func(dist[i], dist[-1])
-                rho[p] += W * self.m[n]
+            if starting_index >= ending_index:
+                break
+
+            # Get the distances to _all_ neighbours out of the tree - this is
+            # why we need to process in blocks (this is 32x+ the size of coordinates)
+            distances, neighbours = tree.query(
+                self.x[starting_index:ending_index],
+                k=int(self.iter_params.neighbours) + 1,
+                n_jobs=-1,
+            )
+
+            for p, (dist, neighs) in enumerate(zip(distances, neighbours)):
+                p += starting_index
+
+                # tree.query returns index npart where not enough neighbours are found
+                correct = neighs < self.npart
+                dist = dist[correct][1:]  # skip first neighbour: that's particle itself
+                neighs = neighs[correct][1:]
+
+                if neighs.shape[0] == 0:
+                    raise RuntimeError("Found no neighbour for a particle.")
+
+                dx = self.x[p] - self.x[neighs]
+
+                h[p] = dist[-1] / kernel_gamma
+                W = kernel_func(dist, [dist[-1]] * len(dist))
+                rho[p] += np.sum(self.m[neighs] * W)
 
         return h, rho
 
@@ -1206,34 +1239,54 @@ class ParticleGenerator(object):
 
         # kernel data
         kernel_func, _, _ = get_kernel_data(self.kernel, self.ndim)
+        boxsize = self.boxsize_to_use
 
         # init delta_r array
         delta_r = np.zeros(self.x.shape, dtype=np.float)
 
+
+
         # do neighbour loops
-        for p in range(self.npart):
-            dist, neighs = tree.query(self.x[p], k=int(self.iter_params.neighbours) + 1)
-            # tree.query returns index npart where not enough neighbours are found
-            correct = neighs < self.npart
-            dist = dist[correct][1:]  # skip first neighbour: that's particle itself
-            neighs = neighs[correct][1:]
+        block_size = 65536
+        number_of_blocks = 1 + self.npart // block_size
 
-            if neighs.shape[0] == 0:
-                raise RuntimeError("Found no neighbour for a particle.")
+        for block in range(number_of_blocks):
+            starting_index = block * block_size
+            ending_index = (block + 1) * (block_size)
 
-            dx = self.x[p] - self.x[neighs]
+            if ending_index > self.npart:
+                ending_index = self.npart + 1
 
-            # Correct dx for periodic boundaries
-            if self.periodic:
-                for d in range(self.ndim):
-                    boundary = self.boxsize_to_use[d]
-                    bhalf = 0.5 * boundary
-                    dx[dx[:, d] > bhalf, d] -= boundary
-                    dx[dx[:, d] < -bhalf, d] += boundary
+            if starting_index >= ending_index:
+                break
 
-            for n, Nind in enumerate(neighs):
+            # Get the distances to _all_ neighbours out of the tree - this is
+            # why we need to process in blocks (this is 32x+ the size of coordinates)
+            distances, neighbours = tree.query(
+                self.x[starting_index:ending_index],
+                k=int(self.iter_params.neighbours) + 1,
+                n_jobs=-1,
+            )
+
+            for p, (dist, neighs) in enumerate(zip(distances, neighbours)):
+                p += starting_index
+
+                # tree.query returns index npart where not enough neighbours are found
+                correct = neighs < self.npart
+                dist = dist[correct][1:]  # skip first neighbour: that's particle itself
+                neighs = neighs[correct][1:]
+
+                if neighs.shape[0] == 0:
+                    raise RuntimeError("Found no neighbour for a particle.")
+
+                dx = self.x[p] - self.x[neighs]
+
+                # Correct dx for periodic boundaries
+                if self.periodic:
+                    correct_for_periodic(dx=dx, ndim=self.ndim, boxsize=boxsize)
+
                 # safety check: whether two particles are on top of each other.
-                if dist[n] < 1e-6 * self.iter_params.mean_interparticle_distance:
+                if (dist < 1e-6 * self.iter_params.mean_interparticle_distance).any():
                     warnings.warn(
                         "Found two particles closer to each other than 1e-6 mean "
                         "interprt. distances. This will most likely lead to "
@@ -1242,9 +1295,9 @@ class ParticleGenerator(object):
                         RuntimeWarning,
                     )
 
-                hij = (hmodel[p] + hmodel[Nind]) * 0.5
-                Wij = kernel_func(dist[n], hij)
-                delta_r[p] += hij * Wij * dx[n] / dist[n]
+                hij = (hmodel[p] + hmodel[neighs]) * 0.5
+                Wij = kernel_func(dist, hij)
+                delta_r[p] += np.sum(dx.T * (hij * Wij / dist), axis=1)
 
         if self.iter_params.compute_delta_norm:
             # set initial delta_norm such that max displacement is
