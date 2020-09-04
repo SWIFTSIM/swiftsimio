@@ -42,6 +42,7 @@ gas = {
     "Diffusion": "diffusion",
     "Viscosity": "viscosity",
     "RadiatedEnergy": "radiated_energy",
+    "DustMassFractions": "dust_mass_fractions",
     **shared,
     **baryon,
 }
