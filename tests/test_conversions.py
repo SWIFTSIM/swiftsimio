@@ -7,6 +7,7 @@ from tests.helper import requires
 from swiftsimio import load
 from numpy import isclose
 
+
 @requires("cosmological_volume.hdf5")
 def test_basic_tcmb(filename):
     """
@@ -31,9 +32,6 @@ def test_nonzero_tcmb(filename):
 
     cosmo["Omega_r"] = [0.1]
 
-    output_cosmology = swift_cosmology_to_astropy(
-        cosmo=cosmo,
-        units=units
-    )
+    output_cosmology = swift_cosmology_to_astropy(cosmo=cosmo, units=units)
 
     assert isclose(output_cosmology._Ogamma0, 0.1)
