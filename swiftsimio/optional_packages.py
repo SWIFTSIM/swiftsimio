@@ -35,3 +35,12 @@ try:
 except (ImportError, ModuleNotFoundError):
     viewer = None
     SPHVIEWER_AVAILABLE = False
+
+
+try:
+    import astropy
+
+    ASTROPY_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    astropy = None
+    ASTROPY_AVAILABLE = False

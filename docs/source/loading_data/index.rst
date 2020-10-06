@@ -109,6 +109,8 @@ as a summary:
   (the name of this run, specified in the SWIFT parameter file), and
   ``meta.snapshot_date`` (a :mod:`datetime` object describing when the
   snapshot was written to disk).
++ If you have ``astropy`` installed, you can also use the ``metadata.cosmology``
+  object, which is an ``astropy.cosmology.w0waCDM`` instance.
 
 
 Reading particle data
