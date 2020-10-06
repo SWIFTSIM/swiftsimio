@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.1.0
+-------
+
+Added `cosmology`.
+
++ Added an optional `astropy` cosmology integration.
+
 v 4.0.4
 -------
 

@@ -4,7 +4,7 @@ Contains the description of the metadata fields in the SWIFT snapshots.
 
 metadata_fields_to_read = {
     "Code": "code",
-    "Cosmology": "cosmology",
+    "Cosmology": "cosmology_raw",
     "Header": "header",
     "GravityScheme": "gravity_scheme",
     "HydroScheme": "hydro_scheme",

@@ -14,6 +14,7 @@ This file contains four major objects:
 from swiftsimio import metadata
 from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.conversions import swift_cosmology_to_astropy
 
 import re
 import h5py
@@ -138,6 +139,7 @@ class SWIFTMetadata(object):
         self.postprocess_header()
 
         self.load_particle_types()
+        self.extract_cosmology()
 
         return
 
@@ -339,6 +341,25 @@ class SWIFTMetadata(object):
                     scale_factor=self.scale_factor,
                 ),
             )
+
+        return
+
+    def extract_cosmology(self):
+        """
+        Creates an astropy.cosmology object from the internal cosmology system.
+
+        This will be saved as ``self.cosmology``.
+        """
+
+        if self.cosmology_raw is not None:
+            cosmo = self.cosmology_raw
+        else:
+            cosmo = {"Cosmological run": 0}
+
+        if cosmo.get("Cosmological run", 0):
+            self.cosmology = swift_cosmology_to_astropy(cosmo, units=self.units)
+        else:
+            self.cosmology = None
 
         return
 
