@@ -351,7 +351,10 @@ class SWIFTMetadata(object):
         This will be saved as ``self.cosmology``.
         """
 
-        cosmo = self.cosmology_raw
+        if self.cosmology_raw is not None:
+            cosmo = self.cosmology_raw
+        else:
+            cosmo = {"Cosmological run": 0}
 
         if cosmo.get("Cosmological run", 0):
             self.cosmology = swift_cosmology_to_astropy(cosmo, units=self.units)
