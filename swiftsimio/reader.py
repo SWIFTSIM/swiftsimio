@@ -353,7 +353,10 @@ class SWIFTMetadata(object):
 
         cosmo = self.cosmology_raw
 
-        self.cosmology = swift_cosmology_to_astropy(cosmo, units=self.units)
+        if cosmo.get("Cosmological run", 0):
+            self.cosmology = swift_cosmology_to_astropy(cosmo, units=self.units)
+        else:
+            self.cosmology = None
 
         return
 
