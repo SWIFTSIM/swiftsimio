@@ -6,6 +6,7 @@ from swiftsimio.accelerated import (
     ranges_from_array,
     read_ranges_from_file,
     index_dataset,
+    list_of_strings_to_arrays,
 )
 
 import numpy as np
@@ -93,3 +94,29 @@ def test_index_dataset_h5py():
     dataset = file.create_dataset("Test", data=data)
 
     assert (index_dataset(dataset, mask) == data[mask]).all()
+
+
+def test_list_of_strings_to_arrays():
+    """
+    Tests list_of_strings_to_arrays.
+    """
+
+    lines = [
+        "    0     0.0000    1.0e-3    14.0",
+        "    7     3.0000    1.0e-3    14.0",
+    ]
+
+    expected_output = [
+        np.array([0, 7], dtype=np.int64),
+        np.array([0, 3], dtype=np.float64),
+        np.array([1e-3, 1e-3], dtype=np.float64),
+        np.array([14, 14], dtype=np.float64),
+    ]
+
+    output = list_of_strings_to_arrays(lines)
+
+    for expected, real in zip(expected_output, output):
+        assert expected.dtype == real.dtype
+        assert (expected == real).all()
+
+    return

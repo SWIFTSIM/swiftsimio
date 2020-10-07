@@ -6,7 +6,7 @@ import numpy as np
 
 from h5py._hl.dataset import Dataset
 
-from typing import Tuple
+from typing import Tuple, Union, List
 
 try:
     from numba import jit, prange
@@ -495,3 +495,51 @@ def read_ranges_from_file(
     )
 
     return read_ranges(handle, ranges, output_shape, output_type, columns)
+
+
+def list_of_strings_to_arrays(lines: List[str]) -> Union[np.array]:
+    """
+    Converts a list of space-delimited values to arrays.
+
+    Parameters
+    ----------
+
+    lines: List[str]
+        List of strings containing numbers separated by a set of spaces.
+    
+    
+    Returns
+    -------
+
+    arrays: List[np.array]
+        List of numpy arrays, one per column.
+
+
+    Notes
+    -----
+
+    Currently not suitable for ``numba`` acceleration due to mixed datatype usage.
+    """
+
+    # Calculate types and set up arrays.
+
+    arrays = []
+    dtypes = []
+    number_of_lines = len(lines)
+
+    for item in lines[0].split():
+        if "." in item or "e" in item:
+            dtype = np.float64
+        else:
+            dtype = np.int64
+
+        dtypes.append(dtype)
+
+        arrays.append(np.zeros(number_of_lines, dtype=dtype))
+
+    for index, line in enumerate(lines):
+        for dtype, (array, value) in zip(dtypes, enumerate(line.split())):
+            arrays[array][index] = dtype(value)
+
+    return arrays
+

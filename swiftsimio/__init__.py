@@ -1,6 +1,7 @@
 from .reader import *
 from .writer import SWIFTWriterDataset
 from .masks import SWIFTMask
+from .statistics import SWIFTStatisticsFile
 from .__version__ import __version__
 from .__cite__ import __cite__
 
@@ -10,6 +11,7 @@ import swiftsimio.objects as objects
 import swiftsimio.visualisation as visualisation
 import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
+import swiftsimio.statistics as statistics
 
 name = "swiftsimio"
 
@@ -85,12 +87,25 @@ def load(filename, mask=None) -> SWIFTDataset:
     Parameters
     ----------
     filename : str
-        file to containing SWIFT dataset to read
+        SWIFT snapshot file to read
     mask : SWIFTMask, optional
         mask to apply when reading dataset
     """
 
     return SWIFTDataset(filename, mask=mask)
+
+def load_statistics(filename) -> SWIFTStatisticsFile:
+    """
+    Loads a SWIFT statistics file (``SFR.txt``, ``energy.txt``).
+
+    Parameters
+    ----------
+
+    filename : str
+        SWIFT statistics file path
+    """
+
+    return SWIFTStatisticsFile(filename=filename)
 
 
 # Rename this object to something simpler.
