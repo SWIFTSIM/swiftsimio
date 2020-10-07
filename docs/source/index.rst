@@ -21,6 +21,7 @@ snapshots to enable partial reading.
    visualisation/index
    velociraptor/index
    creating_initial_conditions/index
+   statistics/index
    command_line/index
 
    modules/index
