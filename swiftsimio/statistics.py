@@ -3,7 +3,7 @@ Reader for the statistics file.
 """
 
 import unyt
-import regex as re
+import re
 
 from typing import List, Dict
 
