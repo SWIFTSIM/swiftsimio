@@ -1,6 +1,14 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.2.0
+-------
+
+Added a log file reader.
+
++ Added the `swiftsimio.statistics.SWIFTStatisticsFile` functionality
+  to read statistics log files.
+
 v 4.1.0
 -------
 
