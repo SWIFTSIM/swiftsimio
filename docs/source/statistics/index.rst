@@ -9,7 +9,7 @@ the main ``load_statistics`` function.
 Example
 -------
 
-.. code-block::python
+.. code-block:: python
 
    from swiftsimio import load_statistics
 
@@ -22,7 +22,7 @@ Example
 
 Will output:
 
-.. code-block::bash
+.. code-block:: bash
 
    Statistics file: energy.txt, containing fields: #, step, time, a, z, total_mass,
    gas_mass, dm_mass, sink_mass, star_mass, bh_mass, gas_z_mass, star_z_mass,
