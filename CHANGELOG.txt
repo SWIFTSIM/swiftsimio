@@ -1,6 +1,12 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.2.1
+-------
+
++ Hotfix for partial reading of namedcolumn datasets.
++ Fix in documentation for statistics reader.
+
 v 4.2.0
 -------
 
