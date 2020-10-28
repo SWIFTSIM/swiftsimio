@@ -841,7 +841,7 @@ def generate_getter(
                         output_type = first_value.dtype
                         output_size = first_value.size
 
-                        if output_size != 1:
+                        if output_size != 1 and columns is None:
                             output_shape = (mask_size, output_size)
                         else:
                             output_shape = mask_size
