@@ -758,7 +758,7 @@ def generate_getter(
     mask_size: int,
     cosmo_factor: cosmo_factor,
     description: str,
-    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
+    columns: Union[None, np.lib.index_tricks.IndexExpression] = None,
 ):
     """
     Generates a function that:
@@ -825,6 +825,15 @@ def generate_getter(
 
     """
 
+    # Must do this _outside_ getter because of weird locality issues with the
+    # use of None as the default.
+    # Here, we need to ensure that in the cases where we're using columns,
+    # during a partial read, that we respect the single-column dataset nature.
+    use_columns = columns is not None
+
+    if not use_columns:
+        columns = np.s_[:]
+
     def getter(self):
         current_value = getattr(self, f"_{name}")
 
@@ -841,7 +850,7 @@ def generate_getter(
                         output_type = first_value.dtype
                         output_size = first_value.size
 
-                        if output_size != 1 and columns is None:
+                        if output_size != 1 and not use_columns:
                             output_shape = (mask_size, output_size)
                         else:
                             output_shape = mask_size

@@ -78,7 +78,6 @@ def test_units(filename):
         "metal_mass_fractions_from_agb",
         "metal_mass_fractions_from_snii",
         "metal_mass_fractions_from_snia",
-        "smoothed_element_mass_fractions",
         "smoothed_iron_mass_fractions_from_snia",
         "smoothed_metal_mass_fractions",
     ]
@@ -180,9 +179,7 @@ def test_dithered_cell_metadata_is_valid(filename):
     mask_region = mask(filename)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
-    spatial_constraint = mask_region.constrain_spatial(
-        [[0 * b, b] for b in mask_region.metadata.boxsize]
-    )
+    mask_region.constrain_spatial([[0 * b, b] for b in mask_region.metadata.boxsize])
     data = load(filename, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
