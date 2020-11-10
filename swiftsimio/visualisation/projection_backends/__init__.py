@@ -5,6 +5,7 @@ These go in order (within the dictionary) from
 fastest to most accurate, with the "_reference" style
 being a developer-only indended feature.
 """
+from numba.cuda.cudadrv.error import CudaSupportError
 
 from swiftsimio.visualisation.projection_backends.fast import scatter as fast
 from swiftsimio.visualisation.projection_backends.fast import (
@@ -61,14 +62,15 @@ backends_parallel = {
 }
 
 try:
-    from swiftsimio.visualisation.projection_backends.gpu import scatter as scatter_gpu
+    from swiftsimio.visualisation.projection_backends.gpu import scatter \
+        as scatter_gpu
     from swiftsimio.visualisation.projection_backends.gpu import (
         scatter_parallel as scatter_gpu_parallel,
     )
 
     backends["gpu"] = scatter_gpu
     backends_parallel["gpu"] = scatter_gpu_parallel
-except ImportError:
+except CudaSupportError:
     print(
         "Unable to load the GPU module. Please check the module numba.cuda "
         "if you wish to use them."
