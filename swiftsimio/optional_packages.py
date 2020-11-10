@@ -49,6 +49,7 @@ except (ImportError, ModuleNotFoundError):
 
 try:
     import numba.cuda.cudadrv.driver as drv
+
     d = drv.Driver()
     d.initialize()
 

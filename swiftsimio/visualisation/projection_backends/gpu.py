@@ -136,8 +136,7 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
         if cells_spanned <= 1:
             # Easygame, gg
             cuda.atomic.add(
-                img, (particle_cell_x, particle_cell_y),
-                mass * inverse_cell_area
+                img, (particle_cell_x, particle_cell_y), mass * inverse_cell_area
             )
         else:
             # Now we loop over the square of cells that the kernel lives in
@@ -156,8 +155,7 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
                 distance_x_2 = distance_x * distance_x
                 for cell_y in range(
                     max(0, particle_cell_y - cells_spanned),
-                    min(particle_cell_y + cells_spanned + 1,
-                        maximal_array_index),
+                    min(particle_cell_y + cells_spanned + 1, maximal_array_index),
                 ):
                     distance_y = (float32(cell_y) + 0.5) * pixel_width
                     distance_y -= float32(y_pos)
@@ -170,8 +168,7 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
                     cuda.atomic.add(img, (cell_x, cell_y), mass * kernel_eval)
 
 
-def scatter(x: float64, y: float64, m: float32,
-            h: float32, res: int) -> ndarray:
+def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
     """
     Parallel implementation of scatter
 
@@ -217,8 +214,7 @@ def scatter(x: float64, y: float64, m: float32,
     """
     if not CUDA_AVAILABLE:
         raise Exception(
-            "Unable to load the GPU function. "
-            "Please check your module numba.cuda."
+            "Unable to load the GPU function. " "Please check your module numba.cuda."
         )
 
     output = cuda.device_array((res, res), dtype=float32)
