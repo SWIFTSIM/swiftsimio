@@ -43,6 +43,12 @@ from swiftsimio.visualisation.projection_backends.subsampled_extreme import (
     scatter_parallel as subsampled_extreme_parallel,
 )
 
+from swiftsimio.visualisation.projection_backends.gpu import scatter \
+    as gpu
+from swiftsimio.visualisation.projection_backends.gpu import (
+    scatter_parallel as gpu_parallel,
+)
+
 backends = {
     "histogram": histogram,
     "fast": fast,
@@ -50,6 +56,7 @@ backends = {
     "subsampled": subsampled,
     "subsampled_extreme": subsampled_extreme,
     "reference": reference,
+    "gpu": gpu,
 }
 
 backends_parallel = {
@@ -59,19 +66,5 @@ backends_parallel = {
     "subsampled": subsampled_parallel,
     "subsampled_extreme": subsampled_extreme_parallel,
     "reference": reference_parallel,
+    "gpu": gpu_parallel,
 }
-
-try:
-    from swiftsimio.visualisation.projection_backends.gpu import scatter \
-        as scatter_gpu
-    from swiftsimio.visualisation.projection_backends.gpu import (
-        scatter_parallel as scatter_gpu_parallel,
-    )
-
-    backends["gpu"] = scatter_gpu
-    backends_parallel["gpu"] = scatter_gpu_parallel
-except CudaSupportError:
-    print(
-        "Unable to load the GPU module. Please check the module numba.cuda "
-        "if you wish to use them."
-    )

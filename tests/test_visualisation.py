@@ -3,6 +3,7 @@ from swiftsimio.visualisation import scatter, slice, volume_render
 from swiftsimio.visualisation.projection import scatter_parallel, project_gas
 from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
+from swiftsimio.optional_packages import CUDA_AVAILABLE
 
 from tests.helper import requires
 
@@ -21,6 +22,9 @@ def test_scatter(save=False):
     """
 
     for backend in backends.values():
+        if backend == "gpu" and not CUDA_AVAILABLE:
+            continue
+
         image = backend(
             np.array([0.0, 1.0, 1.0]),
             np.array([0.0, 0.0, 1.0]),
@@ -232,9 +236,11 @@ def test_render_outside_region():
     backends["histogram"](x, y, m, h, resolution)
 
     for _, backend in backends_parallel.items():
+        if backend == "gpu" and not CUDA_AVAILABLE:
+            continue
+
         backend(x, y, m, h, resolution)
 
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
 
     volume_render.scatter_parallel(x, y, z, m, h, resolution)
-

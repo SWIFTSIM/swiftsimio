@@ -7,6 +7,7 @@ This includes:
 + scipy.spatial: KDTrees
 + sphviewer: visualisation
 """
+from numba.cuda.cudadrv.error import CudaSupportError
 
 try:
     from tqdm import tqdm
@@ -44,3 +45,11 @@ try:
 except (ImportError, ModuleNotFoundError):
     astropy = None
     ASTROPY_AVAILABLE = False
+
+
+try:
+    import numba.cuda
+
+    CUDA_AVAILABLE = True
+except CudaSupportError:
+    CUDA_AVAILABLE = False

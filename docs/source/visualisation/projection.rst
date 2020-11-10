@@ -115,6 +115,8 @@ backends are as follows:
   double precision.
 + ``subsampled_extreme``: The same as ``subsampled``, but provides 64 kernel
   evaluations.
++ ``gpu``: The same as ``fast`` but on GPU. The parallel implementation is the same
+  function than the non parallel.
 
 Example:
 

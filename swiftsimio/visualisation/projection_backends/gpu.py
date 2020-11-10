@@ -1,6 +1,7 @@
 from numba import cuda
 from math import sqrt, ceil
 from numpy import float64, float32, int32, ndarray
+from swiftsimio.optional_packages import CUDA_AVAILABLE
 
 kernel_gamma = float32(1.897367)
 
@@ -211,6 +212,12 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     Explicitly defining the types in this function allows
     a performance improvement.
     """
+    if not CUDA_AVAILABLE:
+        raise Exception(
+            "Unable to load the GPU function. "
+            "Please check your module numba.cuda."
+        )
+
     output = cuda.device_array((res, res), dtype=float32)
     output[:] = 0
 
