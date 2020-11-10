@@ -53,3 +53,5 @@ try:
     CUDA_AVAILABLE = True
 except CudaSupportError:
     CUDA_AVAILABLE = False
+
+print("CUDA found?", CUDA_AVAILABLE)
