@@ -21,11 +21,11 @@ def test_scatter(save=False):
     Tests the scatter functions from all backends.
     """
 
-    for backend in backends.values():
+    for backend in backends.keys():
         if backend == "gpu" and not CUDA_AVAILABLE:
             continue
 
-        image = backend(
+        image = backends[backend](
             np.array([0.0, 1.0, 1.0]),
             np.array([0.0, 0.0, 1.0]),
             np.array([1.0, 1.0, 1.0]),
@@ -235,11 +235,11 @@ def test_render_outside_region():
     m = np.ones_like(h)
     backends["histogram"](x, y, m, h, resolution)
 
-    for _, backend in backends_parallel.items():
+    for backend in backends_parallel.keys():
         if backend == "gpu" and not CUDA_AVAILABLE:
             continue
 
-        backend(x, y, m, h, resolution)
+        backends[backend](x, y, m, h, resolution)
 
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
 

@@ -48,7 +48,9 @@ except (ImportError, ModuleNotFoundError):
 
 
 try:
-    import numba.cuda
+    import numba.cuda.cudadrv.driver as drv
+    d = drv.Driver()
+    d.initialize()
 
     CUDA_AVAILABLE = True
 except CudaSupportError:
