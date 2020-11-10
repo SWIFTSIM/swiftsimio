@@ -59,3 +59,17 @@ backends_parallel = {
     "subsampled_extreme": subsampled_extreme_parallel,
     "reference": reference_parallel,
 }
+
+try:
+    from swiftsimio.visualisation.projection_backends.gpu import scatter as scatter_gpu
+    from swiftsimio.visualisation.projection_backends.gpu import (
+        scatter_parallel as scatter_gpu_parallel,
+    )
+
+    backends["gpu"] = scatter_gpu
+    backends_parallel["gpu"] = scatter_gpu_parallel
+except ImportError:
+    print(
+        "Unable to load the GPU module. Please check the module numba.cuda "
+        "if you wish to use them."
+    )
