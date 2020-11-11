@@ -1,6 +1,16 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.3.0
+-------
+
++ Adds GPU-accelerated projection images (thanks @loikki!).
+
+v 4.2.2
+-------
+
++ Fixes for date reading issues on various machines.
+
 v 4.2.1
 -------
 
