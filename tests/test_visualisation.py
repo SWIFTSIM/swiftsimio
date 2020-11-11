@@ -3,7 +3,7 @@ from swiftsimio.visualisation import scatter, slice, volume_render
 from swiftsimio.visualisation.projection import scatter_parallel, project_gas
 from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
-from swiftsimio.optional_packages import CUDA_AVAILABLE
+from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
 
 from tests.helper import requires
 
@@ -22,16 +22,19 @@ def test_scatter(save=False):
     """
 
     for backend in backends.keys():
-        if backend == "gpu" and not CUDA_AVAILABLE:
-            continue
-
-        image = backends[backend](
-            np.array([0.0, 1.0, 1.0]),
-            np.array([0.0, 0.0, 1.0]),
-            np.array([1.0, 1.0, 1.0]),
-            np.array([0.2, 0.2, 0.2]),
-            256,
-        )
+        try:
+            image = backends[backend](
+                np.array([0.0, 1.0, 1.0]),
+                np.array([0.0, 0.0, 1.0]),
+                np.array([1.0, 1.0, 1.0]),
+                np.array([0.2, 0.2, 0.2]),
+                256,
+            )
+        except CudaSupportError:
+            if CUDA_AVAILABLE:
+                raise ImportError("Optional loading of the CUDA module is broken")
+            else:
+                continue
 
     if save:
         imsave("test_image_creation.png", image)
@@ -236,10 +239,13 @@ def test_render_outside_region():
     backends["histogram"](x, y, m, h, resolution)
 
     for backend in backends_parallel.keys():
-        if backend == "gpu" and not CUDA_AVAILABLE:
-            continue
-
-        backends[backend](x, y, m, h, resolution)
+        try:
+            backends[backend](x, y, m, h, resolution)
+        except CudaSupportError:
+            if CUDA_AVAILABLE:
+                raise ImportError("Optional loading of the CUDA module is broken")
+            else:
+                continue
 
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
 
