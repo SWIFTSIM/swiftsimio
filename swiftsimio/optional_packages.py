@@ -65,33 +65,26 @@ try:
         CUDA_AVAILABLE = True
     # Check for the driver
     except CudaSupportError:
-        # Mock cuda-jit to prevent crashes
-        def cuda_jit(*args, **kwargs):
-            def x(func):
-                return func
-
-            return x
-
-        # For additional CUDA API access
-        cuda = None
         CUDA_AVAILABLE = False
 
-
-# Check if numba is installed
 except (ImportError, ModuleNotFoundError):
-    # As above, mock the cuda_jit function, and also mock
-    # the CudaSupportError so that we can raise it in cases
+    # Mock the CudaSupportError so that we can raise it in cases
     # where we don't have numba installed.
+
+    class CudaSupportError(Exception):
+        def __init__(self, message):
+            self.message = message
+
+    CUDA_AVAILABLE = False
+
+
+if not CUDA_AVAILABLE:
+    # Mock cuda-jit to prevent crashes
     def cuda_jit(*args, **kwargs):
         def x(func):
             return func
 
         return x
 
-    class CudaSupportError(Exception):
-        def __init__(self, message):
-            self.message = message
-
     # For additional CUDA API access
     cuda = None
-    CUDA_AVAILABLE = False
