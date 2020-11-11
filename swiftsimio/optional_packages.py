@@ -7,8 +7,6 @@ This includes:
 + scipy.spatial: KDTrees
 + sphviewer: visualisation
 """
-from numba.cuda.cudadrv.error import CudaSupportError
-
 try:
     from tqdm import tqdm
 
@@ -48,11 +46,19 @@ except (ImportError, ModuleNotFoundError):
 
 
 try:
-    import numba.cuda.cudadrv.driver as drv
+    from numba.cuda.cudadrv.error import CudaSupportError
 
-    d = drv.Driver()
-    d.initialize()
+    try:
+        import numba.cuda.cudadrv.driver as drv
 
-    CUDA_AVAILABLE = True
-except CudaSupportError:
+        d = drv.Driver()
+        d.initialize()
+
+        CUDA_AVAILABLE = True
+    # Check for the driver
+    except CudaSupportError:
+        CUDA_AVAILABLE = False
+
+# Check if numba is installed
+except (ImportError, ModuleNotFoundError):
     CUDA_AVAILABLE = False
