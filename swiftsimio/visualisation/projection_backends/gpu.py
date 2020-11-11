@@ -1,12 +1,16 @@
-from numba import cuda
 from math import sqrt, ceil
 from numpy import float64, float32, int32, ndarray
-from swiftsimio.optional_packages import CUDA_AVAILABLE
+from swiftsimio.optional_packages import (
+    CUDA_AVAILABLE,
+    cuda_jit,
+    CudaSupportError,
+    cuda,
+)
 
 kernel_gamma = float32(1.897367)
 
 
-@cuda.jit("float32(float32, float32)", device=True)
+@cuda_jit("float32(float32, float32)", device=True)
 def kernel(r: float32, H: float32):
     """
     Single precision kernel implementation for swiftsimio.
@@ -28,15 +32,16 @@ def kernel(r: float32, H: float32):
     float32
         Contribution to the density by the particle
 
-    See Also
-    --------
-
-    kernel_double_precision
-
     References
     ----------
 
     .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
+
+    Notes
+    -----
+
+    This is the cuda-compiled version of the kernel, designed for use
+    within the gpu backend. It has no double precision cousin.
     """
     kernel_constant = float32(2.22817109)
 
@@ -57,7 +62,7 @@ def kernel(r: float32, H: float32):
     return kernel
 
 
-@cuda.jit
+@cuda_jit
 def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
     """
     Creates a weighted scatter plot
@@ -88,7 +93,11 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
     -----
 
     Explicitly defining the types in this function allows
-    for a performance improvement.
+    for a performance improvement. This is the cuda version,
+    and as such can only be ran on systems with a supported
+    GPU. Do not call this where cuda is not available (checks
+    can be performed using
+    ``swiftsimio.optional_packages.CUDA_AVAILABLE``)
     """
     # Output array for our image
     res = img.shape[0]
@@ -212,9 +221,10 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     Explicitly defining the types in this function allows
     a performance improvement.
     """
-    if not CUDA_AVAILABLE:
-        raise Exception(
-            "Unable to load the GPU function. " "Please check your module numba.cuda."
+    if not CUDA_AVAILABLE or cuda is None:
+        raise CudaSupportError(
+            "Unable to load the CUDA extension to numba. This function "
+            "is only available on systems with supported GPUs."
         )
 
     output = cuda.device_array((res, res), dtype=float32)
