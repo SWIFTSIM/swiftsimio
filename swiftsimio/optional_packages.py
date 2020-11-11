@@ -6,7 +6,10 @@ This includes:
 + tqdm: progress bars
 + scipy.spatial: KDTrees
 + sphviewer: visualisation
++ numba/cuda: visualisation
 """
+
+# TQDM
 try:
     from tqdm import tqdm
 
@@ -27,6 +30,7 @@ except (ImportError, ModuleNotFoundError):
     TREE_AVAILABLE = False
 
 
+# Py-sphviewer
 try:
     import sphviewer as viewer
 
@@ -36,6 +40,7 @@ except (ImportError, ModuleNotFoundError):
     SPHVIEWER_AVAILABLE = False
 
 
+# Astropy
 try:
     import astropy
 
@@ -45,11 +50,14 @@ except (ImportError, ModuleNotFoundError):
     ASTROPY_AVAILABLE = False
 
 
+# Numba/CUDA
 try:
     from numba.cuda.cudadrv.error import CudaSupportError
 
     try:
         import numba.cuda.cudadrv.driver as drv
+        from numba import cuda
+        from numba.cuda import jit as cuda_jit
 
         d = drv.Driver()
         d.initialize()
@@ -57,8 +65,33 @@ try:
         CUDA_AVAILABLE = True
     # Check for the driver
     except CudaSupportError:
+        # Mock cuda-jit to prevent crashes
+        def cuda_jit(*args, **kwargs):
+            def x(func):
+                return func
+
+            return x
+
+        # For additional CUDA API access
+        cuda = None
         CUDA_AVAILABLE = False
+
 
 # Check if numba is installed
 except (ImportError, ModuleNotFoundError):
+    # As above, mock the cuda_jit function, and also mock
+    # the CudaSupportError so that we can raise it in cases
+    # where we don't have numba installed.
+    def cuda_jit(*args, **kwargs):
+        def x(func):
+            return func
+
+        return x
+
+    class CudaSupportError(Exception):
+        def __init__(self, message):
+            self.message = message
+
+    # For additional CUDA API access
+    cuda = None
     CUDA_AVAILABLE = False
