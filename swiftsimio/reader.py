@@ -27,6 +27,40 @@ from datetime import datetime
 from typing import Union, Callable, List
 
 
+class MassTable(object):
+    """
+    Extracts a mass table to local variables based on the
+    particle type names.
+    """
+
+    __slots__ = list(metadata.particle_types.particle_name_underscores.values())
+
+    def __init__(self, base_mass_table: np.array, mass_units: unyt.unyt_quantity):
+        """
+        Parameters
+        ----------
+
+        base_mass_table : np.array
+            Mass table of the same length as the number of particle types.
+
+        mass_units : unyt_quantity
+            Base mass units for the simulation.
+        """
+
+        for index, name in metadata.particle_types.particle_name_underscores.items():
+            setattr(
+                self, name, unyt.unyt_quantity(base_mass_table[index], units=mass_units)
+            )
+
+        return
+
+    def __str__(self):
+        return f"Mass table for {' '.join(metadata.particle_types.particle_name_underscores.values())}"
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class SWIFTUnits(object):
     """
     Generates a unyt system that can then be used with the SWIFT data.
@@ -209,6 +243,28 @@ class SWIFTMetadata(object):
             except KeyError:
                 # Must not be present, just skip it
                 continue
+
+        # Now unpack the 'mass table' type items:
+        for field, name in metadata.metadata_fields.header_unpack_mass_tables.items():
+            try:
+                setattr(
+                    self,
+                    name,
+                    MassTable(
+                        base_mass_table=self.header[field], mass_units=self.units.mass,
+                    ),
+                )
+            except KeyError:
+                setattr(
+                    self,
+                    name,
+                    MassTable(
+                        base_mass_table=np.zeros(
+                            len(metadata.particle_types.particle_name_underscores)
+                        ),
+                        mass_units=self.units.mass,
+                    ),
+                )
 
         # These must be unpacked as 'real' strings (i.e. converted to utf-8)
 

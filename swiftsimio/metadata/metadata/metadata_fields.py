@@ -23,7 +23,13 @@ metadata_fields_to_read = {
 header_unpack_arrays = {
     "BoxSize": "boxsize",
     "NumPart_ThisFile": "num_part",
+}
+
+# Some of these 'arrays' are really types of mass table, so unpack
+# those differently:
+header_unpack_mass_tables = {
     "MassTable": "mass_table",
+    "InitialMassTable": "initial_mass_table",
 }
 
 
@@ -37,7 +43,7 @@ def generate_units_header_unpack_arrays(m, l, t, I, T) -> dict:
     """
 
     # Do not include those items that do not have units.
-    units = {"boxsize": l, "mass_table": m}
+    units = {"boxsize": l}
 
     return units
 
