@@ -33,8 +33,6 @@ class MassTable(object):
     particle type names.
     """
 
-    __slots__ = list(metadata.particle_types.particle_name_underscores.values())
-
     def __init__(self, base_mass_table: np.array, mass_units: unyt.unyt_quantity):
         """
         Parameters
