@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.4.0
+-------
+
++ Fixed bug where cosmological conversions (to/from physical)
+  were being applied in the wrong direction. Thanks @wmfw23 for
+  reporting this.
+
 v 4.3.1
 -------
 
