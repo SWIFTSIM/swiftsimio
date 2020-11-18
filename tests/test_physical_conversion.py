@@ -12,7 +12,5 @@ def test_convert(filename):
     coords = data.gas.coordinates
     coords_physical = coords.to_physical()
 
-    assert array_equal(
-        coords / data.gas.coordinates.cosmo_factor.a_factor, coords_physical
-    )
+    assert array_equal(coords * data.metadata.a, coords_physical)
     return

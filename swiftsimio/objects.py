@@ -276,6 +276,8 @@ class cosmo_array(unyt_array):
             flag to indicate whether using comoving coordinates
         """
 
+        cosmo_factor: cosmo_factor
+
         try:
             obj = super().__new__(
                 self,
@@ -346,7 +348,7 @@ class cosmo_array(unyt_array):
             # Best to just modify values as otherwise we're just going to have
             # to do a convert_to_units anyway.
             values = self.d
-            values *= self.cosmo_factor.a_factor
+            values /= self.cosmo_factor.a_factor
             self.comoving = True
 
     def convert_to_physical(self) -> None:
@@ -357,7 +359,7 @@ class cosmo_array(unyt_array):
             # Best to just modify values as otherwise we're just going to have
             # to do a convert_to_units anyway.
             values = self.d
-            values /= self.cosmo_factor.a_factor
+            values *= self.cosmo_factor.a_factor
             self.comoving = False
         else:
             return
