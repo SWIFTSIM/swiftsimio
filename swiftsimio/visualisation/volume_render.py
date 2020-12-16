@@ -105,15 +105,26 @@ def scatter(
         # SWIFT stores hsml as the FWHM.
         kernel_width = kernel_gamma * hsml
 
+        # The number of cells that this kernel spans
+        cells_spanned = int32(1.0 + kernel_width * float_res)
+
+        if (
+            particle_cell_x + cells_spanned < 0
+            or particle_cell_x - cells_spanned > maximal_array_index
+            or particle_cell_y + cells_spanned < 0
+            or particle_cell_y - cells_spanned > maximal_array_index
+            or particle_cell_z + cells_spanned < 0
+            or particle_cell_z - cells_spanned > maximal_array_index
+        ):
+            # Can happily skip this particle
+            continue
+
         if kernel_width < drop_to_single_cell:
             # Easygame, gg
             image[particle_cell_x, particle_cell_y, particle_cell_z] += (
                 mass * inverse_cell_volume
             )
         else:
-            # The number of cells that this kernel spans
-            cells_spanned = int32(1.0 + kernel_width * float_res)
-
             # Now we loop over the square of cells that the kernel lives in
             for cell_x in range(
                 # Ensure that the lowest x value is 0, otherwise we'll segfault
