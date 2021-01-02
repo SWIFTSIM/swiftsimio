@@ -81,8 +81,8 @@ def apply_color_map(first_values, second_values, map_grid):
         (number_of_values, 4)
     )
 
-    norm_x = np.float32(len(map_grid[0]) - 1)
-    norm_y = np.float32(len(map_grid) - 1)
+    norm_x = np.float32(len(map_grid) - 1)
+    norm_y = np.float32(len(map_grid[0]) - 1)
 
     for index in range(number_of_values):
         horizontal = norm_x * min(max(first_values[index], 0.0), 1.0)
