@@ -100,9 +100,15 @@ def apply_color_map(first_values, second_values, map_grid):
 class Cmap2D(object):
     """
     A generic two dimensional implementation of a colour map.
+    
+    Developer use only.
     """
 
     _color_map_grid: Optional[np.array] = None
+
+    # Properties for color maps that generate
+    colors: List[List[float]] = None
+    coordinates: List[List[float]] = None
 
     def __init__(
         self, name: Optional[str] = None, description: Optional[str] = None,
@@ -155,7 +161,7 @@ class Cmap2D(object):
         ax.set_xlabel("Horizontal Value (first index)")
         ax.set_ylabel("Vertical Value (second index)")
 
-        if include_points:
+        if include_points and self.colors is not None:
             for color, coordinate in zip(self.colors, self.coordinates):
                 rgba_color = ensure_rgba(color)
 
@@ -207,8 +213,6 @@ class LinearSegmentedCmap2D(Cmap2D):
     colour map.
     """
 
-    _color_map_grid: Optional[np.array] = None
-
     def __init__(
         self,
         colors: List[List[float]],
@@ -216,6 +220,32 @@ class LinearSegmentedCmap2D(Cmap2D):
         name: Optional[str] = None,
         description: Optional[str] = None,
     ):
+        """
+        Parameters
+        ----------
+        
+        colors: List[List[float]]
+            Individual colors (at ``coordinates`` below) that make up
+            the color map.
+        
+        coordinates: List[List[float]]
+            2D coordinates in the plane to place the above ``colors``
+            at.
+            
+        name: str, optional
+            Name of this color map (metadata)
+        
+        description: str, optional
+            Optional metadata description of this colour map.
+            
+        
+        See Also
+        --------
+        
+        ``LinearSegmentedCmap2DHSV``, a cousin of this class that
+        combines colours using the HSV space rather than RGB used
+        here.
+        """
         super().__init__(name, description)
 
         self.colors = colors
@@ -261,9 +291,32 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
     """
     A two dimensional implementation of the linear segmented
     colour map, using the HSV space to combine the colours.
+    
+    Parameters
+    ----------
+    
+    colors: List[List[float]]
+        Individual colors (at ``coordinates`` below) that make up
+        the color map.
+    
+    coordinates: List[List[float]]
+        2D coordinates in the plane to place the above ``colors``
+        at.
+        
+    name: str, optional
+        Name of this color map (metadata)
+    
+    description: str, optional
+        Optional metadata description of this colour map.
+        
+    
+    See Also
+    --------
+    
+    ``LinearSegmentedCmap2D``, a cousin of this class that
+    combines colours using the RGB space rather than HSV used
+    here.
     """
-
-    _color_map_grid: Optional[np.array] = None
 
     def __init__(
         self,
@@ -326,6 +379,58 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
         self._color_map_grid[:, :, -1] = a_grid
 
         return self._color_map_grid
+
+
+class ImageCmap2D(Cmap2D):
+    """
+    Creates a 2D color map from an image loaded from disk.
+    """
+
+    def __init__(
+        self,
+        filename: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ):
+        """
+        Parameters
+        ----------
+        
+        file_path: str
+            Path to the image to use as the color map.
+            
+        name: str, optional
+            Name of this color map (metadata)
+            
+        description: str, optional
+            Optional metadata description of this colour map.
+        """
+
+        super().__init__(name=name, description=description)
+
+        self.filename = filename
+
+        return
+
+    def generate_color_map_grid(self):
+        """
+        Loads the image from file and stores it as the internal
+        array.
+        """
+
+        try:
+            from PIL import Image
+        except:
+            raise ImportError(
+                "Unable to import pillow, which must be installed "
+                "to use color maps generated from images."
+            )
+
+        self._color_map_grid = (
+            np.array(Image.open(self.filename)).astype(np.float32) / 255.0
+        )
+
+        return
 
 
 # Define built in color maps.
