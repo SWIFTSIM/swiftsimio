@@ -5,6 +5,7 @@ Two-dimensional colour map support, along with example colour maps.
 from typing import List, Optional, Iterable
 
 import numpy as np
+from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 
 from swiftsimio.accelerated import jit
 
@@ -80,9 +81,12 @@ def apply_color_map(first_values, second_values, map_grid):
         (number_of_values, 4)
     )
 
+    norm_x = np.float32(len(map_grid[0]) - 1)
+    norm_y = np.float32(len(map_grid) - 1)
+
     for index in range(number_of_values):
-        horizontal = COLOR_MAP_GRID_SIZE * min(max(first_values[index], 0.0), 1.0)
-        vertical = COLOR_MAP_GRID_SIZE * min(max(second_values[index], 0.0), 1.0)
+        horizontal = norm_x * min(max(first_values[index], 0.0), 1.0)
+        vertical = norm_y * min(max(second_values[index], 0.0), 1.0)
 
         horizontal_base = np.int32(horizontal)
         vertical_base = np.int32(vertical)
@@ -93,23 +97,30 @@ def apply_color_map(first_values, second_values, map_grid):
     return output_values
 
 
-class LinearSegmentedCmap2D(object):
+class Cmap2D(object):
     """
-    A two dimensional implementation of the linear segmented
-    colour map.
+    A generic two dimensional implementation of a colour map.
     """
 
     _color_map_grid: Optional[np.array] = None
 
     def __init__(
-        self,
-        colors: List[List[float]],
-        coordinates: List[List[float]],
-        name: Optional[str] = None,
+        self, name: Optional[str] = None, description: Optional[str] = None,
     ):
-        self.colors = colors
-        self.coordinates = coordinates
         self.name = name
+        self.description = description
+
+        return
+
+    def generate_color_map_grid(self):
+        """
+        Generates the colour map grid and stores it in
+        ``_color_map_grid``. Imeplementation dependent.
+        """
+
+        self._color_map_grid = np.empty(
+            (COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE), dtype=np.float32
+        )
 
         return
 
@@ -121,33 +132,7 @@ class LinearSegmentedCmap2D(object):
 
         if self._color_map_grid is None:
             # Better make it!
-            self._color_map_grid = np.zeros(
-                COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 4, dtype=np.float32
-            ).reshape((COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE, 4))
-
-            # Set initial alpha values to 1.0
-            self._color_map_grid[:, :, 3] = 1.0
-
-            x, y = np.meshgrid(*[np.linspace(0, 1, COLOR_MAP_GRID_SIZE)] * 2)
-
-            # Need to loop through each colour, giving the grid each component
-            # in turn.
-            for color, coordinate in zip(self.colors, self.coordinates):
-                array_color = ensure_rgba(color)
-
-                dx = x - coordinate[0]
-                dy = y - coordinate[1]
-
-                r = np.sqrt(dx * dx + dy * dy)
-
-                weights = np.maximum(1.0 - r, 0.0)
-
-                for x_ind in range(COLOR_MAP_GRID_SIZE):
-                    for y_ind in range(COLOR_MAP_GRID_SIZE):
-                        # Screen blend mode
-                        self._color_map_grid[x_ind, y_ind, :] = 1.0 - (
-                            1.0 - self._color_map_grid[x_ind, y_ind, :]
-                        ) * (1.0 - weights[x_ind, y_ind] * array_color)
+            self.generate_color_map_grid()
 
         return self._color_map_grid
 
@@ -203,7 +188,9 @@ class LinearSegmentedCmap2D(object):
             horizontal_values = np.array(horizontal_values)
 
         if isinstance(vertical_values, list) or isinstance(vertical_values, tuple):
-            vertical_values = np.array(vertical_values)
+            vertical_values = np.ndarray(vertical_values)
+
+        output_shape = horizontal_values.shape + (4,)
 
         values = apply_color_map(
             first_values=horizontal_values.flatten(),
@@ -211,6 +198,140 @@ class LinearSegmentedCmap2D(object):
             map_grid=self.color_map_grid,
         )
 
-        values.reshape(horizontal_values.shape + (4,))
+        return values.reshape(output_shape)
 
-        return values
+
+class LinearSegmentedCmap2D(Cmap2D):
+    """
+    A two dimensional implementation of the linear segmented
+    colour map.
+    """
+
+    _color_map_grid: Optional[np.array] = None
+
+    def __init__(
+        self,
+        colors: List[List[float]],
+        coordinates: List[List[float]],
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ):
+        super().__init__(name, description)
+
+        self.colors = colors
+        self.coordinates = coordinates
+
+        return
+
+    def generate_color_map_grid(self):
+        """
+        Generates the color map grid.
+        """
+        rgba_grid = np.zeros(
+            COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 4, dtype=np.float32
+        ).reshape((COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE, 4))
+
+        values = np.linspace(0, 1, COLOR_MAP_GRID_SIZE)
+
+        rgba_values = [ensure_rgba(color) for color in self.colors]
+
+        for x_ind in range(COLOR_MAP_GRID_SIZE):
+            for y_ind in range(COLOR_MAP_GRID_SIZE):
+                weights = 0.0
+
+                for rgba, coordinate in zip(rgba_values, self.coordinates):
+                    dx = values[y_ind] - coordinate[0]
+                    dy = values[x_ind] - coordinate[1]
+
+                    r = np.sqrt(dx * dx + dy * dy)
+
+                    weight = np.maximum(1.0 - r, 0.0)
+
+                    rgba_grid[x_ind, y_ind] += rgba * weight
+                    weights += weight
+
+                rgba_grid[x_ind, y_ind] /= weights * 1.0001
+
+        self._color_map_grid = rgba_grid
+
+        return self._color_map_grid
+
+
+class LinearSegmentedCmap2DHSV(Cmap2D):
+    """
+    A two dimensional implementation of the linear segmented
+    colour map, using the HSV space to combine the colours.
+    """
+
+    _color_map_grid: Optional[np.array] = None
+
+    def __init__(
+        self,
+        colors: List[List[float]],
+        coordinates: List[List[float]],
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ):
+        super().__init__(name, description)
+
+        self.colors = colors
+        self.coordinates = coordinates
+
+        return
+
+    def generate_color_map_grid(self):
+        """
+        Generates the color map grid.
+        """
+        hsv_grid = np.zeros(
+            COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 3, dtype=np.float32
+        ).reshape((COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE, 3))
+
+        a_grid = np.zeros(
+            COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE, dtype=np.float32
+        ).reshape((COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE))
+
+        values = np.linspace(0, 1, COLOR_MAP_GRID_SIZE)
+
+        hsv_values = [
+            np.array(rgb_to_hsv(ensure_rgba(color)[:-1])) for color in self.colors
+        ]
+        a_values = [ensure_rgba(color)[-1] for color in self.colors]
+
+        for x_ind in range(COLOR_MAP_GRID_SIZE):
+            for y_ind in range(COLOR_MAP_GRID_SIZE):
+                weights = 0.0
+
+                for hsv, a, coordinate in zip(hsv_values, a_values, self.coordinates):
+                    dx = values[y_ind] - coordinate[0]
+                    dy = values[x_ind] - coordinate[1]
+
+                    r = np.sqrt(dx * dx + dy * dy)
+
+                    weight = np.maximum(1.0 - r, 0.0)
+
+                    hsv_grid[x_ind, y_ind] += hsv * weight
+                    a_grid[x_ind, y_ind] += a * weight
+
+                    weights += weight
+
+                hsv_grid[x_ind, y_ind] /= weights * 1.0001
+                a_grid[x_ind, y_ind] /= weights * 1.0001
+
+        self._color_map_grid = np.empty(
+            COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 4, dtype=np.float32
+        ).reshape((COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE, 4))
+
+        self._color_map_grid[:, :, :-1] = hsv_to_rgb(hsv_grid)
+        self._color_map_grid[:, :, -1] = a_grid
+
+        return self._color_map_grid
+
+
+# Define built in color maps.
+
+bower = LinearSegmentedCmap2D(
+    colors=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0]],
+    coordinates=[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+    name="bower",
+)
