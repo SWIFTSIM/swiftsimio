@@ -31,5 +31,6 @@ Finally, we also describe here the integration with :mod:`py-sphviewer`.
    projection
    slice
    volume_render
+   tools
    py-sphviewer
 

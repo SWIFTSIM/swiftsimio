@@ -1,6 +1,11 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.5.0
+-------
+
++ Added new 2D color map functionality!
+
 v 4.4.0
 -------
 
