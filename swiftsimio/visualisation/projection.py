@@ -82,8 +82,8 @@ def project_pixel_grid(
     region: unyt_array, optional
         Region, determines where the image will be created (this corresponds
         to the left and right-hand edges, and top and bottom edges) if it is
-        not None. It should have a length of four, and take the form:
-        ``[x_min, x_max, y_min, y_max]``
+        not None. It should have a length of four or six, and take the form:
+        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``
 
     mask: np.array, optional
         Allows only a sub-set of the particles in data to be visualised. Useful
@@ -149,11 +149,20 @@ def project_pixel_grid(
     if mask is None:
         mask = s_[:]
 
-    box_x, box_y, _ = boxsize
+    box_x, box_y, box_z = boxsize
 
     # Set the limits of the image.
+    z_slice_included = False
+
     if region is not None:
-        x_min, x_max, y_min, y_max = region
+        x_min, x_max, y_min, y_max = region[:4]
+
+        if len(region) == 6:
+            z_slice_included = True
+            z_min, z_max = region[4:]
+        else:
+            z_min = unyt_quantity(0.0, units=box_z.units)
+            z_max = box_z
     else:
         x_min = unyt_quantity(0.0, units=box_x.units)
         x_max = box_x
@@ -184,19 +193,22 @@ def project_pixel_grid(
 
     if rotation_center is not None:
         # Rotate co-ordinates as required
-        x, y, _ = matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+        x, y, z = matmul(rotation_matrix, (data.coordinates - rotation_center).T)
 
         x += rotation_center[0]
         y += rotation_center[1]
+        z += rotation_center[2]
 
     else:
-        x, y, _ = data.coordinates.T
+        x, y, z = data.coordinates.T
+
+    combined_mask = np.logical_and(mask, np.logical_and([z <= z_max, z >= z_min]))
 
     common_arguments = dict(
-        x=(x[mask] - x_min) / x_range,
-        y=(y[mask] - y_min) / y_range,
-        m=m[mask],
-        h=hsml[mask] / x_range,
+        x=(x[combined_mask] - x_min) / x_range,
+        y=(y[combined_mask] - y_min) / y_range,
+        m=m[combined_mask],
+        h=hsml[combined_mask] / x_range,
         res=resolution,
     )
 
@@ -248,8 +260,8 @@ def project_gas_pixel_grid(
     region: unyt_array, optional
         Region, determines where the image will be created (this corresponds
         to the left and right-hand edges, and top and bottom edges) if it is
-        not None. It should have a length of four, and take the form:
-        ``[x_min, x_max, y_min, y_max]``
+        not None. It should have a length of four or six, and take the form:
+        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``
 
     mask: np.array, optional
         Allows only a sub-set of the particles in data to be visualised. Useful
@@ -346,8 +358,8 @@ def project_gas(
     region: unyt_array, optional
         Region, determines where the image will be created (this corresponds
         to the left and right-hand edges, and top and bottom edges) if it is
-        not None. It should have a length of four, and take the form:
-        ``[x_min, x_max, y_min, y_max]``
+        not None. It should have a length of four or six, and take the form:
+        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``
 
     mask: np.array, optional
         Allows only a sub-set of the particles in data to be visualised. Useful
