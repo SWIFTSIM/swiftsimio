@@ -72,7 +72,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     """
     # Output array for our image
     image = zeros((res, res), dtype=float64)
-    maximal_array_index = int32(res)
+    maximal_array_index = int32(res) - 1
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].

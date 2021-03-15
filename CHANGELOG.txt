@@ -1,6 +1,12 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.6.0
+-------
+
++ Added ability to provide additional z arguments in projection visualisation,
+  so that the entire depth of the box is not shown.
+
 v 4.5.0
 -------
 

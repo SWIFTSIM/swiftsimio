@@ -234,6 +234,10 @@ Using this with the provided example data will just show blobs due to its low re
 nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
 galaxies, but that data is too large to provide as an example in this tutorial.
 
+You can also provide an extra two values, the z min and max, as part of the
+``region`` parameter. This may have some slight performance impact, so it is
+generally advised that you do this on sub-loaded volumes only.
+
 
 Other particle types
 --------------------

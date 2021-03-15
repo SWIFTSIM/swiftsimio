@@ -101,7 +101,7 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
     """
     # Output array for our image
     res = img.shape[0]
-    maximal_array_index = int32(res)
+    maximal_array_index = int32(res) - 1
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
