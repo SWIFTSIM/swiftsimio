@@ -16,6 +16,7 @@ from numpy import (
     isclose,
     matmul,
     empty_like,
+    logical_and,
     s_,
 )
 from unyt import unyt_array, unyt_quantity, exceptions
@@ -202,7 +203,12 @@ def project_pixel_grid(
     else:
         x, y, z = data.coordinates.T
 
-    combined_mask = np.logical_and(mask, np.logical_and([z <= z_max, z >= z_min]))
+    if z_slice_included:
+        combined_mask = logical_and(mask, logical_and(z <= z_max, z >= z_min)).astype(
+            bool
+        )
+    else:
+        combined_mask = mask
 
     common_arguments = dict(
         x=(x[combined_mask] - x_min) / x_range,
