@@ -147,7 +147,7 @@ def read_ranges_from_file_unchunked(
     if not output.dtype.isnative:
         # The data type we have read in is the opposite endian-ness to the
         # machine we're on. Convert it here, to save pain down the line.
-        output.byteswap().newbyteorder()
+        output = output.byteswap(inplace=True).newbyteorder()
 
         if not output.dtype.isnative:
             raise RuntimeError(
@@ -444,7 +444,7 @@ def read_ranges_from_file_chunked(
     if not output.dtype.isnative:
         # The data type we have read in is the opposite endian-ness to the
         # machine we're on. Convert it here, to save pain down the line.
-        output.byteswap().newbyteorder()
+        output = output.byteswap(inplace=True).newbyteorder()
 
         if not output.dtype.isnative:
             raise RuntimeError(
