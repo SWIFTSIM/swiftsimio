@@ -144,6 +144,16 @@ def read_ranges_from_file_unchunked(
 
         already_read += size_of_range
 
+    if not output.dtype.isnative:
+        # The data type we have read in is the opposite endian-ness to the
+        # machine we're on. Convert it here, to save pain down the line.
+        output.byteswap().newbyteorder()
+
+        if not output.dtype.isnative:
+            raise RuntimeError(
+                "Unable to find a native type that is a match to read data."
+            )
+
     return output
 
 
@@ -430,6 +440,16 @@ def read_ranges_from_file_chunked(
         handle.read_direct(output, source_sel=hdf5_read_sel, dest_sel=output_dest_sel)
 
         already_read += size_of_range
+
+    if not output.dtype.isnative:
+        # The data type we have read in is the opposite endian-ness to the
+        # machine we're on. Convert it here, to save pain down the line.
+        output.byteswap().newbyteorder()
+
+        if not output.dtype.isnative:
+            raise RuntimeError(
+                "Unable to find a native type that is a match to read data."
+            )
 
     if handle.chunks is not None:
         return extract_ranges_from_chunks(output, chunk_ranges, ranges)
