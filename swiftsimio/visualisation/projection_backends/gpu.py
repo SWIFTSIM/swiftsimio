@@ -135,9 +135,9 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
 
         if (
             particle_cell_x + cells_spanned < 0
-            or particle_cell_x - cells_spanned > maximal_array_index
+            or particle_cell_x - cells_spanned >= maximal_array_index
             or particle_cell_y + cells_spanned < 0
-            or particle_cell_y - cells_spanned > maximal_array_index
+            or particle_cell_y - cells_spanned >= maximal_array_index
         ):
             # Can happily skip this particle
             return
