@@ -21,7 +21,7 @@ import h5py
 import unyt
 import numpy as np
 import regex as re
-
+import warnings
 
 from datetime import datetime
 
@@ -312,9 +312,10 @@ class SWIFTMetadata(object):
                 y = match.group(2)
 
                 if x == "Grain":
-                    DeprecationWarning(
+                    warnings.warn(
                         "Use of the GrainToElementMapping is deprecated, please use a newer "
-                        "version of SWIFT to run this simulation."
+                        "version of SWIFT to run this simulation.",
+                        DeprecationWarning,
                     )
 
                     x = "Dust"
