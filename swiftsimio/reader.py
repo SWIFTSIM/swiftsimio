@@ -20,7 +20,6 @@ import re
 import h5py
 import unyt
 import numpy as np
-import regex as re
 import warnings
 
 from datetime import datetime
