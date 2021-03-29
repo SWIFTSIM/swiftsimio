@@ -105,19 +105,19 @@ class MappingTable(object):
 
         for x, name_x in enumerate(named_columns_x):
             for y, name_y in enumerate(named_columns_y):
-                setattr(self, f"{name_x}_to_{name_y}", data[x][y])
+                setattr(self, f"{name_x.lower()}_to_{name_y.lower()}", data[x][y])
 
         return
 
     def __str__(self):
         return (
-            f"Mapping table from {self.named_column_name_x} to "
-            f"{self.named_column_name_y}, containing {len(self.data)} "
+            f"Mapping table from {self.named_columns_x_name} to "
+            f"{self.named_columns_y_name}, containing {len(self.data)} "
             f"by {len(self.data[0])} elements."
         )
 
     def __repr__(self):
-        return f"{self.__str__}. Raw data: " "\n" f"{self.data}."
+        return f"{self.__str__()}. Raw data: " "\n" f"{self.data}."
 
 
 class SWIFTUnits(object):
