@@ -1,6 +1,12 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.7.0
+-------
+
++ Added mappings to allow for conversions between internal
+  quantities. First example: `grain_to_element_mapping`.
+
 v 4.6.0
 -------
 
