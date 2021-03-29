@@ -20,6 +20,7 @@ import re
 import h5py
 import unyt
 import numpy as np
+import regex as re
 
 
 from datetime import datetime
@@ -57,6 +58,66 @@ class MassTable(object):
 
     def __repr__(self):
         return self.__str__()
+
+
+class MappingTable(object):
+    """
+    A mapping table from one named column instance to the other.
+    Initially designed for the mapping between dust and elements.
+    """
+
+    def __init__(
+        self,
+        data: np.ndarray,
+        named_columns_x: List[str],
+        named_columns_y: List[str],
+        named_columns_x_name: str,
+        named_columns_y_name: str,
+    ):
+        """
+        Parameters
+        ----------
+
+        data: np.ndarray
+            The data array providing the mapping between the named
+            columns. Should be of size N x M, where N is the number
+            of elements in ``named_columns_x`` and M the number
+            of elements in ``named_columns_y``.
+        
+        named_columns_x: List[str]
+            The names of the columns in the first axis.
+
+        named_columns_y: List[str]
+            The names of the columns in the second axis.
+
+        named_columns_x_name: str
+            The name of the first mapping.
+
+        named_columns_y_name: str
+            The name of the second mapping.
+        """
+
+        self.data = data
+        self.named_columns_x = named_columns_x
+        self.named_columns_y = named_columns_y
+        self.named_columns_x_name = named_columns_x_name
+        self.named_columns_y_name = named_columns_y_name
+
+        for x, name_x in enumerate(named_columns_x):
+            for y, name_y in enumerate(named_columns_y):
+                setattr(self, f"{name_x}_to_{name_y}", data[x][y])
+
+        return
+
+    def __str__(self):
+        return (
+            f"Mapping table from {self.named_column_name_x} to "
+            f"{self.named_column_name_y}, containing {len(self.data)} "
+            f"by {len(self.data[0])} elements."
+        )
+
+    def __repr__(self):
+        return f"{self.__str__}. Raw data: " "\n" f"{self.data}."
 
 
 class SWIFTUnits(object):
@@ -167,6 +228,7 @@ class SWIFTMetadata(object):
 
         self.get_metadata()
         self.get_named_column_metadata()
+        self.get_mapping_metadata()
 
         self.postprocess_header()
 
@@ -204,6 +266,77 @@ class SWIFTMetadata(object):
                 }
         except KeyError:
             self.named_columns = {}
+
+        return
+
+    def get_mapping_metadata(self):
+        """
+        Gets the mappings based on the named columns (must have already been read),
+        from the form:
+        
+        SubgridScheme/{X}To{Y}Mapping.
+
+        Includes a hack of `Dust` -> `Grains` that will be deprecated.
+        """
+
+        try:
+            with h5py.File(self.filename, "r") as handle:
+                possible_keys = handle["SubgridScheme"].keys()
+
+                available_keys = [
+                    key for key in possible_keys if key.endswith("Mapping")
+                ]
+                available_data = [
+                    handle[f"SubgridScheme/{key}"][:] for key in available_keys
+                ]
+        except KeyError:
+            available_keys = []
+            available_data = []
+
+        # Keys have form {X}To{Y}Mapping
+
+        # regular expression for camel case to snake case
+        # https://stackoverflow.com/a/1176023
+        def convert(name):
+            return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
+
+        regex = r"([a-zA-Z]*)To([a-zA-Z]*)Mapping"
+        compiled = re.compile(regex)
+
+        for key, data in zip(available_keys, available_data):
+            match = compiled.match(key)
+            snake_case = convert(key)
+
+            if match:
+                x = match.group(1)
+                y = match.group(2)
+
+                if x == "Grain":
+                    DeprecationWarning(
+                        "Use of the GrainToElementMapping is deprecated, please use a newer "
+                        "version of SWIFT to run this simulation."
+                    )
+
+                    x = "Dust"
+
+                named_column_name_x = [
+                    key for key in self.named_columns.keys() if key.startswith(x)
+                ][0]
+                named_column_name_y = [
+                    key for key in self.named_columns.keys() if key.startswith(y)
+                ][0]
+
+                setattr(
+                    self,
+                    snake_case,
+                    MappingTable(
+                        data=data,
+                        named_columns_x=self.named_columns[named_column_name_x],
+                        named_columns_y=self.named_columns[named_column_name_y],
+                        named_columns_x_name=named_column_name_x,
+                        named_columns_y_name=named_column_name_y,
+                    ),
+                )
 
         return
 
