@@ -147,7 +147,7 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
             if (
                 particle_cell_x > 0
                 and particle_cell_x <= maximal_array_index
-                and particle_celly_y > 0
+                and particle_cell_y > 0
                 and particle_cell_y <= maximal_array_index
             ):
                 cuda.atomic.add(
