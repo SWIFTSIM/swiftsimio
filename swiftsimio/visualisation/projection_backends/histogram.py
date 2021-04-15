@@ -44,7 +44,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     -------
 
     np.array[float32, float32, float32]
-        pixel grid of quantity 
+        pixel grid of quantity
 
     See Also
     --------
@@ -53,7 +53,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
 
     Notes
     -----
-    
+
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
@@ -92,9 +92,9 @@ def scatter_parallel(
 ) -> ndarray:
     """
     Parallel implementation of scatter
-    
+
     Creates a weighted scatter plot. Computes contributions from
-    particles with positions (`x`,`y`) with smoothing lengths `h` 
+    particles with positions (`x`,`y`) with smoothing lengths `h`
     weighted by quantities `m`.
     This ignores boundary effects.
 
@@ -120,7 +120,7 @@ def scatter_parallel(
     -------
 
     np.array[float32, float32, float32]
-        pixel grid of quantity 
+        pixel grid of quantity
 
     See Also
     --------
@@ -129,7 +129,7 @@ def scatter_parallel(
 
     Notes
     -----
-    
+
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.

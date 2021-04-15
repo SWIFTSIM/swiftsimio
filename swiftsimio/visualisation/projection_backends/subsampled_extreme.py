@@ -64,7 +64,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     -------
 
     np.array[float32, float32, float32]
-        pixel grid of quantity 
+        pixel grid of quantity
 
     See Also
     --------
@@ -73,7 +73,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
 
     Notes
     -----
-    
+
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
@@ -82,7 +82,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     """
     # Output array for our image
     image = zeros((res, res), dtype=float64)
-    maximal_array_index = int32(res) - 1
+    maximal_array_index = int32(res)
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
@@ -141,9 +141,9 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
 
         if (
             particle_cell_x + cells_spanned < 0
-            or particle_cell_x - cells_spanned >= maximal_array_index
+            or particle_cell_x - cells_spanned > maximal_array_index
             or particle_cell_y + cells_spanned < 0
-            or particle_cell_y - cells_spanned >= maximal_array_index
+            or particle_cell_y - cells_spanned > maximal_array_index
         ):
             # Can happily skip this particle
             continue
@@ -267,9 +267,9 @@ def scatter_parallel(
 ) -> ndarray:
     """
     Parallel implementation of scatter
-    
+
     Creates a weighted scatter plot. Computes contributions from
-    particles with positions (`x`,`y`) with smoothing lengths `h` 
+    particles with positions (`x`,`y`) with smoothing lengths `h`
     weighted by quantities `m`.
     This ignores boundary effects.
 
@@ -295,7 +295,7 @@ def scatter_parallel(
     -------
 
     np.array[float32, float32, float32]
-        pixel grid of quantity 
+        pixel grid of quantity
 
     See Also
     --------
@@ -304,7 +304,7 @@ def scatter_parallel(
 
     Notes
     -----
-    
+
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.

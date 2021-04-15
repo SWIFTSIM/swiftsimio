@@ -101,7 +101,7 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
     """
     # Output array for our image
     res = img.shape[0]
-    maximal_array_index = int32(res) - 1
+    maximal_array_index = int32(res)
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
@@ -135,18 +135,24 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
 
         if (
             particle_cell_x + cells_spanned < 0
-            or particle_cell_x - cells_spanned >= maximal_array_index
+            or particle_cell_x - cells_spanned > maximal_array_index
             or particle_cell_y + cells_spanned < 0
-            or particle_cell_y - cells_spanned >= maximal_array_index
+            or particle_cell_y - cells_spanned > maximal_array_index
         ):
             # Can happily skip this particle
             return
 
         if cells_spanned <= 1:
             # Easygame, gg
-            cuda.atomic.add(
-                img, (particle_cell_x, particle_cell_y), mass * inverse_cell_area
-            )
+            if (
+                particle_cell_x > 0
+                and particle_cell_x <= maximal_array_index
+                and particle_celly_y > 0
+                and particle_cell_y <= maximal_array_index
+            ):
+                cuda.atomic.add(
+                    img, (particle_cell_x, particle_cell_y), mass * inverse_cell_area
+                )
         else:
             # Now we loop over the square of cells that the kernel lives in
             for cell_x in range(
