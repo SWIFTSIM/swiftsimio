@@ -50,27 +50,27 @@ def apply_color_map(first_values, second_values, map_grid):
     to the known fixed grid points. Not to be called on its own,
     as the map itself is provided by the ``LinearSegmentedCmap2D``,
     but this is provided separately so it can be ``numba``-accelerated.
-    
+
     Parameters
     ----------
-    
+
     first_values: iterable[float]
         Array or list to loop over, containing floats ranging from 0.0
         to 1.0. Provides the normalisation for the horizontal
         component. Must be one-dimensional.
-        
+
     second_values: iterable[float]
         Array or list to loop over, containing floats ranging from 0.0
         to 1.0. Provides the normalisation for the vertical
         component. Must be one-dimensional.
-        
+
     map_grid: np.ndarray
         2D numpy array proided by ``LinearSegmentedCmap2D``.
 
-    
+
     Returns
     -------
-    
+
     np.ndarray
         An N by 4 array (where N is the length of ``first_value`` and
         ``second_value``) of RGBA components.
@@ -100,7 +100,7 @@ def apply_color_map(first_values, second_values, map_grid):
 class Cmap2D(object):
     """
     A generic two dimensional implementation of a colour map.
-    
+
     Developer use only.
     """
 
@@ -111,7 +111,9 @@ class Cmap2D(object):
     coordinates: List[List[float]] = None
 
     def __init__(
-        self, name: Optional[str] = None, description: Optional[str] = None,
+        self,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         self.name = name
         self.description = description
@@ -145,13 +147,13 @@ class Cmap2D(object):
     def plot(self, ax, include_points: bool = False):
         """
         Plot the color map on axes.
-        
+
         Parameters
         ----------
-        
+
         ax: matplotlib.Axis
             Axis to be plotted on.
-            
+
         include_points: bool, optional
             If true, plot the individual colours as points that make
             up the color map. Default: False.
@@ -173,19 +175,19 @@ class Cmap2D(object):
         """
         Apply the 2D color map to some data. Both sets of values
         must be of the same shape.
-        
+
         Parameters
         ----------
-        
+
         horizontal_values: iterable
             Values for the first parameter in the color map
-        
+
         vertical_values: iterable
             Values for the second parameter in the color map
-            
+
         Returns
         -------
-        
+
         mapped: np.ndarray
             RGBA array using the internal colour map.
         """
@@ -223,25 +225,25 @@ class LinearSegmentedCmap2D(Cmap2D):
         """
         Parameters
         ----------
-        
+
         colors: List[List[float]]
             Individual colors (at ``coordinates`` below) that make up
             the color map.
-        
+
         coordinates: List[List[float]]
             2D coordinates in the plane to place the above ``colors``
             at.
-            
+
         name: str, optional
             Name of this color map (metadata)
-        
+
         description: str, optional
             Optional metadata description of this colour map.
-            
-        
+
+
         See Also
         --------
-        
+
         ``LinearSegmentedCmap2DHSV``, a cousin of this class that
         combines colours using the HSV space rather than RGB used
         here.
@@ -291,28 +293,28 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
     """
     A two dimensional implementation of the linear segmented
     colour map, using the HSV space to combine the colours.
-    
+
     Parameters
     ----------
-    
+
     colors: List[List[float]]
         Individual colors (at ``coordinates`` below) that make up
         the color map.
-    
+
     coordinates: List[List[float]]
         2D coordinates in the plane to place the above ``colors``
         at.
-        
+
     name: str, optional
         Name of this color map (metadata)
-    
+
     description: str, optional
         Optional metadata description of this colour map.
-        
-    
+
+
     See Also
     --------
-    
+
     ``LinearSegmentedCmap2D``, a cousin of this class that
     combines colours using the RGB space rather than HSV used
     here.
@@ -395,13 +397,13 @@ class ImageCmap2D(Cmap2D):
         """
         Parameters
         ----------
-        
+
         file_path: str
             Path to the image to use as the color map.
-            
+
         name: str, optional
             Name of this color map (metadata)
-            
+
         description: str, optional
             Optional metadata description of this colour map.
         """
