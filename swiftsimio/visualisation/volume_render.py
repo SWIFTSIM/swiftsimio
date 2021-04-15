@@ -61,8 +61,8 @@ def scatter(
     -------
 
     np.array[float32, float32, float32]
-        voxel grid of quantity 
-    
+        voxel grid of quantity
+
     See Also
     --------
 
@@ -79,7 +79,7 @@ def scatter(
     """
     # Output array for our image
     image = zeros((res, res, res), dtype=float32)
-    maximal_array_index = int32(res) - 1
+    maximal_array_index = int32(res)
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
@@ -174,19 +174,19 @@ def scatter_parallel(
 
     Parameters
     ----------
-    x : array of float64 
+    x : array of float64
         array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : array of float64 
+    y : array of float64
         array of y-positions of the particles. Must be bounded by [0, 1].
 
-    z : array of float64 
+    z : array of float64
         array of z-positions of the particles. Must be bounded by [0, 1].
 
-    m : array of float32 
+    m : array of float32
         array of masses (or otherwise weights) of the particles
 
-    h : array of float32 
+    h : array of float32
         array of smoothing lengths of the particles
 
     res : int
@@ -197,8 +197,8 @@ def scatter_parallel(
     -------
 
     ndarray of float32
-        voxel grid of quantity 
-    
+        voxel grid of quantity
+
     See Also
     --------
 
@@ -212,7 +212,7 @@ def scatter_parallel(
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
-    
+
     """
     # Same as scatter, but executes in parallel! This is actually trivial,
     # we just make NUM_THREADS images and add them together at the end.
@@ -266,14 +266,14 @@ def render_gas_voxel_grid(
 
     resolution : int
         Specifies size of return array
-        
+
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles 
-    
+        count number of particles
+
     parallel : bool
-        used to determine if we will create the image in parallel. This 
-        defaults to False, but can speed up the creation of large images 
+        used to determine if we will create the image in parallel. This
+        defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
     rotation_matrix: np.array, optional
@@ -299,7 +299,7 @@ def render_gas_voxel_grid(
     Returns
     -------
     ndarray of float32
-        Creates a `resolution` x `resolution` x `resolution` array and 
+        Creates a `resolution` x `resolution` x `resolution` array and
         returns it, without appropriate units.
 
     See Also
@@ -391,14 +391,14 @@ def render_gas(
 
     resolution : int
         Specifies size of return array
-        
+
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles 
-    
+        count number of particles
+
     parallel : bool
-        used to determine if we will create the image in parallel. This 
-        defaults to False, but can speed up the creation of large images 
+        used to determine if we will create the image in parallel. This
+        defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
     rotation_matrix: np.array, optional

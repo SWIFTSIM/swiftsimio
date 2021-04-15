@@ -36,18 +36,18 @@ class SPHViewerWrapper(object):
         hsml_name: Union[str, None] = "smoothing_lengths",
     ):
         """
-        Initialise the Particles class of py-sphviewer. 
-        
+        Initialise the Particles class of py-sphviewer.
+
         Parameters
         ----------
-        data : 
+        data :
             the particle dataset to render (e.g. data.gas would render the gas)
         hsml_name : str, optional
             the name of the object that contains smoothing lengths. If this
-            is None, attempt to create smoothing lengths that encompass 32 
+            is None, attempt to create smoothing lengths that encompass 32
             nearest neighbours.
         smooth_over : str, optional
-            the name of the object to smooth over. Default to mass if not 
+            the name of the object to smooth over. Default to mass if not
             provided. This can also be an arbritary unyt or cosmo array.
         """
 
@@ -75,16 +75,16 @@ class SPHViewerWrapper(object):
 
     def __set_smoothing_lengths(self, hsml_name: Union[str, None]):
         """
-        Internal function for setting smoothing lengths. 
-        
-        Object containing smoothing length data may be provided. If omitted 
+        Internal function for setting smoothing lengths.
+
+        Object containing smoothing length data may be provided. If omitted
         smoothing lengths are generated using internal tree structure.
 
         Parameters
         ----------
         hsml_name : str, optional
             the name of the object that contains smoothing lengths. If this
-            is None, attempt to create smoothing lengths that encompass 32 
+            is None, attempt to create smoothing lengths that encompass 32
             nearest neighbours.
         """
 
@@ -117,7 +117,7 @@ class SPHViewerWrapper(object):
     def __create_particles_instance(self):
         """
         Internal function for creating the particles instance.
-        
+
         Requires the smoothing lengths to be set first.
         """
 
@@ -172,10 +172,10 @@ class SPHViewerWrapper(object):
         extent: Union[None, List[float]] = None,
     ):
         """
-        Get the py-sphviewer camera object. 
+        Get the py-sphviewer camera object.
 
         See py-sphviewer for detailed documentation
-        
+
         Parameters
         ----------
 
@@ -227,9 +227,9 @@ class SPHViewerWrapper(object):
 
     def get_scene(self, camera: Union["viewer.Camera", None] = None):
         """
-        Get the scene for a given camera. 
-        
-        If there is no camera provided, we use the internal self.camera. 
+        Get the scene for a given camera.
+
+        If there is no camera provided, we use the internal self.camera.
         If this is not set, then we raise an AttributeError.
 
         Parameters
@@ -284,10 +284,10 @@ class SPHViewerWrapper(object):
 
         xsize, ysize : int
             camera size in pixels
-            
+
         r : float, optional
             distance to image centre
-            
+
         Notes
         -----
         All of the quantities are presented on a linear scale.

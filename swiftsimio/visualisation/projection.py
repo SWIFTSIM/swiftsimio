@@ -287,7 +287,7 @@ def project_gas_pixel_grid(
     parallel: bool, optional
         Defaults to ``False``, whether or not to create the image in parallel.
         The parallel version of this function uses significantly more memory.
-    
+
     backend: str, optional
         Backend to use. See documentation for details. Defaults to 'fast'.
 

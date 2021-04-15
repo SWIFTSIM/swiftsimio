@@ -30,7 +30,7 @@ kernel_constant = 21.0 * 0.31830988618379067154 / 2.0
 @jit(nopython=True, fastmath=True)
 def kernel(r: Union[float, float32], H: Union[float, float32]):
     """
-    Kernel implementation for swiftsimio. 
+    Kernel implementation for swiftsimio.
 
     Parameters
     ----------
@@ -105,7 +105,7 @@ def slice_scatter(
     -------
     ndarray of float32
         output array for scatterplot image
-    
+
     See Also
     --------
     scatter : Create 3D scatter plot of SWIFT data
@@ -120,7 +120,7 @@ def slice_scatter(
     """
     # Output array for our image
     image = zeros((res, res), dtype=float32)
-    maximal_array_index = int32(res) - 1
+    maximal_array_index = int32(res)
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
@@ -197,7 +197,7 @@ def slice_scatter_parallel(
 ) -> ndarray:
     """
     Parallel implementation of slice_scatter
-    
+
     Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
 
     Parameters
@@ -221,7 +221,7 @@ def slice_scatter_parallel(
     -------
     ndarray of float32
         output array for scatterplot image
-    
+
     See Also
     --------
     scatter : Create 3D scatter plot of SWIFT data
@@ -288,7 +288,7 @@ def slice_gas_pixel_grid(
 
     resolution : int
         Specifies size of return array
-        
+
     slice : float
         Specifies the location along the z-axis where the slice is to be
         extracted as a fraction of boxsize. If the perspective is rotated this
@@ -296,11 +296,11 @@ def slice_gas_pixel_grid(
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles 
-    
+        count number of particles
+
     parallel : bool
-        used to determine if we will create the image in parallel. This 
-        defaults to False, but can speed up the creation of large images 
+        used to determine if we will create the image in parallel. This
+        defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
     rotation_matrix: np.array, optional
@@ -325,7 +325,7 @@ def slice_gas_pixel_grid(
     Returns
     -------
     ndarray of float32
-        Creates a `resolution` x `resolution` array and returns it, 
+        Creates a `resolution` x `resolution` array and returns it,
         without appropriate units.
 
     See Also
@@ -419,7 +419,7 @@ def slice_gas(
 
     resolution : int
         Specifies size of return array
-        
+
     slice : float
         Specifies the location along the z-axis where the slice is to be
         extracted as a fraction of boxsize. If the perspective is rotated this
@@ -427,16 +427,16 @@ def slice_gas(
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
-        count number of particles 
-    
+        count number of particles
+
     parallel : bool, optional
-        used to determine if we will create the image in parallel. This 
-        defaults to False, but can speed up the creation of large images 
+        used to determine if we will create the image in parallel. This
+        defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
     rotation_matrix: np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
-        ``rotation_center``. In the default case, this provides a slice 
+        ``rotation_center``. In the default case, this provides a slice
         perpendicular to the z axis.
 
     rotation_center: np.array, optional
@@ -461,7 +461,7 @@ def slice_gas(
 
     See Also
     --------
-    slice_gas_pixel grid : Creates a 2D slice of a SWIFT dataset 
+    slice_gas_pixel grid : Creates a 2D slice of a SWIFT dataset
     render_gas : Creates a 3D voxel grid of a SWIFT dataset with appropriate units
 
     Notes
