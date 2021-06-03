@@ -457,7 +457,11 @@ class SWIFTMetadata(object):
         try:
             try:
                 self.snapshot_date = datetime.strptime(
-                    self.header["Snapshot date"].decode("utf-8"), "%H:%M:%S %Y-%m-%d %Z"
+                    self.header.get(
+                        "SnapshotDate", self.header.get(
+                            "Snapshot date", b""
+                        )
+                    ).decode("utf-8"), "%H:%M:%S %Y-%m-%d %Z"
                 )
             except ValueError:
                 # Backwards compatibility; this was used previously due to simplicity
@@ -466,11 +470,19 @@ class SWIFTMetadata(object):
                 # machine (nl_NL), this would _not_ work because %c is different.
                 try:
                     self.snapshot_date = datetime.strptime(
-                        self.header["Snapshot date"].decode("utf-8"), "%c\n"
+                        self.header.get(
+                            "SnapshotDate", self.header.get(
+                                "Snapshot date", b""
+                            )
+                        ).decode("utf-8"), "%c\n"
                     )
                 except ValueError:
                     # Oh dear this has gone _very_wrong. Let's just keep it as a string.
-                    self.snapshot_date = self.header["Snapshot date"].decode("utf-8")
+                    self.snapshot_date = self.header.get(
+                        "SnapshotDate", self.header.get(
+                            "Snapshot date", b""
+                        )
+                    ).decode("utf-8")
         except KeyError:
             # Old file
             pass
