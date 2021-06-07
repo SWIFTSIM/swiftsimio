@@ -76,8 +76,8 @@ def test_subset_writer(filename):
     # Write the subset
     write_subset(outfile, mask)
 
-    # Compare subset of written subset of snapshot against corresponding region in 
-    # full snapshot. This checks that both the metadata and dataset subsets are 
+    # Compare subset of written subset of snapshot against corresponding region in
+    # full snapshot. This checks that both the metadata and dataset subsets are
     # written properly.
     sub_mask = sw.mask(outfile)
     sub_load_region = [[0.375 * b, 0.625 * b] for b in boxsize]

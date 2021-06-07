@@ -562,4 +562,3 @@ def list_of_strings_to_arrays(lines: List[str]) -> Union[np.array]:
             arrays[array][index] = dtype(value)
 
     return arrays
-
