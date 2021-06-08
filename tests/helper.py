@@ -67,6 +67,7 @@ def create_in_memory_hdf5(filename="f1"):
 
     return h5py.File(filename, driver="core", mode="a", backing_store=False)
 
+
 def create_single_particle_dataset(filename: str, output_name: str):
     """
     Create an hdf5 snapshot with two particles at an identical location
@@ -91,7 +92,9 @@ def create_single_particle_dataset(filename: str, output_name: str):
     write_metadata(infile, outfile, list_of_links, data_mask)
 
     # Write a single particle
-    particle_coords = cosmo_array([[1,1,1], [1,1,1]], data_mask.metadata.units.length)
+    particle_coords = cosmo_array(
+        [[1, 1, 1], [1, 1, 1]], data_mask.metadata.units.length
+    )
     particle_masses = cosmo_array([1, 1], data_mask.metadata.units.mass)
     mean_h = mean(infile["/PartType0/SmoothingLengths"])
     particle_h = cosmo_array([mean_h, mean_h], data_mask.metadata.units.length)
@@ -126,4 +129,3 @@ def create_single_particle_dataset(filename: str, output_name: str):
     outfile.close()
 
     return
-

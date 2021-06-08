@@ -101,10 +101,7 @@ def test_list_of_strings_to_arrays():
     Tests list_of_strings_to_arrays.
     """
 
-    lines = [
-        "    0     0.0000    1.0e-3    14.0",
-        "    7     3.0000    1.0e-3    14.0",
-    ]
+    lines = ["    0     0.0000    1.0e-3    14.0", "    7     3.0000    1.0e-3    14.0"]
 
     expected_output = [
         np.array([0, 7], dtype=np.int64),

@@ -110,11 +110,7 @@ class Cmap2D(object):
     colors: List[List[float]] = None
     coordinates: List[List[float]] = None
 
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ):
+    def __init__(self, name: Optional[str] = None, description: Optional[str] = None):
         self.name = name
         self.description = description
 

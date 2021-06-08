@@ -30,9 +30,7 @@ if ASTROPY_AVAILABLE:
             correct parameters.
         """
 
-        H0 = unyt.unyt_quantity(
-            cosmo["H0 [internal units]"][0], units=1.0 / units.time,
-        )
+        H0 = unyt.unyt_quantity(cosmo["H0 [internal units]"][0], units=1.0 / units.time)
 
         Omega_b = cosmo["Omega_b"][0]
         Omega_lambda = cosmo["Omega_lambda"][0]

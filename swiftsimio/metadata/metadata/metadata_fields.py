@@ -20,10 +20,7 @@ metadata_fields_to_read = {
 
 # These will be unpacked to the top-level object. Be careful not to overwrite
 # things in the same namespace!
-header_unpack_arrays = {
-    "BoxSize": "boxsize",
-    "NumPart_ThisFile": "num_part",
-}
+header_unpack_arrays = {"BoxSize": "boxsize", "NumPart_ThisFile": "num_part"}
 
 # Some of these 'arrays' are really types of mass table, so unpack
 # those differently:

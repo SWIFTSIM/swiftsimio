@@ -206,7 +206,7 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
 
 
 def write_metadata(
-    infile: h5py.File, outfile: h5py.File, links_list: List[str], mask: SWIFTMask,
+    infile: h5py.File, outfile: h5py.File, links_list: List[str], mask: SWIFTMask
 ):
     """
     Copy over all the metadata from snapshot to output file

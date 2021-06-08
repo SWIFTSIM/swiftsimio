@@ -94,6 +94,7 @@ def load(filename, mask=None) -> SWIFTDataset:
 
     return SWIFTDataset(filename, mask=mask)
 
+
 def load_statistics(filename) -> SWIFTStatisticsFile:
     """
     Loads a SWIFT statistics file (``SFR.txt``, ``energy.txt``).

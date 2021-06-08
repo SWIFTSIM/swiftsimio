@@ -382,7 +382,7 @@ class SWIFTMetadata(object):
                     self,
                     name,
                     MassTable(
-                        base_mass_table=self.header[field], mass_units=self.units.mass,
+                        base_mass_table=self.header[field], mass_units=self.units.mass
                     ),
                 )
             except KeyError:
@@ -458,10 +458,9 @@ class SWIFTMetadata(object):
             try:
                 self.snapshot_date = datetime.strptime(
                     self.header.get(
-                        "SnapshotDate", self.header.get(
-                            "Snapshot date", b""
-                        )
-                    ).decode("utf-8"), "%H:%M:%S %Y-%m-%d %Z"
+                        "SnapshotDate", self.header.get("Snapshot date", b"")
+                    ).decode("utf-8"),
+                    "%H:%M:%S %Y-%m-%d %Z",
                 )
             except ValueError:
                 # Backwards compatibility; this was used previously due to simplicity
@@ -471,17 +470,14 @@ class SWIFTMetadata(object):
                 try:
                     self.snapshot_date = datetime.strptime(
                         self.header.get(
-                            "SnapshotDate", self.header.get(
-                                "Snapshot date", b""
-                            )
-                        ).decode("utf-8"), "%c\n"
+                            "SnapshotDate", self.header.get("Snapshot date", b"")
+                        ).decode("utf-8"),
+                        "%c\n",
                     )
                 except ValueError:
                     # Oh dear this has gone _very_wrong. Let's just keep it as a string.
                     self.snapshot_date = self.header.get(
-                        "SnapshotDate", self.header.get(
-                            "Snapshot date", b""
-                        )
+                        "SnapshotDate", self.header.get("Snapshot date", b"")
                     ).decode("utf-8")
         except KeyError:
             # Old file
