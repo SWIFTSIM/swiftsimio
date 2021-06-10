@@ -213,9 +213,9 @@ class cosmo_array(unyt_array):
     Cosmology array class. 
     
     This inherits from the unyt.unyt_array, and adds
-    a two variables; cosmo_factor, and comoving. Data is assumed to be
-    comoving when passed to the object but you can override this by setting
-    the latter flag to be False.
+    three variables: compression, cosmo_factor, and comoving.
+    Data is assumed to be comoving when passed to the object but you
+    can override this by setting the latter flag to be False.
 
     Parameters
     ----------
@@ -230,6 +230,13 @@ class cosmo_array(unyt_array):
         if True then the array is in comoving co-ordinates, and if
         False then it is in physical units.
 
+    cosmo_factor : float
+        Object to store conversion data between comoving and physical coordinates
+
+    compression : string
+        String describing any compression that was applied to this array in the
+        hdf5 file.
+
     """
 
     def __new__(
@@ -243,6 +250,7 @@ class cosmo_array(unyt_array):
         name=None,
         cosmo_factor=None,
         comoving=True,
+        compression=None,
     ):
         """
         Essentially a copy of the __new__ constructor.
@@ -274,6 +282,9 @@ class cosmo_array(unyt_array):
             cosmo_factor object to store conversion data between comoving and physical coordinates
         comoving : bool
             flag to indicate whether using comoving coordinates
+        compression : string
+            description of the compression filters that were applied to that array in the hdf5
+            file
         """
 
         cosmo_factor: cosmo_factor
@@ -303,6 +314,7 @@ class cosmo_array(unyt_array):
 
         obj.cosmo_factor = cosmo_factor
         obj.comoving = comoving
+        obj.compression = compression
 
         return obj
 
