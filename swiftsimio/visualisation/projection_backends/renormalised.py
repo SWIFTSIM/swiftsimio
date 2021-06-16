@@ -113,9 +113,9 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
         if cells_spanned <= 1:
             # Easygame, gg
             if (
-                particle_cell_x > 0
+                particle_cell_x >= 0
                 and particle_cell_x <= maximal_array_index
-                and particle_cell_y > 0
+                and particle_cell_y >= 0
                 and particle_cell_y <= maximal_array_index
             ):
                 image[particle_cell_x, particle_cell_y] += mass * inverse_cell_area
