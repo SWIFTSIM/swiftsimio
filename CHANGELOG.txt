@@ -1,6 +1,13 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.8.0
+-------
+
++ Adds neutrinos and changes names to sinks. Allows for variable
+  length mass tables and number tables internally for backwards
+  compatibility with old snapshots.
+
 v 4.7.0
 -------
 
