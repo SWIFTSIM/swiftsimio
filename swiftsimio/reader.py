@@ -46,9 +46,16 @@ class MassTable(object):
         """
 
         for index, name in metadata.particle_types.particle_name_underscores.items():
-            setattr(
-                self, name, unyt.unyt_quantity(base_mass_table[index], units=mass_units)
-            )
+            try:
+                setattr(
+                    self, name, unyt.unyt_quantity(base_mass_table[index], units=mass_units)
+                )
+            except IndexError:
+                # Backwards compatible.
+                setattr(
+                    self, name, None
+                )
+
 
         return
 
@@ -488,7 +495,12 @@ class SWIFTMetadata(object):
             part_number,
             part_name,
         ) in metadata.particle_types.particle_name_underscores.items():
-            setattr(self, f"n_{part_name}", self.num_part[part_number])
+            try:
+                setattr(self, f"n_{part_name}", self.num_part[part_number])
+            except IndexError:
+                # Backwards compatibility; mass/number table can change size.
+                setattr(self, f"n_{part_name}", 0)
+
 
         # Need to unpack the gas gamma for cosmology
         try:

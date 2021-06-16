@@ -20,8 +20,10 @@ dark_matter = {**shared}
 
 boundary = {**shared}
 
-second_boundary = {**shared}
+sinks = {**shared}
 
 stars = {**shared, "smoothing_length": "SmoothingLength"}
 
 black_holes = {**shared}
+
+neutrinos = {**shared}

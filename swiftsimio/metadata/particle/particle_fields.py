@@ -50,7 +50,7 @@ dark_matter = {**shared}
 
 boundary = {**shared}
 
-second_boundary = {**shared}
+sinks = {**shared}
 
 stars = {
     "BirthDensity": "birth_density",
@@ -62,3 +62,5 @@ stars = {
 }
 
 black_holes = {**shared}
+
+neutrinos = {**shared}
