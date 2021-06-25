@@ -1367,6 +1367,7 @@ class ParticleGenerator(object):
         self.densities = unyt.unyt_array(
             rho, self.unit_system["mass"] / self.unit_system["length"] ** self.ndim
         )
+        self.coordinates = unyt.unyt_array(self.x, self.unit_system["length"])
 
         self.stats.trim_self()
 
