@@ -2,10 +2,14 @@
 
 """
 Kernel functions and constants following the Dehnen & Aly 2012 conventions
- 
 """
 
+from swiftsimio.accelerated import jit
+from numpy import empty_like
+from math import pow
 
+
+@jit(nopython=True, fastmath=True)
 def W_cubic_spline(r: float, H: float):
     """
     Cubic spline kernel.
@@ -44,6 +48,7 @@ def W_cubic_spline(r: float, H: float):
     return W
 
 
+@jit(nopython=True, fastmath=True)
 def dWdr_cubic_spline(r: float, H: float):
     """
     Cubic spline kernel derivative.
@@ -159,10 +164,24 @@ def get_kernel_data(kernel: str, ndim: int):
         norm = kernel_norm_3D[kernel]
         kernel_gamma = kernel_gamma_3D[kernel]
 
+    @jit(nopython=True, fastmath=True)
     def W(r, H):
-        return kernel_function(r, H) * norm / H ** ndim
+        out = empty_like(r)
 
+        for index in range(len(out)):
+            this_kernel = kernel_function(r[index], H[index])
+            out[index] = this_kernel * norm / pow(H[index], ndim)
+
+        return out
+
+    @jit(nopython=True, fastmath=True)
     def dWdr(r, H):
-        return kernel_derivative(r, H) * norm / H ** (ndim + 1)
+        out = empty_like(r)
+
+        for index in range(len(out)):
+            this_kernel = kernel_derivative(r[index], H[index])
+            out[index] = this_kernel * norm / pow(H[index], ndim + 1)
+
+        return out
 
     return W, dWdr, kernel_gamma
