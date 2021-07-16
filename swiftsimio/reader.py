@@ -490,7 +490,7 @@ class SWIFTMetadata(object):
             # Old file
             pass
 
-        # get additional RT dataset from the SubgridScheme group
+        # get photon group edges RT dataset from the SubgridScheme group
         with h5py.File(self.filename, "r") as handle:
             try:
                 self.photon_group_edges = (
@@ -498,6 +498,16 @@ class SWIFTMetadata(object):
                 )
             except KeyError:
                 self.photon_group_edges = None
+
+        # get reduced speed of light RT dataset from the SubgridScheme group
+        with h5py.File(self.filename, "r") as handle:
+            try:
+                self.reduced_lightspeed = (
+                    handle["SubgridScheme/ReducedLightspeed"][0] * self.units.length / self.units.time
+                )
+            except KeyError:
+                self.reduced_lightspeed = None
+
 
         # Store these separately as self.n_gas = number of gas particles for example
         for (
