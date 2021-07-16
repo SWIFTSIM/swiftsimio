@@ -48,14 +48,13 @@ class MassTable(object):
         for index, name in metadata.particle_types.particle_name_underscores.items():
             try:
                 setattr(
-                    self, name, unyt.unyt_quantity(base_mass_table[index], units=mass_units)
+                    self,
+                    name,
+                    unyt.unyt_quantity(base_mass_table[index], units=mass_units),
                 )
             except IndexError:
                 # Backwards compatible.
-                setattr(
-                    self, name, None
-                )
-
+                setattr(self, name, None)
 
         return
 
@@ -503,11 +502,12 @@ class SWIFTMetadata(object):
         with h5py.File(self.filename, "r") as handle:
             try:
                 self.reduced_lightspeed = (
-                    handle["SubgridScheme/ReducedLightspeed"][0] * self.units.length / self.units.time
+                    handle["SubgridScheme/ReducedLightspeed"][0]
+                    * self.units.length
+                    / self.units.time
                 )
             except KeyError:
                 self.reduced_lightspeed = None
-
 
         # Store these separately as self.n_gas = number of gas particles for example
         for (
@@ -519,7 +519,6 @@ class SWIFTMetadata(object):
             except IndexError:
                 # Backwards compatibility; mass/number table can change size.
                 setattr(self, f"n_{part_name}", 0)
-
 
         # Need to unpack the gas gamma for cosmology
         try:
