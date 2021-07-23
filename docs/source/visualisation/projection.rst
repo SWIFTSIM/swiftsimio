@@ -262,7 +262,7 @@ mass density map for dark matter. We provide a utility to do this through
    data = load("cosmo_volume_example.hdf5")
 
    # Generate smoothing lengths for the dark matter
-   data.dark_matter.smoothing_lengths = generate_smoothing_lengths(
+   data.dark_matter.smoothing_length = generate_smoothing_lengths(
        data.dark_matter.coordinates,
        data.metadata.boxsize,
        kernel_gamma=1.8,
