@@ -113,7 +113,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
                 max(0, particle_cell_x - cells_spanned),
                 # Ensure that the highest x value lies within the array bounds,
                 # otherwise we'll segfault (oops).
-                min(particle_cell_x + cells_spanned + 1, maximal_array_index),
+                min(particle_cell_x + cells_spanned + 1, maximal_array_index + 1),
             ):
                 # The distance in x to our new favourite cell -- remember that our x, y
                 # are all in a box of [0, 1]; calculate the distance to the cell centre
@@ -121,7 +121,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
                 distance_x_2 = distance_x * distance_x
                 for cell_y in range(
                     max(0, particle_cell_y - cells_spanned),
-                    min(particle_cell_y + cells_spanned + 1, maximal_array_index),
+                    min(particle_cell_y + cells_spanned + 1, maximal_array_index + 1),
                 ):
                     distance_y = (float64(cell_y) + 0.5) * pixel_width - float64(y_pos)
                     distance_y_2 = distance_y * distance_y

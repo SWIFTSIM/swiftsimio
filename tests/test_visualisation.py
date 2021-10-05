@@ -24,10 +24,10 @@ def test_scatter(save=False):
     for backend in backends.keys():
         try:
             image = backends[backend](
-                np.array([0.0, 1.0, 1.0]),
-                np.array([0.0, 0.0, 1.0]),
-                np.array([1.0, 1.0, 1.0]),
-                np.array([0.2, 0.2, 0.2]),
+                np.array([0.0, 1.0, 1.0, -0.000001]),
+                np.array([0.0, 0.0, 1.0, 1.000001]),
+                np.array([1.0, 1.0, 1.0, 1.0]),
+                np.array([0.2, 0.2, 0.2, 0.000002]),
                 256,
             )
         except CudaSupportError:
@@ -96,11 +96,11 @@ def test_scatter_parallel(save=False):
 
 def test_slice(save=False):
     image = slice(
-        np.array([0.0, 1.0, 1.0]),
-        np.array([0.0, 0.0, 1.0]),
-        np.array([0.0, 0.0, 1.0]),
-        np.array([1.0, 1.0, 1.0]),
-        np.array([0.2, 0.2, 0.2]),
+        np.array([0.0, 1.0, 1.0, -0.000001]),
+        np.array([0.0, 0.0, 1.0, 1.000001]),
+        np.array([0.0, 0.0, 1.0, 1.000001]),
+        np.array([1.0, 1.0, 1.0, 1.0]),
+        np.array([0.2, 0.2, 0.2, 0.000002]),
         0.99,
         256,
     )
@@ -159,11 +159,11 @@ def test_slice_parallel(save=False):
 
 def test_volume_render():
     image = volume_render.scatter(
-        np.array([0.0, 1.0, 1.0]),
-        np.array([0.0, 0.0, 1.0]),
-        np.array([0.0, 0.0, 1.0]),
-        np.array([1.0, 1.0, 1.0]),
-        np.array([0.2, 0.2, 0.2]),
+        np.array([0.0, 1.0, 1.0, -0.000001]),
+        np.array([0.0, 0.0, 1.0, 1.000001]),
+        np.array([0.0, 0.0, 1.0, 1.000001]),
+        np.array([1.0, 1.0, 1.0, 1.0]),
+        np.array([0.2, 0.2, 0.2, 0.000002]),
         64,
     )
 
