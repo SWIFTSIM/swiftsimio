@@ -51,6 +51,7 @@ header_unpack_string = {
     "RunName": "run_name",
     "SelectOutput": "select_output",
     "OutputType": "output_type",
+    "System": "system_name",
 }
 
 

@@ -542,13 +542,14 @@ class SWIFTMetadata(object):
 
             metadata.<type>_properties
 
-        This contains five arrays,
+        This contains six arrays,
 
             metadata.<type>_properties.field_names
             metadata.<type>_properties.field_paths
             metadata.<type>_properties.field_units
             metadata.<type>_properties.field_cosmologies
             metadata.<type>_properties.field_descriptions
+            metadata.<type>_properties.field_compressions
 
         As well as some more information about the particle type.
         """
@@ -767,6 +768,8 @@ class SWIFTParticleTypeMetadata(object):
         Loads in the units from each dataset.
     load_field_descriptions(self):
         Loads in descriptions of the fields for each dataset.
+    load_field_compressions(self):
+        Loads in compressions of the fields for each dataset.
     load_cosmology(self):
         Loads in the field cosmologies.
     load_named_columns(self):
@@ -823,6 +826,7 @@ class SWIFTParticleTypeMetadata(object):
         self.load_field_names()
         self.load_field_units()
         self.load_field_descriptions()
+        self.load_field_compressions()
         self.load_cosmology()
         self.load_named_columns()
 
@@ -911,6 +915,25 @@ class SWIFTParticleTypeMetadata(object):
 
         return
 
+    def load_field_compressions(self):
+        """
+        Loads in the string describing the compression filters of the fields for each dataset.
+        """
+
+        def get_comp(dataset):
+            try:
+                comp = dataset.attrs["Lossy compression filter"].decode("utf-8")
+            except KeyError:
+                # Can't load compression string!
+                comp = "No compression info available"
+
+            return comp
+
+        with h5py.File(self.filename, "r") as handle:
+            self.field_compressions = [get_comp(handle[x]) for x in self.field_paths]
+
+        return
+
     def load_cosmology(self):
         """
         Loads in the field cosmologies.
@@ -983,6 +1006,7 @@ def generate_getter(
     mask_size: int,
     cosmo_factor: cosmo_factor,
     description: str,
+    compression: str,
     columns: Union[None, np.lib.index_tricks.IndexExpression] = None,
 ):
     """
@@ -1023,6 +1047,10 @@ def generate_getter(
 
     description: str
         Description (read from HDF5 file) of the data.
+
+    compression: str
+        String describing the lossy compression filters that were applied to the
+        data (read from the HDF5 file).
 
     columns: np.lib.index_tricks.IndexEpression, optional
         Index expression corresponding to which columns to read from the numpy array.
@@ -1094,6 +1122,7 @@ def generate_getter(
                                 unit,
                                 cosmo_factor=cosmo_factor,
                                 name=description,
+                                compression=compression,
                             ),
                         )
                     else:
@@ -1109,6 +1138,7 @@ def generate_getter(
                                 unit,
                                 cosmo_factor=cosmo_factor,
                                 name=description,
+                                compression=compression,
                             ),
                         )
                 except KeyError:
@@ -1334,10 +1364,16 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     field_cosmologies = particle_metadata.field_cosmologies
     field_units = particle_metadata.field_units
     field_descriptions = particle_metadata.field_descriptions
+    field_compressions = particle_metadata.field_compressions
     field_named_columns = particle_metadata.named_columns
 
     dataset_iterator = zip(
-        field_paths, field_names, field_cosmologies, field_units, field_descriptions
+        field_paths,
+        field_names,
+        field_cosmologies,
+        field_units,
+        field_descriptions,
+        field_compressions,
     )
 
     # This 'nice' piece of code ensures that our datasets have different _types_
@@ -1353,6 +1389,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
         field_cosmology,
         field_unit,
         field_description,
+        field_compression,
     ) in dataset_iterator:
         named_columns = field_named_columns[field_path]
 
@@ -1367,6 +1404,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
                     mask_size=mask_size,
                     cosmo_factor=field_cosmology,
                     description=field_description,
+                    compression=field_compression,
                 ),
                 generate_setter(field_name),
                 generate_deleter(field_name),
@@ -1392,6 +1430,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
                         mask_size=mask_size,
                         cosmo_factor=field_cosmology,
                         description=f"{field_description} [Column {index}, {column}]",
+                        compression=field_compression,
                         columns=np.s_[index],
                     ),
                     generate_setter(column),
