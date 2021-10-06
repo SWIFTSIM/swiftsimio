@@ -82,7 +82,7 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     """
     # Output array for our image
     image = zeros((res, res), dtype=float64)
-    maximal_array_index = int32(res)
+    maximal_array_index = int32(res) - 1
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
@@ -195,9 +195,16 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
                             )
                         )
 
-                        image[pixel_x, pixel_y] += (
-                            float_mass * dithered_kernel[x_dither_cell, y_dither_cell]
-                        )
+                        if (
+                            pixel_x >= 0
+                            and pixel_x <= maximal_array_index
+                            and pixel_y >= 0
+                            and pixel_y <= maximal_array_index
+                        ):
+                            image[pixel_x, pixel_y] += (
+                                float_mass
+                                * dithered_kernel[x_dither_cell, y_dither_cell]
+                            )
 
         else:
             # The number of times each pixel is subsampled.
@@ -216,12 +223,12 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
                 max(0, particle_cell_x - cells_spanned),
                 # Ensure that the highest x value lies within the array bounds,
                 # otherwise we'll segfault (oops).
-                min(particle_cell_x + cells_spanned + 1, maximal_array_index),
+                min(particle_cell_x + cells_spanned + 1, maximal_array_index + 1),
             ):
                 float_cell_x = float64(cell_x)
                 for cell_y in range(
                     max(0, particle_cell_y - cells_spanned),
-                    min(particle_cell_y + cells_spanned + 1, maximal_array_index),
+                    min(particle_cell_y + cells_spanned + 1, maximal_array_index + 1),
                 ):
                     float_cell_y = float64(cell_y)
                     # Now we subsample the pixels to get a more accurate determination
