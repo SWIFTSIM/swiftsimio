@@ -1,6 +1,12 @@
 SWIFTsimIO Changelog
 ====================
 
+v 4.8.1
+-------
+
++ Visualisation changes preventing segmentation faults.
++ Added reading of additional compression information.
+
 v 4.8.0
 -------
 
