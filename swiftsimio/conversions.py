@@ -18,10 +18,10 @@ if ASTROPY_AVAILABLE:
 
         cosmo: dict
             Cosmology dictionary ready straight out of the SWIFT snapshot.
-    
+
         units: SWIFTUnits
             The SWIFT Units instance associated with this snapshot.
-            
+
         Returns
         -------
 

@@ -10,7 +10,7 @@ import os
 
 def compare_data_contents(A, B):
     """
-    Compares two SWIFTDatasets 
+    Compares two SWIFTDatasets
 
     Compares all datasets, and one of the metadata fields (this is
     because all metadata fields are copied over simultaneously so if

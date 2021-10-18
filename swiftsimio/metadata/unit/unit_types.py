@@ -36,7 +36,7 @@ def find_nearest_base_unit(unit: unyt.unyt_quantity, dimension: str):
     """
     Uses the possible_base_units dictionary to find the closest
     base unit to your internal units, and returns that. This assumes
-    that internal units and unyt units should line up to within 
+    that internal units and unyt units should line up to within
     1e-5 relative precision (i.e. to 5 significant figures), as
     this is what is usually specified in parameter files.
 

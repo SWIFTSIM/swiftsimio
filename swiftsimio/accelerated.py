@@ -40,14 +40,14 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     Parameters
     ----------
     array : np.array of int
-        sorted list of IDs 
+        sorted list of IDs
 
     Returns
     -------
     np.ndarray
-        list of length two arrays corresponding to contiguous 
+        list of length two arrays corresponding to contiguous
         ranges of IDs (inclusive) in the input array
-    
+
     Examples
     --------
     The array
@@ -102,8 +102,8 @@ def read_ranges_from_file_unchunked(
         Array of ranges (see :func:`ranges_from_array`)
 
     output_shape: Tuple
-        Resultant shape of output. 
-    
+        Resultant shape of output.
+
     output_type: type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
@@ -111,7 +111,7 @@ def read_ranges_from_file_unchunked(
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
 
-    
+
     Returns
     -------
 
@@ -280,7 +280,7 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
     -------
     np.array
         1D array of indices that fall within each range specified in `ranges`
-        
+
     """
     length = np.asarray([bounds[1] - bounds[0] for bounds in ranges]).sum()
 
@@ -303,16 +303,16 @@ def extract_ranges_from_chunks(
 ) -> np.ndarray:
     """
     Returns elements from array that are located within specified ranges
-    
+
     `array` is a portion of the dataset being read consisting of all the chunks
     that contain the ranges specified in `ranges`. The `chunks` array contains
-    the indices of the upper and lower bounds of these chunks. To find the 
+    the indices of the upper and lower bounds of these chunks. To find the
     elements of the dataset that lie within the specified ranges we first create
-    an array indexing which chunk each range belongs to. From this information 
+    an array indexing which chunk each range belongs to. From this information
     we create an array of adjusted ranges that takes into account that the array
-    is not the whole dataset. We then return the values in `array` that are 
+    is not the whole dataset. We then return the values in `array` that are
     within the adjusted ranges.
-    
+
     Parameters
     ----------
     array : np.ndarray
@@ -327,7 +327,7 @@ def extract_ranges_from_chunks(
     -------
     np.ndarray
         subset of `array` whose elements are within each range in `ranges`
-    
+
     """
     # Find out which of the chunks in the chunks array each range in ranges belongs to
     n_ranges = len(ranges)
@@ -386,8 +386,8 @@ def read_ranges_from_file_chunked(
         Array of ranges (see :func:`ranges_from_array`)
 
     output_shape: Tuple
-        Resultant shape of output. 
-    
+        Resultant shape of output.
+
     output_type: type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
@@ -395,7 +395,7 @@ def read_ranges_from_file_chunked(
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
 
-    
+
     Returns
     -------
 
@@ -478,8 +478,8 @@ def read_ranges_from_file(
         Array of ranges (see :func:`ranges_from_array`)
 
     output_shape: Tuple
-        Resultant shape of output. 
-    
+        Resultant shape of output.
+
     output_type: type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
@@ -487,7 +487,7 @@ def read_ranges_from_file(
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
 
-    
+
     Returns
     -------
 
@@ -497,7 +497,7 @@ def read_ranges_from_file(
     See Also
     --------
     read_ranges_from_file_chunked: reads data within specified ranges for chunked hdf5
-    file read_ranges_from_file_unchunked: reads data within specified ranges for 
+    file read_ranges_from_file_unchunked: reads data within specified ranges for
     unchunked hdf5 file
     """
 
@@ -526,8 +526,8 @@ def list_of_strings_to_arrays(lines: List[str]) -> Union[np.array]:
 
     lines: List[str]
         List of strings containing numbers separated by a set of spaces.
-    
-    
+
+
     Returns
     -------
 

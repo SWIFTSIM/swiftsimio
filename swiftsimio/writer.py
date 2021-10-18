@@ -29,13 +29,13 @@ class __SWIFTWriterParticleDataset(object):
 
     generate_empty_properties(self)
         generates the empty properties that will be accessed through the
-        setter and getters. 
-    check_empty(self) 
+        setter and getters.
+    check_empty(self)
         checks if all required datasets are empty.
-    check_consistent(self) 
+    check_consistent(self)
         performs consistency checks on dataset
     generate_smoothing_lengths(self, boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity], dimension: int)
-        automatically generates the smoothing lengths 
+        automatically generates the smoothing lengths
     write_particle_group(self, file_handle: h5py.File, compress: bool)
         writes the particle group's required properties to file.
     """
@@ -47,12 +47,12 @@ class __SWIFTWriterParticleDataset(object):
         Parameters
         ----------
         unit_system : unyt.UnitSystem or str
-            either be a string (e.g. "cgs"), or a UnitSystem as defined by unyt 
-            specifying the units to be used. Users may wish to consider the 
+            either be a string (e.g. "cgs"), or a UnitSystem as defined by unyt
+            specifying the units to be used. Users may wish to consider the
             cosmological unit system provided in swiftsimio.units.cosmo_units.
 
         particle_type : int
-            the particle type of the dataset. Numbering convention is the same as 
+            the particle type of the dataset. Numbering convention is the same as
             SWIFT, with 0 corresponding to gas, etc.  as usual.
         """
 
@@ -71,9 +71,9 @@ class __SWIFTWriterParticleDataset(object):
     def generate_empty_properties(self):
         """
         Generates the empty properties that will be accessed through the
-        setter and getters. 
-        
-        Initially all of the _{name} values are set to None. Note that we 
+        setter and getters.
+
+        Initially all of the _{name} values are set to None. Note that we
         only generate required properties.
         """
 
@@ -344,7 +344,7 @@ def generate_getter(name: str):
 def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, str]):
     """
     Generates a function that sets self._name to the value that is passed to it.
-    
+
     Parameters
     ----------
     name : str
@@ -432,7 +432,7 @@ def generate_dataset(
     unit_system : unyt.UnitSystem or str
         unit system of the dataset
     particle_type : int
-        the particle type of the dataset. Numbering convention is the same as 
+        the particle type of the dataset. Numbering convention is the same as
         SWIFT, with 0 corresponding to gas, etc.  as usual.
     unit_fields_generate_units : callable, optional
         collection of properties in metadata file for which to create setters
@@ -511,7 +511,7 @@ class SWIFTWriterDataset(object):
             and getters
         scale_factor: np.float32
             scale factor associated with dataset. Defaults to 1
-            
+
         """
         self.unit_fields_generate_units = unit_fields_generate_units
         if isinstance(unit_system, str):
@@ -542,7 +542,7 @@ class SWIFTWriterDataset(object):
 
     def create_particle_datasets(self):
         """
-        Creates particle dataset for each particle type in the metadata with 
+        Creates particle dataset for each particle type in the metadata with
         associated units
         """
         for number, name in metadata.particle_types.particle_name_underscores.items():

@@ -3,14 +3,29 @@ Contains global objects, e.g. the superclass version of the
 unyt_array that we use, called cosmo_array.
 """
 
-from unyt import unyt_array
+from unyt import unyt_array, unyt_quantity
 
 from typing import Union
 
 import sympy
+import numpy as np
 
 # The scale factor!
 a = sympy.symbols("a")
+
+
+def _propagate_cosmo_array_attributes(func):
+    def wrapped(self, *args, **kwargs):
+        ret = func(self, *args, **kwargs)
+        if not type(ret) is cosmo_array:
+            return ret
+        if hasattr(self, "cosmo_factor"):
+            ret.cosmo_factor = self.cosmo_factor
+        if hasattr(self, "comoving"):
+            ret.comoving = self.comoving
+        return ret
+
+    return wrapped
 
 
 class InvalidScaleFactor(Exception):
@@ -42,8 +57,8 @@ class cosmo_factor:
     """
     Cosmology factor class for storing and computing conversion between
     comoving and physical coordinates.
-    
-    This takes the expected exponent of the array that can be parsed 
+
+    This takes the expected exponent of the array that can be parsed
     by sympy, and the current value of the cosmological scale factor a.
 
     This should be given as the conversion from comoving to physical, i.e.
@@ -52,7 +67,7 @@ class cosmo_factor:
 
     Examples
     --------
-    
+
     Typically this would make cosmo_factor = a for the conversion between
     comoving positions r' and physical co-ordinates r.
 
@@ -95,7 +110,7 @@ class cosmo_factor:
     def a_factor(self):
         """
         The a-factor for the unit.
-        
+
         e.g. for density this is 1 / a**3.
 
         Returns
@@ -114,7 +129,7 @@ class cosmo_factor:
         Returns
         -------
 
-        float 
+        float
             redshift from the given scale factor
 
         Notes
@@ -210,8 +225,8 @@ class cosmo_factor:
 
 class cosmo_array(unyt_array):
     """
-    Cosmology array class. 
-    
+    Cosmology array class.
+
     This inherits from the unyt.unyt_array, and adds
     three variables: compression, cosmo_factor, and comoving.
     Data is assumed to be comoving when passed to the object but you
@@ -257,26 +272,26 @@ class cosmo_array(unyt_array):
 
         Parameters
         ----------
-        imput_array : iterable
+        input_array : iterable
             A tuple, list, or array to attach units to
         units : str, unyt.unit_symbols or astropy.unit, optional
             The units of the array. Powers must be specified using python syntax (cm**3, not cm^3).
         registry : unyt.unit_registry.UnitRegistry, optional
-            The registry to create units from. If input_units is already associated with a unit 
-            registry and this is specified, this will be used instead of the registry associated 
+            The registry to create units from. If input_units is already associated with a unit
+            registry and this is specified, this will be used instead of the registry associated
             with the unit object.
         dtype : np.dtype or str, optional
-            The dtype of the array data. Defaults to the dtype of the input data, or, if none is 
+            The dtype of the array data. Defaults to the dtype of the input data, or, if none is
             found, uses np.float64
         bypass_validation : bool, optional
-            If True, all input validation is skipped. Using this option may produce corrupted, 
-            invalid units or array data, but can lead to significant speedups in the input 
-            validation logic adds significant overhead. If set, input_units must be a valid 
+            If True, all input validation is skipped. Using this option may produce corrupted,
+            invalid units or array data, but can lead to significant speedups in the input
+            validation logic adds significant overhead. If set, input_units must be a valid
             unit object. Defaults to False.
         input_units : str, optional
             deprecated in favour of units option
         name : str, optional
-            The name of the array. Defaults to None. This attribute does not propagate through 
+            The name of the array. Defaults to None. This attribute does not propagate through
             mathematical operations, but is preserved under indexing and unit conversions.
         cosmo_factor : cosmo_factor
             cosmo_factor object to store conversion data between comoving and physical coordinates
@@ -326,29 +341,37 @@ class cosmo_array(unyt_array):
 
         return super().__str__() + " " + comoving_str
 
-    def in_units(self, units, equivalence=None, **kwargs):
-        """
-        A copy of the ``in_units`` function that makes sure to copy over
-        ``cosmo_factor`` and ``comoving``
+    # Wrap functions that return copies of cosmo_arrays so that our
+    # attributes get passed through:
+    __getitem__ = _propagate_cosmo_array_attributes(unyt_array.__getitem__)
+    astype = _propagate_cosmo_array_attributes(unyt_array.astype)
+    in_units = _propagate_cosmo_array_attributes(unyt_array.in_units)
+    byteswap = _propagate_cosmo_array_attributes(unyt_array.byteswap)
+    compress = _propagate_cosmo_array_attributes(unyt_array.compress)
+    diagonal = _propagate_cosmo_array_attributes(unyt_array.diagonal)
+    flatten = _propagate_cosmo_array_attributes(unyt_array.flatten)
+    newbyteorder = _propagate_cosmo_array_attributes(unyt_array.newbyteorder)
+    ravel = _propagate_cosmo_array_attributes(unyt_array.ravel)
+    repeat = _propagate_cosmo_array_attributes(unyt_array.repeat)
+    reshape = _propagate_cosmo_array_attributes(unyt_array.reshape)
+    swapaxes = _propagate_cosmo_array_attributes(unyt_array.swapaxes)
+    take = _propagate_cosmo_array_attributes(unyt_array.take)
+    transpose = _propagate_cosmo_array_attributes(unyt_array.transpose)
+    view = _propagate_cosmo_array_attributes(unyt_array.view)
 
-        Parameters
-        ----------
-        units : Unit object or string
-            The units you want to get a new quantity in.
-        equivalence : string, optional
-            The equivalence you wish to use. To see which equivalencies
-            are supported for this object, try the ``list_equivalencies``
-            method. Default: None
-        kwargs: optional
-            Any additional keyword arguments are supplied to the
-            equivalence
+    # Also wrap some array "attributes":
 
-        """
-        obj = super().in_units(units, equivalence, **kwargs)
-        obj.cosmo_factor = self.cosmo_factor
-        obj.comoving = self.comoving
+    @property
+    def T(self):
+        return self.transpose()  # transpose is wrapped above.
 
-        return obj
+    @property
+    def ua(self):
+        return _propagate_cosmo_array_attributes(np.ones_like)(self)
+
+    @property
+    def unit_array(self):
+        return _propagate_cosmo_array_attributes(np.ones_like)(self)
 
     def convert_to_comoving(self) -> None:
         """
@@ -382,7 +405,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        cosmo_array 
+        cosmo_array
             copy of cosmo_array in physical units
         """
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
@@ -393,10 +416,10 @@ class cosmo_array(unyt_array):
     def to_comoving(self):
         """
         Creates a copy of the data in comoving units.
-        
+
         Returns
         -------
-        cosmo_array 
+        cosmo_array
             copy of cosmo_array in comoving units
         """
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)

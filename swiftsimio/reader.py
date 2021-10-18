@@ -88,7 +88,7 @@ class MappingTable(object):
             columns. Should be of size N x M, where N is the number
             of elements in ``named_columns_x`` and M the number
             of elements in ``named_columns_y``.
-        
+
         named_columns_x: List[str]
             The names of the columns in the first axis.
 
@@ -170,8 +170,8 @@ class SWIFTUnits(object):
         """
         Store unit data and metadata
 
-        Length 1 arrays are used to store the unit data. This dictionary 
-        also contains the metadata information that connects the unyt 
+        Length 1 arrays are used to store the unit data. This dictionary
+        also contains the metadata information that connects the unyt
         objects to the names that are stored in the SWIFT snapshots.
         """
         with h5py.File(self.filename, "r") as handle:
@@ -203,8 +203,8 @@ class SWIFTUnits(object):
 class SWIFTMetadata(object):
     """
     Loads all metadata (apart from Units, those are handled by SWIFTUnits)
-    into dictionaries. 
-    
+    into dictionaries.
+
     This also does some extra parsing on some well-used metadata.
     """
 
@@ -278,7 +278,7 @@ class SWIFTMetadata(object):
         """
         Gets the mappings based on the named columns (must have already been read),
         from the form:
-        
+
         SubgridScheme/{X}To{Y}Mapping.
 
         Includes a hack of `Dust` -> `Grains` that will be deprecated.
@@ -352,12 +352,14 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -414,12 +416,14 @@ class SWIFTMetadata(object):
 
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
@@ -752,10 +756,10 @@ class SWIFTMetadata(object):
 
 class SWIFTParticleTypeMetadata(object):
     """
-    Object that contains the metadata for one particle type. 
-    
-    This, for instance, could be part type 0, or 'gas'. This will load in 
-    the names of all particle datasets, their units, possible named fields, 
+    Object that contains the metadata for one particle type.
+
+    This, for instance, could be part type 0, or 'gas'. This will load in
+    the names of all particle datasets, their units, possible named fields,
     and their cosmology, and present them for use in the actual i/o routines.
 
     Methods
@@ -819,7 +823,7 @@ class SWIFTParticleTypeMetadata(object):
         """
         Loads the required metadata.
 
-        This includes loading the field names, units and descriptions, as well as the 
+        This includes loading the field names, units and descriptions, as well as the
         cosmology metadata and any custom named columns
         """
 
@@ -1056,13 +1060,13 @@ def generate_getter(
         Index expression corresponding to which columns to read from the numpy array.
         If not provided, we read all columns and return an n-dimensional array.
 
-    
+
     Returns
     -------
 
     getter: callable
         A callable object that gets the value of the array that has been saved to
-        ``_name``. This function takes only ``self`` from the 
+        ``_name``. This function takes only ``self`` from the
         :obj:``__SWIFTParticleDataset`` class.
 
 
@@ -1162,7 +1166,7 @@ def generate_setter(name: str):
     Returns
     -------
     setter : callable
-        a callable object that sets the attribute specified by ``name`` to the value 
+        a callable object that sets the attribute specified by ``name`` to the value
         passed to it.
     """
 
@@ -1240,9 +1244,9 @@ class __SWIFTParticleDataset(object):
     def generate_empty_properties(self):
         """
         Generates the empty properties that will be accessed through the
-        setter and getters. 
-        
-        Initially set all of the _{name} values to None. If it doesn't 
+        setter and getters.
+
+        Initially set all of the _{name} values to None. If it doesn't
         _exist_ in the file, the variable is not created.
         """
 
@@ -1286,10 +1290,10 @@ class __SWIFTNamedColumnDataset(object):
         --------
         For a gas particle we might be interested in the mass fractions for a number
         of elements (e.g. hydrogen, helium, carbon, etc). In a SWIFT snapshot these
-        would be found in `field_path` = /PartType0/ElementMassFractions. The 
-        `named_columns` would be the list of elements (["hydrogen", ...]) and the 
+        would be found in `field_path` = /PartType0/ElementMassFractions. The
+        `named_columns` would be the list of elements (["hydrogen", ...]) and the
         variable we're interested in is the mass fraction `name` = element_mass_fraction.
-        Thus, 
+        Thus,
             data.gas = __SWIFTNamedColumnDataset(
             "/PartType0/ElementMassFractions",
             ["hydrogen", "helium"],
@@ -1466,14 +1470,14 @@ class SWIFTDataset(object):
     + SWIFTUnits,
     + SWIFTMetadata,
     + SWIFTParticleDataset
-    
+
     This object, in essence, completely represents a SWIFT snapshot. You can access
     the different particles as follows:
 
     + SWIFTDataset.gas.particle_ids
     + SWIFTDataset.dark_matter.masses
     + SWIFTDataset.gas.smoothing_lengths
-    
+
     These arrays all have units that are determined by the unit system in the file.
 
     The unit system is available as SWIFTDataset.units and the metadata as
@@ -1482,12 +1486,12 @@ class SWIFTDataset(object):
     Methods
     -------
     def get_units(self):
-        Loads the units from the SWIFT snapshot. 
+        Loads the units from the SWIFT snapshot.
     def get_metadata(self):
-        Loads the metadata from the SWIFT snapshot. 
+        Loads the metadata from the SWIFT snapshot.
     def create_particle_datasets(self):
         Creates particle datasets for whatever particle types and names
-        are specified in metadata.particle_types. 
+        are specified in metadata.particle_types.
     """
 
     def __init__(self, filename, mask=None):
@@ -1526,9 +1530,9 @@ class SWIFTDataset(object):
 
     def get_units(self):
         """
-        Loads the units from the SWIFT snapshot. 
-        
-        Ordinarily this happens automatically, but you can call 
+        Loads the units from the SWIFT snapshot.
+
+        Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
         """
 
@@ -1538,9 +1542,9 @@ class SWIFTDataset(object):
 
     def get_metadata(self):
         """
-        Loads the metadata from the SWIFT snapshot. 
-        
-        Ordinarily this happens automatically, but you can call 
+        Loads the metadata from the SWIFT snapshot.
+
+        Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
         """
 
@@ -1551,8 +1555,8 @@ class SWIFTDataset(object):
     def create_particle_datasets(self):
         """
         Creates particle datasets for whatever particle types and names
-        are specified in metadata.particle_types. 
-        
+        are specified in metadata.particle_types.
+
         These can then be accessed using their underscore names, e.g. gas.
         """
 
