@@ -3,9 +3,7 @@ Contains global objects, e.g. the superclass version of the
 unyt_array that we use, called cosmo_array.
 """
 
-from unyt import unyt_array, unyt_quantity
-
-from typing import Union
+from unyt import unyt_array
 
 import sympy
 import numpy as np
