@@ -326,6 +326,17 @@ class cosmo_array(unyt_array):
 
         return super().__str__() + " " + comoving_str
 
+    def __getitem__(self, item):
+        """
+        A copy of the ``__getitem__`` function that makes sure
+        ``cosmo_factor`` and ``comoving`` are preserved.
+        """
+
+        ret = super(cosmo_array, self).__getitem__(item)
+        ret.cosmo_factor = self.cosmo_factor
+        ret.comoving = self.comoving
+        return ret
+
     def in_units(self, units, equivalence=None, **kwargs):
         """
         A copy of the ``in_units`` function that makes sure to copy over
