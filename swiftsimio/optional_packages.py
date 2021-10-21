@@ -59,11 +59,17 @@ try:
         from numba import cuda
         from numba.cuda import jit as cuda_jit
 
-        d = drv.Driver()
-        d.initialize()
+        try:
+            CUDA_AVAILABLE = cuda.is_available()
+        except AttributeError:
+            # Backwards compatibility with older versions
+            # Check for the driver
 
-        CUDA_AVAILABLE = True
-    # Check for the driver
+            d = drv.Driver()
+            d.initialize()
+
+            CUDA_AVAILABLE = True
+
     except CudaSupportError:
         CUDA_AVAILABLE = False
 

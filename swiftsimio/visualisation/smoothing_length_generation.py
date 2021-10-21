@@ -87,7 +87,7 @@ def generate_smoothing_lengths(
         d, _ = tree.query(
             coordinates[starting_index:ending_index].value,
             k=neighbours_search,
-            n_jobs=-1,
+            workers=-1,
         )
 
         smoothing_lengths[starting_index:ending_index] = d[:, -1]
