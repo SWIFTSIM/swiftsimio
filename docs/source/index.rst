@@ -46,10 +46,26 @@ Please cite ``swiftsimio`` using the JOSS paper_:
       title = {swiftsimio: A Python library for reading SWIFT data},
       journal = {Journal of Open Source Software}
     }
+    
+If you use any of the subsampled projection backends, we ask that you cite our relevant
+SPHERIC article_. Note that citing the arXiv version here is recommended as the ADS
+cannot track conference proceedings well.
+
+.. code-block:: bibtex
+
+    @article{Borrow2021,
+      title={Projecting SPH Particles in Adaptive Environments}, 
+      author={Josh Borrow and Ashley J. Kelly},
+      year={2021},
+      eprint={2106.05281},
+      archivePrefix={arXiv},
+      primaryClass={astro-ph.GA}
+    }
 
 
 .. _SWIFT: http://www.swiftsim.com
 .. _paper: https://joss.theoj.org/papers/10.21105/joss.02430
+.. _article: https://ui.adsabs.harvard.edu/abs/2021arXiv210605281B/abstract
 
 Indices and tables
 ==================
