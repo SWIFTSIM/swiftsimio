@@ -20,9 +20,9 @@ from copy import deepcopy
 def generate_units(m, l, t, I, T):
     """
     This function is used to override the inbuilt swiftsimio generate_units function from
-    metadata.unit.unit_fields. This allows the specification of a new particle type and 
-       metadata.unit.unit_fields. This allows the specification of a new particle type and 
-    metadata.unit.unit_fields. This allows the specification of a new particle type and 
+    metadata.unit.unit_fields. This allows the specification of a new particle type and
+       metadata.unit.unit_fields. This allows the specification of a new particle type and
+    metadata.unit.unit_fields. This allows the specification of a new particle type and
     the values and types associated with that type.
     """
     dict_out = swuf.generate_units(m, l, t, I, T)
@@ -56,7 +56,7 @@ def generate_units(m, l, t, I, T):
 def generate_cosmology(scale_factor: float, gamma: float):
     """
     This function is used to override the inbuilt swiftsimio generate_cosmology function
-    from metadata.cosmology. This allows the specification of a new particle type and 
+    from metadata.cosmology. This allows the specification of a new particle type and
     affects how the type is influenced by cosmology. Required only for reading in new
     particle types.
     """

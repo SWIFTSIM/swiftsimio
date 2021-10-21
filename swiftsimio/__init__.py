@@ -56,8 +56,8 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
     filename : str
         SWIFT data file to read from
     spatial_only : bool, optional
-        Flag for only spatial masking, this is much faster but will not 
-        allow you to use masking on other variables (e.g. density). 
+        Flag for only spatial masking, this is much faster but will not
+        allow you to use masking on other variables (e.g. density).
         Defaults to True.
 
     Returns

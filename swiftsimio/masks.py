@@ -35,9 +35,9 @@ class SWIFTMask(object):
             Metadata specifying masking for reading of snapshots
 
         spatial_only : bool, optional
-            If True (the default), you can only constrain spatially. 
-            However, this is significantly faster and considerably 
-            more memory efficient (~ bytes per cell, rather than 
+            If True (the default), you can only constrain spatially.
+            However, this is significantly faster and considerably
+            more memory efficient (~ bytes per cell, rather than
             ~ bytes per particle).
 
         """
@@ -130,9 +130,9 @@ class SWIFTMask(object):
         upper: unyt.array.unyt_quantity,
     ):
         """
-        Constrains the mask further for a given particle type, and bounds a 
-        quantity between lower and upper values. 
-        
+        Constrains the mask further for a given particle type, and bounds a
+        quantity between lower and upper values.
+
         We update the mask such that
 
             lower < ptype.quantity <= upper
@@ -148,7 +148,7 @@ class SWIFTMask(object):
             quantity being constrained
 
         lower : unyt.array.unyt_quantity
-            constraint lower bound 
+            constraint lower bound
 
         upper : unyt.array.unyt_quantity
             constraint upper bound
@@ -209,13 +209,13 @@ class SWIFTMask(object):
 
         Takes the cell metadata and finds the mask for the _cells_ that are
         within the spatial region defined by the spatial mask. Not for
-        user use. 
+        user use.
 
         Parameters
         ----------
 
         restrict : list
-            Restrict is a 3 length list that contains length two arrays giving 
+            Restrict is a 3 length list that contains length two arrays giving
             the lower and upper bounds for that axis, e.g.
 
             restrict = [
@@ -280,10 +280,10 @@ class SWIFTMask(object):
 
     def _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array):
         """
-        Updates the particle mask using the cell mask. 
-        
-        We actually overwrite all non-used cells with False, rather than the 
-        inverse, as we assume initially that we want to write all particles in, 
+        Updates the particle mask using the cell mask.
+
+        We actually overwrite all non-used cells with False, rather than the
+        inverse, as we assume initially that we want to write all particles in,
         and we want to respect other masks that may have been applied to the data.
 
         Parameters
@@ -291,7 +291,7 @@ class SWIFTMask(object):
 
         restrict : list
             currently unused
-        
+
         ptype : str
             particle type to update
 
@@ -322,22 +322,22 @@ class SWIFTMask(object):
 
     def constrain_spatial(self, restrict):
         """
-        Uses the cell metadata to create a spatial mask. 
-        
+        Uses the cell metadata to create a spatial mask.
+
         This mask is necessarily approximate and is coarse-grained to the cell size.
-        
+
         Parameters
         ----------
 
-        restrict : list 
-            length 3 list of length two arrays giving the lower and 
+        restrict : list
+            length 3 list of length two arrays giving the lower and
             upper bounds for that axis, e.g.
 
             restrict = [
                 [0.5, 0.7],
                 [0.1, 0.9],
                 [0.0, 0.1]
-                
+
             ]
 
             These values must have units associated with them. It is also acceptable
@@ -359,7 +359,7 @@ class SWIFTMask(object):
     def convert_masks_to_ranges(self):
         """
         Converts the masks to range masks so that they take up less space.
-        
+
         This is non-reversible. It is also not required, but can help save space
         on highly constrained machines before you start reading in the data.
 
@@ -398,19 +398,19 @@ class SWIFTMask(object):
         -------
 
         Dict[str, np.array], Dict[str, np.array]
-            Dictionaries containing the particle offets and counts for each particle 
-            type. For example, the particle counts dictionary would be of the form 
+            Dictionaries containing the particle offets and counts for each particle
+            type. For example, the particle counts dictionary would be of the form
 
             .. code-block:: python
 
                 {"gas": [g_0, g_1, ...],
                  "dark matter": [bh_0, bh_1, ...], ...}
 
-            where the keys would be each of the particle types and values are arrays 
-            of the number of corresponding particles in each cell (in this case there 
-            would be g_0 gas particles in the first cell, g_1 in the second, etc.). 
-            The structure of the dictionaries is the same for the offsets, with the 
-            arrays now storing the offset of the first particle in the cell. 
+            where the keys would be each of the particle types and values are arrays
+            of the number of corresponding particles in each cell (in this case there
+            would be g_0 gas particles in the first cell, g_1 in the second, etc.).
+            The structure of the dictionaries is the same for the offsets, with the
+            arrays now storing the offset of the first particle in the cell.
 
         """
         if self.spatial_only:

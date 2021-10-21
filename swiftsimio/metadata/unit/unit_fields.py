@@ -105,7 +105,7 @@ def generate_units(m, l, t, I, T):
 def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units):
     """
     Gets the dimensions for the above.
-    
+
     ..deprecated:: 3.1.0
         Everything is read directly out of the snapshots now
 
