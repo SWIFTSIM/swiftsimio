@@ -10,10 +10,11 @@ if ASTROPY_AVAILABLE:
     from astropy.cosmology import w0waCDM
     from astropy.cosmology.core import Cosmology
     import astropy.version
+
     if astropy.version.major < 5:
         from astropy.cosmology.core import a_B_c2, critdens_const
     else:
-        from astropy.cosmology.flrw import a_B_c2, critdens_const        
+        from astropy.cosmology.flrw import a_B_c2, critdens_const
     import astropy.units as astropy_units
 
     def swift_cosmology_to_astropy(cosmo: dict, units) -> Cosmology:
@@ -62,7 +63,6 @@ if ASTROPY_AVAILABLE:
             Tcmb0=Tcmb0,
             Ob0=Omega_b,
         )
-
 
 else:
 
