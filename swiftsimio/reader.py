@@ -1450,7 +1450,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
             field_property = ThisNamedColumnDataset(
                 field_path=field_path,
                 named_columns=named_columns,
-                name=field_description,
+                name=field_name,
             )
 
         this_dataset_dict[field_name] = field_property
