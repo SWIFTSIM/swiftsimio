@@ -358,11 +358,10 @@ def slice_gas_pixel_grid(
     x_range = x_max - x_min
     y_range = y_max - y_min
 
-    # Test that we've got a square box
-    if not isclose(x_range.value, y_range.value):
-        raise AttributeError(
-            "Slice code is currently not able to handle non-square images"
-        )
+    # Deal with non-square boxes:
+    # we always use the maximum of x_range and y_range to normalise the coordinates
+    # empty pixels in the resulting square image are trimmed afterwards
+    max_range = max(x_range, y_range)
 
     if rotation_center is not None:
         # Rotate co-ordinates as required
@@ -382,11 +381,11 @@ def slice_gas_pixel_grid(
         hsml = data.gas.smoothing_length
 
     common_parameters = dict(
-        x=(x - x_min) / x_range,
-        y=(y - y_min) / y_range,
+        x=(x - x_min) / max_range,
+        y=(y - y_min) / max_range,
         z=z / box_z,
         m=m,
-        h=hsml / x_range,
+        h=hsml / max_range,
         z_slice=slice,
         res=resolution,
     )
@@ -396,7 +395,12 @@ def slice_gas_pixel_grid(
     else:
         image = slice_scatter(**common_parameters)
 
-    return image
+    # determine the effective number of pixels for each dimension
+    xres = int(resolution * x_range / max_range)
+    yres = int(resolution * y_range / max_range)
+
+    # trim the image to remove empty pixels
+    return image[:xres, :yres]
 
 
 def slice_gas(
