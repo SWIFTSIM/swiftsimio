@@ -358,7 +358,7 @@ def slice_gas_pixel_grid(
     x_range = x_max - x_min
     y_range = y_max - y_min
 
-    # Deal with non-square boxes:
+    # Deal with non-cubic boxes:
     # we always use the maximum of x_range and y_range to normalise the coordinates
     # empty pixels in the resulting square image are trimmed afterwards
     max_range = max(x_range, y_range)
@@ -383,10 +383,10 @@ def slice_gas_pixel_grid(
     common_parameters = dict(
         x=(x - x_min) / max_range,
         y=(y - y_min) / max_range,
-        z=z / box_z,
+        z=z / max_range,
         m=m,
         h=hsml / max_range,
-        z_slice=slice,
+        z_slice=slice * box_z / max_range,
         res=resolution,
     )
 
@@ -488,18 +488,16 @@ def slice_gas(
     if region is not None:
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
-        units = 1.0 / (x_range * y_range * data.metadata.boxsize[2])
+        max_range = max(x_range, y_range)
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(
             1.0 / (x_range.units * y_range.units * data.metadata.boxsize.units)
         )
     else:
-        units = 1.0 / (
-            data.metadata.boxsize[0]
-            * data.metadata.boxsize[1]
-            * data.metadata.boxsize[2]
-        )
+        max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
