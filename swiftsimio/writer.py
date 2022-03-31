@@ -136,6 +136,12 @@ class __SWIFTWriterParticleDataset(object):
             lambda x, y: x and y, [sizes[0] == x for x in sizes]
         ), f"Arrays passed to {self.particle_name} dataset are not of the same size."
 
+        # Make sure positions and velocities have the same shapes
+        if getattr(self, "coordinates").shape != getattr(self, "velocities").shape:
+            raise AttributeError(
+                f"{self.particle_name} coordinates and velocities have unequal shapes"
+            )
+
         self.n_part = sizes[0]
 
         return True
