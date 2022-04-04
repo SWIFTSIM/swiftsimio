@@ -17,7 +17,8 @@ from numpy import (
     matmul,
     copy,
 )
-from unyt import unyt_array
+from unyt import unyt_array, unyt_quantity
+import unyt
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
@@ -270,7 +271,7 @@ def slice_scatter_parallel(
 def slice_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
-    slice: float,
+    z_slice: unyt_quantity = 0.0 * unyt.m,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
@@ -289,10 +290,11 @@ def slice_gas_pixel_grid(
     resolution : int
         Specifies size of return array
 
-    slice : float
+    z_slice : unyt_quantity
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize. If the perspective is rotated this
-        value refers to the location along the rotated z-axis.
+        extracted, relative to the rotation center or the origin of the box
+        if no rotation center is provided. If the perspective is rotated
+        this value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -334,9 +336,6 @@ def slice_gas_pixel_grid(
 
     """
 
-    if slice > 1.0 or slice < 0.0:
-        raise ValueError("Please enter a slice value between 0.0 and 1.0 in slice_gas.")
-
     number_of_gas_particles = data.gas.coordinates.shape[0]
 
     if project is None:
@@ -345,6 +344,9 @@ def slice_gas_pixel_grid(
         m = getattr(data.gas, project).value
 
     box_x, box_y, box_z = data.metadata.boxsize
+
+    if z_slice > box_z or z_slice < (0 * box_z):
+        raise ValueError("Please enter a slice value inside the box.")
 
     # Set the limits of the image.
     if region is not None:
@@ -371,8 +373,12 @@ def slice_gas_pixel_grid(
         y += rotation_center[1]
         z += rotation_center[2]
 
+        z_center = rotation_center[2]
+
     else:
         x, y, z = data.gas.coordinates.T
+
+        z_center = 0 * box_z
 
     try:
         hsml = data.gas.smoothing_lengths
@@ -386,7 +392,7 @@ def slice_gas_pixel_grid(
         z=z / max_range,
         m=m,
         h=hsml / max_range,
-        z_slice=slice * box_z / max_range,
+        z_slice=(z_center + z_slice) / max_range,
         res=resolution,
     )
 
@@ -406,7 +412,7 @@ def slice_gas_pixel_grid(
 def slice_gas(
     data: SWIFTDataset,
     resolution: int,
-    slice: float,
+    z_slice: unyt_quantity = 0.0 * unyt.m,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
@@ -424,10 +430,11 @@ def slice_gas(
     resolution : int
         Specifies size of return array
 
-    slice : float
+    z_slice : unyt_quantity
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize. If the perspective is rotated this
-        value refers to the location along the rotated z-axis.
+        extracted, relative to the rotation center or the origin of the box
+        if no rotation center is provided. If the perspective is rotated
+        this value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -477,7 +484,7 @@ def slice_gas(
     image = slice_gas_pixel_grid(
         data,
         resolution,
-        slice,
+        z_slice,
         project,
         parallel,
         rotation_matrix,
