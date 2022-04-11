@@ -69,17 +69,16 @@ def test_slice(filename):
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
     boxsize = data.metadata.boxsize
 
-    z_range = boxsize[2]
-    slice_z = centre[2] / z_range
+    slice_z = centre[2]
 
     unrotated = slice_gas(
-        data, resolution=1024, slice=slice_z, project="masses", parallel=True
+        data, resolution=1024, z_slice=slice_z, project="masses", parallel=True
     )
 
     rotated = slice_gas(
         data,
         resolution=1024,
-        slice=slice_z,
+        z_slice=0 * slice_z,
         project="masses",
         rotation_center=centre,
         rotation_matrix=matrix,

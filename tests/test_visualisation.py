@@ -208,12 +208,20 @@ def test_selection_render(filename):
     render_tiny = project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
 
     # Slicing
-    render_full = slice_gas(data, 256, slice=0.5, parallel=True)
+    render_full = slice_gas(data, 256, z_slice=0.5 * bs, parallel=True)
     render_partial = slice_gas(
-        data, 256, slice=0.5, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
+        data, 256, z_slice=0.5 * bs, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
     )
     render_tiny = slice_gas(
-        data, 256, slice=0.5, parallel=True, region=[0 * bs, 0.001 * bs] * 2
+        data, 256, z_slice=0.5 * bs, parallel=True, region=[0 * bs, 0.001 * bs] * 2
+    )
+    # Test for non-square slices
+    render_nonsquare = slice_gas(
+        data,
+        256,
+        z_slice=0.5 * bs,
+        parallel=True,
+        region=[0 * bs, 0.001 * bs, 0.25 * bs, 0.75 * bs],
     )
 
     # If they don't crash we're happy!

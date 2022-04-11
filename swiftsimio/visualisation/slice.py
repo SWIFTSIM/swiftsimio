@@ -2,7 +2,7 @@
 Sub-module for slice plots in SWFITSIMio.
 """
 
-from typing import Union
+from typing import Union, Optional
 from math import sqrt
 from numpy import (
     float64,
@@ -17,7 +17,8 @@ from numpy import (
     matmul,
     copy,
 )
-from unyt import unyt_array
+from unyt import unyt_array, unyt_quantity
+import unyt
 from swiftsimio import SWIFTDataset
 
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
@@ -270,7 +271,7 @@ def slice_scatter_parallel(
 def slice_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
-    slice: float,
+    z_slice: Optional[unyt_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
@@ -289,10 +290,11 @@ def slice_gas_pixel_grid(
     resolution : int
         Specifies size of return array
 
-    slice : float
+    z_slice : unyt_quantity
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize. If the perspective is rotated this
-        value refers to the location along the rotated z-axis.
+        extracted, relative to the rotation center or the origin of the box
+        if no rotation center is provided. If the perspective is rotated
+        this value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -334,8 +336,8 @@ def slice_gas_pixel_grid(
 
     """
 
-    if slice > 1.0 or slice < 0.0:
-        raise ValueError("Please enter a slice value between 0.0 and 1.0 in slice_gas.")
+    if z_slice is None:
+        z_slice = 0.0 * data.gas.coordinates.units
 
     number_of_gas_particles = data.gas.coordinates.shape[0]
 
@@ -345,6 +347,9 @@ def slice_gas_pixel_grid(
         m = getattr(data.gas, project).value
 
     box_x, box_y, box_z = data.metadata.boxsize
+
+    if z_slice > box_z or z_slice < (0 * box_z):
+        raise ValueError("Please enter a slice value inside the box.")
 
     # Set the limits of the image.
     if region is not None:
@@ -358,11 +363,10 @@ def slice_gas_pixel_grid(
     x_range = x_max - x_min
     y_range = y_max - y_min
 
-    # Test that we've got a square box
-    if not isclose(x_range.value, y_range.value):
-        raise AttributeError(
-            "Slice code is currently not able to handle non-square images"
-        )
+    # Deal with non-cubic boxes:
+    # we always use the maximum of x_range and y_range to normalise the coordinates
+    # empty pixels in the resulting square image are trimmed afterwards
+    max_range = max(x_range, y_range)
 
     if rotation_center is not None:
         # Rotate co-ordinates as required
@@ -372,8 +376,12 @@ def slice_gas_pixel_grid(
         y += rotation_center[1]
         z += rotation_center[2]
 
+        z_center = rotation_center[2]
+
     else:
         x, y, z = data.gas.coordinates.T
+
+        z_center = 0 * box_z
 
     try:
         hsml = data.gas.smoothing_lengths
@@ -382,12 +390,12 @@ def slice_gas_pixel_grid(
         hsml = data.gas.smoothing_length
 
     common_parameters = dict(
-        x=(x - x_min) / x_range,
-        y=(y - y_min) / y_range,
-        z=z / box_z,
+        x=(x - x_min) / max_range,
+        y=(y - y_min) / max_range,
+        z=z / max_range,
         m=m,
-        h=hsml / x_range,
-        z_slice=slice,
+        h=hsml / max_range,
+        z_slice=(z_center + z_slice) / max_range,
         res=resolution,
     )
 
@@ -396,13 +404,18 @@ def slice_gas_pixel_grid(
     else:
         image = slice_scatter(**common_parameters)
 
-    return image
+    # determine the effective number of pixels for each dimension
+    xres = int(resolution * x_range / max_range)
+    yres = int(resolution * y_range / max_range)
+
+    # trim the image to remove empty pixels
+    return image[:xres, :yres]
 
 
 def slice_gas(
     data: SWIFTDataset,
     resolution: int,
-    slice: float,
+    z_slice: Optional[unyt_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
@@ -420,10 +433,11 @@ def slice_gas(
     resolution : int
         Specifies size of return array
 
-    slice : float
+    z_slice : unyt_quantity
         Specifies the location along the z-axis where the slice is to be
-        extracted as a fraction of boxsize. If the perspective is rotated this
-        value refers to the location along the rotated z-axis.
+        extracted, relative to the rotation center or the origin of the box
+        if no rotation center is provided. If the perspective is rotated
+        this value refers to the location along the rotated z-axis.
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -470,10 +484,13 @@ def slice_gas(
     appropriate
     """
 
+    if z_slice is None:
+        z_slice = 0.0 * data.gas.coordinates.units
+
     image = slice_gas_pixel_grid(
         data,
         resolution,
-        slice,
+        z_slice,
         project,
         parallel,
         rotation_matrix,
@@ -484,18 +501,16 @@ def slice_gas(
     if region is not None:
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
-        units = 1.0 / (x_range * y_range * data.metadata.boxsize[2])
+        max_range = max(x_range, y_range)
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(
             1.0 / (x_range.units * y_range.units * data.metadata.boxsize.units)
         )
     else:
-        units = 1.0 / (
-            data.metadata.boxsize[0]
-            * data.metadata.boxsize[1]
-            * data.metadata.boxsize[2]
-        )
+        max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)

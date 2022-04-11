@@ -29,11 +29,11 @@ Example
    data = load("cosmo_volume_example.hdf5")
 
    # This creates a grid that has units msun / Mpc^3, and can be transformed like
-   # any other unyt quantity. Note that `slice` is given in terms of the box-size,
-   # so here we are taking a slice at z = boxsize / 2.
+   # any other unyt quantity. The position of the slice along the z axis is
+   # provided in the z_slice argument.
    mass_map = slice_gas(
        data,
-       slice=0.5,
+       z_slice=0.5 * data.metadata.boxsize[2],
        resolution=1024,
        project="masses",
        parallel=True
@@ -69,7 +69,7 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    # Map in msun / mpc^3
    mass_map = slice_gas(
        data,
-       slice=0.5,
+       z_slice=0.5 * data.metadata.boxsize[2],
        resolution=1024,
        project="masses",
        parallel=True
@@ -78,7 +78,7 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
    # Map in msun * K / mpc^3
    mass_weighted_temp_map = slice_gas(
        data,
-       slice=0.5,
+       z_slice=0.5 * data.metadata.boxsize[2],
        resolution=1024,
        project="mass_weighted_temps",
        parallel=True
@@ -132,9 +132,11 @@ the above example is shown below.
    matrix = rotation_matrix_from_vector(rotate_vec, axis='z')
    
    # Map in msun / mpc^3
+   # If a rotation center is provided, z_slice is taken relative to this
+   # center, resulting in a slice perpendicular to the rotated z axis
    mass_map = slice_gas(
        data,
-       slice=0.5,
+       z_slice=0. * data.metadata.boxsize[2],
        resolution=1024,
        project="masses",
        rotation_matrix=matrix,
@@ -145,7 +147,7 @@ the above example is shown below.
    # Map in msun * K / mpc^3
    mass_weighted_temp_map = slice_gas(
        data, 
-       slice=0.5,
+       z_slice=0. * data.metadata.boxsize[2],
        resolution=1024,
        project="mass_weighted_temps",
        rotation_matrix=matrix,
@@ -184,18 +186,19 @@ To use this function, you will need:
 + x-positions of all of your particles, ``x``.
 + y-positions of all of your particles, ``y``.
 + z-positions of all of your particles, ``z``.
-+ Where in the [0,1] range you wish to slice, ``z_slice``.
++ Where in the range you wish to slice, ``z_slice``.
 + A quantity which you wish to smooth for all particles, such as their
   mass, ``m``.
 + Smoothing lengths for all particles, ``h``.
 + The resolution you wish to make your square image at, ``res``.
 
-The key here is that only particles in the domain [0, 1] in x, [0, 1] in y,
-and [0, 1] in z. will be visible in the image. You may have particles outside
-of this range; they will not crash the code, and may even contribute to the
-image if their smoothing lengths overlap with [0, 1]. You will need to
-re-scale your data such that it lives within this range. Then you may use the
-function as follows:
+The key here is that only particles in the domain [0, 1] in x and y will be
+visible in the image. You may have particles outside of this range; they will
+not crash the code, and may even contribute to the image if their smoothing
+lengths overlap with [0, 1]. You will need to re-scale your data such that it
+lives within this range. Smoothing lengths and z coordinates need to be
+re-scaled in the same way (using the same scaling factor), but z coordinates do
+not need to lie in the domain [0, 1]. Then you may use the function as follows:
 
 .. code-block:: python
 
