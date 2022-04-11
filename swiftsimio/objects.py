@@ -339,6 +339,29 @@ class cosmo_array(unyt_array):
 
         return super().__str__() + " " + comoving_str
 
+    def __reduce__(self):
+        """
+        Pickle reduction method
+
+        Here we add an extra element at the start of the unyt_array state
+        tuple to store the cosmology info.
+        """
+        np_ret = super(cosmo_array, self).__reduce__()
+        obj_state = np_ret[2]
+        cosmo_state = (((self.cosmo_factor, self.comoving),) + obj_state[:],)
+        new_ret = np_ret[:2] + cosmo_state + np_ret[3:]
+        return new_ret
+
+    def __setstate__(self, state):
+        """
+        Pickle setstate method
+
+        Here we extract the extra cosmology info we added to the object
+        state and pass the rest to unyt_array.__setstate__.
+        """
+        super(cosmo_array, self).__setstate__(state[1:])
+        self.cosmo_factor, self.comoving = state[0]
+
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
     __getitem__ = _propagate_cosmo_array_attributes(unyt_array.__getitem__)

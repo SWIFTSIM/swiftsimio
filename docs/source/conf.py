@@ -39,7 +39,6 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
-    "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
 ]
 
@@ -74,6 +73,9 @@ autodoc_member_order = "bysource"
 autodoc_default_flags = ["members"]
 autosummary_generate = True
 
+# must be outside run_apidoc definition to be set successfully:
+os.environ["SPHINX_APIDOC_OPTIONS"] = "members,undoc-members,show-inheritance"
+
 
 def run_apidoc(_):
     try:
@@ -91,7 +93,6 @@ def run_apidoc(_):
         os.path.join(cur_dir, "../..", "swiftsimio/metadata"),
     ]
 
-    os.environ["SPHINX_APIDOC_OPTIONS"] = "members,undoc-members,show-inheritance"
     main(["-M", "-f", "-e", "-T", "-d 0", "-o", api_doc_dir, module, *ignore])
 
 
