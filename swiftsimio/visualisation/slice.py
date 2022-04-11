@@ -2,7 +2,7 @@
 Sub-module for slice plots in SWFITSIMio.
 """
 
-from typing import Union
+from typing import Union, Optional
 from math import sqrt
 from numpy import (
     float64,
@@ -271,7 +271,7 @@ def slice_scatter_parallel(
 def slice_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
-    z_slice: unyt_quantity = 0.0 * unyt.m,
+    z_slice: Optional[unyt_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
@@ -335,6 +335,9 @@ def slice_gas_pixel_grid(
     render_gas_voxel_grid : Creates a 3D voxel grid from a SWIFT dataset
 
     """
+
+    if z_slice is None:
+        z_slice = 0.0 * data.gas.coordinates.units
 
     number_of_gas_particles = data.gas.coordinates.shape[0]
 
@@ -412,7 +415,7 @@ def slice_gas_pixel_grid(
 def slice_gas(
     data: SWIFTDataset,
     resolution: int,
-    z_slice: unyt_quantity = 0.0 * unyt.m,
+    z_slice: Optional[unyt_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
@@ -480,6 +483,9 @@ def slice_gas(
     This is a wrapper function for slice_gas_pixel_grid ensuring that output units are
     appropriate
     """
+
+    if z_slice is None:
+        z_slice = 0.0 * data.gas.coordinates.units
 
     image = slice_gas_pixel_grid(
         data,
