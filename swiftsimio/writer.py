@@ -317,11 +317,13 @@ def get_dimensions(dimension: unyt.dimensions) -> dict:
 
     # Find out which dimensions and exponents are present in the base units
     for i in range(n_dims):
+        present = False
         for dim in dim_array:
             if dimensions[i] in str(dim[0]):
+                present = True
                 exp_array[str(dim[0])] = float(dim[1])
-            else:
-                exp_array[dimensions[i]] = 0.0
+        if not present:
+            exp_array[dimensions[i]] = 0.0
 
     return exp_array
 
