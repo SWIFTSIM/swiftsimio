@@ -255,7 +255,7 @@ def write_datasubset(
         names of links found in the snapshot
     """
     skip_list = links_list.copy()
-    skip_list.extend(["Cells", "SubgridScheme"])
+    skip_list.extend(["Cells", "SubgridScheme", "PartTypeNames"])
     if mask is not None:
         for name in dataset_names:
             if any([substr for substr in skip_list if substr in name]):
