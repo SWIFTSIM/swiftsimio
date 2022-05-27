@@ -3,10 +3,98 @@ Contains global objects, e.g. the superclass version of the
 unyt_array that we use, called cosmo_array.
 """
 
+from itertools import groupby
+
 from unyt import unyt_array
+from unyt.array import unary_operators, binary_operators, trigonometric_operators, multiple_output_operators
 
 import sympy
 import numpy as np
+from numpy import (
+    add,
+    subtract,
+    multiply,
+    divide,
+    logaddexp,
+    logaddexp2,
+    true_divide,
+    floor_divide,
+    negative,
+    power,
+    remainder,
+    mod,
+    absolute,
+    rint,
+    sign,
+    conj,
+    exp,
+    exp2,
+    log,
+    log2,
+    log10,
+    expm1,
+    log1p,
+    sqrt,
+    square,
+    reciprocal,
+    sin,
+    cos,
+    tan,
+    arcsin,
+    arccos,
+    arctan,
+    arctan2,
+    hypot,
+    sinh,
+    cosh,
+    tanh,
+    arcsinh,
+    arccosh,
+    arctanh,
+    deg2rad,
+    rad2deg,
+    greater,
+    greater_equal,
+    less,
+    less_equal,
+    not_equal,
+    equal,
+    logical_and,
+    logical_or,
+    logical_xor,
+    logical_not,
+    maximum,
+    minimum,
+    fmax,
+    fmin,
+    isreal,
+    iscomplex,
+    isfinite,
+    isinf,
+    isnan,
+    signbit,
+    copysign,
+    nextafter,
+    modf,
+    frexp,
+    fmod,
+    floor,
+    ceil,
+    trunc,
+    fabs,
+    spacing,
+    positive,
+    divmod as divmod_,
+    isnat,
+    heaviside,
+    matmul,
+)
+from numpy.core.umath import _ones_like
+
+try:
+    from numpy.core.umath import clip
+except ImportError:
+    clip = None
 
 # The scale factor!
 a = sympy.symbols("a")
@@ -24,6 +112,79 @@ def _propagate_cosmo_array_attributes(func):
         return ret
 
     return wrapped
+
+
+def _sqrt_cosmo_factor(cf):
+    # return 1, unit ** 0.5
+    raise NotImplementedError
+
+
+def _multiply_cosmo_factor(cf1, cf2):
+    # try:
+    #     ret = (unit1 * unit2).simplify()
+    # except SymbolNotFoundError:
+    #     # Some operators are not natively commutative when operands are
+    #     # defined within different unit registries, and conversion
+    #     # is defined one way but not the other.
+    #     ret = (unit2 * unit1).simplify()
+    # return ret.as_coeff_unit()
+    return cf1 * cf2
+
+
+def _preserve_cosmo_factor(cf1, cf2=None):
+    # if unit2 is None or unit1.dimensions is not temperature:
+    #     return 1, unit1
+    # if unit1.base_offset == 0.0 and unit2.base_offset != 0.0:
+    #     if str(unit1.expr) in ["K", "R"]:
+    #         warnings.warn(TEMPERATURE_WARNING, FutureWarning, stacklevel=3)
+    #         return 1, unit1
+    #     return 1, unit2
+    # return 1, unit1
+    raise NotImplementedError
+
+
+def _power_cosmo_factor(cf, power):
+    # return 1, unit ** power
+    raise NotImplementedError
+
+
+def _square_cosmo_factor(cf):
+    # return 1, unit * unit
+    raise NotImplementedError
+
+
+def _divide_cosmo_factor(cf1, cf2):
+    # try:
+    #     ret = (unit1 / unit2).simplify()
+    # except SymbolNotFoundError:
+    #     ret = (1 / (unit2 / unit1).simplify()).units
+    # return ret.as_coeff_unit()
+    raise NotImplementedError
+
+
+def _reciprocal_cosmo_factor(cf):
+    # return 1, unit ** -1
+    raise NotImplementedError
+
+
+def _passthrough_cosmo_factor(cf, cf2=None):
+    # return 1, unit
+    raise NotImplementedError
+
+
+def _return_without_cosmo_factor(cf, cf2=None):
+    # return 1, None
+    raise NotImplementedError
+
+
+def _arctan2_cosmo_factor(cf1, cf2):
+    # return 1, NULL_UNIT
+    raise NotImplementedError
+
+
+def _comparison_cosmo_factor(cf1, cf2=None):
+    # return 1, None
+    raise NotImplementedError
 
 
 class InvalidScaleFactor(Exception):
@@ -252,6 +413,95 @@ class cosmo_array(unyt_array):
 
     """
 
+    _cosmo_factor_ufunc_registry = {
+        add: _preserve_cosmo_factor,
+        subtract: _preserve_cosmo_factor,
+        multiply: _multiply_cosmo_factor,
+        divide: _divide_cosmo_factor,
+        logaddexp: _return_without_cosmo_factor,
+        logaddexp2: _return_without_cosmo_factor,
+        true_divide: _divide_cosmo_factor,
+        floor_divide: _divide_cosmo_factor,
+        negative: _passthrough_cosmo_factor,
+        power: _power_cosmo_factor,
+        remainder: _preserve_cosmo_factor,
+        mod: _preserve_cosmo_factor,
+        fmod: _preserve_cosmo_factor,
+        absolute: _passthrough_cosmo_factor,
+        fabs: _passthrough_cosmo_factor,
+        rint: _return_without_cosmo_factor,
+        sign: _return_without_cosmo_factor,
+        conj: _passthrough_cosmo_factor,
+        exp: _return_without_cosmo_factor,
+        exp2: _return_without_cosmo_factor,
+        log: _return_without_cosmo_factor,
+        log2: _return_without_cosmo_factor,
+        log10: _return_without_cosmo_factor,
+        expm1: _return_without_cosmo_factor,
+        log1p: _return_without_cosmo_factor,
+        sqrt: _sqrt_cosmo_factor,
+        square: _square_cosmo_factor,
+        reciprocal: _reciprocal_cosmo_factor,
+        sin: _return_without_cosmo_factor,
+        cos: _return_without_cosmo_factor,
+        tan: _return_without_cosmo_factor,
+        sinh: _return_without_cosmo_factor,
+        cosh: _return_without_cosmo_factor,
+        tanh: _return_without_cosmo_factor,
+        arcsin: _return_without_cosmo_factor,
+        arccos: _return_without_cosmo_factor,
+        arctan: _return_without_cosmo_factor,
+        arctan2: _arctan2_cosmo_factor,
+        arcsinh: _return_without_cosmo_factor,
+        arccosh: _return_without_cosmo_factor,
+        arctanh: _return_without_cosmo_factor,
+        hypot: _preserve_cosmo_factor,
+        deg2rad: _return_without_cosmo_factor,
+        rad2deg: _return_without_cosmo_factor,
+        # bitwise_and: not supported for unyt_array
+        # bitwise_or: not supported for unyt_array
+        # bitwise_xor: not supported for unyt_array
+        # invert: not supported for unyt_array
+        # left_shift: not supported for unyt_array
+        # right_shift: not supported for unyt_array
+        greater: _comparison_cosmo_factor,
+        greater_equal: _comparison_cosmo_factor,
+        less: _comparison_cosmo_factor,
+        less_equal: _comparison_cosmo_factor,
+        not_equal: _comparison_cosmo_factor,
+        equal: _comparison_cosmo_factor,
+        logical_and: _comparison_cosmo_factor,
+        logical_or: _comparison_cosmo_factor,
+        logical_xor: _comparison_cosmo_factor,
+        logical_not: _return_without_cosmo_factor,
+        maximum: _preserve_cosmo_factor,
+        minimum: _preserve_cosmo_factor,
+        fmax: _preserve_cosmo_factor,
+        fmin: _preserve_cosmo_factor,
+        isreal: _return_without_cosmo_factor,
+        iscomplex: _return_without_cosmo_factor,
+        isfinite: _return_without_cosmo_factor,
+        isinf: _return_without_cosmo_factor,
+        isnan: _return_without_cosmo_factor,
+        signbit: _return_without_cosmo_factor,
+        copysign: _passthrough_cosmo_factor,
+        nextafter: _preserve_cosmo_factor,
+        modf: _passthrough_cosmo_factor,
+        # ldexp: not supported for unyt_array
+        frexp: _return_without_cosmo_factor,
+        floor: _passthrough_cosmo_factor,
+        ceil: _passthrough_cosmo_factor,
+        trunc: _passthrough_cosmo_factor,
+        spacing: _passthrough_cosmo_factor,
+        positive: _passthrough_cosmo_factor,
+        divmod_: _passthrough_cosmo_factor,
+        isnat: _return_without_cosmo_factor,
+        heaviside: _preserve_cosmo_factor,
+        _ones_like: _preserve_cosmo_factor,
+        matmul: _multiply_cosmo_factor,
+        clip: _passthrough_cosmo_factor,
+    }
+
     def __new__(
         cls,
         input_array,
@@ -476,3 +726,106 @@ class cosmo_array(unyt_array):
         exponent is 0 (cosmo_factor.a_factor == 1)
         """
         return (not self.comoving) or (self.cosmo_factor.a_factor == 1.0)
+
+    @classmethod
+    def from_astropy(cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None):
+        """
+        Convert an AstroPy "Quantity" to a cosmo_array.
+
+        Parameters
+        ----------
+        arr: AstroPy Quantity
+            The Quantity to convert from.
+        unit_registry: yt UnitRegistry, optional
+            A yt unit registry to use in the conversion. If one is not supplied, the default one will be used.
+        comoving : bool
+            if True then the array is in comoving co-ordinates, and if False then it is in physical units.
+        cosmo_factor : float
+            Object to store conversion data between comoving and physical coordinates
+        compression : string
+            String describing any compression that was applied to this array in the hdf5 file.
+
+        Example
+        -------
+        >>> from astropy.units import kpc
+        >>> cosmo_array.from_astropy([1, 2, 3] * kpc)
+        cosmo_array([1., 2., 3.], 'kpc')
+        """
+
+        obj = super().from_astropy(arr, unit_registry=unit_registry).view(cls)
+        obj.comoving = comoving
+        obj.cosmo_factor = cosmo_factor
+        obj.compression = compression
+
+        return obj
+
+    @classmethod
+    def from_pint(cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None):
+        """
+        Convert a Pint "Quantity" to a cosmo_array.
+
+        Parameters
+        ----------
+        arr : Pint Quantity
+            The Quantity to convert from.
+        unit_registry : yt UnitRegistry, optional
+            A yt unit registry to use in the conversion. If one is not
+            supplied, the default one will be used.
+        comoving : bool
+            if True then the array is in comoving co-ordinates, and if False then it is in physical units.
+        cosmo_factor : float
+            Object to store conversion data between comoving and physical coordinates
+        compression : string
+            String describing any compression that was applied to this array in the hdf5 file.
+
+        Examples
+        --------
+        >>> from pint import UnitRegistry
+        >>> import numpy as np
+        >>> ureg = UnitRegistry()
+        >>> a = np.arange(4)
+        >>> b = ureg.Quantity(a, "erg/cm**3")
+        >>> b
+        <Quantity([0 1 2 3], 'erg / centimeter ** 3')>
+        >>> c = cosmo_array.from_pint(b)
+        >>> c
+        cosmo_array([0, 1, 2, 3], 'erg/cm**3')
+        """
+        obj = super().from_pint(arr, unit_registry=unit_registry).view(cls)
+        obj.comoving = comoving
+        obj.cosmo_factor = cosmo_factor
+        obj.compression = compression
+
+        return obj
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        cm = [getattr(inp, "comoving", True) for inp in inputs]
+        cf = [getattr(inp, "cosmo_factor", None) for inp in inputs]
+        comp = [getattr(inp, "compression", None) for inp in inputs]
+
+        if all(cm):
+            # all inputs are comoving
+            ret_cm = True
+        elif not any(cm):
+            # all inputs are physical
+            ret_cm = False
+        else:
+            # mix of comoving and physical inputs
+            inputs = [inp.to_comoving() if not inp.comoving else inp for inp in inputs]
+            ret_cm = True
+
+        if len(set(comp)) == 1:
+            # all compressions identical, preserve it
+            ret_comp = comp[0]
+        else:
+            # mixed compressions, strip it off
+            ret_comp = None
+
+        ret_arr = super().__array_ufunc__(ufunc, method, *inputs, **kwargs).view(type(self))
+
+        # This is rough: need to handle cases like multiply and divide with reduce; use of numpy "out" kwarg; etc.
+        ret_arr.comoving = ret_cm
+        ret_arr.cosmo_factor = self._cosmo_factor_ufunc_registry[ufunc](*cf)
+        ret_arr.compression = ret_comp
+
+        return ret_arr
