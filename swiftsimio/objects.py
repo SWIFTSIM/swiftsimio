@@ -169,11 +169,11 @@ def _passthrough_cosmo_factor(cf, cf2=None):
 
 
 def _return_without_cosmo_factor(cf, cf2=None):
-    if (cf1 is None and cf2 is not None):
+    if (cf is None and cf2 is not None):
         warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
-    if (cf1 is not None and cf2 is None):
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.", RuntimeWarning)
-    if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
+    if (cf is not None and cf2 is None):
+        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.", RuntimeWarning)
+    if (cf is not None) and (cf2 is not None) and (cf != cf2):
         raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}.")
     return None
 
