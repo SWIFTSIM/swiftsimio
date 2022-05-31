@@ -3,6 +3,8 @@ Contains global objects, e.g. the superclass version of the
 unyt_array that we use, called cosmo_array.
 """
 
+import warnings
+
 from itertools import groupby
 
 from unyt import unyt_array
@@ -116,75 +118,80 @@ def _propagate_cosmo_array_attributes(func):
 
 def _sqrt_cosmo_factor(cf):
     # return 1, unit ** 0.5
-    raise NotImplementedError
+    return _power_cosmo_factor(cf, 0.5)  # ufunc sqrt not supported
 
 
 def _multiply_cosmo_factor(cf1, cf2):
-    # try:
-    #     ret = (unit1 * unit2).simplify()
-    # except SymbolNotFoundError:
-    #     # Some operators are not natively commutative when operands are
-    #     # defined within different unit registries, and conversion
-    #     # is defined one way but not the other.
-    #     ret = (unit2 * unit1).simplify()
-    # return ret.as_coeff_unit()
-    return cf1 * cf2
+    if (cf1 is None) and (cf2 is None):
+        return None
+    return cf1 * cf2  # cosmo_factor.__mul__ raises if scale factors differ
 
 
 def _preserve_cosmo_factor(cf1, cf2=None):
-    # if unit2 is None or unit1.dimensions is not temperature:
-    #     return 1, unit1
-    # if unit1.base_offset == 0.0 and unit2.base_offset != 0.0:
-    #     if str(unit1.expr) in ["K", "R"]:
-    #         warnings.warn(TEMPERATURE_WARNING, FutureWarning, stacklevel=3)
-    #         return 1, unit1
-    #     return 1, unit2
-    # return 1, unit1
-    raise NotImplementedError
+    if (cf1 is None) and (cf2 is None):
+        return None
+    if (cf1 is None and cf2 is not None):
+        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
+        return cf2
+    if (cf1 is not None and cf2 is None):
+        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.", RuntimeWarning)
+        return cf1
+    if cf1 != cf2:
+        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}.")
+    return cf1  # or cf2, they're equal
 
 
 def _power_cosmo_factor(cf, power):
-    # return 1, unit ** power
-    raise NotImplementedError
+    if cf is None:
+        return None
+    return np.power(cf, power)
 
 
 def _square_cosmo_factor(cf):
-    # return 1, unit * unit
-    raise NotImplementedError
+    return _power_cosmo_factor(cf, 2)
 
 
 def _divide_cosmo_factor(cf1, cf2):
-    # try:
-    #     ret = (unit1 / unit2).simplify()
-    # except SymbolNotFoundError:
-    #     ret = (1 / (unit2 / unit1).simplify()).units
-    # return ret.as_coeff_unit()
-    raise NotImplementedError
+    if (cf1 is None) and (cf2 is None):
+        return None
+    return cf1 / cf2
 
 
 def _reciprocal_cosmo_factor(cf):
-    # return 1, unit ** -1
-    raise NotImplementedError
+    return _power_cosmo_factor(cf, -1)
 
 
 def _passthrough_cosmo_factor(cf, cf2=None):
-    # return 1, unit
-    raise NotImplementedError
+    if (cf2.scale_factor is not None) and (cf != cf2):
+        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}.")
+    # passthrough is for e.g. ufuncs with a second dimensionless argument, so ok if cf2 is None and cf1 is not
+    return cf
 
 
 def _return_without_cosmo_factor(cf, cf2=None):
-    # return 1, None
-    raise NotImplementedError
+    if (cf1 is None and cf2 is not None):
+        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
+    if (cf1 is not None and cf2 is None):
+        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.", RuntimeWarning)
+    if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
+        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}.")
+    return None
 
 
 def _arctan2_cosmo_factor(cf1, cf2):
-    # return 1, NULL_UNIT
-    raise NotImplementedError
+    if (cf1 is None) and (cf2 is None):
+        return None
+    if (cf1 is None and cf2 is not None):
+        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
+    if (cf1 is not None and cf2 is None):
+        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.", RuntimeWarning)
+    if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
+        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}.")
+    return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(cf1, cf2=None):
-    # return 1, None
-    raise NotImplementedError
+    return _return_without_cosmo_factor(cf1, cf2=cf2)
 
 
 class InvalidScaleFactor(Exception):
