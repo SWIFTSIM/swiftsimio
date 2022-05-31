@@ -383,10 +383,11 @@ class cosmo_factor:
         return self.a_factor >= b.a_factor
 
     def __eq__(self, b):
-        return self.a_factor == b.a_factor
+        # Doesn't handle some corner cases, e.g. cosmo_factor(a ** 1, scale_factor=1) is considered equal to cosmo_factor(a ** 2, scale_factor=1) because 1 ** 1 == 1 ** 2. Should check self.expr vs b.expr with sympy?
+        return (self.scale_factor == b.scale_factor) and (self.a_factor == b.a_factor)
 
     def __ne__(self, b):
-        return self.a_factor != b.a_factor
+        return not self.__eq__(b)
 
 
 class cosmo_array(unyt_array):
