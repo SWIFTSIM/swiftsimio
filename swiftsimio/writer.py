@@ -575,7 +575,7 @@ class SWIFTWriterDataset(object):
         """
 
         numbers_of_particles = [getattr(self, name).n_part for name in names_to_write]
-        already_used = 0
+        already_used = 1
 
         for number, name in zip(numbers_of_particles, names_to_write):
             getattr(self, name).particle_ids = np.arange(
