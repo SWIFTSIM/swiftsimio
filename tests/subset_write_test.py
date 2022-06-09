@@ -46,7 +46,7 @@ def compare_data_contents(A, B):
             try:
                 if not (param_A == param_B):
                     bad_compares.append(f"{part_type} {attr}")
-            except:
+            except ValueError:
                 if not (param_A == param_B).all():
                     bad_compares.append(f"{part_type} {attr}")
 
