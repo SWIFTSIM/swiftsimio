@@ -514,3 +514,28 @@ class TestCosmoArrayUfuncs:
         res = inp1 < inp2
         assert res.all()
         assert isinstance(res, np.ndarray) and not isinstance(res, u.unyt_array)
+
+    def test_out_arg(self):
+        inp = cosmo_array(
+            [1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+        )
+        out = cosmo_array([np.nan], u.kpc, comoving=True, cosmo_factor=None)
+        np.abs(inp, out=out)
+        assert out == np.abs(inp)
+        assert out.comoving is False
+        assert out.cosmo_factor == inp.cosmo_factor
+
+    def test_reduce_multiply(self):
+        inp = cosmo_array(
+            [2],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+        )
+        res = np.multiply.reduce((inp, inp, inp))
+        assert res.to_value(u.kpc**3) == 8  # also ensures units ok
+        assert res.comoving is False
+        assert res.cosmo_factor == inp.cosmo_factor**3
