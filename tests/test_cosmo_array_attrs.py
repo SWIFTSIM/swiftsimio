@@ -539,3 +539,28 @@ class TestCosmoArrayUfuncs:
         assert res.to_value(u.kpc**3) == 8  # also ensures units ok
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor**3
+
+    def test_reduce_divide(self):
+        inp = cosmo_array(
+            [2],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+        )
+        res = np.divide.reduce((inp, inp, inp))
+        assert res.to_value(u.kpc**3) == .5  # also ensures units ok
+        assert res.comoving is False
+        assert res.cosmo_factor == inp.cosmo_factor / inp.cosmo_factor / inp.cosmo_factor
+
+    def test_reduce_other(self):
+        inp = cosmo_array(
+            [2],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+        )
+        res = np.add.reduce((inp, inp, inp))
+        assert res.to_value(u.kpc) == 6  # also ensures units ok
+        assert res.comoving is False
+        assert res.cosmo_factor == inp.cosmo_factor
+
