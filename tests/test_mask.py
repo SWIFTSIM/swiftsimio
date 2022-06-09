@@ -5,7 +5,7 @@ Tests the masking using some test data.
 from tests.helper import requires
 from swiftsimio import load, mask
 
-from unyt import unyt_array as array
+from unyt import unyt_array as array, dimensionless
 
 
 @requires("cosmological_volume.hdf5")
@@ -67,7 +67,7 @@ def test_reading_select_region_half_box(filename):
     selected_coordinates = selected_data.gas.coordinates
 
     # Some of these particles will be outside because of the periodic BCs
-    assert ((selected_coordinates / full_data.metadata.boxsize) > 0.5).sum() < 25
+    assert ((selected_coordinates / full_data.metadata.boxsize).to_value(dimensionless) > 0.5).sum() < 25
 
 
 @requires("cosmological_volume.hdf5")
