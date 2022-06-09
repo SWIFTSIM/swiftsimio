@@ -575,7 +575,11 @@ class SWIFTWriterDataset(object):
         """
 
         numbers_of_particles = [getattr(self, name).n_part for name in names_to_write]
-        already_used = 0
+        # Start particle ID's at 1. When running with hydro + DM, partID = 0
+        # is a no-no because the ID's are used as offsets in arrays. The code
+        # will most likely crash at some point, and "part_verify_links()" will
+        # complain about it if SWIFT is run with debugging checks on.
+        already_used = 1
 
         for number, name in zip(numbers_of_particles, names_to_write):
             getattr(self, name).particle_ids = np.arange(
