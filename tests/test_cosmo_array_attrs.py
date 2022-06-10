@@ -556,6 +556,7 @@ class TestCosmoArrayUfuncs:
             cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
         res = np.divide.reduce(inp, axis=0)
+        # unyt_array seems to give non-sensical units here!:
         np.testing.assert_allclose(res.to_value(u.kpc**-2), np.array([1., .5]))
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor ** 0

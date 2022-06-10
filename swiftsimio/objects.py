@@ -6,7 +6,7 @@ unyt_array that we use, called cosmo_array.
 import warnings
 
 from unyt import unyt_array
-from unyt.array import multiple_output_operators
+from unyt.array import multiple_output_operators, POWER_SIGN_MAPPING
 
 import sympy
 import numpy as np
@@ -118,10 +118,8 @@ def _sqrt_cosmo_factor(ca_cf):
     return _power_cosmo_factor(ca_cf, (False, 0.5))  # ufunc sqrt not supported
 
 
-def _multiply_cosmo_factor(ca_cf1, ca_cf2=None):
+def _multiply_cosmo_factor(ca_cf1, ca_cf2):
     ca1, cf1 = ca_cf1
-    if ca_cf2 is None:
-        return cf1
     ca2, cf2 = ca_cf2
     if (cf1 is None) and (cf2 is None):
         # neither has cosmo_factor information:
@@ -186,10 +184,8 @@ def _square_cosmo_factor(ca_cf):
     return _power_cosmo_factor(ca_cf, (False, 2))
 
 
-def _divide_cosmo_factor(ca_cf1, ca_cf2=None):
+def _divide_cosmo_factor(ca_cf1, ca_cf2):
     ca1, cf1 = ca_cf1
-    if ca_cf2 is None:
-        return cf1
     ca2, cf2 = ca_cf2
     return _multiply_cosmo_factor((ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2))))
 
@@ -900,7 +896,20 @@ class cosmo_array(unyt_array):
             ret_comp = None
 
         # make sure we evaluate the cosmo_factor_ufunc_registry function: might raise/warn even if we're not returning a cosmo_array
-        ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs)
+        if ufunc in (multiply, divide) and method == "reduce":
+            power_sign = POWER_SIGN_MAPPING[ufunc]
+            if "axis" in kwargs and kwargs["axis"] is not None:
+                ret_cf = _power_cosmo_factor(
+                    cfs[0],
+                    (False, power_sign * inputs[0].shape[kwargs["axis"]])
+                )
+            else:
+                ret_cf = _power_cosmo_factor(
+                    cfs[0],
+                    (False, power_sign * inputs[0].size)
+                )
+        else:
+            ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs)
 
         ret = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
         # if we get a tuple we have multiple return values to deal with
