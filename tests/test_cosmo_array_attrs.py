@@ -548,7 +548,9 @@ class TestCosmoArrayUfuncs:
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor ** 2
 
+    @pytest.mark.xfail
     def test_reduce_divide(self):
+        # Will fail until unyt issue #230 is fixed (PR submitted).
         inp = cosmo_array(
             [[1., 2.], [1., 4.]],
             u.kpc,
