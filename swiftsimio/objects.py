@@ -5,10 +5,8 @@ unyt_array that we use, called cosmo_array.
 
 import warnings
 
-from itertools import groupby
-
 from unyt import unyt_array
-from unyt.array import unary_operators, binary_operators, trigonometric_operators, multiple_output_operators
+from unyt.array import multiple_output_operators
 
 import sympy
 import numpy as np
@@ -120,8 +118,10 @@ def _sqrt_cosmo_factor(ca_cf):
     return _power_cosmo_factor(ca_cf, (False, 0.5))  # ufunc sqrt not supported
 
 
-def _multiply_cosmo_factor(ca_cf1, ca_cf2):
+def _multiply_cosmo_factor(ca_cf1, ca_cf2=None):
     ca1, cf1 = ca_cf1
+    if ca_cf2 is None:
+        return cf1
     ca2, cf2 = ca_cf2
     if (cf1 is None) and (cf2 is None):
         # neither has cosmo_factor information:
@@ -186,8 +186,10 @@ def _square_cosmo_factor(ca_cf):
     return _power_cosmo_factor(ca_cf, (False, 2))
 
 
-def _divide_cosmo_factor(ca_cf1, ca_cf2):
+def _divide_cosmo_factor(ca_cf1, ca_cf2=None):
     ca1, cf1 = ca_cf1
+    if ca_cf2 is None:
+        return cf1
     ca2, cf2 = ca_cf2
     return _multiply_cosmo_factor((ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2))))
 
@@ -873,6 +875,7 @@ class cosmo_array(unyt_array):
         return obj
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        # need to handle? accumulate, at, outer, reduce, reduceat
         cms = [(hasattr(inp, "comoving"), getattr(inp, "comoving", None)) for inp in inputs]
         cfs = [(hasattr(inp, "cosmo_factor"), getattr(inp, "cosmo_factor", None)) for inp in inputs]
         comps = [(hasattr(inp, "compression"), getattr(inp, "compression", None)) for inp in inputs]
@@ -896,16 +899,38 @@ class cosmo_array(unyt_array):
             # mixed compressions, strip it off
             ret_comp = None
 
-        # make sure we evaluate the cosmo_factor_ufunc_registry function: might fail a validation even if we're not returning a cosmo_array
+        # make sure we evaluate the cosmo_factor_ufunc_registry function: might raise/warn even if we're not returning a cosmo_array
         ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs)
 
-        ret_arr = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
-        # if unyt returns a bare ndarray, do the same, otherwise we create a view and attach our attributes
-        if isinstance(ret_arr, unyt_array):
-            ret_arr = ret_arr.view(type(self))
-            # This is rough: need to handle cases like multiply and divide with reduce; use of numpy "out" kwarg; etc.
-            ret_arr.comoving = ret_cm
-            ret_arr.cosmo_factor = ret_cf
-            ret_arr.compression = ret_comp
+        ret = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
+        # if we get a tuple we have multiple return values to deal with
+        # if unyt returns a bare ndarray, do the same
+        # otherwise we create a view and attach our attributes
+        if isinstance(ret, tuple):
+            ret = tuple(r.view(type(self)) if isinstance(r, unyt_array) else r for r in ret)
+            for r in ret:
+                if isinstance(r, type(self)):
+                    r.comoving = ret_cm
+                    r.cosmo_factor = ret_cf
+                    r.compression = ret_comp
+        if isinstance(ret, unyt_array):
+            ret = ret.view(type(self))
+            ret.comoving = ret_cm
+            ret.cosmo_factor = ret_cf
+            ret.compression = ret_comp
+        if "out" in kwargs:
+            out = kwargs.pop("out")
+            if ufunc not in multiple_output_operators:
+                out = out[0]
+                if isinstance(out, cosmo_array):
+                    out.comoving = ret_cm
+                    out.cosmo_factor = ret_cf
+                    out.compression = ret_comp
+            else:
+                for o in out:
+                    if isinstance(o, type(self)):
+                        o.comoving = ret_cm
+                        o.cosmo_factor = ret_cf
+                        o.compression = ret_comp
 
-        return ret_arr
+        return ret

@@ -6,7 +6,7 @@ Tests that functions returning copies of cosmo_array
 import pytest
 import numpy as np
 import unyt as u
-from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.objects import cosmo_array, cosmo_factor, a, multiple_output_operators
 
 
 class TestCopyFuncs:
@@ -164,6 +164,14 @@ class TestCopyFuncs:
         )
         assert arr.compatible_with_comoving()
         assert arr.compatible_with_physical()
+
+class TestCheckUfuncCoverage:
+    def test_multi_output_coverage(self):
+        assert set(multiple_output_operators.keys()) == set((np.modf, np.frexp, np.divmod))
+
+    def test_ufunc_coverage(self):
+        assert set(u.unyt_array._ufunc_registry.keys()) == set(cosmo_array._ufunc_registry.keys())
+
 
 class TestCosmoArrayUfuncs:
     def test_preserving_ufunc(self):
@@ -522,45 +530,90 @@ class TestCosmoArrayUfuncs:
             comoving=False,
             cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
-        out = cosmo_array([np.nan], u.kpc, comoving=True, cosmo_factor=None)
+        out = cosmo_array([np.nan], u.dimensionless, comoving=True, cosmo_factor=None)
         np.abs(inp, out=out)
-        assert out == np.abs(inp)
+        assert out.to_value(u.kpc) == np.abs(inp.to_value(u.kpc))
         assert out.comoving is False
         assert out.cosmo_factor == inp.cosmo_factor
 
     def test_reduce_multiply(self):
         inp = cosmo_array(
-            [2],
+            [[1, 2], [3, 4]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
-        res = np.multiply.reduce((inp, inp, inp))
-        assert res.to_value(u.kpc**3) == 8  # also ensures units ok
+        res = np.multiply.reduce(inp, axis=0)
+        np.testing.assert_allclose(res.to_value(u.kpc**2), np.array([3., 8.]))
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor**3
+        assert res.cosmo_factor == inp.cosmo_factor ** 2
 
     def test_reduce_divide(self):
         inp = cosmo_array(
-            [2],
+            [[1., 2.], [1., 4.]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
-        res = np.divide.reduce((inp, inp, inp))
-        assert res.to_value(u.kpc**3) == .5  # also ensures units ok
+        res = np.divide.reduce(inp, axis=0)
+        np.testing.assert_allclose(res.to_value(u.kpc**-2), np.array([1., .5]))
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor / inp.cosmo_factor / inp.cosmo_factor
+        assert res.cosmo_factor == inp.cosmo_factor ** 0
 
     def test_reduce_other(self):
         inp = cosmo_array(
-            [2],
+            [[1., 2.], [1., 2.]],
             u.kpc,
             comoving=False,
             cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
-        res = np.add.reduce((inp, inp, inp))
-        assert res.to_value(u.kpc) == 6  # also ensures units ok
+        res = np.add.reduce(inp, axis=0)
+        np.testing.assert_allclose(res.to_value(u.kpc), np.array([2., 4.]))
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor
 
+    def test_multi_output(self):
+        # with passthrough
+        inp = cosmo_array(
+            [2.5],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0)
+        )
+        res1, res2 = np.modf(inp)
+        assert res1.to_value(u.kpc) == 0.5
+        assert res2.to_value(u.kpc) == 2.0
+        assert res1.comoving is False
+        assert res2.comoving is False
+        assert res1.cosmo_factor == inp.cosmo_factor
+        assert res2.cosmo_factor == inp.cosmo_factor
+        # with return_without
+        inp = cosmo_array(
+            [2.5],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0)
+        )
+        res1, res2 = np.frexp(inp)
+        assert res1 == 0.625
+        assert res2 == 2
+        assert isinstance(res1, np.ndarray) and not isinstance(res1, u.unyt_array)
+        assert isinstance(res2, np.ndarray) and not isinstance(res2, u.unyt_array)
+
+    def test_multi_output_with_out_arg(self):
+        # with two out arrays
+        inp = cosmo_array(
+            [2.5],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0)
+        )
+        out1 = cosmo_array([np.nan], u.dimensionless, comoving=True, cosmo_factor=None)
+        out2 = cosmo_array([np.nan], u.dimensionless, comoving=True, cosmo_factor=None)
+        np.modf(inp, out=(out1, out2))
+        assert out1.to_value(u.kpc) == 0.5
+        assert out2.to_value(u.kpc) == 2.0
+        assert out1.comoving is False
+        assert out2.comoving is False
+        assert out1.cosmo_factor == inp.cosmo_factor
+        assert out2.cosmo_factor == inp.cosmo_factor
