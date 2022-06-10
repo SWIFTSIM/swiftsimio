@@ -55,7 +55,7 @@ def test_scatter_mass_conservation():
 
     for resolution in resolutions:
         image = scatter(x, y, m, h, resolution)
-        mass_in_image = image.sum() / (resolution ** 2)
+        mass_in_image = image.sum() / (resolution**2)
 
         # Check mass conservation to 5%
         assert np.isclose(mass_in_image, total_mass, 0.05)
@@ -258,3 +258,51 @@ def test_render_outside_region():
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
 
     volume_render.scatter_parallel(x, y, z, m, h, resolution)
+
+
+@requires("cosmological_volume.hdf5")
+def test_comoving_versus_physical(filename):
+    """
+    Test what happens if you try to mix up physical and comoving quantities.
+    """
+
+    # normal case: everything comoving
+    data = load(filename)
+    img = project_gas(data, 256, "masses")
+    assert img.comoving
+    img = project_gas(data, 256, "densities")
+    assert img.comoving
+    # try to mix comoving coordinates with a physical variable
+    data.gas.densities.convert_to_physical()
+    failed = False
+    try:
+        img = project_gas(data, 256, "densities")
+    except AttributeError:
+        failed = True
+    assert failed
+
+    # convert coordinates to physical (but not smoothing lengths)
+    data.gas.coordinates.convert_to_physical()
+    failed = False
+    try:
+        img = project_gas(data, 256, "masses")
+    except AttributeError:
+        failed = True
+    assert failed
+    # also convert smoothing lengths to physical
+    data.gas.smoothing_lengths.convert_to_physical()
+    # masses are always compatible with either
+    img = project_gas(data, 256, "masses")
+    # check that we get a physical result
+    assert not img.comoving
+    # densities are still compatible with physical
+    img = project_gas(data, 256, "densities")
+    assert not img.comoving
+    # now try again with comoving densities
+    data.gas.densities.convert_to_comoving()
+    failed = False
+    try:
+        img = project_gas(data, 256, "densities")
+    except AttributeError:
+        failed = True
+    assert failed
