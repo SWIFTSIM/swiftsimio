@@ -5,6 +5,7 @@ unyt_array that we use, called cosmo_array.
 
 import warnings
 
+import unyt
 from unyt import unyt_array
 from unyt.array import multiple_output_operators, POWER_SIGN_MAPPING
 
@@ -114,11 +115,11 @@ def _propagate_cosmo_array_attributes(func):
     return wrapped
 
 
-def _sqrt_cosmo_factor(ca_cf):
-    return _power_cosmo_factor(ca_cf, (False, 0.5))  # ufunc sqrt not supported
+def _sqrt_cosmo_factor(ca_cf, **kwargs):
+    return _power_cosmo_factor(ca_cf, (False, None), power=.5)  # ufunc sqrt not supported
 
 
-def _multiply_cosmo_factor(ca_cf1, ca_cf2):
+def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2
     if (cf1 is None) and (cf2 is None):
@@ -141,7 +142,7 @@ def _multiply_cosmo_factor(ca_cf1, ca_cf2):
         raise NotImplementedError  # should not get here
 
 
-def _preserve_cosmo_factor(ca_cf1, ca_cf2=None):
+def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -172,29 +173,39 @@ def _preserve_cosmo_factor(ca_cf1, ca_cf2=None):
         raise NotImplementedError  # should not get here
 
 
-def _power_cosmo_factor(ca_cf, cap_power):
-    ca, cf = ca_cf
-    cap, power = cap_power
-    if cf is None:
+def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
+    if inputs is not None and power is not None:
+        raise ValueError
+    ca1, cf1 = ca_cf1
+    ca2, cf2 = ca_cf2
+    power = inputs[1] if inputs else power
+    if hasattr(power, "units"):
+        if not power.units.is_dimensionless:
+            raise ValueError("Exponent must be dimensionless.")
+        else:
+            power.to_value(unyt.dimensionless)
+    if ca2 and cf2.a_factor != 1.:
+        raise ValueError("Exponent has scaling with scale factor != 1.")
+    if cf1 is None:
         return None
-    return np.power(cf, power)
+    return np.power(cf1, power)
 
 
-def _square_cosmo_factor(ca_cf):
-    return _power_cosmo_factor(ca_cf, (False, 2))
+def _square_cosmo_factor(ca_cf, **kwargs):
+    return _power_cosmo_factor(ca_cf, (False, None), power=2)
 
 
-def _divide_cosmo_factor(ca_cf1, ca_cf2):
+def _divide_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2
     return _multiply_cosmo_factor((ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2))))
 
 
-def _reciprocal_cosmo_factor(ca_cf):
-    return _power_cosmo_factor(ca_cf, (False, -1))
+def _reciprocal_cosmo_factor(ca_cf, **kwargs):
+    return _power_cosmo_factor(ca_cf, (False, None), power=-1)
 
 
-def _passthrough_cosmo_factor(ca_cf, ca_cf2=None):
+def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
     ca, cf = ca_cf
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -208,7 +219,7 @@ def _passthrough_cosmo_factor(ca_cf, ca_cf2=None):
         return cf
 
 
-def _return_without_cosmo_factor(ca_cf, ca_cf2=None):
+def _return_without_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
     ca, cf = ca_cf
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -238,7 +249,7 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None):
     return None
 
 
-def _arctan2_cosmo_factor(ca_cf1, ca_cf2):
+def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2
     if (cf1 is None) and (cf2 is None):
@@ -252,7 +263,7 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2):
     return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
 
 
-def _comparison_cosmo_factor(ca_cf1, ca_cf2=None):
+def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     return _return_without_cosmo_factor((ca1, cf1), ca_cf2=(ca2, cf2))
@@ -871,10 +882,17 @@ class cosmo_array(unyt_array):
         return obj
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        # need to handle? accumulate, at, outer, reduce, reduceat
-        cms = [(hasattr(inp, "comoving"), getattr(inp, "comoving", None)) for inp in inputs]
-        cfs = [(hasattr(inp, "cosmo_factor"), getattr(inp, "cosmo_factor", None)) for inp in inputs]
-        comps = [(hasattr(inp, "compression"), getattr(inp, "compression", None)) for inp in inputs]
+        cms = [
+            (hasattr(inp, "comoving"), getattr(inp, "comoving", None)) for inp in inputs
+        ]
+        cfs = [
+            (hasattr(inp, "cosmo_factor"), getattr(inp, "cosmo_factor", None))
+            for inp in inputs
+        ]
+        comps = [
+            (hasattr(inp, "compression"), getattr(inp, "compression", None))
+            for inp in inputs
+        ]
 
         # if we're here at least one input must be a cosmo_array
         if all([cm[1] for cm in cms if cm[0]]):
@@ -895,21 +913,24 @@ class cosmo_array(unyt_array):
             # mixed compressions, strip it off
             ret_comp = None
 
-        # make sure we evaluate the cosmo_factor_ufunc_registry function: might raise/warn even if we're not returning a cosmo_array
+        # make sure we evaluate the cosmo_factor_ufunc_registry function:
+        # might raise/warn even if we're not returning a cosmo_array
         if ufunc in (multiply, divide) and method == "reduce":
             power_sign = POWER_SIGN_MAPPING[ufunc]
             if "axis" in kwargs and kwargs["axis"] is not None:
                 ret_cf = _power_cosmo_factor(
                     cfs[0],
-                    (False, power_sign * inputs[0].shape[kwargs["axis"]])
+                    (False, None),
+                    power=power_sign * inputs[0].shape[kwargs["axis"]],
                 )
             else:
                 ret_cf = _power_cosmo_factor(
                     cfs[0],
-                    (False, power_sign * inputs[0].size)
+                    (False, None),
+                    power=power_sign * inputs[0].size,
                 )
         else:
-            ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs)
+            ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
         ret = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
         # if we get a tuple we have multiple return values to deal with
