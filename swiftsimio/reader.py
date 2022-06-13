@@ -595,7 +595,7 @@ class SWIFTMetadata(object):
         The particle types that are present in the file.
         """
 
-        return np.where(np.array(self.num_part) != 0)[0]
+        return np.where(np.array(getattr(self, "has_type", self.num_part)) != 0)[0]
 
     @property
     def present_particle_names(self):
