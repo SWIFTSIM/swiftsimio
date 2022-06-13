@@ -64,6 +64,7 @@ if ASTROPY_AVAILABLE:
             Ob0=Omega_b,
         )
 
+
 else:
 
     def swift_cosmology_to_astropy(cosmo: dict, units) -> dict:

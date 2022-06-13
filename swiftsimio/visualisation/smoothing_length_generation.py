@@ -100,7 +100,6 @@ def generate_smoothing_lengths(
                 n_jobs=-1,
             )
 
-
         smoothing_lengths[starting_index:ending_index] = d[:, -1]
 
     return unyt_array(

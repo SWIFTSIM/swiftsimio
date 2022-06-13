@@ -10,11 +10,16 @@ import pytest
 
 # File we're writing to
 test_filename = "test_write_output_units.hdf5"
-test_file_fields = ("coordinates", "velocities", "masses", "internal_energy",
-                    "smoothing_length")
+test_file_fields = (
+    "coordinates",
+    "velocities",
+    "masses",
+    "internal_energy",
+    "smoothing_length",
+)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def simple_snapshot_data():
     """
     Fixture to create and cleanup a simple snapshot for testing.
@@ -57,10 +62,7 @@ def simple_snapshot_data():
     remove(test_filename)
 
 
-@pytest.mark.parametrize(
-    "field",
-    test_file_fields
-)
+@pytest.mark.parametrize("field", test_file_fields)
 def test_reading_ic_units(simple_snapshot_data, field):
     """
     Test to ensure we are able to correctly read ICs created with swiftsimio
@@ -69,8 +71,6 @@ def test_reading_ic_units(simple_snapshot_data, field):
     data = load(test_filename)
 
     assert unyt.array.allclose_units(
-        getattr(data.gas, field),
-        getattr(simple_snapshot_data.gas, field),
-        rtol=1.e-4
+        getattr(data.gas, field), getattr(simple_snapshot_data.gas, field), rtol=1.0e-4
     )
     return
