@@ -200,7 +200,7 @@ class cosmo_factor:
         return b.__div__(self)
 
     def __pow__(self, p):
-        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor

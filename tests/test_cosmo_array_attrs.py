@@ -113,7 +113,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a**1, 0.5),
+            cosmo_factor=cosmo_factor(a ** 1, 0.5),
             comoving=True,
         )
         assert arr.compatible_with_comoving()
@@ -122,7 +122,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a**1, 0.5),
+            cosmo_factor=cosmo_factor(a ** 1, 0.5),
             comoving=False,
         )
         assert not arr.compatible_with_comoving()
@@ -131,7 +131,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a**0, 0.5),
+            cosmo_factor=cosmo_factor(a ** 0, 0.5),
             comoving=True,
         )
         assert arr.compatible_with_comoving()
@@ -140,7 +140,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a**0, 0.5),
+            cosmo_factor=cosmo_factor(a ** 0, 0.5),
             comoving=False,
         )
         assert arr.compatible_with_comoving()
@@ -149,7 +149,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a**1, 1.0),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             comoving=True,
         )
         assert arr.compatible_with_comoving()
@@ -158,7 +158,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a**1, 1.0),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             comoving=False,
         )
         assert arr.compatible_with_comoving()

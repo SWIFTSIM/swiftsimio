@@ -55,7 +55,7 @@ def test_scatter_mass_conservation():
 
     for resolution in resolutions:
         image = scatter(x, y, m, h, resolution)
-        mass_in_image = image.sum() / (resolution**2)
+        mass_in_image = image.sum() / (resolution ** 2)
 
         # Check mass conservation to 5%
         assert np.isclose(mass_in_image, total_mass, 0.05)

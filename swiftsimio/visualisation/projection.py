@@ -456,7 +456,7 @@ def project_gas(
         units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
 
     if project is not None:
         units *= getattr(data.gas, project).units
