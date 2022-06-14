@@ -219,7 +219,7 @@ def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
         return cf
 
 
-def _return_without_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
+def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None):
     ca, cf = ca_cf
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -227,10 +227,18 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
         pass
     elif (ca and not ca2):
         # one is not a cosmo_array, warn on e.g. comparison to constants:
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.", RuntimeWarning)
-    elif (not ca and ca2):
+        if inputs[1] != 0:  # allow comparison to 0
+            warnings.warn(
+                f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.",
+                RuntimeWarning,
+            )
+    elif not ca and ca2:
         # two is not a cosmo_array, warn on e.g. comparison to constants:
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
+        if inputs[0] != 0:  # allow comparison to 0
+            warnings.warn(
+                f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+                RuntimeWarning,
+            )
     elif (ca and ca2) and (cf is not None and cf2 is None):
         # one has no cosmo_factor information, warn:
         warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.", RuntimeWarning)
@@ -263,10 +271,10 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
     return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
 
 
-def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
+def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    return _return_without_cosmo_factor((ca1, cf1), ca_cf2=(ca2, cf2))
+    return _return_without_cosmo_factor((ca1, cf1), ca_cf2=(ca2, cf2), inputs=inputs)
 
 
 class InvalidScaleFactor(Exception):
