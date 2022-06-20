@@ -17,7 +17,7 @@ from numpy import (
     matmul,
 )
 from unyt import unyt_array
-from swiftsimio import SWIFTDataset
+from swiftsimio import SWIFTDataset, cosmo_array
 
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 
@@ -321,7 +321,18 @@ def render_gas_voxel_grid(
     if project is None:
         m = ones(number_of_gas_particles, dtype=float32)
     else:
-        m = getattr(data.gas, project).value
+        m = getattr(data.gas, project)
+        if data.gas.coordinates.comoving:
+            if not m.compatible_with_comoving():
+                raise AttributeError(
+                    f'Physical quantity "{project}" is not compatible with comoving coordinates!'
+                )
+        else:
+            if not m.compatible_with_physical():
+                raise AttributeError(
+                    f'Comoving quantity "{project}" is not compatible with physical coordinates!'
+                )
+        m = m.value
 
     box_x, box_y, box_z = data.metadata.boxsize
 
@@ -360,7 +371,21 @@ def render_gas_voxel_grid(
     else:
         x, y, z = data.gas.coordinates.T
 
-    hsml = data.gas.smoothing_lengths
+    try:
+        hsml = data.gas.smoothing_lengths
+    except AttributeError:
+        # Backwards compatibility
+        hsml = data.gas.smoothing_length
+    if data.gas.coordinates.comoving:
+        if not hsml.compatible_with_comoving():
+            raise AttributeError(
+                f"Physical smoothing length is not compatible with comoving coordinates!"
+            )
+    else:
+        if not hsml.compatible_with_physical():
+            raise AttributeError(
+                f"Comoving smoothing length is not compatible with physical coordinates!"
+            )
 
     arguments = dict(
         x=(x - x_min) / x_range,
@@ -447,6 +472,9 @@ def render_gas(
     units are appropriate
     """
 
+    comoving = data.gas.coordinates.comoving
+    cosmo_factor = data.gas.coordinates.cosmo_factor
+
     image = render_gas_voxel_grid(
         data,
         resolution,
@@ -474,4 +502,4 @@ def render_gas(
     if project is not None:
         units *= getattr(data.gas, project).units
 
-    return unyt_array(image, units=units)
+    return cosmo_array(image, units=units, cosmo_factor=cosmo_factor, comoving=comoving)

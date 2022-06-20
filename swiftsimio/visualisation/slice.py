@@ -19,7 +19,7 @@ from numpy import (
 )
 from unyt import unyt_array, unyt_quantity
 import unyt
-from swiftsimio import SWIFTDataset
+from swiftsimio import SWIFTDataset, cosmo_array
 
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
 
@@ -344,7 +344,18 @@ def slice_gas_pixel_grid(
     if project is None:
         m = ones(number_of_gas_particles, dtype=float32)
     else:
-        m = getattr(data.gas, project).value
+        m = getattr(data.gas, project)
+        if data.gas.coordinates.comoving:
+            if not m.compatible_with_comoving():
+                raise AttributeError(
+                    f'Physical quantity "{project}" is not compatible with comoving coordinates!'
+                )
+        else:
+            if not m.compatible_with_physical():
+                raise AttributeError(
+                    f'Comoving quantity "{project}" is not compatible with physical coordinates!'
+                )
+        m = m.value
 
     box_x, box_y, box_z = data.metadata.boxsize
 
@@ -388,6 +399,16 @@ def slice_gas_pixel_grid(
     except AttributeError:
         # Backwards compatibility
         hsml = data.gas.smoothing_length
+    if data.gas.coordinates.comoving:
+        if not hsml.compatible_with_comoving():
+            raise AttributeError(
+                f"Physical smoothing length is not compatible with comoving coordinates!"
+            )
+    else:
+        if not hsml.compatible_with_physical():
+            raise AttributeError(
+                f"Comoving smoothing length is not compatible with physical coordinates!"
+            )
 
     common_parameters = dict(
         x=(x - x_min) / max_range,
@@ -487,6 +508,9 @@ def slice_gas(
     if z_slice is None:
         z_slice = 0.0 * data.gas.coordinates.units
 
+    comoving = data.gas.coordinates.comoving
+    cosmo_factor = data.gas.coordinates.cosmo_factor
+
     image = slice_gas_pixel_grid(
         data,
         resolution,
@@ -518,4 +542,4 @@ def slice_gas(
     if project is not None:
         units *= getattr(data.gas, project).units
 
-    return unyt_array(image, units=units)
+    return cosmo_array(image, units=units, cosmo_factor=cosmo_factor, comoving=comoving)
