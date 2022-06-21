@@ -20,7 +20,7 @@ from numpy import (
     s_,
 )
 from unyt import unyt_array, unyt_quantity, exceptions
-from swiftsimio import SWIFTDataset
+from swiftsimio import SWIFTDataset, cosmo_array
 
 from swiftsimio.reader import __SWIFTParticleDataset
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
@@ -144,7 +144,18 @@ def project_pixel_grid(
     if project is None:
         m = ones(number_of_particles, dtype=float32)
     else:
-        m = getattr(data, project).value
+        m = getattr(data, project)
+        if data.coordinates.comoving:
+            if not m.compatible_with_comoving():
+                raise AttributeError(
+                    f'Physical quantity "{project}" is not compatible with comoving coordinates!'
+                )
+        else:
+            if not m.compatible_with_physical():
+                raise AttributeError(
+                    f'Comoving quantity "{project}" is not compatible with physical coordinates!'
+                )
+        m = m.value
 
     # This provides a default 'slice it all' mask.
     if mask is None:
@@ -180,10 +191,21 @@ def project_pixel_grid(
         )
 
     try:
-        hsml = data.smoothing_lengths
-    except AttributeError:
-        # Backwards compatibility
-        hsml = data.smoothing_length
+        try:
+            hsml = data.smoothing_lengths
+        except AttributeError:
+            # Backwards compatibility
+            hsml = data.smoothing_length
+        if data.coordinates.comoving:
+            if not hsml.compatible_with_comoving():
+                raise AttributeError(
+                    f"Physical smoothing length is not compatible with comoving coordinates!"
+                )
+        else:
+            if not hsml.compatible_with_physical():
+                raise AttributeError(
+                    f"Comoving smoothing length is not compatible with physical coordinates!"
+                )
     except AttributeError:
         # No hsml present. If they are using the 'histogram' backend, we
         # should just mock them to be anything as it doesn't matter.
@@ -408,6 +430,9 @@ def project_gas(
       array if you want it to be visualised the 'right way up'.
     """
 
+    comoving = data.gas.coordinates.comoving
+    cosmo_factor = data.gas.coordinates.cosmo_factor
+
     image = project_gas_pixel_grid(
         data=data,
         resolution=resolution,
@@ -436,4 +461,4 @@ def project_gas(
     if project is not None:
         units *= getattr(data.gas, project).units
 
-    return unyt_array(image, units=units)
+    return cosmo_array(image, units=units, cosmo_factor=cosmo_factor, comoving=comoving)

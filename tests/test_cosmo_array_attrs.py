@@ -5,7 +5,7 @@ Tests that functions returning copies of cosmo_array
 
 import pytest
 import numpy as np
-from swiftsimio.objects import cosmo_array, cosmo_factor
+from swiftsimio.objects import cosmo_array, cosmo_factor, a
 
 
 class TestCopyFuncs:
@@ -107,3 +107,59 @@ class TestCopyFuncs:
         res = arr.unit_array
         assert hasattr(res, "cosmo_factor")
         assert hasattr(res, "comoving")
+
+    def test_compatibility(self):
+        # comoving array at high redshift
+        arr = cosmo_array(
+            np.ones((10, 10)),
+            units="Mpc",
+            cosmo_factor=cosmo_factor(a ** 1, 0.5),
+            comoving=True,
+        )
+        assert arr.compatible_with_comoving()
+        assert not arr.compatible_with_physical()
+        # physical array at high redshift
+        arr = cosmo_array(
+            np.ones((10, 10)),
+            units="Mpc",
+            cosmo_factor=cosmo_factor(a ** 1, 0.5),
+            comoving=False,
+        )
+        assert not arr.compatible_with_comoving()
+        assert arr.compatible_with_physical()
+        # comoving array with no scale factor dependency at high redshift
+        arr = cosmo_array(
+            np.ones((10, 10)),
+            units="Mpc",
+            cosmo_factor=cosmo_factor(a ** 0, 0.5),
+            comoving=True,
+        )
+        assert arr.compatible_with_comoving()
+        assert arr.compatible_with_physical()
+        # physical array with no scale factor dependency at high redshift
+        arr = cosmo_array(
+            np.ones((10, 10)),
+            units="Mpc",
+            cosmo_factor=cosmo_factor(a ** 0, 0.5),
+            comoving=False,
+        )
+        assert arr.compatible_with_comoving()
+        assert arr.compatible_with_physical()
+        # comoving array at redshift 0
+        arr = cosmo_array(
+            np.ones((10, 10)),
+            units="Mpc",
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            comoving=True,
+        )
+        assert arr.compatible_with_comoving()
+        assert arr.compatible_with_physical()
+        # physical array at redshift 0
+        arr = cosmo_array(
+            np.ones((10, 10)),
+            units="Mpc",
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            comoving=False,
+        )
+        assert arr.compatible_with_comoving()
+        assert arr.compatible_with_physical()

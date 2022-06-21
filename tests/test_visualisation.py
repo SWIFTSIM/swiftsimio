@@ -2,6 +2,7 @@ from swiftsimio import load
 from swiftsimio.visualisation import scatter, slice, volume_render
 from swiftsimio.visualisation.projection import scatter_parallel, project_gas
 from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
+from swiftsimio.visualisation.volume_render import render_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
 
@@ -258,3 +259,52 @@ def test_render_outside_region():
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
 
     volume_render.scatter_parallel(x, y, z, m, h, resolution)
+
+
+@requires("cosmological_volume.hdf5")
+def test_comoving_versus_physical(filename):
+    """
+    Test what happens if you try to mix up physical and comoving quantities.
+    """
+
+    for func in [project_gas, slice_gas, render_gas]:
+        # normal case: everything comoving
+        data = load(filename)
+        img = func(data, resolution=256, project="masses")
+        assert img.comoving
+        img = func(data, resolution=256, project="densities")
+        assert img.comoving
+        # try to mix comoving coordinates with a physical variable
+        data.gas.densities.convert_to_physical()
+        failed = False
+        try:
+            img = func(data, resolution=256, project="densities")
+        except AttributeError:
+            failed = True
+        assert failed
+
+        # convert coordinates to physical (but not smoothing lengths)
+        data.gas.coordinates.convert_to_physical()
+        failed = False
+        try:
+            img = func(data, resolution=256, project="masses")
+        except AttributeError:
+            failed = True
+        assert failed
+        # also convert smoothing lengths to physical
+        data.gas.smoothing_lengths.convert_to_physical()
+        # masses are always compatible with either
+        img = func(data, resolution=256, project="masses")
+        # check that we get a physical result
+        assert not img.comoving
+        # densities are still compatible with physical
+        img = func(data, resolution=256, project="densities")
+        assert not img.comoving
+        # now try again with comoving densities
+        data.gas.densities.convert_to_comoving()
+        failed = False
+        try:
+            img = func(data, resolution=256, project="densities")
+        except AttributeError:
+            failed = True
+        assert failed

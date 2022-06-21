@@ -447,3 +447,21 @@ class cosmo_array(unyt_array):
         copied_data.convert_to_comoving()
 
         return copied_data
+
+    def compatible_with_comoving(self):
+        """
+        Is this cosmo_array compatible with a comoving cosmo_array?
+
+        This is the case if the cosmo_array is comoving, or if the scale factor
+        exponent is 0 (cosmo_factor.a_factor() == 1)
+        """
+        return self.comoving or (self.cosmo_factor.a_factor == 1.0)
+
+    def compatible_with_physical(self):
+        """
+        Is this cosmo_array compatible with a physical cosmo_array?
+
+        This is the case if the cosmo_array is physical, or if the scale factor
+        exponent is 0 (cosmo_factor.a_factor == 1)
+        """
+        return (not self.comoving) or (self.cosmo_factor.a_factor == 1.0)
