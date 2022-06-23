@@ -5,6 +5,7 @@ from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
 from swiftsimio.visualisation.volume_render import render_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
+from swiftsimio.objects import cosmo_factor, a
 
 from tests.helper import requires
 
@@ -267,13 +268,17 @@ def test_comoving_versus_physical(filename):
     Test what happens if you try to mix up physical and comoving quantities.
     """
 
-    for func in [project_gas, slice_gas, render_gas]:
+    for func, aexp in [(project_gas, -2.0), (slice_gas, -3.0), (render_gas, -3.0)]:
         # normal case: everything comoving
         data = load(filename)
-        img = func(data, resolution=256, project="masses")
+        # we force the default (project="masses") to check the cosmo_factor
+        # conversion in this case
+        img = func(data, resolution=256, project=None)
         assert img.comoving
+        assert img.cosmo_factor.expr == a ** aexp
         img = func(data, resolution=256, project="densities")
         assert img.comoving
+        assert img.cosmo_factor.expr == a ** (aexp - 3.0)
         # try to mix comoving coordinates with a physical variable
         data.gas.densities.convert_to_physical()
         failed = False
@@ -297,9 +302,11 @@ def test_comoving_versus_physical(filename):
         img = func(data, resolution=256, project="masses")
         # check that we get a physical result
         assert not img.comoving
+        assert img.cosmo_factor.expr == a ** aexp
         # densities are still compatible with physical
         img = func(data, resolution=256, project="densities")
         assert not img.comoving
+        assert img.cosmo_factor.expr == a ** (aexp - 3.0)
         # now try again with comoving densities
         data.gas.densities.convert_to_comoving()
         failed = False

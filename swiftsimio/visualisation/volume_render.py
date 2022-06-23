@@ -472,9 +472,6 @@ def render_gas(
     units are appropriate
     """
 
-    comoving = data.gas.coordinates.comoving
-    cosmo_factor = data.gas.coordinates.cosmo_factor
-
     image = render_gas_voxel_grid(
         data,
         resolution,
@@ -499,7 +496,15 @@ def render_gas(
         )
         units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
+    comoving = data.gas.coordinates.comoving
+    coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
+        project_cosmo_factor = getattr(data.gas, project).cosmo_factor
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
+    else:
+        new_cosmo_factor = coord_cosmo_factor ** (-3)
 
-    return cosmo_array(image, units=units, cosmo_factor=cosmo_factor, comoving=comoving)
+    return cosmo_array(
+        image, units=units, cosmo_factor=new_cosmo_factor, comoving=comoving
+    )
