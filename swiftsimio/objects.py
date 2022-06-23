@@ -178,7 +178,7 @@ class cosmo_factor:
 
         return cosmo_factor(expr=self.expr * b.expr, scale_factor=self.scale_factor)
 
-    def __div__(self, b):
+    def __truediv__(self, b):
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to divide two cosmo_factors with different scale factors "
@@ -196,8 +196,8 @@ class cosmo_factor:
     def __rmul__(self, b):
         return self.__mul__(b)
 
-    def __rdiv__(self, b):
-        return b.__div__(self)
+    def __rtruediv__(self, b):
+        return b.__truediv__(self)
 
     def __pow__(self, p):
         return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)

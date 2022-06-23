@@ -430,9 +430,6 @@ def project_gas(
       array if you want it to be visualised the 'right way up'.
     """
 
-    comoving = data.gas.coordinates.comoving
-    cosmo_factor = data.gas.coordinates.cosmo_factor
-
     image = project_gas_pixel_grid(
         data=data,
         resolution=resolution,
@@ -458,7 +455,15 @@ def project_gas(
         # the units...
         units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
 
+    comoving = data.gas.coordinates.comoving
+    coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
+        project_cosmo_factor = getattr(data.gas, project).cosmo_factor
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 2
+    else:
+        new_cosmo_factor = coord_cosmo_factor ** (-2)
 
-    return cosmo_array(image, units=units, cosmo_factor=cosmo_factor, comoving=comoving)
+    return cosmo_array(
+        image, units=units, cosmo_factor=new_cosmo_factor, comoving=comoving
+    )
