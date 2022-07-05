@@ -236,7 +236,7 @@ def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
         return cf
 
 
-def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None):
+def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_comparison=False):
     ca, cf = ca_cf
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -244,14 +244,14 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None):
         pass
     elif ca and not ca2:
         # one is not a cosmo_array, warn on e.g. comparison to constants:
-        if inputs[1] != 0:  # allow comparison to 0
+        if not zero_comparison:
             warnings.warn(
                 f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.",
                 RuntimeWarning,
             )
     elif not ca and ca2:
         # two is not a cosmo_array, warn on e.g. comparison to constants:
-        if inputs[0] != 0:  # allow comparison to 0
+        if not zero_comparison:
             warnings.warn(
                 f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
                 RuntimeWarning,
@@ -307,7 +307,20 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
 def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    return _return_without_cosmo_factor((ca1, cf1), ca_cf2=(ca2, cf2), inputs=inputs)
+    try:
+        iter(ca1)
+    except TypeError:
+        ca1_iszero = ca1 == 0 and ca1 is not False
+    else:
+        ca1_iszero = all(ca1 == 0)
+    try:
+        iter(ca2)
+    except TypeError:
+        ca2_iszero = ca2 == 0 and ca2 is not False
+    else:
+        ca2_iszero = all(ca2 == 0)
+    zero_comparison = ca1_iszero or ca2_iszero
+    return _return_without_cosmo_factor(ca_cf1, ca_cf2=ca_cf2, inputs=inputs, zero_comparison=zero_comparison)
 
 
 class InvalidScaleFactor(Exception):
