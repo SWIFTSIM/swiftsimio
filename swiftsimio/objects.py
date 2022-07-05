@@ -152,7 +152,7 @@ def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         # both cosmo_array and both with cosmo_factor:
         return cf1 * cf2  # cosmo_factor.__mul__ raises if scale factors differ
     else:
-        raise NotImplementedError  # should not get here
+        raise RuntimeError("Unexpected state, please report this error on github.")
 
 
 def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
@@ -195,7 +195,7 @@ def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
     elif (ca1 and ca2) and (cf1 == cf2):
         return cf1  # or cf2, they're equal
     else:
-        raise NotImplementedError  # should not get here
+        raise RuntimeError("Unexpected state, please report this error on github.")
 
 
 def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
@@ -294,7 +294,7 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_compariso
         # both have cosmo_factor, and they match:
         pass
     else:
-        raise NotImplementedError  # should not get here
+        raise RuntimeError("Unexpected state, please report this error on github.")
     # return without cosmo_factor
     return None
 
