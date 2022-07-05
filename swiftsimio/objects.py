@@ -7,6 +7,11 @@ import warnings
 
 import unyt
 from unyt import unyt_array
+# Eventually import of POWER_SIGN_MAPPING will fail because it has been
+# replaced with POWER_MAPPING in a bugfix (unyt PR#231). Then see segment
+# of unyt.array.__array_ufunc__ where it is used and update
+# cosmo_array.__array_ufunc__ accordingly. There is an xfailing test in
+# test_cosmo_array_attrs to catch when this occurs with a test failure.
 from unyt.array import multiple_output_operators, POWER_SIGN_MAPPING
 
 import sympy
