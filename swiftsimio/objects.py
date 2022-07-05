@@ -7,6 +7,7 @@ import warnings
 
 import unyt
 from unyt import unyt_array
+
 # Eventually import of POWER_SIGN_MAPPING will fail because it has been
 # replaced with POWER_MAPPING in a bugfix (unyt PR#231). Then see segment
 # of unyt.array.__array_ufunc__ where it is used and update
@@ -241,7 +242,9 @@ def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
         return cf
 
 
-def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_comparison=False):
+def _return_without_cosmo_factor(
+    ca_cf, ca_cf2=None, inputs=None, zero_comparison=False
+):
     ca, cf = ca_cf
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -325,7 +328,9 @@ def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
     else:
         ca2_iszero = all(ca2 == 0)
     zero_comparison = ca1_iszero or ca2_iszero
-    return _return_without_cosmo_factor(ca_cf1, ca_cf2=ca_cf2, inputs=inputs, zero_comparison=zero_comparison)
+    return _return_without_cosmo_factor(
+        ca_cf1, ca_cf2=ca_cf2, inputs=inputs, zero_comparison=zero_comparison
+    )
 
 
 class InvalidScaleFactor(Exception):
