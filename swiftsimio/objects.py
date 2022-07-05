@@ -253,7 +253,7 @@ class cosmo_array(unyt_array):
     """
 
     def __new__(
-        self,
+        cls,
         input_array,
         units=None,
         registry=None,
@@ -304,7 +304,7 @@ class cosmo_array(unyt_array):
 
         try:
             obj = super().__new__(
-                self,
+                cls,
                 input_array,
                 units=units,
                 registry=registry,
@@ -316,7 +316,7 @@ class cosmo_array(unyt_array):
         except TypeError:
             # Older versions of unyt
             obj = super().__new__(
-                self,
+                cls,
                 input_array,
                 units=units,
                 registry=registry,
@@ -325,11 +325,22 @@ class cosmo_array(unyt_array):
                 input_units=input_units,
             )
 
+        if isinstance(obj, unyt_array) and not isinstance(obj, cls):
+            obj = obj.view(cls)
+
         obj.cosmo_factor = cosmo_factor
         obj.comoving = comoving
         obj.compression = compression
 
         return obj
+
+    def __array_finalize__(self, obj):
+        super().__array_finalize__(obj)
+        if obj is None:
+            return
+        self.cosmo_factor = getattr(obj, "cosmo_factor", None)
+        self.comoving = getattr(obj, "comoving", True)
+        self.compression = getattr(obj, "compression", None)
 
     def __str__(self):
         if self.comoving:
