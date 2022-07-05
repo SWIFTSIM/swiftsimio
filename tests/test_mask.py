@@ -67,7 +67,10 @@ def test_reading_select_region_half_box(filename):
     selected_coordinates = selected_data.gas.coordinates
 
     # Some of these particles will be outside because of the periodic BCs
-    assert ((selected_coordinates / full_data.metadata.boxsize).to_value(dimensionless) > 0.5).sum() < 25
+    assert (
+        (selected_coordinates / full_data.metadata.boxsize).to_value(dimensionless)
+        > 0.5
+    ).sum() < 25
 
 
 @requires("cosmological_volume.hdf5")

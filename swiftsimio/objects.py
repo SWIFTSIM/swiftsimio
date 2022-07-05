@@ -116,7 +116,9 @@ def _propagate_cosmo_array_attributes(func):
 
 
 def _sqrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=.5)  # ufunc sqrt not supported
+    return _power_cosmo_factor(
+        ca_cf, (False, None), power=0.5
+    )  # ufunc sqrt not supported
 
 
 def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
@@ -133,7 +135,10 @@ def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         return cf1
     elif (ca1 and ca2) and ((cf1 is None) or (cf2 is None)):
         # both cosmo_array but not both with cosmo_factor (both without shortcircuited above already):
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors ({cf1} and {cf2}), discarding cosmo_factor in return value.", RuntimeWarning)
+        warnings.warn(
+            f"Mixing ufunc arguments with and without cosmo_factors ({cf1} and {cf2}), discarding cosmo_factor in return value.",
+            RuntimeWarning,
+        )
         return None
     elif (ca1 and ca2) and ((cf1 is not None) and (cf2 is not None)):
         # both cosmo_array and both with cosmo_factor:
@@ -159,14 +164,22 @@ def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
         return cf2
     elif (ca1 and ca2) and (cf1 is None and cf2 is not None):
         # both cosmo_array, but not both with cosmo_factor (both without shortcircuited above already):
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
+        warnings.warn(
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+            RuntimeWarning,
+        )
         return cf2
     elif (ca1 and ca2) and (cf1 is not None and cf2 is None):
         # both cosmo_array, but not both with cosmo_factor (both without shortcircuited above already):
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.", RuntimeWarning)
+        warnings.warn(
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.",
+            RuntimeWarning,
+        )
         return cf1
     elif (ca1 and ca2) and (cf1 != cf2):
-        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}.")
+        raise ValueError(
+            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
+        )
     elif (ca1 and ca2) and (cf1 == cf2):
         return cf1  # or cf2, they're equal
     else:
@@ -184,7 +197,7 @@ def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
             raise ValueError("Exponent must be dimensionless.")
         else:
             power.to_value(unyt.dimensionless)
-    if ca2 and cf2.a_factor != 1.:
+    if ca2 and cf2.a_factor != 1.0:
         raise ValueError("Exponent has scaling with scale factor != 1.")
     if cf1 is None:
         return None
@@ -198,7 +211,9 @@ def _square_cosmo_factor(ca_cf, **kwargs):
 def _divide_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2
-    return _multiply_cosmo_factor((ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2))))
+    return _multiply_cosmo_factor(
+        (ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2)))
+    )
 
 
 def _reciprocal_cosmo_factor(ca_cf, **kwargs):
@@ -213,7 +228,9 @@ def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
         return cf
     elif (cf2 is not None) and cf != cf2:
         # if both have cosmo_factor information and it differs this is an error
-        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}.")
+        raise ValueError(
+            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
+        )
     else:
         # passthrough is for e.g. ufuncs with a second dimensionless argument, so ok if cf2 is None and cf1 is not
         return cf
@@ -225,7 +242,7 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None):
     if ca_cf2 is None:
         # no second argument
         pass
-    elif (ca and not ca2):
+    elif ca and not ca2:
         # one is not a cosmo_array, warn on e.g. comparison to constants:
         if inputs[1] != 0:  # allow comparison to 0
             warnings.warn(
@@ -241,13 +258,21 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None):
             )
     elif (ca and ca2) and (cf is not None and cf2 is None):
         # one has no cosmo_factor information, warn:
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.", RuntimeWarning)
+        warnings.warn(
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.",
+            RuntimeWarning,
+        )
     elif (ca and ca2) and (cf is None and cf2 is not None):
         # two has no cosmo_factor information, warn:
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
+        warnings.warn(
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+            RuntimeWarning,
+        )
     elif (cf is not None) and (cf2 is not None) and (cf != cf2):
         # both have cosmo_factor, don't match:
-        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}.")
+        raise ValueError(
+            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
+        )
     elif (cf is not None) and (cf2 is not None) and (cf == cf2):
         # both have cosmo_factor, and they match:
         pass
@@ -262,12 +287,20 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
     ca2, cf2 = ca_cf2
     if (cf1 is None) and (cf2 is None):
         return None
-    if (cf1 is None and cf2 is not None):
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.", RuntimeWarning)
-    if (cf1 is not None and cf2 is None):
-        warnings.warn(f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.", RuntimeWarning)
+    if cf1 is None and cf2 is not None:
+        warnings.warn(
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+            RuntimeWarning,
+        )
+    if cf1 is not None and cf2 is None:
+        warnings.warn(
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.",
+            RuntimeWarning,
+        )
     if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
-        raise ValueError(f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}.")
+        raise ValueError(
+            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
+        )
     return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
 
 
@@ -819,7 +852,9 @@ class cosmo_array(unyt_array):
         return (not self.comoving) or (self.cosmo_factor.a_factor == 1.0)
 
     @classmethod
-    def from_astropy(cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None):
+    def from_astropy(
+        cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None
+    ):
         """
         Convert an AstroPy "Quantity" to a cosmo_array.
 
@@ -851,7 +886,9 @@ class cosmo_array(unyt_array):
         return obj
 
     @classmethod
-    def from_pint(cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None):
+    def from_pint(
+        cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None
+    ):
         """
         Convert a Pint "Quantity" to a cosmo_array.
 
@@ -911,7 +948,10 @@ class cosmo_array(unyt_array):
             ret_cm = False
         else:
             # mix of comoving and physical inputs
-            inputs = [inp.to_comoving() if cm[0] and not cm[1] else inp for inp, cm in zip(inputs, cms)]
+            inputs = [
+                inp.to_comoving() if cm[0] and not cm[1] else inp
+                for inp, cm in zip(inputs, cms)
+            ]
             ret_cm = True
 
         if len(set(comps)) == 1:
@@ -933,9 +973,7 @@ class cosmo_array(unyt_array):
                 )
             else:
                 ret_cf = _power_cosmo_factor(
-                    cfs[0],
-                    (False, None),
-                    power=power_sign * inputs[0].size,
+                    cfs[0], (False, None), power=power_sign * inputs[0].size
                 )
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
@@ -945,7 +983,9 @@ class cosmo_array(unyt_array):
         # if unyt returns a bare ndarray, do the same
         # otherwise we create a view and attach our attributes
         if isinstance(ret, tuple):
-            ret = tuple(r.view(type(self)) if isinstance(r, unyt_array) else r for r in ret)
+            ret = tuple(
+                r.view(type(self)) if isinstance(r, unyt_array) else r for r in ret
+            )
             for r in ret:
                 if isinstance(r, type(self)):
                     r.comoving = ret_cm

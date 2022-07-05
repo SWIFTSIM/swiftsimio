@@ -165,12 +165,17 @@ class TestCopyFuncs:
         assert arr.compatible_with_comoving()
         assert arr.compatible_with_physical()
 
+
 class TestCheckUfuncCoverage:
     def test_multi_output_coverage(self):
-        assert set(multiple_output_operators.keys()) == set((np.modf, np.frexp, np.divmod))
+        assert set(multiple_output_operators.keys()) == set(
+            (np.modf, np.frexp, np.divmod)
+        )
 
     def test_ufunc_coverage(self):
-        assert set(u.unyt_array._ufunc_registry.keys()) == set(cosmo_array._ufunc_registry.keys())
+        assert set(u.unyt_array._ufunc_registry.keys()) == set(
+            cosmo_array._ufunc_registry.keys()
+        )
 
 
 class TestCosmoArrayUfuncs:
@@ -180,7 +185,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.ones_like(inp)
         assert res.to_value(u.kpc) == 1
@@ -211,7 +216,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = cosmo_array([2], u.kpc, comoving=False, cosmo_factor=None)
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
@@ -225,7 +230,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
             res = inp1 + inp2
@@ -237,13 +242,13 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
         )
         with pytest.raises(
             ValueError, match="Ufunc arguments have cosmo_factors that differ"
@@ -254,7 +259,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = inp + inp
         assert res.to_value(u.kpc) == 4
@@ -265,7 +270,7 @@ class TestCosmoArrayUfuncs:
         # no cosmo_factors
         inp = cosmo_array([2], u.kpc, comoving=False, cosmo_factor=None)
         res = inp * inp
-        assert res.to_value(u.kpc**2) == 4
+        assert res.to_value(u.kpc ** 2) == 4
         assert res.comoving is False
         assert res.cosmo_factor is None
         # one is not cosmo_array
@@ -287,12 +292,12 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = cosmo_array([2], u.kpc, comoving=False, cosmo_factor=None)
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
             res = inp1 * inp2
-        assert res.to_value(u.kpc**2) == 4
+        assert res.to_value(u.kpc ** 2) == 4
         assert res.comoving is False
         assert res.cosmo_factor is None
         # only two has cosmo_factor
@@ -301,11 +306,11 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
             res = inp1 * inp2
-        assert res.to_value(u.kpc**2) == 4
+        assert res.to_value(u.kpc ** 2) == 4
         assert res.comoving is False
         assert res.cosmo_factor is None
         # cosmo_factors both present
@@ -313,24 +318,24 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = inp * inp
-        assert res.to_value(u.kpc**2) == 4
+        assert res.to_value(u.kpc ** 2) == 4
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor**2
+        assert res.cosmo_factor == inp.cosmo_factor ** 2
 
     def test_dividing_ufunc(self):
         inp = cosmo_array(
             [2.0],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = inp / inp
         assert res.to_value(u.dimensionless) == 1  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor**0
+        assert res.cosmo_factor == inp.cosmo_factor ** 0
 
     def test_return_without_ufunc(self):
         # 1 argument
@@ -338,7 +343,7 @@ class TestCosmoArrayUfuncs:
             [1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.logical_not(inp)
         assert res == np.logical_not(1)
@@ -348,7 +353,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.logaddexp(inp, inp)
         assert res == np.logaddexp(2, 2)
@@ -358,13 +363,13 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
         )
         with pytest.raises(
             ValueError, match="Ufunc arguments have cosmo_factors that differ"
@@ -376,7 +381,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
             res = np.logaddexp(inp1, inp2)
@@ -387,7 +392,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = cosmo_array([2], u.kpc, comoving=False, cosmo_factor=None)
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
@@ -400,7 +405,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
             res = np.logaddexp(inp1, inp2)
@@ -411,7 +416,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = u.unyt_array([2], u.kpc)
         with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
@@ -424,36 +429,36 @@ class TestCosmoArrayUfuncs:
             [4],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.sqrt(inp)
-        assert res.to_value(u.kpc**0.5) == 2  # also ensures units ok
+        assert res.to_value(u.kpc ** 0.5) == 2  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor**0.5
+        assert res.cosmo_factor == inp.cosmo_factor ** 0.5
 
     def test_square_ufunc(self):
         inp = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.square(inp)
-        assert res.to_value(u.kpc**2) == 4  # also ensures units ok
+        assert res.to_value(u.kpc ** 2) == 4  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor**2
+        assert res.cosmo_factor == inp.cosmo_factor ** 2
 
     def test_reciprocal_ufunc(self):
         inp = cosmo_array(
             [2.0],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.reciprocal(inp)
-        assert res.to_value(u.kpc**-1) == 0.5  # also ensures units ok
+        assert res.to_value(u.kpc ** -1) == 0.5  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor**-1
+        assert res.cosmo_factor == inp.cosmo_factor ** -1
 
     def test_passthrough_ufunc(self):
         # 1 argument
@@ -461,7 +466,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.negative(inp)
         assert res.to_value(u.kpc) == -2
@@ -472,7 +477,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.copysign(inp, inp)
         assert res.to_value(u.kpc) == inp.to_value(u.kpc)
@@ -483,13 +488,13 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
         )
         with pytest.raises(ValueError):
             res = np.copysign(inp1, inp2)
@@ -499,7 +504,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.arctan2(inp, inp)
         assert res.to_value(u.dimensionless) == np.arctan2(2, 2)
@@ -511,13 +516,13 @@ class TestCosmoArrayUfuncs:
             [1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = inp1 < inp2
         assert res.all()
@@ -528,7 +533,7 @@ class TestCosmoArrayUfuncs:
             [1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         out = cosmo_array([np.nan], u.dimensionless, comoving=True, cosmo_factor=None)
         np.abs(inp, out=out)
@@ -541,10 +546,10 @@ class TestCosmoArrayUfuncs:
             [[1, 2], [3, 4]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
         )
         res = np.multiply.reduce(inp, axis=0)
-        np.testing.assert_allclose(res.to_value(u.kpc**2), np.array([3., 8.]))
+        np.testing.assert_allclose(res.to_value(u.kpc ** 2), np.array([3.0, 8.0]))
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor ** 2
 
@@ -552,26 +557,26 @@ class TestCosmoArrayUfuncs:
     def test_reduce_divide(self):
         # Will fail until unyt issue #230 is fixed (PR submitted).
         inp = cosmo_array(
-            [[1., 2.], [1., 4.]],
+            [[1.0, 2.0], [1.0, 4.0]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
         )
         res = np.divide.reduce(inp, axis=0)
         # unyt_array seems to give non-sensical units here!:
-        np.testing.assert_allclose(res.to_value(u.kpc**-2), np.array([1., .5]))
+        np.testing.assert_allclose(res.to_value(u.kpc ** -2), np.array([1.0, 0.5]))
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor ** 0
 
     def test_reduce_other(self):
         inp = cosmo_array(
-            [[1., 2.], [1., 2.]],
+            [[1.0, 2.0], [1.0, 2.0]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res = np.add.reduce(inp, axis=0)
-        np.testing.assert_allclose(res.to_value(u.kpc), np.array([2., 4.]))
+        np.testing.assert_allclose(res.to_value(u.kpc), np.array([2.0, 4.0]))
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor
 
@@ -581,7 +586,7 @@ class TestCosmoArrayUfuncs:
             [2.5],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0)
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res1, res2 = np.modf(inp)
         assert res1.to_value(u.kpc) == 0.5
@@ -595,7 +600,7 @@ class TestCosmoArrayUfuncs:
             [2.5],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0)
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         res1, res2 = np.frexp(inp)
         assert res1 == 0.625
@@ -609,7 +614,7 @@ class TestCosmoArrayUfuncs:
             [2.5],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0)
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
         out1 = cosmo_array([np.nan], u.dimensionless, comoving=True, cosmo_factor=None)
         out2 = cosmo_array([np.nan], u.dimensionless, comoving=True, cosmo_factor=None)
