@@ -625,3 +625,82 @@ class TestCosmoArrayUfuncs:
         assert out2.comoving is False
         assert out1.cosmo_factor == inp.cosmo_factor
         assert out2.cosmo_factor == inp.cosmo_factor
+
+    def test_comparison_with_zero(self):
+        inp1 = cosmo_array(
+            [1, 1, 1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        inp2 = 0
+        res = inp1 > inp2
+        assert res.all()
+        inp1 = cosmo_array(
+            [1, 1, 1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        inp2 = 0.5
+        with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
+            res = inp1 > inp2
+        assert res.all()
+        inp1 = cosmo_array(
+            [1, 1, 1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        inp2 = cosmo_array(
+            [0, 0, 0],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        assert (inp1 > inp2).all()
+        inp1 = cosmo_array(
+            [1, 1, 1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        inp2 = np.ones(3) * u.kpc
+        with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
+            assert (inp1 == inp2).all()
+        inp1 = cosmo_array(
+            [1, 1, 1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        inp2 = np.zeros(3) * u.kpc
+        assert (inp1 > inp2).all()
+        inp1 = cosmo_array(
+            [1, 1, 1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        inp2 = cosmo_array(
+            1,
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        res = inp1 == inp2
+        assert res.all()
+        inp1 = cosmo_array(
+            [1, 1, 1],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        inp2 = cosmo_array(
+            0,
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        res = inp1 > inp2
+        assert res.all()

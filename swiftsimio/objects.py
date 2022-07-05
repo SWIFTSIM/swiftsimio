@@ -140,9 +140,11 @@ def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         # two is not a cosmo_array, allow e.g. multiplication by constants:
         return cf1
     elif (ca1 and ca2) and ((cf1 is None) or (cf2 is None)):
-        # both cosmo_array but not both with cosmo_factor (both without shortcircuited above already):
+        # both cosmo_array but not both with cosmo_factor
+        # (both without shortcircuited above already):
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors ({cf1} and {cf2}), discarding cosmo_factor in return value.",
+            f"Mixing ufunc arguments with and without cosmo_factors ({cf1} and {cf2}),"
+            f" discarding cosmo_factor in return value.",
             RuntimeWarning,
         )
         return None
@@ -169,16 +171,20 @@ def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
         # only one is cosmo_array
         return cf2
     elif (ca1 and ca2) and (cf1 is None and cf2 is not None):
-        # both cosmo_array, but not both with cosmo_factor (both without shortcircuited above already):
+        # both cosmo_array, but not both with cosmo_factor
+        # (both without shortcircuited above already):
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
         return cf2
     elif (ca1 and ca2) and (cf1 is not None and cf2 is None):
-        # both cosmo_array, but not both with cosmo_factor (both without shortcircuited above already):
+        # both cosmo_array, but not both with cosmo_factor
+        # (both without shortcircuited above already):
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.",
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
         return cf1
@@ -238,13 +244,12 @@ def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
             f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
         )
     else:
-        # passthrough is for e.g. ufuncs with a second dimensionless argument, so ok if cf2 is None and cf1 is not
+        # passthrough is for e.g. ufuncs with a second dimensionless argument,
+        # so ok if cf2 is None and cf1 is not
         return cf
 
 
-def _return_without_cosmo_factor(
-    ca_cf, ca_cf2=None, inputs=None, zero_comparison=False
-):
+def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_comparison=None):
     ca, cf = ca_cf
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -254,26 +259,30 @@ def _return_without_cosmo_factor(
         # one is not a cosmo_array, warn on e.g. comparison to constants:
         if not zero_comparison:
             warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.",
+                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
+                f" assuming provided cosmo_factor ({cf}) for all arguments.",
                 RuntimeWarning,
             )
     elif not ca and ca2:
         # two is not a cosmo_array, warn on e.g. comparison to constants:
         if not zero_comparison:
             warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
+                f" assuming provided cosmo_factor ({cf2}) for all arguments.",
                 RuntimeWarning,
             )
     elif (ca and ca2) and (cf is not None and cf2 is None):
         # one has no cosmo_factor information, warn:
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf}) for all arguments.",
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f" provided cosmo_factor ({cf}) for all arguments.",
             RuntimeWarning,
         )
     elif (ca and ca2) and (cf is None and cf2 is not None):
         # two has no cosmo_factor information, warn:
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
     elif (cf is not None) and (cf2 is not None) and (cf != cf2):
@@ -297,12 +306,14 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         return None
     if cf1 is None and cf2 is not None:
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf2}) for all arguments.",
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
     if cf1 is not None and cf2 is None:
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming provided cosmo_factor ({cf1}) for all arguments.",
+            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
     if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
@@ -316,18 +327,32 @@ def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     try:
-        iter(ca1)
+        iter(inputs[0])
     except TypeError:
-        ca1_iszero = ca1 == 0 and ca1 is not False
+        if ca1:
+            input1_iszero = not inputs[0].value and inputs[0] is not False
+        else:
+            input1_iszero = not inputs[0] and inputs[0] is not False
     else:
-        ca1_iszero = all(ca1 == 0)
+        if ca1:
+            input1_iszero = not inputs[0].value.any()
+        else:
+            input1_iszero = not inputs[0].any()
     try:
-        iter(ca2)
+        iter(inputs[1])
+    except IndexError:
+        input2_iszero = None
     except TypeError:
-        ca2_iszero = ca2 == 0 and ca2 is not False
+        if ca2:
+            input2_iszero = not inputs[1].value and inputs[1] is not False
+        else:
+            input2_iszero = not inputs[1] and inputs[1] is not False
     else:
-        ca2_iszero = all(ca2 == 0)
-    zero_comparison = ca1_iszero or ca2_iszero
+        if ca2:
+            input2_iszero = not inputs[1].value.any()
+        else:
+            input2_iszero = not inputs[1].any()
+    zero_comparison = input1_iszero or input2_iszero
     return _return_without_cosmo_factor(
         ca_cf1, ca_cf2=ca_cf2, inputs=inputs, zero_comparison=zero_comparison
     )
@@ -522,7 +547,9 @@ class cosmo_factor:
         return self.a_factor >= b.a_factor
 
     def __eq__(self, b):
-        # Doesn't handle some corner cases, e.g. cosmo_factor(a ** 1, scale_factor=1) is considered equal to cosmo_factor(a ** 2, scale_factor=1) because 1 ** 1 == 1 ** 2. Should check self.expr vs b.expr with sympy?
+        # Doesn't handle some corner cases, e.g. cosmo_factor(a ** 1, scale_factor=1)
+        # is considered equal to cosmo_factor(a ** 2, scale_factor=1) because
+        # 1 ** 1 == 1 ** 2. Should check self.expr vs b.expr with sympy?
         return (self.scale_factor == b.scale_factor) and (self.a_factor == b.a_factor)
 
     def __ne__(self, b):
@@ -670,31 +697,34 @@ class cosmo_array(unyt_array):
         input_array : iterable
             A tuple, list, or array to attach units to
         units : str, unyt.unit_symbols or astropy.unit, optional
-            The units of the array. Powers must be specified using python syntax (cm**3, not cm^3).
+            The units of the array. Powers must be specified using python syntax
+            (cm**3, not cm^3).
         registry : unyt.unit_registry.UnitRegistry, optional
-            The registry to create units from. If input_units is already associated with a unit
-            registry and this is specified, this will be used instead of the registry associated
-            with the unit object.
+            The registry to create units from. If input_units is already associated with a
+            unit registry and this is specified, this will be used instead of the registry
+            associated with the unit object.
         dtype : np.dtype or str, optional
-            The dtype of the array data. Defaults to the dtype of the input data, or, if none is
-            found, uses np.float64
+            The dtype of the array data. Defaults to the dtype of the input data, or, if
+            none is found, uses np.float64
         bypass_validation : bool, optional
-            If True, all input validation is skipped. Using this option may produce corrupted,
-            invalid units or array data, but can lead to significant speedups in the input
-            validation logic adds significant overhead. If set, input_units must be a valid
-            unit object. Defaults to False.
+            If True, all input validation is skipped. Using this option may produce
+            corrupted, invalid units or array data, but can lead to significant speedups
+            in the input validation logic adds significant overhead. If set, input_units
+            must be a valid unit object. Defaults to False.
         input_units : str, optional
             deprecated in favour of units option
         name : str, optional
-            The name of the array. Defaults to None. This attribute does not propagate through
-            mathematical operations, but is preserved under indexing and unit conversions.
+            The name of the array. Defaults to None. This attribute does not propagate
+            through mathematical operations, but is preserved under indexing and unit
+            conversions.
         cosmo_factor : cosmo_factor
-            cosmo_factor object to store conversion data between comoving and physical coordinates
+            cosmo_factor object to store conversion data between comoving and physical
+            coordinates
         comoving : bool
             flag to indicate whether using comoving coordinates
         compression : string
-            description of the compression filters that were applied to that array in the hdf5
-            file
+            description of the compression filters that were applied to that array in the
+            hdf5 file
         """
 
         cosmo_factor: cosmo_factor
@@ -886,13 +916,16 @@ class cosmo_array(unyt_array):
         arr: AstroPy Quantity
             The Quantity to convert from.
         unit_registry: yt UnitRegistry, optional
-            A yt unit registry to use in the conversion. If one is not supplied, the default one will be used.
+            A yt unit registry to use in the conversion. If one is not supplied, the
+            default one will be used.
         comoving : bool
-            if True then the array is in comoving co-ordinates, and if False then it is in physical units.
+            if True then the array is in comoving co-ordinates, and if False then it is in
+            physical units.
         cosmo_factor : float
             Object to store conversion data between comoving and physical coordinates
         compression : string
-            String describing any compression that was applied to this array in the hdf5 file.
+            String describing any compression that was applied to this array in the hdf5
+            file.
 
         Example
         -------
@@ -923,11 +956,13 @@ class cosmo_array(unyt_array):
             A yt unit registry to use in the conversion. If one is not
             supplied, the default one will be used.
         comoving : bool
-            if True then the array is in comoving co-ordinates, and if False then it is in physical units.
+            if True then the array is in comoving co-ordinates, and if False then it is in
+            physical units.
         cosmo_factor : float
             Object to store conversion data between comoving and physical coordinates
         compression : string
-            String describing any compression that was applied to this array in the hdf5 file.
+            String describing any compression that was applied to this array in the hdf5
+            file.
 
         Examples
         --------

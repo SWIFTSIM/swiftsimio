@@ -1,10 +1,7 @@
 from tests.helper import requires
 
-import numpy as np
-from swiftsimio.subset_writer import write_subset, find_datasets
+from swiftsimio.subset_writer import write_subset
 import swiftsimio as sw
-import h5py
-import sys
 import os
 
 
