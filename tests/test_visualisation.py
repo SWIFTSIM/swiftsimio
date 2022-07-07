@@ -1,10 +1,17 @@
 import pytest
 from swiftsimio import load
 from swiftsimio.visualisation import scatter, slice, volume_render
-from swiftsimio.visualisation.projection import scatter_parallel, project_gas
+from swiftsimio.visualisation.projection import (
+    scatter_parallel,
+    project_gas,
+    project_pixel_grid,
+)
 from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
 from swiftsimio.visualisation.volume_render import render_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
+from swiftsimio.visualisation.smoothing_length_generation import (
+    generate_smoothing_lengths,
+)
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
 from swiftsimio.objects import cosmo_factor, a
 
@@ -303,3 +310,24 @@ def test_comoving_versus_physical(filename):
         data.gas.densities.convert_to_comoving()
         with pytest.raises(AttributeError, match="not compatible with physical"):
             img = func(data, resolution=256, project="densities")
+
+
+@requires("cosmological_volume.hdf5")
+def test_nongas_smoothing_lengths(filename):
+    """
+    Test that the visualisation tools to calculate smoothing lengths give usable results.
+    """
+
+    data = load(filename)
+    data.dark_matter.smoothing_length = generate_smoothing_lengths(
+        data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
+    )
+    project_pixel_grid(
+        data.dark_matter,
+        boxsize=data.metadata.boxsize,
+        resolution=256,
+        project="masses",
+    )
+
+    # if project_pixel_grid runs without error the smoothing lengths seem usable
+    return
