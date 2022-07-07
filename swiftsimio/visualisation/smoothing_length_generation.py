@@ -106,5 +106,5 @@ def generate_smoothing_lengths(
         smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
         units=coordinates.units,
         comoving=coordinates.comoving,
-        cosmo_factor=coordinates.cosmo_factor
+        cosmo_factor=coordinates.cosmo_factor,
     )
