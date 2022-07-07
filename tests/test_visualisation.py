@@ -1,3 +1,4 @@
+import pytest
 from swiftsimio import load
 from swiftsimio.visualisation import scatter, slice, volume_render
 from swiftsimio.visualisation.projection import scatter_parallel, project_gas
@@ -281,21 +282,12 @@ def test_comoving_versus_physical(filename):
         assert img.cosmo_factor.expr == a ** (aexp - 3.0)
         # try to mix comoving coordinates with a physical variable
         data.gas.densities.convert_to_physical()
-        failed = False
-        try:
+        with pytest.raises(AttributeError, match="not compatible with comoving"):
             img = func(data, resolution=256, project="densities")
-        except AttributeError:
-            failed = True
-        assert failed
-
         # convert coordinates to physical (but not smoothing lengths)
         data.gas.coordinates.convert_to_physical()
-        failed = False
-        try:
+        with pytest.raises(AttributeError, match=""):
             img = func(data, resolution=256, project="masses")
-        except AttributeError:
-            failed = True
-        assert failed
         # also convert smoothing lengths to physical
         data.gas.smoothing_lengths.convert_to_physical()
         # masses are always compatible with either
@@ -309,9 +301,5 @@ def test_comoving_versus_physical(filename):
         assert img.cosmo_factor.expr == a ** (aexp - 3.0)
         # now try again with comoving densities
         data.gas.densities.convert_to_comoving()
-        failed = False
-        try:
+        with pytest.raises(AttributeError, match="not compatible with physical"):
             img = func(data, resolution=256, project="densities")
-        except AttributeError:
-            failed = True
-        assert failed
