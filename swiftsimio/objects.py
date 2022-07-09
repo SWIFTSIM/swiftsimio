@@ -207,8 +207,9 @@ def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
     if hasattr(power, "units"):
         if not power.units.is_dimensionless:
             raise ValueError("Exponent must be dimensionless.")
-        else:
-            power.to_value(unyt.dimensionless)
+        elif power.units is not unyt.dimensionless:
+            power = power.to_value(unyt.dimensionless)
+        # else power.units is unyt.dimensionless, do nothing
     if ca2 and cf2.a_factor != 1.0:
         raise ValueError("Exponent has scaling with scale factor != 1.")
     if cf1 is None:
