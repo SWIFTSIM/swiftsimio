@@ -38,7 +38,7 @@ def generate_smoothing_lengths(
         if neighbours is 32, and speedup_fac is 2, we only search for 16
         (32 / 2) neighbours, and extend the smoothing length out to
         (speedup)**(1/dimension) such that we encompass an approximately
-        higher number of neighbours. A factor of 2 gives smooothing lengths
+        higher number of neighbours. A factor of 2 gives smoothing lengths
         the same as the full search within 10%, good enough for visualisation.
     dimension : int, optional
         the dimensionality of the problem (used for speedup_fac calculation).

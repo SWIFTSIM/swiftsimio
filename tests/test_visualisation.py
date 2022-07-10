@@ -216,9 +216,7 @@ def test_selection_render(filename):
     # render full
     project_gas(data, 256, parallel=True)
     # render partial
-    project_gas(
-        data, 256, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
-    )
+    project_gas(data, 256, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2)
     # render tiny
     project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
 
@@ -342,13 +340,11 @@ def test_nongas_smoothing_lengths(filename):
     # We should also be able to use a unyt_array (rather than cosmo_array) as input,
     # and in this case get unyt_array as output.
     unyt_array_input = unyt_array(
-        data.dark_matter.coordinates.to_value(data.dark_matter.cooordinates.units),
-        units=data.dark_matter.coordinates.units
+        data.dark_matter.coordinates.to_value(data.dark_matter.coordinates.units),
+        units=data.dark_matter.coordinates.units,
     )
     hsml = generate_smoothing_lengths(
-        unyt_array_input,
-        data.metadata.boxsize,
-        kernel_gamma=1.8,
+        unyt_array_input, data.metadata.boxsize, kernel_gamma=1.8
     )
     assert isinstance(hsml, unyt_array)
     assert not isinstance(hsml, cosmo_array)
