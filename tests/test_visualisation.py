@@ -13,7 +13,8 @@ from swiftsimio.visualisation.smoothing_length_generation import (
     generate_smoothing_lengths,
 )
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
-from swiftsimio.objects import cosmo_factor, a
+from swiftsimio.objects import cosmo_array, a
+from unyt.array import unyt_array
 
 from tests.helper import requires
 
@@ -318,6 +319,7 @@ def test_nongas_smoothing_lengths(filename):
     Test that the visualisation tools to calculate smoothing lengths give usable results.
     """
 
+    # If project_pixel_grid runs without error the smoothing lengths seem usable.
     data = load(filename)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
@@ -328,6 +330,20 @@ def test_nongas_smoothing_lengths(filename):
         resolution=256,
         project="masses",
     )
+    assert isinstance(data.dark_matter.smoothing_length, cosmo_array)
 
-    # if project_pixel_grid runs without error the smoothing lengths seem usable
+    # We should also be able to use a unyt_array (rather than cosmo_array) as input,
+    # and in this case get unyt_array as output.
+    unyt_array_input = unyt_array(
+        data.dark_matter.coordinates.to_value(data.dark_matter.cooordinates.units),
+        units=data.dark_matter.coordinates.units
+    )
+    hsml = generate_smoothing_lengths(
+        unyt_array_input,
+        data.metadata.boxsize,
+        kernel_gamma=1.8,
+    )
+    assert isinstance(hsml, unyt_array)
+    assert not isinstance(hsml, cosmo_array)
+
     return
