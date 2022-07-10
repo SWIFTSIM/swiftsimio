@@ -23,7 +23,7 @@ import numpy as np
 
 try:
     from matplotlib.pyplot import imsave
-except:
+except ImportError:
     pass
 
 
@@ -169,7 +169,8 @@ def test_slice_parallel(save=False):
 
 
 def test_volume_render():
-    image = volume_render.scatter(
+    # render image
+    volume_render.scatter(
         np.array([0.0, 1.0, 1.0, -0.000001]),
         np.array([0.0, 0.0, 1.0, 1.000001]),
         np.array([0.0, 0.0, 1.0, 1.000001]),
@@ -212,22 +213,28 @@ def test_selection_render(filename):
     bs = data.metadata.boxsize[0]
 
     # Projection
-    render_full = project_gas(data, 256, parallel=True)
-    render_partial = project_gas(
+    # render full
+    project_gas(data, 256, parallel=True)
+    # render partial
+    project_gas(
         data, 256, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
     )
-    render_tiny = project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
+    # render tiny
+    project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
 
     # Slicing
-    render_full = slice_gas(data, 256, z_slice=0.5 * bs, parallel=True)
-    render_partial = slice_gas(
+    # render full
+    slice_gas(data, 256, z_slice=0.5 * bs, parallel=True)
+    # render partial
+    slice_gas(
         data, 256, z_slice=0.5 * bs, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
     )
-    render_tiny = slice_gas(
+    # render tiny
+    slice_gas(
         data, 256, z_slice=0.5 * bs, parallel=True, region=[0 * bs, 0.001 * bs] * 2
     )
     # Test for non-square slices
-    render_nonsquare = slice_gas(
+    slice_gas(
         data,
         256,
         z_slice=0.5 * bs,
