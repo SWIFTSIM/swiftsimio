@@ -12,7 +12,7 @@ from typing import Union
 
 
 def generate_smoothing_lengths(
-    coordinates: cosmo_array,
+    coordinates: Union[unyt_array, cosmo_array],
     boxsize: Union[unyt_array, cosmo_array],
     kernel_gamma: float32,
     neighbours=32,
@@ -24,7 +24,7 @@ def generate_smoothing_lengths(
 
     Parameters
     ----------
-    coordinates : cosmo_array
+    coordinates : unyt_array or cosmo_array
         a cosmo_array that gives the co-ordinates of all particles
     boxsize : unyt_array or cosmo_array
         the size of the box (3D)
@@ -102,9 +102,15 @@ def generate_smoothing_lengths(
 
         smoothing_lengths[starting_index:ending_index] = d[:, -1]
 
-    return cosmo_array(
-        smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
-        units=coordinates.units,
-        comoving=coordinates.comoving,
-        cosmo_factor=coordinates.cosmo_factor,
-    )
+    if isinstance(coordinates, cosmo_array):
+        return cosmo_array(
+            smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
+            units=coordinates.units,
+            comoving=coordinates.comoving,
+            cosmo_factor=coordinates.cosmo_factor,
+        )
+    else:
+        return unyt_array(
+            smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
+            units=coordinates.units,
+        )
