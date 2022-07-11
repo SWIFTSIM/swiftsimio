@@ -1,11 +1,20 @@
+import pytest
 from swiftsimio import load
 from swiftsimio.visualisation import scatter, slice, volume_render
-from swiftsimio.visualisation.projection import scatter_parallel, project_gas
+from swiftsimio.visualisation.projection import (
+    scatter_parallel,
+    project_gas,
+    project_pixel_grid,
+)
 from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
 from swiftsimio.visualisation.volume_render import render_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
+from swiftsimio.visualisation.smoothing_length_generation import (
+    generate_smoothing_lengths,
+)
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
-from swiftsimio.objects import cosmo_factor, a
+from swiftsimio.objects import cosmo_array, a
+from unyt.array import unyt_array
 
 from tests.helper import requires
 
@@ -14,7 +23,7 @@ import numpy as np
 
 try:
     from matplotlib.pyplot import imsave
-except:
+except ImportError:
     pass
 
 
@@ -160,7 +169,8 @@ def test_slice_parallel(save=False):
 
 
 def test_volume_render():
-    image = volume_render.scatter(
+    # render image
+    volume_render.scatter(
         np.array([0.0, 1.0, 1.0, -0.000001]),
         np.array([0.0, 0.0, 1.0, 1.000001]),
         np.array([0.0, 0.0, 1.0, 1.000001]),
@@ -203,22 +213,26 @@ def test_selection_render(filename):
     bs = data.metadata.boxsize[0]
 
     # Projection
-    render_full = project_gas(data, 256, parallel=True)
-    render_partial = project_gas(
-        data, 256, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
-    )
-    render_tiny = project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
+    # render full
+    project_gas(data, 256, parallel=True)
+    # render partial
+    project_gas(data, 256, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2)
+    # render tiny
+    project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
 
     # Slicing
-    render_full = slice_gas(data, 256, z_slice=0.5 * bs, parallel=True)
-    render_partial = slice_gas(
+    # render full
+    slice_gas(data, 256, z_slice=0.5 * bs, parallel=True)
+    # render partial
+    slice_gas(
         data, 256, z_slice=0.5 * bs, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2
     )
-    render_tiny = slice_gas(
+    # render tiny
+    slice_gas(
         data, 256, z_slice=0.5 * bs, parallel=True, region=[0 * bs, 0.001 * bs] * 2
     )
     # Test for non-square slices
-    render_nonsquare = slice_gas(
+    slice_gas(
         data,
         256,
         z_slice=0.5 * bs,
@@ -281,21 +295,12 @@ def test_comoving_versus_physical(filename):
         assert img.cosmo_factor.expr == a ** (aexp - 3.0)
         # try to mix comoving coordinates with a physical variable
         data.gas.densities.convert_to_physical()
-        failed = False
-        try:
+        with pytest.raises(AttributeError, match="not compatible with comoving"):
             img = func(data, resolution=256, project="densities")
-        except AttributeError:
-            failed = True
-        assert failed
-
         # convert coordinates to physical (but not smoothing lengths)
         data.gas.coordinates.convert_to_physical()
-        failed = False
-        try:
+        with pytest.raises(AttributeError, match=""):
             img = func(data, resolution=256, project="masses")
-        except AttributeError:
-            failed = True
-        assert failed
         # also convert smoothing lengths to physical
         data.gas.smoothing_lengths.convert_to_physical()
         # masses are always compatible with either
@@ -309,9 +314,39 @@ def test_comoving_versus_physical(filename):
         assert img.cosmo_factor.expr == a ** (aexp - 3.0)
         # now try again with comoving densities
         data.gas.densities.convert_to_comoving()
-        failed = False
-        try:
+        with pytest.raises(AttributeError, match="not compatible with physical"):
             img = func(data, resolution=256, project="densities")
-        except AttributeError:
-            failed = True
-        assert failed
+
+
+@requires("cosmological_volume.hdf5")
+def test_nongas_smoothing_lengths(filename):
+    """
+    Test that the visualisation tools to calculate smoothing lengths give usable results.
+    """
+
+    # If project_pixel_grid runs without error the smoothing lengths seem usable.
+    data = load(filename)
+    data.dark_matter.smoothing_length = generate_smoothing_lengths(
+        data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
+    )
+    project_pixel_grid(
+        data.dark_matter,
+        boxsize=data.metadata.boxsize,
+        resolution=256,
+        project="masses",
+    )
+    assert isinstance(data.dark_matter.smoothing_length, cosmo_array)
+
+    # We should also be able to use a unyt_array (rather than cosmo_array) as input,
+    # and in this case get unyt_array as output.
+    unyt_array_input = unyt_array(
+        data.dark_matter.coordinates.to_value(data.dark_matter.coordinates.units),
+        units=data.dark_matter.coordinates.units,
+    )
+    hsml = generate_smoothing_lengths(
+        unyt_array_input, data.metadata.boxsize, kernel_gamma=1.8
+    )
+    assert isinstance(hsml, unyt_array)
+    assert not isinstance(hsml, cosmo_array)
+
+    return

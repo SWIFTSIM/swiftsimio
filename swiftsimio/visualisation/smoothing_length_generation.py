@@ -25,7 +25,7 @@ def generate_smoothing_lengths(
     Parameters
     ----------
     coordinates : unyt_array or cosmo_array
-        a unyt array that gives the co-ordinates of all particles
+        a cosmo_array that gives the co-ordinates of all particles
     boxsize : unyt_array or cosmo_array
         the size of the box (3D)
     kernel_gamma : float32
@@ -38,7 +38,7 @@ def generate_smoothing_lengths(
         if neighbours is 32, and speedup_fac is 2, we only search for 16
         (32 / 2) neighbours, and extend the smoothing length out to
         (speedup)**(1/dimension) such that we encompass an approximately
-        higher number of neighbours. A factor of 2 gives smooothing lengths
+        higher number of neighbours. A factor of 2 gives smoothing lengths
         the same as the full search within 10%, good enough for visualisation.
     dimension : int, optional
         the dimensionality of the problem (used for speedup_fac calculation).
@@ -102,7 +102,15 @@ def generate_smoothing_lengths(
 
         smoothing_lengths[starting_index:ending_index] = d[:, -1]
 
-    return unyt_array(
-        smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
-        units=coordinates.units,
-    )
+    if isinstance(coordinates, cosmo_array):
+        return cosmo_array(
+            smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
+            units=coordinates.units,
+            comoving=coordinates.comoving,
+            cosmo_factor=coordinates.cosmo_factor,
+        )
+    else:
+        return unyt_array(
+            smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
+            units=coordinates.units,
+        )
