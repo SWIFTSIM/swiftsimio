@@ -553,20 +553,17 @@ class TestCosmoArrayUfuncs:
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor ** 2
 
-    @pytest.mark.xfail
     def test_reduce_divide(self):
-        # Will fail until unyt issue #230 is fixed (PR submitted).
         inp = cosmo_array(
-            [[1.0, 2.0], [1.0, 4.0]],
+            [[1.0, 2.0], [1.0, 4.0], [1.0, 1.0]],
             u.kpc,
             comoving=False,
             cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
         )
         res = np.divide.reduce(inp, axis=0)
-        # unyt_array seems to give non-sensical units here!:
-        np.testing.assert_allclose(res.to_value(u.kpc ** -2), np.array([1.0, 0.5]))
+        np.testing.assert_allclose(res.to_value(u.kpc ** -1), np.array([1.0, 0.5]))
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** 0
+        assert res.cosmo_factor == inp.cosmo_factor ** -1
 
     def test_reduce_other(self):
         inp = cosmo_array(
