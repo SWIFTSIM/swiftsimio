@@ -8,6 +8,7 @@ import warnings
 import unyt
 from unyt import unyt_array
 from unyt.array import multiple_output_operators
+
 try:
     from unyt.array import POWER_MAPPING
 except ImportError:
