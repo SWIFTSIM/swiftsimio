@@ -184,11 +184,10 @@ def project_pixel_grid(
     x_range = x_max - x_min
     y_range = y_max - y_min
 
-    # Test that we've got a square box
-    if not isclose(x_range.value, y_range.value):
-        raise AttributeError(
-            "Projection code is currently not able to handle non-square images"
-        )
+    # Deal with non-cubic boxes:
+    # we always use the maximum of x_range and y_range to normalise the coordinates
+    # empty pixels in the resulting square image are trimmed afterwards
+    max_range = max(x_range, y_range)
 
     try:
         try:
@@ -233,10 +232,10 @@ def project_pixel_grid(
         combined_mask = mask
 
     common_arguments = dict(
-        x=(x[combined_mask] - x_min) / x_range,
-        y=(y[combined_mask] - y_min) / y_range,
+        x=(x[combined_mask] - x_min) / max_range,
+        y=(y[combined_mask] - y_min) / max_range,
         m=m[combined_mask],
-        h=hsml[combined_mask] / x_range,
+        h=hsml[combined_mask] / max_range,
         res=resolution,
     )
 
@@ -245,7 +244,12 @@ def project_pixel_grid(
     else:
         image = backends[backend](**common_arguments)
 
-    return image
+    # determine the effective number of pixels for each dimension
+    xres = int(resolution * x_range / max_range)
+    yres = int(resolution * y_range / max_range)
+
+    # trim the image to remove empty pixels
+    return image[:xres, :yres]
 
 
 def project_gas_pixel_grid(
@@ -445,12 +449,14 @@ def project_gas(
     if region is not None:
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
-        units = 1.0 / (x_range * y_range)
+        max_range = max(x_range, y_range)
+        units = 1.0 / (max_range ** 2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / (x_range.units * y_range.units))
     else:
-        units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1])
+        max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
+        units = 1.0 / (max_range ** 2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
