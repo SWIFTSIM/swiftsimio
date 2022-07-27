@@ -219,6 +219,10 @@ def test_selection_render(filename):
     project_gas(data, 256, parallel=True, region=[0.25 * bs, 0.75 * bs] * 2)
     # render tiny
     project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
+    # render non-square
+    project_gas(
+        data, 256, parallel=True, region=[0 * bs, 0.00 * bs, 0.25 * bs, 0.75 * bs]
+    )
 
     # Slicing
     # render full
