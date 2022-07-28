@@ -17,11 +17,10 @@ setuptools.setup(
     zip_safe=False,
     scripts=["swiftsnap"],
     classifiers=[
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
         "Operating System :: OS Independent",
     ],
-    install_requires=["numpy", "unyt>=2.3.0", "h5py", "numba>=0.50.0"],
+    install_requires=["numpy", "unyt>=2.9.0", "h5py", "numba>=0.50.0"],
 )

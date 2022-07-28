@@ -7,13 +7,12 @@ import warnings
 
 import unyt
 from unyt import unyt_array
+from unyt.array import multiple_output_operators
 
-# Eventually import of POWER_SIGN_MAPPING will fail because it has been
-# replaced with POWER_MAPPING in a bugfix (unyt PR#231). Then see segment
-# of unyt.array.__array_ufunc__ where it is used and update
-# cosmo_array.__array_ufunc__ accordingly. There is an xfailing test in
-# test_cosmo_array_attrs to catch when this occurs with a test failure.
-from unyt.array import multiple_output_operators, POWER_SIGN_MAPPING
+try:
+    from unyt.array import POWER_MAPPING
+except ImportError:
+    raise ImportError("unyt >=2.9.0 required")
 
 import sympy
 import numpy as np
@@ -1023,16 +1022,16 @@ class cosmo_array(unyt_array):
         # make sure we evaluate the cosmo_factor_ufunc_registry function:
         # might raise/warn even if we're not returning a cosmo_array
         if ufunc in (multiply, divide) and method == "reduce":
-            power_sign = POWER_SIGN_MAPPING[ufunc]
+            power_map = POWER_MAPPING[ufunc]
             if "axis" in kwargs and kwargs["axis"] is not None:
                 ret_cf = _power_cosmo_factor(
                     cfs[0],
                     (False, None),
-                    power=power_sign * inputs[0].shape[kwargs["axis"]],
+                    power=power_map(inputs[0].shape[kwargs["axis"]]),
                 )
             else:
                 ret_cf = _power_cosmo_factor(
-                    cfs[0], (False, None), power=power_sign * inputs[0].size
+                    cfs[0], (False, None), power=power_map(inputs[0].size)
                 )
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)

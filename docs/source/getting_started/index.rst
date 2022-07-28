@@ -18,7 +18,7 @@ are detailed below.
 Requirements
 ------------
 
-This requires ``python`` ``v3.6.0`` or higher. Unfortunately it is not
+This requires ``python`` ``v3.8.0`` or higher. Unfortunately it is not
 possible to support :mod:`swiftsimio` on versions of python lower than this.
 It is important that you upgrade if you are still a ``python2`` user.
 
