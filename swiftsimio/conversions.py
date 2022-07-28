@@ -10,12 +10,9 @@ if ASTROPY_AVAILABLE:
     from astropy.cosmology import w0waCDM
     from astropy.cosmology.core import Cosmology
     import astropy.version
-
-    if astropy.version.major < 5:
-        from astropy.cosmology.core import a_B_c2, critdens_const
-    else:
-        from astropy.cosmology.flrw import a_B_c2, critdens_const
+    import astropy.constants as const
     import astropy.units as astropy_units
+    import numpy as np
 
     def swift_cosmology_to_astropy(cosmo: dict, units) -> Cosmology:
         """
@@ -44,6 +41,11 @@ if ASTROPY_AVAILABLE:
         Omega_m = cosmo["Omega_m"][0]
         w_0 = cosmo["w_0"][0]
         w_a = cosmo["w_a"][0]
+
+        # expressions taken directly from astropy, since they do no longer
+        # allow access to these attributes (since version 5.1+)
+        critdens_const = (3.0 / (8.0 * np.pi * const.G)).cgs.value
+        a_B_c2 = (4.0 * const.sigma_sb / const.c ** 3).cgs.value
 
         # SWIFT provides Omega_r, but we need a consistent Tcmb0 for astropy.
         # This is an exact inversion of the procedure performed in astropy.
