@@ -15,6 +15,7 @@ from numpy import (
     ones,
     isclose,
     matmul,
+    append,
 )
 from unyt import unyt_array
 from swiftsimio import SWIFTDataset, cosmo_array
@@ -387,14 +388,39 @@ def render_gas_voxel_grid(
                 f"Comoving smoothing length is not compatible with physical coordinates!"
             )
 
-    arguments = dict(
-        x=(x - x_min) / x_range,
-        y=(y - y_min) / y_range,
-        z=(z - z_min) / z_range,
-        m=m,
-        h=hsml / x_range,
-        res=resolution,
-    )
+    xfinal = array((x - x_min) / x_range)
+    yfinal = array((y - y_min) / x_range)
+    zfinal = array((z - z_min) / x_range)
+    mfinal = array(m)
+    hfinal = array(hsml / x_range)
+    rescaled_box = array([box_x / x_range, box_y / x_range, box_z / x_range])
+
+    xall = array([])
+    yall = array([])
+    zall = array([])
+    mall = array([])
+    hall = array([])
+    for xshift in [-1, 0, 1]:
+        for yshift in [-1, 0, 1]:
+            for zshift in [-1, 0, 1]:
+                thisx = xfinal + xshift * rescaled_box[0]
+                thisy = yfinal + yshift * rescaled_box[1]
+                thisz = zfinal + zshift * rescaled_box[2]
+                inside = (
+                    (thisx - xshift * hfinal <= rescaled_box[0])
+                    & (thisx - xshift * hfinal >= 0.0)
+                    & (thisy - yshift * hfinal <= rescaled_box[1])
+                    & (thisy - yshift * hfinal >= 0.0)
+                    & (thisz - zshift * hfinal <= rescaled_box[2])
+                    & (thisz - zshift * hfinal >= 0.0)
+                )
+                xall = append(xall, thisx[inside])
+                yall = append(yall, thisy[inside])
+                zall = append(zall, thisz[inside])
+                mall = append(mall, mfinal[inside])
+                hall = append(hall, hfinal[inside])
+
+    arguments = dict(x=xall, y=yall, z=zall, m=mall, h=hall, res=resolution)
 
     if parallel:
         image = scatter_parallel(**arguments)

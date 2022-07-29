@@ -18,6 +18,7 @@ from numpy import (
     empty_like,
     logical_and,
     s_,
+    append,
 )
 from unyt import unyt_array, unyt_quantity, exceptions
 from swiftsimio import SWIFTDataset, cosmo_array
@@ -231,13 +232,32 @@ def project_pixel_grid(
     else:
         combined_mask = mask
 
-    common_arguments = dict(
-        x=(x[combined_mask] - x_min) / max_range,
-        y=(y[combined_mask] - y_min) / max_range,
-        m=m[combined_mask],
-        h=hsml[combined_mask] / max_range,
-        res=resolution,
-    )
+    xfinal = array((x[combined_mask] - x_min) / max_range)
+    yfinal = array((y[combined_mask] - y_min) / max_range)
+    mfinal = array(m[combined_mask])
+    hfinal = array(hsml[combined_mask] / max_range)
+    rescaled_box = array([box_x / max_range, box_y / max_range])
+
+    xall = array([])
+    yall = array([])
+    mall = array([])
+    hall = array([])
+    for xshift in [-1, 0, 1]:
+        for yshift in [-1, 0, 1]:
+            thisx = xfinal + xshift * rescaled_box[0]
+            thisy = yfinal + yshift * rescaled_box[1]
+            inside = (
+                (thisx - xshift * hfinal <= rescaled_box[0])
+                & (thisx - xshift * hfinal >= 0.0)
+                & (thisy - yshift * hfinal <= rescaled_box[1])
+                & (thisy - yshift * hfinal >= 0.0)
+            )
+            xall = append(xall, thisx[inside])
+            yall = append(yall, thisy[inside])
+            mall = append(mall, mfinal[inside])
+            hall = append(hall, hfinal[inside])
+
+    common_arguments = dict(x=xall, y=yall, m=mall, h=hall, res=resolution)
 
     if parallel:
         image = backends_parallel[backend](**common_arguments)

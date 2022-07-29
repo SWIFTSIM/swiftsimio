@@ -16,6 +16,7 @@ from numpy import (
     isclose,
     matmul,
     copy,
+    append,
 )
 from unyt import unyt_array, unyt_quantity
 import unyt
@@ -410,12 +411,40 @@ def slice_gas_pixel_grid(
                 f"Comoving smoothing length is not compatible with physical coordinates!"
             )
 
+    xfinal = array((x - x_min) / max_range)
+    yfinal = array((y - y_min) / max_range)
+    zfinal = array(z / max_range)
+    mfinal = array(m)
+    hfinal = array(hsml / max_range)
+    rescaled_box = array([box_x / max_range, box_y / max_range])
+
+    xall = array([])
+    yall = array([])
+    zall = array([])
+    mall = array([])
+    hall = array([])
+    for xshift in [-1, 0, 1]:
+        for yshift in [-1, 0, 1]:
+            thisx = xfinal + xshift * rescaled_box[0]
+            thisy = yfinal + yshift * rescaled_box[1]
+            inside = (
+                (thisx - xshift * hfinal <= rescaled_box[0])
+                & (thisx - xshift * hfinal >= 0.0)
+                & (thisy - yshift * hfinal <= rescaled_box[1])
+                & (thisy - yshift * hfinal >= 0.0)
+            )
+            xall = append(xall, thisx[inside])
+            yall = append(yall, thisy[inside])
+            zall = append(zall, zfinal[inside])
+            mall = append(mall, mfinal[inside])
+            hall = append(hall, hfinal[inside])
+
     common_parameters = dict(
-        x=(x - x_min) / max_range,
-        y=(y - y_min) / max_range,
-        z=z / max_range,
-        m=m,
-        h=hsml / max_range,
+        x=xall,
+        y=yall,
+        z=zall,
+        m=mall,
+        h=hall,
         z_slice=(z_center + z_slice) / max_range,
         res=resolution,
     )
