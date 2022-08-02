@@ -238,12 +238,14 @@ def project_pixel_grid(
     hfinal = array(hsml[combined_mask] / max_range)
     rescaled_box = array([box_x / max_range, box_y / max_range])
 
-    xall = array([])
-    yall = array([])
-    mall = array([])
-    hall = array([])
+    xall = xfinal.copy()
+    yall = yfinal.copy()
+    mall = mfinal.copy()
+    hall = hfinal.copy()
     for xshift in [-1, 0, 1]:
         for yshift in [-1, 0, 1]:
+            if xshift == 0 and yshift == 0:
+                continue
             thisx = xfinal + xshift * rescaled_box[0]
             thisy = yfinal + yshift * rescaled_box[1]
             inside = (
