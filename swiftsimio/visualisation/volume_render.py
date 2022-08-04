@@ -15,7 +15,7 @@ from numpy import (
     ones,
     isclose,
     matmul,
-    append,
+    concatenate,
 )
 from unyt import unyt_array
 from swiftsimio import SWIFTDataset, cosmo_array
@@ -254,7 +254,6 @@ def scatter_parallel(
 
     return output
 
-
 def render_gas_voxel_grid(
     data: SWIFTDataset,
     resolution: int,
@@ -388,41 +387,45 @@ def render_gas_voxel_grid(
                 f"Comoving smoothing length is not compatible with physical coordinates!"
             )
 
-    xfinal = array((x - x_min) / x_range)
-    yfinal = array((y - y_min) / x_range)
-    zfinal = array((z - z_min) / x_range)
-    mfinal = array(m)
-    hfinal = array(hsml / x_range)
+    x = [array((x - x_min) / x_range)]
+    y = [array((y - y_min) / x_range)]
+    z = [array((z - z_min) / x_range)]
+    m = [array(m)]
+    hsml = [array(hsml / x_range)]
     rescaled_box = array([box_x / x_range, box_y / x_range, box_z / x_range])
 
-    xall = xfinal.copy()
-    yall = yfinal.copy()
-    zall = zfinal.copy()
-    mall = mfinal.copy()
-    hall = hfinal.copy()
     for xshift in [-1, 0, 1]:
         for yshift in [-1, 0, 1]:
             for zshift in [-1, 0, 1]:
                 if xshift == 0 and yshift == 0 and zshift == 0:
                     continue
-                thisx = xfinal + xshift * rescaled_box[0]
-                thisy = yfinal + yshift * rescaled_box[1]
-                thisz = zfinal + zshift * rescaled_box[2]
+                thisx = x[0] + xshift * rescaled_box[0]
+                thisy = y[0] + yshift * rescaled_box[1]
+                thisz = z[0] + zshift * rescaled_box[2]
+                dx = thisx - xshift * hsml[0]
+                dy = thisy - yshift * hsml[0]
+                dz = thisz - zshift * hsml[0]
                 inside = (
-                    (thisx - xshift * hfinal <= rescaled_box[0])
-                    & (thisx - xshift * hfinal >= 0.0)
-                    & (thisy - yshift * hfinal <= rescaled_box[1])
-                    & (thisy - yshift * hfinal >= 0.0)
-                    & (thisz - zshift * hfinal <= rescaled_box[2])
-                    & (thisz - zshift * hfinal >= 0.0)
+                    (dx <= rescaled_box[0])
+                    & (dx >= 0.0)
+                    & (dy <= rescaled_box[1])
+                    & (dy >= 0.0)
+                    & (dz <= rescaled_box[2])
+                    & (dz >= 0.0)
                 )
-                xall = append(xall, thisx[inside])
-                yall = append(yall, thisy[inside])
-                zall = append(zall, thisz[inside])
-                mall = append(mall, mfinal[inside])
-                hall = append(hall, hfinal[inside])
+                x.append(thisx[inside])
+                y.append(thisy[inside])
+                z.append(thisz[inside])
+                m.append(m[0][inside])
+                hsml.append(hsml[0][inside])
 
-    arguments = dict(x=xall, y=yall, z=zall, m=mall, h=hall, res=resolution)
+    x = concatenate(x)
+    y = concatenate(y)
+    z = concatenate(z)
+    m = concatenate(m)
+    hsml = concatenate(hsml)
+
+    arguments = dict(x=x, y=y, z=z, m=m, h=hsml, res=resolution)
 
     if parallel:
         image = scatter_parallel(**arguments)

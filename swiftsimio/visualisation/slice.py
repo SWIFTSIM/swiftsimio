@@ -16,7 +16,7 @@ from numpy import (
     isclose,
     matmul,
     copy,
-    append,
+    concatenate,
 )
 from unyt import unyt_array, unyt_quantity
 import unyt
@@ -411,42 +411,45 @@ def slice_gas_pixel_grid(
                 f"Comoving smoothing length is not compatible with physical coordinates!"
             )
 
-    xfinal = array((x - x_min) / max_range)
-    yfinal = array((y - y_min) / max_range)
-    zfinal = array(z / max_range)
-    mfinal = array(m)
-    hfinal = array(hsml / max_range)
+    x = [array((x - x_min) / max_range)]
+    y = [array((y - y_min) / max_range)]
+    z = [array(z / max_range)]
+    m = [array(m)]
+    hsml = [array(hsml / max_range)]
     rescaled_box = array([box_x / max_range, box_y / max_range])
 
-    xall = xfinal.copy()
-    yall = yfinal.copy()
-    zall = zfinal.copy()
-    mall = mfinal.copy()
-    hall = hfinal.copy()
     for xshift in [-1, 0, 1]:
         for yshift in [-1, 0, 1]:
             if xshift == 0 and yshift == 0:
                 continue
-            thisx = xfinal + xshift * rescaled_box[0]
-            thisy = yfinal + yshift * rescaled_box[1]
+            thisx = x[0] + xshift * rescaled_box[0]
+            thisy = y[0] + yshift * rescaled_box[1]
+            dx = thisx - xshift * hsml[0]
+            dy = thisy - yshift * hsml[0]
             inside = (
-                (thisx - xshift * hfinal <= rescaled_box[0])
-                & (thisx - xshift * hfinal >= 0.0)
-                & (thisy - yshift * hfinal <= rescaled_box[1])
-                & (thisy - yshift * hfinal >= 0.0)
+                (dx <= rescaled_box[0])
+                & (dx >= 0.0)
+                & (dy <= rescaled_box[1])
+                & (dy >= 0.0)
             )
-            xall = append(xall, thisx[inside])
-            yall = append(yall, thisy[inside])
-            zall = append(zall, zfinal[inside])
-            mall = append(mall, mfinal[inside])
-            hall = append(hall, hfinal[inside])
+            x.append(thisx[inside])
+            y.append(thisy[inside])
+            z.append(z[0][inside])
+            m.append(m[0][inside])
+            hsml.append(hsml[0][inside])
+
+    x = concatenate(x)
+    y = concatenate(y)
+    z = concatenate(z)
+    m = concatenate(m)
+    hsml = concatenate(hsml)
 
     common_parameters = dict(
-        x=xall,
-        y=yall,
-        z=zall,
-        m=mall,
-        h=hall,
+        x=x,
+        y=y,
+        z=z,
+        m=m,
+        h=hsml,
         z_slice=(z_center + z_slice) / max_range,
         res=resolution,
     )

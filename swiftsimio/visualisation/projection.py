@@ -18,7 +18,7 @@ from numpy import (
     empty_like,
     logical_and,
     s_,
-    append,
+    concatenate,
 )
 from unyt import unyt_array, unyt_quantity, exceptions
 from swiftsimio import SWIFTDataset, cosmo_array
@@ -40,7 +40,6 @@ from swiftsimio.visualisation.projection_backends.kernels import (
 
 scatter = backends["fast"]
 scatter_parallel = backends_parallel["fast"]
-
 
 def project_pixel_grid(
     data: __SWIFTParticleDataset,
@@ -232,34 +231,37 @@ def project_pixel_grid(
     else:
         combined_mask = mask
 
-    xfinal = array((x[combined_mask] - x_min) / max_range)
-    yfinal = array((y[combined_mask] - y_min) / max_range)
-    mfinal = array(m[combined_mask])
-    hfinal = array(hsml[combined_mask] / max_range)
+    x = [array((x[combined_mask] - x_min) / max_range)]
+    y = [array((y[combined_mask] - y_min) / max_range)]
+    m = [array(m[combined_mask])]
+    hsml = [array(hsml[combined_mask] / max_range)]
     rescaled_box = array([box_x / max_range, box_y / max_range])
 
-    xall = xfinal.copy()
-    yall = yfinal.copy()
-    mall = mfinal.copy()
-    hall = hfinal.copy()
     for xshift in [-1, 0, 1]:
         for yshift in [-1, 0, 1]:
             if xshift == 0 and yshift == 0:
                 continue
-            thisx = xfinal + xshift * rescaled_box[0]
-            thisy = yfinal + yshift * rescaled_box[1]
+            thisx = x[0] + xshift * rescaled_box[0]
+            thisy = y[0] + yshift * rescaled_box[1]
+            dx = thisx - xshift * hsml[0]
+            dy = thisy - yshift * hsml[0]
             inside = (
-                (thisx - xshift * hfinal <= rescaled_box[0])
-                & (thisx - xshift * hfinal >= 0.0)
-                & (thisy - yshift * hfinal <= rescaled_box[1])
-                & (thisy - yshift * hfinal >= 0.0)
+                (dx <= rescaled_box[0])
+                & (dx >= 0.0)
+                & (dy <= rescaled_box[1])
+                & (dy >= 0.0)
             )
-            xall = append(xall, thisx[inside])
-            yall = append(yall, thisy[inside])
-            mall = append(mall, mfinal[inside])
-            hall = append(hall, hfinal[inside])
+            x.append(thisx[inside])
+            y.append(thisy[inside])
+            m.append(m[0][inside])
+            hsml.append(hsml[0][inside])
 
-    common_arguments = dict(x=xall, y=yall, m=mall, h=hall, res=resolution)
+    x = concatenate(x)
+    y = concatenate(y)
+    m = concatenate(m)
+    hsml = concatenate(hsml)
+
+    common_arguments = dict(x=x, y=y, m=m, h=hsml, res=resolution)
 
     if parallel:
         image = backends_parallel[backend](**common_arguments)
