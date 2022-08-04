@@ -254,6 +254,7 @@ def scatter_parallel(
 
     return output
 
+
 def render_gas_voxel_grid(
     data: SWIFTDataset,
     resolution: int,

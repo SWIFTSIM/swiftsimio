@@ -41,6 +41,7 @@ from swiftsimio.visualisation.projection_backends.kernels import (
 scatter = backends["fast"]
 scatter_parallel = backends_parallel["fast"]
 
+
 def project_pixel_grid(
     data: __SWIFTParticleDataset,
     boxsize: unyt_array,
