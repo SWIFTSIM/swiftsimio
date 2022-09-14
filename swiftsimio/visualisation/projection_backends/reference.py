@@ -39,7 +39,7 @@ def scatter(
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -59,6 +59,14 @@ def scatter(
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------
@@ -91,6 +99,7 @@ def scatter(
     float_res_64 = float64(res)
 
     for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
+        # loop over periodic copies of this particle
         for xshift in range(3):
             for yshift in range(3):
                 x_pos = x_pos_original + (xshift - 1) * box_x
@@ -173,7 +182,7 @@ def scatter_parallel(
     Creates a weighted scatter plot. Computes contributions from
     particles with positions (`x`,`y`) with smoothing lengths `h`
     weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -192,6 +201,14 @@ def scatter_parallel(
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------

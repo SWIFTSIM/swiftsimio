@@ -79,7 +79,7 @@ def scatter_gpu(
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -95,6 +95,14 @@ def scatter_gpu(
 
     h : np.array[float32]
         array of smoothing lengths of the particles
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     img : np.array[float32]
         The output image.
@@ -124,6 +132,7 @@ def scatter_gpu(
     # Pre-calculate this constant for use with the above
     inverse_cell_area = res * res
 
+    # get the particle index and the x and y index of its periodic copy
     i, dx, dy = cuda.grid(3)
     if i < len(x):
         # Get the correct particle
@@ -208,7 +217,7 @@ def scatter(
     Creates a weighted scatter plot. Computes contributions from
     particles with positions (`x`,`y`) with smoothing lengths `h`
     weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -227,6 +236,14 @@ def scatter(
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------
@@ -255,6 +272,10 @@ def scatter(
     output[:] = 0
 
     n_part = len(x)
+    # set up a 3D grid:
+    # the first dimension are the particles
+    # the second and third dimension are the periodic
+    # copies for each particle
     threads_per_block = (16, 1, 1)
     blocks_per_grid = (
         ceil(n_part / threads_per_block[0]),
