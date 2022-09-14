@@ -81,9 +81,12 @@ def slice_scatter(
     h: float32,
     z_slice: float64,
     res: int,
+    box_x: float64,
+    box_y: float64,
+    box_z: float64,
 ) -> ndarray:
     """
-    Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
+    Creates a scatter plot of the given quantities for a particles in a data slice including periodic boundary effects.
 
     Parameters
     ----------
@@ -101,6 +104,15 @@ def slice_scatter(
         the position at which we wish to create the slice
     res : int
         the number of pixels.
+    box_x: float64
+        box size in x, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_y: float64
+        box size in y, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_z: float64
+        box size in z, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
 
     Returns
     -------
@@ -131,57 +143,72 @@ def slice_scatter(
     # We need this for combining with the x_pos and y_pos variables.
     float_res_64 = float64(res)
 
-    for x_pos, y_pos, z_pos, mass, hsml in zip(x, y, z, m, h):
-        # Calculate the cell that this particle lives above; use 64 bits
-        # resolution as this is the same type as the positions
-        particle_cell_x = int32(float_res_64 * x_pos)
-        particle_cell_y = int32(float_res_64 * y_pos)
+    for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
+        x, y, z, m, h
+    ):
+        for xshift in range(3):
+            for yshift in range(3):
+                for zshift in range(3):
+                    x_pos = x_pos_original + (xshift - 1) * box_x
+                    y_pos = y_pos_original + (yshift - 1) * box_y
+                    z_pos = z_pos_original + (zshift - 1) * box_z
 
-        # This is a constant for this particle
-        distance_z = z_pos - z_slice
-        distance_z_2 = distance_z * distance_z
+                    # Calculate the cell that this particle lives above; use 64 bits
+                    # resolution as this is the same type as the positions
+                    particle_cell_x = int32(float_res_64 * x_pos)
+                    particle_cell_y = int32(float_res_64 * y_pos)
 
-        # SWIFT stores hsml as the FWHM.
-        kernel_width = kernel_gamma * hsml
-        # The number of cells that this kernel spans
-        cells_spanned = int32(1.0 + kernel_width * float_res)
+                    # This is a constant for this particle
+                    distance_z = z_pos - z_slice
+                    distance_z_2 = distance_z * distance_z
 
-        if (
-            # No overlap in z
-            distance_z_2 > (kernel_width * kernel_width)
-            # No overlap in x, y
-            or particle_cell_x + cells_spanned < 0
-            or particle_cell_x - cells_spanned > maximal_array_index
-            or particle_cell_y + cells_spanned < 0
-            or particle_cell_y - cells_spanned > maximal_array_index
-        ):
-            # We have no overlap, we can skip this particle.
-            continue
+                    # SWIFT stores hsml as the FWHM.
+                    kernel_width = kernel_gamma * hsml
+                    # The number of cells that this kernel spans
+                    cells_spanned = int32(1.0 + kernel_width * float_res)
 
-        # Now we loop over the square of cells that the kernel lives in
-        for cell_x in range(
-            # Ensure that the lowest x value is 0, otherwise we'll segfault
-            max(0, particle_cell_x - cells_spanned),
-            # Ensure that the highest x value lies within the array bounds,
-            # otherwise we'll segfault (oops).
-            min(particle_cell_x + cells_spanned, maximal_array_index + 1),
-        ):
-            # The distance in x to our new favourite cell -- remember that our x, y
-            # are all in a box of [0, 1]; calculate the distance to the cell centre
-            distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(x_pos)
-            distance_x_2 = distance_x * distance_x
-            for cell_y in range(
-                max(0, particle_cell_y - cells_spanned),
-                min(particle_cell_y + cells_spanned, maximal_array_index + 1),
-            ):
-                distance_y = (float32(cell_y) + 0.5) * pixel_width - float32(y_pos)
-                distance_y_2 = distance_y * distance_y
+                    if (
+                        # No overlap in z
+                        distance_z_2 > (kernel_width * kernel_width)
+                        # No overlap in x, y
+                        or particle_cell_x + cells_spanned < 0
+                        or particle_cell_x - cells_spanned > maximal_array_index
+                        or particle_cell_y + cells_spanned < 0
+                        or particle_cell_y - cells_spanned > maximal_array_index
+                    ):
+                        # We have no overlap, we can skip this particle.
+                        continue
 
-                r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
+                    # Now we loop over the square of cells that the kernel lives in
+                    for cell_x in range(
+                        # Ensure that the lowest x value is 0, otherwise we'll segfault
+                        max(0, particle_cell_x - cells_spanned),
+                        # Ensure that the highest x value lies within the array bounds,
+                        # otherwise we'll segfault (oops).
+                        min(particle_cell_x + cells_spanned, maximal_array_index + 1),
+                    ):
+                        # The distance in x to our new favourite cell -- remember that our x, y
+                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
+                            x_pos
+                        )
+                        distance_x_2 = distance_x * distance_x
+                        for cell_y in range(
+                            max(0, particle_cell_y - cells_spanned),
+                            min(
+                                particle_cell_y + cells_spanned, maximal_array_index + 1
+                            ),
+                        ):
+                            distance_y = (
+                                float32(cell_y) + 0.5
+                            ) * pixel_width - float32(y_pos)
+                            distance_y_2 = distance_y * distance_y
 
-                kernel_eval = kernel(r, kernel_width)
+                            r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
 
-                image[cell_x, cell_y] += mass * kernel_eval
+                            kernel_eval = kernel(r, kernel_width)
+
+                            image[cell_x, cell_y] += mass * kernel_eval
 
     return image
 
@@ -195,6 +222,9 @@ def slice_scatter_parallel(
     h: float32,
     z_slice: float64,
     res: int,
+    box_x: float64,
+    box_y: float64,
+    box_z: float64,
 ) -> ndarray:
     """
     Parallel implementation of slice_scatter
@@ -217,6 +247,15 @@ def slice_scatter_parallel(
         the position at which we wish to create the slice
     res : int
         the number of pixels.
+    box_x: float64
+        box size in x, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_y: float64
+        box size in y, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_z: float64
+        box size in z, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
 
     Returns
     -------
@@ -263,6 +302,9 @@ def slice_scatter_parallel(
             h=h[left_edge:right_edge],
             z_slice=z_slice,
             res=res,
+            box_x=box_x,
+            box_y=box_y,
+            box_z=box_z,
         )
 
     return output
@@ -418,6 +460,9 @@ def slice_gas_pixel_grid(
         h=hsml / max_range,
         z_slice=(z_center + z_slice) / max_range,
         res=resolution,
+        box_x=box_x / max_range,
+        box_y=box_y / max_range,
+        box_z=box_z / max_range,
     )
 
     if parallel:

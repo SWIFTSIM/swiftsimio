@@ -116,6 +116,9 @@ def test_slice(save=False):
         np.array([0.2, 0.2, 0.2, 0.000002]),
         0.99,
         256,
+        1.0,
+        1.0,
+        1.0,
     )
 
     if save:
@@ -151,6 +154,9 @@ def test_slice_parallel(save=False):
         hsml,
         z_slice,
         resolution,
+        1.0,
+        1.0,
+        1.0,
     )
     image_par = slice_scatter_parallel(
         coordinates[0],
@@ -160,6 +166,9 @@ def test_slice_parallel(save=False):
         hsml,
         z_slice,
         resolution,
+        1.0,
+        1.0,
+        1.0,
     )
 
     if save:
@@ -277,7 +286,7 @@ def test_render_outside_region():
             else:
                 continue
 
-    slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
+    slice_scatter_parallel(x, y, z, m, h, 0.2, resolution, 1.0, 1.0, 1.0)
 
     volume_render.scatter_parallel(x, y, z, m, h, resolution)
 
