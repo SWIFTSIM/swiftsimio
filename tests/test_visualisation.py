@@ -188,6 +188,9 @@ def test_volume_render():
         np.array([1.0, 1.0, 1.0, 1.0]),
         np.array([0.2, 0.2, 0.2, 0.000002]),
         64,
+        1.0,
+        1.0,
+        1.0,
     )
 
     return
@@ -207,10 +210,26 @@ def test_volume_parallel():
     masses = np.ones(number_of_parts, dtype=np.float32)
 
     image = volume_render.scatter(
-        coordinates[0], coordinates[1], coordinates[2], masses, hsml, resolution
+        coordinates[0],
+        coordinates[1],
+        coordinates[2],
+        masses,
+        hsml,
+        resolution,
+        1.0,
+        1.0,
+        1.0,
     )
     image_par = volume_render.scatter_parallel(
-        coordinates[0], coordinates[1], coordinates[2], masses, hsml, resolution
+        coordinates[0],
+        coordinates[1],
+        coordinates[2],
+        masses,
+        hsml,
+        resolution,
+        1.0,
+        1.0,
+        1.0,
     )
 
     assert np.isclose(image, image_par).all()
@@ -288,7 +307,7 @@ def test_render_outside_region():
 
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution, 1.0, 1.0, 1.0)
 
-    volume_render.scatter_parallel(x, y, z, m, h, resolution)
+    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1.0, 1.0, 1.0)
 
 
 @requires("cosmological_volume.hdf5")

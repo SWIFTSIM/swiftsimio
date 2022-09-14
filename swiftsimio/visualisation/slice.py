@@ -146,6 +146,7 @@ def slice_scatter(
     for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
         x, y, z, m, h
     ):
+        # loop over periodic copies of the particle
         for xshift in range(3):
             for yshift in range(3):
                 for zshift in range(3):
@@ -229,7 +230,7 @@ def slice_scatter_parallel(
     """
     Parallel implementation of slice_scatter
 
-    Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
+    Creates a scatter plot of the given quantities for a particles in a data slice including periodic boundary effects.
 
     Parameters
     ----------
