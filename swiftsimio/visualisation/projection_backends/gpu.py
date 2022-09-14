@@ -62,8 +62,18 @@ def kernel(r: float32, H: float32):
     return kernel
 
 
-@cuda_jit
-def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
+@cuda_jit(
+    "void(float64[:], float64[:], float32[:], float32[:], float64, float64, float32[:,:])"
+)
+def scatter_gpu(
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    box_x: float64,
+    box_y: float64,
+    img: float32,
+):
     """
     Creates a weighted scatter plot
 
@@ -114,13 +124,13 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
     # Pre-calculate this constant for use with the above
     inverse_cell_area = res * res
 
-    i = cuda.grid(1)
+    i, dx, dy = cuda.grid(3)
     if i < len(x):
         # Get the correct particle
-        x_pos = x[i]
-        y_pos = y[i]
         mass = m[i]
         hsml = h[i]
+        x_pos = x[i] + (dx - 1.0) * box_x
+        y_pos = y[i] + (dy - 1.0) * box_y
 
         # Calculate the cell that this particle; use the 64 bit version of the
         # resolution as this is the same type as the positions
@@ -245,9 +255,13 @@ def scatter(
     output[:] = 0
 
     n_part = len(x)
-    threads_per_block = 16
-    blocks_per_grid = ceil(n_part / threads_per_block)
-    scatter_gpu[blocks_per_grid, threads_per_block](x, y, m, h, output)
+    threads_per_block = (16, 1, 1)
+    blocks_per_grid = (
+        ceil(n_part / threads_per_block[0]),
+        3 // threads_per_block[1],
+        3 // threads_per_block[2],
+    )
+    scatter_gpu[blocks_per_grid, threads_per_block](x, y, m, h, box_x, box_y, output)
 
     return output.copy_to_host()
 
