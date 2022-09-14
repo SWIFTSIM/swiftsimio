@@ -40,6 +40,8 @@ def test_scatter(save=False):
                 np.array([1.0, 1.0, 1.0, 1.0]),
                 np.array([0.2, 0.2, 0.2, 0.000002]),
                 256,
+                1.0,
+                1.0,
             )
         except CudaSupportError:
             if CUDA_AVAILABLE:
@@ -65,7 +67,7 @@ def test_scatter_mass_conservation():
     total_mass = np.sum(m)
 
     for resolution in resolutions:
-        image = scatter(x, y, m, h, resolution)
+        image = scatter(x, y, m, h, resolution, 1.0, 1.0)
         mass_in_image = image.sum() / (resolution ** 2)
 
         # Check mass conservation to 5%
@@ -92,9 +94,9 @@ def test_scatter_parallel(save=False):
     hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
     masses = np.ones(number_of_parts, dtype=np.float32)
 
-    image = scatter(coordinates[0], coordinates[1], masses, hsml, resolution)
+    image = scatter(coordinates[0], coordinates[1], masses, hsml, resolution, 1.0, 1.0)
     image_par = scatter_parallel(
-        coordinates[0], coordinates[1], masses, hsml, resolution
+        coordinates[0], coordinates[1], masses, hsml, resolution, 1.0, 1.0
     )
 
     if save:
@@ -264,11 +266,11 @@ def test_render_outside_region():
     h = 10 ** np.random.rand(number_of_parts) - 1.0
     h[h > 0.5] = 0.05
     m = np.ones_like(h)
-    backends["histogram"](x, y, m, h, resolution)
+    backends["histogram"](x, y, m, h, resolution, 1.0, 1.0)
 
     for backend in backends_parallel.keys():
         try:
-            backends[backend](x, y, m, h, resolution)
+            backends[backend](x, y, m, h, resolution, 1.0, 1.0)
         except CudaSupportError:
             if CUDA_AVAILABLE:
                 raise ImportError("Optional loading of the CUDA module is broken")
