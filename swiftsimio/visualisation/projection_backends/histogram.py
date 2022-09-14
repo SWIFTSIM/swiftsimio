@@ -13,7 +13,15 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 
 
 @jit(nopython=True, fastmath=True)
-def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
+def scatter(
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64,
+    box_y: float64,
+) -> ndarray:
     """
     Creates a weighted scatter plot
 
@@ -69,26 +77,39 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     # Pre-calculate this constant for use with the above
     inverse_cell_area = float_res * float_res
 
-    for x_pos, y_pos, mass in zip(x, y, m):
-        # Calculate the cell that this particle; use the 64 bit version of the
-        # resolution as this is the same type as the positions
-        particle_cell_x = int32(float_res * x_pos)
-        particle_cell_y = int32(float_res * y_pos)
+    for x_pos_original, y_pos_original, mass in zip(x, y, m):
+        for xshift in range(3):
+            for yshift in range(3):
+                x_pos = x_pos_original + (xshift - 1) * box_y
+                y_pos = y_pos_original + (yshift - 1) * box_y
 
-        if not (
-            particle_cell_x < 0
-            or particle_cell_x >= maximal_array_index
-            or particle_cell_y < 0
-            or particle_cell_y >= maximal_array_index
-        ):
-            image[particle_cell_x, particle_cell_y] += float64(mass) * inverse_cell_area
+                # Calculate the cell that this particle; use the 64 bit version of the
+                # resolution as this is the same type as the positions
+                particle_cell_x = int32(float_res * x_pos)
+                particle_cell_y = int32(float_res * y_pos)
+
+                if not (
+                    particle_cell_x < 0
+                    or particle_cell_x >= maximal_array_index
+                    or particle_cell_y < 0
+                    or particle_cell_y >= maximal_array_index
+                ):
+                    image[particle_cell_x, particle_cell_y] += (
+                        float64(mass) * inverse_cell_area
+                    )
 
     return image
 
 
 @jit(nopython=True, fastmath=True, parallel=True)
 def scatter_parallel(
-    x: float64, y: float64, m: float32, h: float32, res: int
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64,
+    box_y: float64,
 ) -> ndarray:
     """
     Parallel implementation of scatter
@@ -161,6 +182,8 @@ def scatter_parallel(
             m=m[left_edge:right_edge],
             h=h[left_edge:right_edge],
             res=res,
+            box_x=box_x,
+            box_y=box_y,
         )
 
     return output

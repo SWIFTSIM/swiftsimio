@@ -237,6 +237,8 @@ def project_pixel_grid(
         m=m[combined_mask],
         h=hsml[combined_mask] / max_range,
         res=resolution,
+        box_x=box_x / max_range,
+        box_y=box_y / max_range,
     )
 
     if parallel:

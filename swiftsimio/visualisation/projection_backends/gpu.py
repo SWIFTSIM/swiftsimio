@@ -183,7 +183,15 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
                     cuda.atomic.add(img, (cell_x, cell_y), mass * kernel_eval)
 
 
-def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
+def scatter(
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64,
+    box_y: float64,
+) -> ndarray:
     """
     Parallel implementation of scatter
 
