@@ -52,6 +52,7 @@ def project_pixel_grid(
     rotation_center: Union[None, unyt_array] = None,
     parallel: bool = False,
     backend: str = "fast",
+    periodic: bool = True,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -108,6 +109,9 @@ def project_pixel_grid(
     backend: str, optional
         Backend to use. See documentation for details. Defaults to 'fast'.
 
+    periodic: bool, optional
+        Account for periodic boundary conditions for the simulation box?
+        Defaults to ``True``.
 
     Returns
     -------
@@ -231,14 +235,21 @@ def project_pixel_grid(
     else:
         combined_mask = mask
 
+    if periodic:
+        periodic_box_x = box_x / max_range
+        periodic_box_y = box_y / max_range
+    else:
+        periodic_box_x = 0.0
+        periodic_box_y = 0.0
+
     common_arguments = dict(
         x=(x[combined_mask] - x_min) / max_range,
         y=(y[combined_mask] - y_min) / max_range,
         m=m[combined_mask],
         h=hsml[combined_mask] / max_range,
         res=resolution,
-        box_x=box_x / max_range,
-        box_y=box_y / max_range,
+        box_x=periodic_box_x,
+        box_y=periodic_box_y,
     )
 
     if parallel:
@@ -264,6 +275,7 @@ def project_gas_pixel_grid(
     rotation_center: Union[None, unyt_array] = None,
     parallel: bool = False,
     backend: str = "fast",
+    periodic: bool = True,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -319,6 +331,9 @@ def project_gas_pixel_grid(
     backend: str, optional
         Backend to use. See documentation for details. Defaults to 'fast'.
 
+    periodic: bool, optional
+        Account for periodic boundary conditions for the simulation box?
+        Defaults to ``True``.
 
     Returns
     -------
@@ -349,6 +364,7 @@ def project_gas_pixel_grid(
         rotation_matrix=rotation_matrix,
         rotation_center=rotation_center,
         backend=backend,
+        periodic=periodic,
     )
 
     return image
@@ -364,6 +380,7 @@ def project_gas(
     rotation_matrix: Union[None, array] = None,
     parallel: bool = False,
     backend: str = "fast",
+    periodic: bool = True,
 ):
     r"""
     Creates a 2D projection of a SWIFT dataset, projected by the "project"
@@ -417,6 +434,10 @@ def project_gas(
     backend: str, optional
         Backend to use. See documentation for details. Defaults to 'fast'.
 
+    periodic: bool, optional
+        Account for periodic boundary conditions for the simulation box?
+        Defaults to ``True``.
+
 
     Returns
     -------
@@ -446,6 +467,7 @@ def project_gas(
         rotation_matrix=rotation_matrix,
         rotation_center=rotation_center,
         backend=backend,
+        periodic=periodic,
     )
 
     if region is not None:

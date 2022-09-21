@@ -39,8 +39,8 @@ def scatter(
     m: float32,
     h: float32,
     res: int,
-    box_x: float64,
-    box_y: float64,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
 ) -> ndarray:
     """
     Creates a weighted scatter plot
@@ -141,12 +141,25 @@ def scatter(
     # May as well have this correctly normed.
     dithered_kernel *= inverse_cell_area / dithered_kernel.sum()
 
+    if box_x == 0.0:
+        xshift_min = 0
+        xshift_max = 1
+    else:
+        xshift_min = -1
+        xshift_max = 2
+    if box_y == 0.0:
+        yshift_min = 0
+        yshift_max = 1
+    else:
+        yshift_min = -1
+        yshift_max = 2
+
     for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
         # loop over periodic copies of this particle
-        for xshift in range(3):
-            for yshift in range(3):
-                x_pos = x_pos_original + (xshift - 1) * box_x
-                y_pos = y_pos_original + (yshift - 1) * box_y
+        for xshift in range(xshift_min, xshift_max):
+            for yshift in range(yshift_min, yshift_max):
+                x_pos = x_pos_original + xshift * box_x
+                y_pos = y_pos_original + yshift * box_y
 
                 # Calculate the cell that this particle; use the 64 bit version of the
                 # resolution as this is the same type as the positions
@@ -317,8 +330,8 @@ def scatter_parallel(
     m: float32,
     h: float32,
     res: int,
-    box_x: float64,
-    box_y: float64,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of scatter

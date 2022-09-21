@@ -81,9 +81,9 @@ def slice_scatter(
     h: float32,
     z_slice: float64,
     res: int,
-    box_x: float64,
-    box_y: float64,
-    box_z: float64,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+    box_z: float64 = 0.0,
 ) -> ndarray:
     """
     Creates a scatter plot of the given quantities for a particles in a data slice including periodic boundary effects.
@@ -143,16 +143,35 @@ def slice_scatter(
     # We need this for combining with the x_pos and y_pos variables.
     float_res_64 = float64(res)
 
+    if box_x == 0.0:
+        xshift_min = 0
+        xshift_max = 1
+    else:
+        xshift_min = -1
+        xshift_max = 2
+    if box_y == 0.0:
+        yshift_min = 0
+        yshift_max = 1
+    else:
+        yshift_min = -1
+        yshift_max = 2
+    if box_z == 0.0:
+        zshift_min = 0
+        zshift_max = 1
+    else:
+        zshift_min = -1
+        zshift_max = 2
+
     for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
         x, y, z, m, h
     ):
         # loop over periodic copies of the particle
-        for xshift in range(3):
-            for yshift in range(3):
-                for zshift in range(3):
-                    x_pos = x_pos_original + (xshift - 1) * box_x
-                    y_pos = y_pos_original + (yshift - 1) * box_y
-                    z_pos = z_pos_original + (zshift - 1) * box_z
+        for xshift in range(xshift_min, xshift_max):
+            for yshift in range(yshift_min, yshift_max):
+                for zshift in range(zshift_min, zshift_max):
+                    x_pos = x_pos_original + xshift * box_x
+                    y_pos = y_pos_original + yshift * box_y
+                    z_pos = z_pos_original + zshift * box_z
 
                     # Calculate the cell that this particle lives above; use 64 bits
                     # resolution as this is the same type as the positions
@@ -223,9 +242,9 @@ def slice_scatter_parallel(
     h: float32,
     z_slice: float64,
     res: int,
-    box_x: float64,
-    box_y: float64,
-    box_z: float64,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+    box_z: float64 = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of slice_scatter
@@ -320,6 +339,7 @@ def slice_gas_pixel_grid(
     rotation_matrix: Union[None, array] = None,
     rotation_center: Union[None, unyt_array] = None,
     region: Union[None, unyt_array] = None,
+    periodic: bool = True,
 ):
     """
     Creates a 2D slice of a SWIFT dataset, weighted by data field, in the
@@ -366,6 +386,10 @@ def slice_gas_pixel_grid(
 
         Particles outside of this range are still considered if their
         smoothing lengths overlap with the range.
+
+    periodic : bool, optional
+        Account for periodic boundaries for the simulation box?
+        Default is ``True``.
 
     Returns
     -------
@@ -453,6 +477,15 @@ def slice_gas_pixel_grid(
                 f"Comoving smoothing length is not compatible with physical coordinates!"
             )
 
+    if periodic:
+        periodic_box_x = box_x / max_range
+        periodic_box_y = box_y / max_range
+        periodic_box_z = box_z / max_range
+    else:
+        periodic_box_x = 0.0
+        periodic_box_y = 0.0
+        periodic_box_z = 0.0
+
     common_parameters = dict(
         x=(x - x_min) / max_range,
         y=(y - y_min) / max_range,
@@ -461,9 +494,9 @@ def slice_gas_pixel_grid(
         h=hsml / max_range,
         z_slice=(z_center + z_slice) / max_range,
         res=resolution,
-        box_x=box_x / max_range,
-        box_y=box_y / max_range,
-        box_z=box_z / max_range,
+        box_x=periodic_box_x,
+        box_y=periodic_box_y,
+        box_z=periodic_box_z,
     )
 
     if parallel:
@@ -488,6 +521,7 @@ def slice_gas(
     rotation_matrix: Union[None, array] = None,
     rotation_center: Union[None, unyt_array] = None,
     region: Union[None, unyt_array] = None,
+    periodic: bool = True,
 ):
     """
     Creates a 2D slice of a SWIFT dataset, weighted by data field
@@ -534,6 +568,10 @@ def slice_gas(
         Particles outside of this range are still considered if their
         smoothing lengths overlap with the range.
 
+    periodic : bool, optional
+        Account for periodic boundaries for the simulation box?
+        Default is ``True``.
+
     Returns
     -------
     ndarray of float32
@@ -563,6 +601,7 @@ def slice_gas(
         rotation_matrix,
         rotation_center,
         region,
+        periodic,
     )
 
     if region is not None:

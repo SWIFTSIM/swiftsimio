@@ -208,8 +208,8 @@ def scatter(
     m: float32,
     h: float32,
     res: int,
-    box_x: float64,
-    box_y: float64,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of scatter
@@ -272,6 +272,14 @@ def scatter(
     output[:] = 0
 
     n_part = len(x)
+    if box_x == 0.0:
+        n_xshift = 1
+    else:
+        n_xshift = 3
+    if box_y == 0.0:
+        n_yshift = 1
+    else:
+        n_yshift = 3
     # set up a 3D grid:
     # the first dimension are the particles
     # the second and third dimension are the periodic
@@ -279,8 +287,8 @@ def scatter(
     threads_per_block = (16, 1, 1)
     blocks_per_grid = (
         ceil(n_part / threads_per_block[0]),
-        3 // threads_per_block[1],
-        3 // threads_per_block[2],
+        n_xshift // threads_per_block[1],
+        n_yshift // threads_per_block[2],
     )
     scatter_gpu[blocks_per_grid, threads_per_block](x, y, m, h, box_x, box_y, output)
 
