@@ -17,6 +17,7 @@ common interface:
        project="masses", # Variable to project, e.g. masses, temperatures, etc.
        parallel=False, # Construct the image in (thread) parallel?
        region=None, # None, or a list telling which region to render_func_name
+       periodic=True, # Whether or not to apply periodic boundary conditions
    )
 
 The output of these functions comes with associated units and has the correct

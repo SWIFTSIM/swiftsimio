@@ -34,7 +34,8 @@ Example
        data,
        resolution=256,
        project="masses",
-       parallel=True
+       parallel=True,
+       periodic=True,
    )
 
 This basic demonstration creates a mass density cube.
@@ -59,7 +60,8 @@ this:
        data,
        resolution=256,
        project="masses",
-       parallel=True
+       parallel=True,
+       periodic=True,
    )
 
    # Map in msun * K / mpc^3
@@ -67,11 +69,36 @@ this:
        data,
        resolution=256,
        project="mass_weighted_temps",
-       parallel=True
+       parallel=True,
+       periodic=True,
    )
 
    # A 256 x 256 x 256 cube with dimensions of temperature
    temp_cube = mass_weighted_temp_cube / mass_cube
+
+Periodic boundaries
+-------------------
+
+Cosmological simulations and many other simulations use periodic boundary
+conditions. This has implications for the particles at the edge of the
+simulation box: they can contribute to voxels on multiple sides of the image.
+If this effect is not taken into account, then the voxels close to the edge
+will have values that are too low because of missing contributions.
+
+All visualisation functions by default assume a periodic box. Rather than
+simply summing each individual particle once, eight additional periodic copies
+of each particle are also taken into account. Most copies will contribute
+outside the valid voxel range, but the copies that do not ensure that voxels
+close to the edge receive all necessary contributions. Thanks to Numba
+optimisations, the overhead of these additional copies is relatively small.
+
+There are some caveats with this approach. If you try to visualise a subset of
+the particles in the box (e.g. using a mask), then only periodic copies of
+particles in this subset will be used. If the subset does not include particles
+on the other side of the periodic boundary, then these will still be missing
+from the voxel cube. The same is true if you visualise a region of the box.
+The periodic boundary wrapping is also not compatible with rotations (see below)
+and should therefore not be used together with a rotation.
 
 Rotations
 ---------
@@ -110,7 +137,8 @@ the above example is shown below.
        project="masses",
        rotation_matrix=matrix,
        rotation_center=center,
-       parallel=True
+       parallel=True,
+       periodic=False, # disable periodic boundaries for rotations
    )
    
    # Map in msun * K / mpc^3
@@ -120,7 +148,8 @@ the above example is shown below.
        project="mass_weighted_temps",
        rotation_matrix=matrix,
        rotation_center=center,
-       parallel=True
+       parallel=True,
+       periodic=False,
    )
 
    # A 256 x 256 x 256 cube with dimensions of temperature
@@ -150,6 +179,9 @@ To use this function, you will need:
 + Smoothing lengths for all particles, ``h``.
 + The resolution you wish to make your cube at, ``res``.
 
+Optionally, you will also need:
++ the size of the simulation box in x, y and z, ``box_x``, ``box_y`` and ``box_z``.
+
 The key here is that only particles in the domain [0, 1] in x, [0, 1] in y,
 and [0, 1] in z. will be visible in the cube. You may have particles outside
 of this range; they will not crash the code, and may even contribute to the
@@ -168,3 +200,9 @@ function as follows:
 need to re-scale this back to your original dimensions to get it in the
 correct units, and do not forget that it now represents the smoothed quantity
 per volume.
+
+If the optional arguments ``box_x``, ``box_y`` and ``box_z`` are provided, they
+should contain the simulation box size in the same re-scaled coordinates as 
+``x``, ``y`` and ``z``. The rendering function will then correctly apply
+periodic boundary wrapping. If ``box_x``, ``box_y`` and ``box_z`` are not
+provided or set to 0, no periodic boundaries are applied
