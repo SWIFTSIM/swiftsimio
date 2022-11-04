@@ -49,7 +49,7 @@ if ASTROPY_AVAILABLE:
         m_nu = None
 
         try:
-            Tcmb0 = cosmo["T_CMB_0"][0]
+            Tcmb0 = cosmo["T_CMB_0 [K]"][0]
         except (IndexError, KeyError, AttributeError):
             # expressions taken directly from astropy, since they do no longer
             # allow access to these attributes (since version 5.1+)
@@ -86,7 +86,6 @@ if ASTROPY_AVAILABLE:
             Neff=Neff,
             m_nu=m_nu,
         )
-
 
 else:
 
