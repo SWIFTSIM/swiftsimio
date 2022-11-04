@@ -87,6 +87,7 @@ if ASTROPY_AVAILABLE:
             m_nu=m_nu,
         )
 
+
 else:
 
     def swift_cosmology_to_astropy(cosmo: dict, units) -> dict:
