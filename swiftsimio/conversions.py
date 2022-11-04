@@ -42,19 +42,38 @@ if ASTROPY_AVAILABLE:
         w_0 = cosmo["w_0"][0]
         w_a = cosmo["w_a"][0]
 
-        # expressions taken directly from astropy, since they do no longer
-        # allow access to these attributes (since version 5.1+)
-        critdens_const = (3.0 / (8.0 * np.pi * const.G)).cgs.value
-        a_B_c2 = (4.0 * const.sigma_sb / const.c ** 3).cgs.value
+        # For backwards compatibility with previous cosmology constructs
+        # in snapshots
+        Tcmb0 = None
+        Neff = None
+        m_nu = None
 
-        # SWIFT provides Omega_r, but we need a consistent Tcmb0 for astropy.
-        # This is an exact inversion of the procedure performed in astropy.
-        critical_density_0 = astropy_units.Quantity(
-            critdens_const * H0.to("1/s").value ** 2,
-            astropy_units.g / astropy_units.cm ** 3,
-        )
+        try:
+            Tcmb0 = cosmo["T_CMB_0"][0]
+        except (IndexError, KeyError, AttributeError):
+            # expressions taken directly from astropy, since they do no longer
+            # allow access to these attributes (since version 5.1+)
+            critdens_const = (3.0 / (8.0 * np.pi * const.G)).cgs.value
+            a_B_c2 = (4.0 * const.sigma_sb / const.c ** 3).cgs.value
 
-        Tcmb0 = (Omega_r * critical_density_0.value / a_B_c2) ** (1.0 / 4.0)
+            # SWIFT provides Omega_r, but we need a consistent Tcmb0 for astropy.
+            # This is an exact inversion of the procedure performed in astropy.
+            critical_density_0 = astropy_units.Quantity(
+                critdens_const * H0.to("1/s").value ** 2,
+                astropy_units.g / astropy_units.cm ** 3,
+            )
+
+            Tcmb0 = (Omega_r * critical_density_0.value / a_B_c2) ** (1.0 / 4.0)
+
+        try:
+            Neff = cosmo["N_eff"][0]
+        except (IndexError, KeyError, AttributeError):
+            Neff = 3.04  # Astropy default
+
+        try:
+            m_nu = cosmo["M_nu_eV"][0]
+        except (IndexError, KeyError, AttributeError):
+            m_nu = 0.0
 
         return w0waCDM(
             H0=H0.to_astropy(),
@@ -64,8 +83,9 @@ if ASTROPY_AVAILABLE:
             wa=w_a,
             Tcmb0=Tcmb0,
             Ob0=Omega_b,
+            Neff=Neff,
+            m_nu=m_nu,
         )
-
 
 else:
 
