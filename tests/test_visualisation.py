@@ -6,7 +6,11 @@ from swiftsimio.visualisation.projection import (
     project_gas,
     project_pixel_grid,
 )
-from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
+from swiftsimio.visualisation.slice import (
+    slice_scatter,
+    slice_scatter_parallel,
+    slice_gas,
+)
 from swiftsimio.visualisation.volume_render import render_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length_generation import (
@@ -384,3 +388,107 @@ def test_nongas_smoothing_lengths(filename):
     assert not isinstance(hsml, cosmo_array)
 
     return
+
+
+def test_periodic_boundary_wrapping():
+    """
+    Test that periodic boundary wrapping works.
+    """
+
+    voxel_resolution = 10
+    pixel_resolution = 100
+    boxsize = 1.0
+
+    # set up a particle near the edge of the box that overlaps with the edge
+    coordinates_periodic = np.array([[0.1, 0.5, 0.5]])
+    hsml_periodic = np.array([0.2])
+    masses_periodic = np.array([1.0])
+
+    # set up a periodic copy of the particle on the other side of the box as well
+    # to test the case where we don't apply periodic wrapping
+    coordinates_non_periodic = np.array([[0.1, 0.5, 0.5], [1.1, 0.5, 0.5]])
+    hsml_non_periodic = np.array([0.2, 0.2])
+    masses_non_periodic = np.array([1.0, 1.0])
+
+    # test the projection backends scatter functions
+    for backend in backends.keys():
+        try:
+            image1 = backends[backend](
+                x=coordinates_periodic[:, 0],
+                y=coordinates_periodic[:, 1],
+                m=masses_periodic,
+                h=hsml_periodic,
+                res=pixel_resolution,
+                box_x=boxsize,
+                box_y=boxsize,
+            )
+            image2 = backends[backend](
+                x=coordinates_non_periodic[:, 0],
+                y=coordinates_non_periodic[:, 1],
+                m=masses_non_periodic,
+                h=hsml_non_periodic,
+                res=pixel_resolution,
+                box_x=0.0,
+                box_y=0.0,
+            )
+            assert (image1 == image2).all()
+        except CudaSupportError:
+            if CUDA_AVAILABLE:
+                raise ImportError("Optional loading of the CUDA module is broken")
+            else:
+                continue
+
+    # test the slice scatter function
+    image1 = slice_scatter(
+        x=coordinates_periodic[:, 0],
+        y=coordinates_periodic[:, 1],
+        z=coordinates_periodic[:, 2],
+        m=masses_periodic,
+        h=hsml_periodic,
+        z_slice=0.5,
+        res=pixel_resolution,
+        box_x=boxsize,
+        box_y=boxsize,
+        box_z=boxsize,
+    )
+    image2 = slice_scatter(
+        x=coordinates_non_periodic[:, 0],
+        y=coordinates_non_periodic[:, 1],
+        z=coordinates_non_periodic[:, 2],
+        m=masses_non_periodic,
+        h=hsml_non_periodic,
+        z_slice=0.5,
+        res=pixel_resolution,
+        box_x=0.0,
+        box_y=0.0,
+        box_z=0.0,
+    )
+
+    assert (image1 == image2).all()
+
+    # test the volume rendering scatter function
+    image1 = volume_render.scatter(
+        x=coordinates_periodic[:, 0],
+        y=coordinates_periodic[:, 1],
+        z=coordinates_periodic[:, 2],
+        m=masses_periodic,
+        h=hsml_periodic,
+        res=voxel_resolution,
+        box_x=boxsize,
+        box_y=boxsize,
+        box_z=boxsize,
+    )
+
+    image2 = volume_render.scatter(
+        x=coordinates_non_periodic[:, 0],
+        y=coordinates_non_periodic[:, 1],
+        z=coordinates_non_periodic[:, 2],
+        m=masses_non_periodic,
+        h=hsml_non_periodic,
+        res=voxel_resolution,
+        box_x=0.0,
+        box_y=0.0,
+        box_z=0.0,
+    )
+
+    assert (image1 == image2).all()
