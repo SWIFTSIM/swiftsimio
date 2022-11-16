@@ -29,13 +29,21 @@ from swiftsimio.visualisation.projection_backends.kernels import (
 
 
 @jit(nopython=True, fastmath=True)
-def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
+def scatter(
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+) -> ndarray:
     """
     Creates a weighted scatter plot
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -55,6 +63,14 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------
@@ -89,95 +105,137 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     # Pre-calculate this constant for use with the above
     inverse_cell_area = float_res * float_res
 
-    for x_pos, y_pos, mass, hsml in zip(x, y, m, h):
-        # Calculate the cell that this particle; use the 64 bit version of the
-        # resolution as this is the same type as the positions
-        particle_cell_x = int32(float_res_64 * x_pos)
-        particle_cell_y = int32(float_res_64 * y_pos)
+    if box_x == 0.0:
+        xshift_min = 0
+        xshift_max = 1
+    else:
+        xshift_min = -1
+        xshift_max = 2
+    if box_y == 0.0:
+        yshift_min = 0
+        yshift_max = 1
+    else:
+        yshift_min = -1
+        yshift_max = 2
 
-        # SWIFT stores hsml as the FWHM.
-        kernel_width = kernel_gamma * hsml
+    for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
+        # loop over periodic copies of this particle
+        for xshift in range(xshift_min, xshift_max):
+            for yshift in range(yshift_min, yshift_max):
+                x_pos = x_pos_original + xshift * box_x
+                y_pos = y_pos_original + yshift * box_y
 
-        # The number of cells that this kernel spans
-        cells_spanned = int32(1.0 + kernel_width * float_res)
+                # Calculate the cell that this particle; use the 64 bit version of the
+                # resolution as this is the same type as the positions
+                particle_cell_x = int32(float_res_64 * x_pos)
+                particle_cell_y = int32(float_res_64 * y_pos)
 
-        if (
-            particle_cell_x + cells_spanned < 0
-            or particle_cell_x - cells_spanned > maximal_array_index
-            or particle_cell_y + cells_spanned < 0
-            or particle_cell_y - cells_spanned > maximal_array_index
-        ):
-            # Can happily skip this particle
-            continue
+                # SWIFT stores hsml as the FWHM.
+                kernel_width = kernel_gamma * hsml
 
-        if cells_spanned <= 1:
-            # Easygame, gg
-            if (
-                particle_cell_x >= 0
-                and particle_cell_x <= maximal_array_index
-                and particle_cell_y >= 0
-                and particle_cell_y <= maximal_array_index
-            ):
-                image[particle_cell_x, particle_cell_y] += mass * inverse_cell_area
-        else:
-            # First calculate the typical normalisation for this kernel in this
-            # segment of the image (use the whole square, including overlap with
-            # edges).
+                # The number of cells that this kernel spans
+                cells_spanned = int32(1.0 + kernel_width * float_res)
 
-            normalisation = float32(0.0)
-
-            for cell_x in range(
-                particle_cell_x - cells_spanned + 1, particle_cell_x + cells_spanned
-            ):
-                # The distance in x to our new favourite cell -- remember that our x, y
-                # are all in a box of [0, 1]; calculate the distance to the cell centre
-                distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(x_pos)
-                distance_x_2 = distance_x * distance_x
-                for cell_y in range(
-                    particle_cell_y - cells_spanned + 1, particle_cell_y + cells_spanned
+                if (
+                    particle_cell_x + cells_spanned < 0
+                    or particle_cell_x - cells_spanned > maximal_array_index
+                    or particle_cell_y + cells_spanned < 0
+                    or particle_cell_y - cells_spanned > maximal_array_index
                 ):
-                    distance_y = (float32(cell_y) + 0.5) * pixel_width - float32(y_pos)
-                    distance_y_2 = distance_y * distance_y
+                    # Can happily skip this particle
+                    continue
 
-                    r = sqrt(distance_x_2 + distance_y_2)
+                if cells_spanned <= 1:
+                    # Easygame, gg
+                    if (
+                        particle_cell_x >= 0
+                        and particle_cell_x <= maximal_array_index
+                        and particle_cell_y >= 0
+                        and particle_cell_y <= maximal_array_index
+                    ):
+                        image[particle_cell_x, particle_cell_y] += (
+                            mass * inverse_cell_area
+                        )
+                else:
+                    # First calculate the typical normalisation for this kernel in this
+                    # segment of the image (use the whole square, including overlap with
+                    # edges).
 
-                    normalisation += kernel(r, kernel_width)
+                    normalisation = float32(0.0)
 
-            # We want sum(W_ij) = 1.0
-            normalisation = inverse_cell_area / normalisation
+                    for cell_x in range(
+                        particle_cell_x - cells_spanned + 1,
+                        particle_cell_x + cells_spanned,
+                    ):
+                        # The distance in x to our new favourite cell -- remember that our x, y
+                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
+                            x_pos
+                        )
+                        distance_x_2 = distance_x * distance_x
+                        for cell_y in range(
+                            particle_cell_y - cells_spanned + 1,
+                            particle_cell_y + cells_spanned,
+                        ):
+                            distance_y = (
+                                float32(cell_y) + 0.5
+                            ) * pixel_width - float32(y_pos)
+                            distance_y_2 = distance_y * distance_y
 
-            # Now we loop over the square of cells that the kernel lives in
-            for cell_x in range(
-                # Ensure that the lowest x value is 0, otherwise we'll segfault
-                max(0, particle_cell_x - cells_spanned),
-                # Ensure that the highest x value lies within the array bounds,
-                # otherwise we'll segfault (oops).
-                min(particle_cell_x + cells_spanned + 1, maximal_array_index + 1),
-            ):
-                # The distance in x to our new favourite cell -- remember that our x, y
-                # are all in a box of [0, 1]; calculate the distance to the cell centre
-                distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(x_pos)
-                distance_x_2 = distance_x * distance_x
-                for cell_y in range(
-                    max(0, particle_cell_y - cells_spanned),
-                    min(particle_cell_y + cells_spanned + 1, maximal_array_index + 1),
-                ):
-                    distance_y = (float32(cell_y) + 0.5) * pixel_width - float32(y_pos)
-                    distance_y_2 = distance_y * distance_y
+                            r = sqrt(distance_x_2 + distance_y_2)
 
-                    r = sqrt(distance_x_2 + distance_y_2)
+                            normalisation += kernel(r, kernel_width)
 
-                    # Renormalise kernel before using
-                    kernel_eval = normalisation * kernel(r, kernel_width)
+                    # We want sum(W_ij) = 1.0
+                    normalisation = inverse_cell_area / normalisation
 
-                    image[cell_x, cell_y] += mass * kernel_eval
+                    # Now we loop over the square of cells that the kernel lives in
+                    for cell_x in range(
+                        # Ensure that the lowest x value is 0, otherwise we'll segfault
+                        max(0, particle_cell_x - cells_spanned),
+                        # Ensure that the highest x value lies within the array bounds,
+                        # otherwise we'll segfault (oops).
+                        min(
+                            particle_cell_x + cells_spanned + 1, maximal_array_index + 1
+                        ),
+                    ):
+                        # The distance in x to our new favourite cell -- remember that our x, y
+                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
+                            x_pos
+                        )
+                        distance_x_2 = distance_x * distance_x
+                        for cell_y in range(
+                            max(0, particle_cell_y - cells_spanned),
+                            min(
+                                particle_cell_y + cells_spanned + 1,
+                                maximal_array_index + 1,
+                            ),
+                        ):
+                            distance_y = (
+                                float32(cell_y) + 0.5
+                            ) * pixel_width - float32(y_pos)
+                            distance_y_2 = distance_y * distance_y
+
+                            r = sqrt(distance_x_2 + distance_y_2)
+
+                            # Renormalise kernel before using
+                            kernel_eval = normalisation * kernel(r, kernel_width)
+
+                            image[cell_x, cell_y] += mass * kernel_eval
 
     return image
 
 
 @jit(nopython=True, fastmath=True, parallel=True)
 def scatter_parallel(
-    x: float64, y: float64, m: float32, h: float32, res: int
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of scatter
@@ -185,7 +243,7 @@ def scatter_parallel(
     Creates a weighted scatter plot. Computes contributions from
     particles with positions (`x`,`y`) with smoothing lengths `h`
     weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -204,6 +262,14 @@ def scatter_parallel(
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------
@@ -249,6 +315,8 @@ def scatter_parallel(
             m=m[left_edge:right_edge],
             h=h[left_edge:right_edge],
             res=res,
+            box_x=box_x,
+            box_y=box_y,
         )
 
     return output

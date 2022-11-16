@@ -33,13 +33,21 @@ kernel_gamma = float64(kernel_gamma)
 
 
 @jit(nopython=True, fastmath=True)
-def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
+def scatter(
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+) -> ndarray:
     """
     Creates a weighted scatter plot
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -59,6 +67,14 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------
@@ -125,152 +141,197 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     # May as well have this correctly normed.
     dithered_kernel *= inverse_cell_area / dithered_kernel.sum()
 
-    for x_pos, y_pos, mass, hsml in zip(x, y, m, h):
-        # Calculate the cell that this particle; use the 64 bit version of the
-        # resolution as this is the same type as the positions
-        particle_cell_x = int32(float_res * x_pos)
-        particle_cell_y = int32(float_res * y_pos)
+    if box_x == 0.0:
+        xshift_min = 0
+        xshift_max = 1
+    else:
+        xshift_min = -1
+        xshift_max = 2
+    if box_y == 0.0:
+        yshift_min = 0
+        yshift_max = 1
+    else:
+        yshift_min = -1
+        yshift_max = 2
 
-        # SWIFT stores hsml as the FWHM.
-        float_mass = float64(mass)
-        kernel_width = float64(kernel_gamma * hsml)
+    for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
+        # loop over periodic copies of this particle
+        for xshift in range(xshift_min, xshift_max):
+            for yshift in range(yshift_min, yshift_max):
+                x_pos = x_pos_original + xshift * box_x
+                y_pos = y_pos_original + yshift * box_y
 
-        # The number of cells that this kernel spans
-        float_cells_spanned = 1.0 + kernel_width * float_res
-        cells_spanned = int32(float_cells_spanned)
+                # Calculate the cell that this particle; use the 64 bit version of the
+                # resolution as this is the same type as the positions
+                particle_cell_x = int32(float_res * x_pos)
+                particle_cell_y = int32(float_res * y_pos)
 
-        if (
-            particle_cell_x + cells_spanned < 0
-            or particle_cell_x - cells_spanned > maximal_array_index
-            or particle_cell_y + cells_spanned < 0
-            or particle_cell_y - cells_spanned > maximal_array_index
-        ):
-            # Can happily skip this particle
-            continue
+                # SWIFT stores hsml as the FWHM.
+                float_mass = float64(mass)
+                kernel_width = float64(kernel_gamma * hsml)
 
-        # If the particle is too small, then it's very likely that:
-        # a) it does not lie on a boundary
-        # b) evaluating it over this boundary would cause significant errors
-        if kernel_width <= 0.25 * pixel_width:
-            # Here we check for overlaps between this kernel and boundaries.
-            # If they exist, we must use the sub-sampled kernel.
+                # The number of cells that this kernel spans
+                float_cells_spanned = 1.0 + kernel_width * float_res
+                cells_spanned = int32(float_cells_spanned)
 
-            dx_left = x_pos - float64(particle_cell_x)
-            dx_right = float64(particle_cell_x) + 1.0 - x_pos
-            dy_down = y_pos - float64(particle_cell_y)
-            dy_up = float64(particle_cell_y) + 1.0 - y_pos
-
-            overlaps_left = dx_left < kernel_width
-            overlaps_right = dx_right < kernel_width
-            overlaps_down = dy_down < kernel_width
-            overlaps_up = dy_up < kernel_width
-
-            if not (overlaps_left or overlaps_right or overlaps_down or overlaps_up):
-                # Very simple case - no overlaps.
-                image[particle_cell_x, particle_cell_y] += mass * inverse_cell_area
-            else:
-                # Use pre-calculated kernel with a basic dither to lay down
-                # overlap
-                for x_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
-                    float_x_dither_cell = float64(x_dither_cell)
-                    pixel_x = int32(
-                        float_res
-                        * (
-                            x_pos
-                            + (float_x_dither_cell * float_DITHER_EVALUATIONS_inv - 1.0)
-                            * kernel_width
-                        )
-                    )
-                    for y_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
-                        float_y_dither_cell = float64(y_dither_cell)
-                        pixel_y = int32(
-                            float_res
-                            * (
-                                y_pos
-                                + (
-                                    float_y_dither_cell * float_DITHER_EVALUATIONS_inv
-                                    - 1.0
-                                )
-                                * kernel_width
-                            )
-                        )
-
-                        if (
-                            pixel_x >= 0
-                            and pixel_x <= maximal_array_index
-                            and pixel_y >= 0
-                            and pixel_y <= maximal_array_index
-                        ):
-                            image[pixel_x, pixel_y] += (
-                                float_mass
-                                * dithered_kernel[x_dither_cell, y_dither_cell]
-                            )
-
-        else:
-            # The number of times each pixel is subsampled.
-            subsample_factor = max(
-                1, 2 * int32(ceil(float_MIN_KERNEL_EVALUATIONS / float_cells_spanned))
-            )
-            float_subsample_factor = float64(subsample_factor)
-            inv_float_subsample_factor = 1.0 / float_subsample_factor
-            inv_float_subsample_factor_square = (
-                inv_float_subsample_factor * inv_float_subsample_factor
-            )
-
-            # Now we loop over the square of cells that the kernel lives in
-            for cell_x in range(
-                # Ensure that the lowest x value is 0, otherwise we'll segfault
-                max(0, particle_cell_x - cells_spanned),
-                # Ensure that the highest x value lies within the array bounds,
-                # otherwise we'll segfault (oops).
-                min(particle_cell_x + cells_spanned + 1, maximal_array_index + 1),
-            ):
-                float_cell_x = float64(cell_x)
-                for cell_y in range(
-                    max(0, particle_cell_y - cells_spanned),
-                    min(particle_cell_y + cells_spanned + 1, maximal_array_index + 1),
+                if (
+                    particle_cell_x + cells_spanned < 0
+                    or particle_cell_x - cells_spanned > maximal_array_index
+                    or particle_cell_y + cells_spanned < 0
+                    or particle_cell_y - cells_spanned > maximal_array_index
                 ):
-                    float_cell_y = float64(cell_y)
-                    # Now we subsample the pixels to get a more accurate determination
-                    # of the kernel weight. We take the mean of the kernel evaluations
-                    # within a given pixel and apply this as the true 'kernel evaluation'.
-                    kernel_eval = float64(0.0)
+                    # Can happily skip this particle
+                    continue
 
-                    for subsample_x in range(0, subsample_factor):
-                        subsample_position_x = (
-                            float64(subsample_x) + 0.5
-                        ) * inv_float_subsample_factor
+                # If the particle is too small, then it's very likely that:
+                # a) it does not lie on a boundary
+                # b) evaluating it over this boundary would cause significant errors
+                if kernel_width <= 0.25 * pixel_width:
+                    # Here we check for overlaps between this kernel and boundaries.
+                    # If they exist, we must use the sub-sampled kernel.
 
-                        distance_x = (
-                            float_cell_x + subsample_position_x
-                        ) * pixel_width - x_pos
+                    dx_left = x_pos - float64(particle_cell_x)
+                    dx_right = float64(particle_cell_x) + 1.0 - x_pos
+                    dy_down = y_pos - float64(particle_cell_y)
+                    dy_up = float64(particle_cell_y) + 1.0 - y_pos
 
-                        distance_x_2 = distance_x * distance_x
+                    overlaps_left = dx_left < kernel_width
+                    overlaps_right = dx_right < kernel_width
+                    overlaps_down = dy_down < kernel_width
+                    overlaps_up = dy_up < kernel_width
 
-                        for subsample_y in range(0, subsample_factor):
-                            subsample_position_y = (
-                                float64(subsample_y) + 0.5
-                            ) * inv_float_subsample_factor
+                    if not (
+                        overlaps_left or overlaps_right or overlaps_down or overlaps_up
+                    ):
+                        # Very simple case - no overlaps.
+                        image[particle_cell_x, particle_cell_y] += (
+                            mass * inverse_cell_area
+                        )
+                    else:
+                        # Use pre-calculated kernel with a basic dither to lay down
+                        # overlap
+                        for x_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
+                            float_x_dither_cell = float64(x_dither_cell)
+                            pixel_x = int32(
+                                float_res
+                                * (
+                                    x_pos
+                                    + (
+                                        float_x_dither_cell
+                                        * float_DITHER_EVALUATIONS_inv
+                                        - 1.0
+                                    )
+                                    * kernel_width
+                                )
+                            )
+                            for y_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
+                                float_y_dither_cell = float64(y_dither_cell)
+                                pixel_y = int32(
+                                    float_res
+                                    * (
+                                        y_pos
+                                        + (
+                                            float_y_dither_cell
+                                            * float_DITHER_EVALUATIONS_inv
+                                            - 1.0
+                                        )
+                                        * kernel_width
+                                    )
+                                )
 
-                            distance_y = (
-                                float_cell_y + subsample_position_y
-                            ) * pixel_width - y_pos
+                                if (
+                                    pixel_x >= 0
+                                    and pixel_x <= maximal_array_index
+                                    and pixel_y >= 0
+                                    and pixel_y <= maximal_array_index
+                                ):
+                                    image[pixel_x, pixel_y] += (
+                                        float_mass
+                                        * dithered_kernel[x_dither_cell, y_dither_cell]
+                                    )
 
-                            distance_y_2 = distance_y * distance_y
-
-                            r = sqrt(distance_x_2 + distance_y_2)
-                            kernel_eval += kernel(r, kernel_width)
-
-                    image[cell_x, cell_y] += (
-                        float_mass * kernel_eval * inv_float_subsample_factor_square
+                else:
+                    # The number of times each pixel is subsampled.
+                    subsample_factor = max(
+                        1,
+                        2
+                        * int32(
+                            ceil(float_MIN_KERNEL_EVALUATIONS / float_cells_spanned)
+                        ),
                     )
+                    float_subsample_factor = float64(subsample_factor)
+                    inv_float_subsample_factor = 1.0 / float_subsample_factor
+                    inv_float_subsample_factor_square = (
+                        inv_float_subsample_factor * inv_float_subsample_factor
+                    )
+
+                    # Now we loop over the square of cells that the kernel lives in
+                    for cell_x in range(
+                        # Ensure that the lowest x value is 0, otherwise we'll segfault
+                        max(0, particle_cell_x - cells_spanned),
+                        # Ensure that the highest x value lies within the array bounds,
+                        # otherwise we'll segfault (oops).
+                        min(
+                            particle_cell_x + cells_spanned + 1, maximal_array_index + 1
+                        ),
+                    ):
+                        float_cell_x = float64(cell_x)
+                        for cell_y in range(
+                            max(0, particle_cell_y - cells_spanned),
+                            min(
+                                particle_cell_y + cells_spanned + 1,
+                                maximal_array_index + 1,
+                            ),
+                        ):
+                            float_cell_y = float64(cell_y)
+                            # Now we subsample the pixels to get a more accurate determination
+                            # of the kernel weight. We take the mean of the kernel evaluations
+                            # within a given pixel and apply this as the true 'kernel evaluation'.
+                            kernel_eval = float64(0.0)
+
+                            for subsample_x in range(0, subsample_factor):
+                                subsample_position_x = (
+                                    float64(subsample_x) + 0.5
+                                ) * inv_float_subsample_factor
+
+                                distance_x = (
+                                    float_cell_x + subsample_position_x
+                                ) * pixel_width - x_pos
+
+                                distance_x_2 = distance_x * distance_x
+
+                                for subsample_y in range(0, subsample_factor):
+                                    subsample_position_y = (
+                                        float64(subsample_y) + 0.5
+                                    ) * inv_float_subsample_factor
+
+                                    distance_y = (
+                                        float_cell_y + subsample_position_y
+                                    ) * pixel_width - y_pos
+
+                                    distance_y_2 = distance_y * distance_y
+
+                                    r = sqrt(distance_x_2 + distance_y_2)
+                                    kernel_eval += kernel(r, kernel_width)
+
+                            image[cell_x, cell_y] += (
+                                float_mass
+                                * kernel_eval
+                                * inv_float_subsample_factor_square
+                            )
 
     return image
 
 
 @jit(nopython=True, fastmath=True, parallel=True)
 def scatter_parallel(
-    x: float64, y: float64, m: float32, h: float32, res: int
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of scatter
@@ -278,7 +339,7 @@ def scatter_parallel(
     Creates a weighted scatter plot. Computes contributions from
     particles with positions (`x`,`y`) with smoothing lengths `h`
     weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -297,6 +358,14 @@ def scatter_parallel(
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------
@@ -344,6 +413,8 @@ def scatter_parallel(
             m=m[left_edge:right_edge],
             h=h[left_edge:right_edge],
             res=res,
+            box_x=box_x,
+            box_y=box_y,
         )
 
     return output

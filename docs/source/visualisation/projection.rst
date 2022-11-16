@@ -30,7 +30,13 @@ Example
 
    # This creates a grid that has units msun / Mpc^2, and can be transformed like
    # any other unyt quantity
-   mass_map = project_gas(data, resolution=1024, project="masses", parallel=True)
+   mass_map = project_gas(
+       data,
+       resolution=1024,
+       project="masses",
+       parallel=True,
+       periodic=True,
+   )
 
    # Let's say we wish to save it as msun / kpc^2,
    from unyt import msun, kpc
@@ -61,13 +67,20 @@ this:
    data.gas.mass_weighted_temps = data.gas.masses * data.gas.temperatures
 
    # Map in msun / mpc^2
-   mass_map = project_gas(data, resolution=1024, project="masses", parallel=True)
+   mass_map = project_gas(
+       data,
+       resolution=1024,
+       project="masses",
+       parallel=True,
+       periodic=True,
+   )
    # Map in msun * K / mpc^2
    mass_weighted_temp_map = project_gas(
        data,
        resolution=1024,
        project="mass_weighted_temps",
-       parallel=True
+       parallel=True,
+       periodic=True,
    )
 
    temp_map = mass_weighted_temp_map / mass_map
@@ -132,12 +145,37 @@ Example:
       resolution=1024,
       project="entropies",
       parallel=True,
-      backend="subsampled"
+      backend="subsampled",
+      periodic=True,
    )
 
 This will likely look very similar to the image that you make with the default
 ``backend="fast"``, but will have a well-converged distribution at any resolution
 level.
+
+Periodic boundaries
+-------------------
+
+Cosmological simulations and many other simulations use periodic boundary
+conditions. This has implications for the particles at the edge of the
+simulation box: they can contribute to pixels on multiple sides of the image.
+If this effect is not taken into account, then the pixels close to the edge
+will have values that are too low because of missing contributions.
+
+All visualisation functions by default assume a periodic box. Rather than
+simply projecting each individual particle once, four additional periodic copies
+of each particle are also projected. Most copies will project outside the valid
+pixel range, but the copies that do not ensure that pixels close to the edge
+receive all necessary contributions. Thanks to Numba optimisations, the overhead
+of these additional copies is relatively small.
+
+There are some caveats with this approach. If you try to visualise a subset of
+the particles in the box (e.g. using a mask), then only periodic copies of
+particles in this subset will be used. If the subset does not include particles
+on the other side of the periodic boundary, then these will still be missing
+from the projection. The same is true if you visualise a region of the box.
+The periodic boundary wrapping is also not compatible with rotations (see below)
+and should therefore not be used together with a rotation.
 
 Rotations
 ---------
@@ -214,7 +252,13 @@ is shown in the ``velociraptor`` section.
 
    # Use project_gas_pixel_grid to generate projected images
 
-   common_arguments = dict(data=data, resolution=512, parallel=True, region=visualise_region)
+   common_arguments = dict(
+       data=data,
+       resolution=512,
+       parallel=True,
+       region=visualise_region,
+       periodic=False, # disable periodic boundaries when using rotations
+   )
 
    un_rotated = project_gas_pixel_grid(**common_arguments)
 
@@ -280,7 +324,8 @@ mass density map for dark matter. We provide a utility to do this through
        resolution=1024,
        project="masses",
        parallel=True,
-       region=None
+       region=None,
+       periodic=True,
    )
 
    from matplotlib.pyplot import imsave
@@ -322,6 +367,9 @@ To use this function, you will need:
 + Smoothing lengths for all particles, ``h``.
 + The resolution you wish to make your square image at, ``res``.
 
+Optionally, you will also need:
++ the size of the simulation box in x and y, ``box_x`` and ``box_y``.
+
 The key here is that only particles in the domain [0, 1] in x, and [0, 1] in y
 will be visible in the image. You may have particles outside of this range;
 they will not crash the code, and may even contribute to the image if their
@@ -338,3 +386,9 @@ such that it lives within this range. Then you may use the function as follows:
 ``out`` will be a 2D :mod:`numpy` grid of shape ``[res, res]``. You will need
 to re-scale this back to your original dimensions to get it in the correct units,
 and do not forget that it now represents the smoothed quantity per surface area.
+
+If the optional arguments ``box_x`` and ``box_y`` are provided, they should
+contain the simulation box size in the same re-scaled coordinates as ``x`` and
+``y``. The projection backend will then correctly apply periodic boundary
+wrapping. If ``box_x`` and ``box_y`` are not provided or set to 0, no
+periodic boundaries are applied.

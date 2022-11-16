@@ -36,7 +36,8 @@ Example
        z_slice=0.5 * data.metadata.boxsize[2],
        resolution=1024,
        project="masses",
-       parallel=True
+       parallel=True,
+       periodic=True,
    )
 
    # Let's say we wish to save it as g / cm^2,
@@ -72,7 +73,8 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
        z_slice=0.5 * data.metadata.boxsize[2],
        resolution=1024,
        project="masses",
-       parallel=True
+       parallel=True,
+       periodic=True,
    )
 
    # Map in msun * K / mpc^3
@@ -81,7 +83,8 @@ in units of K / kpc^3 and we just want K) by dividing out by this:
        z_slice=0.5 * data.metadata.boxsize[2],
        resolution=1024,
        project="mass_weighted_temps",
-       parallel=True
+       parallel=True,
+       periodic=True,
    )
 
    temp_map = mass_weighted_temp_map / mass_map
@@ -100,6 +103,31 @@ The output from this example, when used with the example data provided in the
 loading data section should look something like:
 
 .. image:: temp_slice.png
+
+Periodic boundaries
+-------------------
+
+Cosmological simulations and many other simulations use periodic boundary
+conditions. This has implications for the particles at the edge of the
+simulation box: they can contribute to pixels on multiple sides of the image.
+If this effect is not taken into account, then the pixels close to the edge
+will have values that are too low because of missing contributions.
+
+All visualisation functions by default assume a periodic box. Rather than
+simply summing each individual particle once, eight additional periodic copies
+of each particle are also accounted for. Most copies will contribute outside the
+valid pixel range, but the copies that do not ensure that pixels close to the
+edge receive all necessary contributions. Thanks to Numba optimisations, the
+overhead of these additional copies is relatively small.
+
+There are some caveats with this approach. If you try to visualise a subset of
+the particles in the box (e.g. using a mask), then only periodic copies of
+particles in this subset will be used. If the subset does not include particles
+on the other side of the periodic boundary, then these will still be missing
+from the slice. The same is true if you visualise a region of the box.
+The periodic boundary wrapping is also not compatible with rotations (see below)
+and should therefore not be used together with a rotation.
+
 
 Rotations
 ---------
@@ -141,7 +169,8 @@ the above example is shown below.
        project="masses",
        rotation_matrix=matrix,
        rotation_center=center,
-       parallel=True
+       parallel=True,
+       periodic=False, # disable periodic boundaries when using rotations
    )
    
    # Map in msun * K / mpc^3
@@ -152,7 +181,8 @@ the above example is shown below.
        project="mass_weighted_temps",
        rotation_matrix=matrix,
        rotation_center=center,
-       parallel=True
+       parallel=True,
+       periodic=False,
    )
 
    temp_map = mass_weighted_temp_map / mass_map
@@ -192,6 +222,9 @@ To use this function, you will need:
 + Smoothing lengths for all particles, ``h``.
 + The resolution you wish to make your square image at, ``res``.
 
+Optionally, you will also need:
++ the size of the simulation box in x, y and z, ``box_x``, ``box_y`` and ``box_z``.
+
 The key here is that only particles in the domain [0, 1] in x and y will be
 visible in the image. You may have particles outside of this range; they will
 not crash the code, and may even contribute to the image if their smoothing
@@ -210,3 +243,9 @@ not need to lie in the domain [0, 1]. Then you may use the function as follows:
 ``out`` will be a 2D :mod:`numpy` grid of shape ``[res, res]``. You will need
 to re-scale this back to your original dimensions to get it in the correct units,
 and do not forget that it now represents the smoothed quantity per volume.
+
+If the optional arguments ``box_x``, ``box_y`` and ``box_z`` are provided, they
+should contain the simulation box size in the same re-scaled coordinates as 
+``x``, ``y`` and ``z``. The slicing function will then correctly apply
+periodic boundary wrapping. If ``box_x``, ``box_y`` and ``box_z`` are not
+provided or set to 0, no periodic boundaries are applied.

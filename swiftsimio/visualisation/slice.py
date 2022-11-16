@@ -81,9 +81,12 @@ def slice_scatter(
     h: float32,
     z_slice: float64,
     res: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+    box_z: float64 = 0.0,
 ) -> ndarray:
     """
-    Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
+    Creates a scatter plot of the given quantities for a particles in a data slice including periodic boundary effects.
 
     Parameters
     ----------
@@ -101,6 +104,15 @@ def slice_scatter(
         the position at which we wish to create the slice
     res : int
         the number of pixels.
+    box_x: float64
+        box size in x, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_y: float64
+        box size in y, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_z: float64
+        box size in z, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
 
     Returns
     -------
@@ -131,57 +143,92 @@ def slice_scatter(
     # We need this for combining with the x_pos and y_pos variables.
     float_res_64 = float64(res)
 
-    for x_pos, y_pos, z_pos, mass, hsml in zip(x, y, z, m, h):
-        # Calculate the cell that this particle lives above; use 64 bits
-        # resolution as this is the same type as the positions
-        particle_cell_x = int32(float_res_64 * x_pos)
-        particle_cell_y = int32(float_res_64 * y_pos)
+    if box_x == 0.0:
+        xshift_min = 0
+        xshift_max = 1
+    else:
+        xshift_min = -1
+        xshift_max = 2
+    if box_y == 0.0:
+        yshift_min = 0
+        yshift_max = 1
+    else:
+        yshift_min = -1
+        yshift_max = 2
+    if box_z == 0.0:
+        zshift_min = 0
+        zshift_max = 1
+    else:
+        zshift_min = -1
+        zshift_max = 2
 
-        # This is a constant for this particle
-        distance_z = z_pos - z_slice
-        distance_z_2 = distance_z * distance_z
+    for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
+        x, y, z, m, h
+    ):
+        # loop over periodic copies of the particle
+        for xshift in range(xshift_min, xshift_max):
+            for yshift in range(yshift_min, yshift_max):
+                for zshift in range(zshift_min, zshift_max):
+                    x_pos = x_pos_original + xshift * box_x
+                    y_pos = y_pos_original + yshift * box_y
+                    z_pos = z_pos_original + zshift * box_z
 
-        # SWIFT stores hsml as the FWHM.
-        kernel_width = kernel_gamma * hsml
-        # The number of cells that this kernel spans
-        cells_spanned = int32(1.0 + kernel_width * float_res)
+                    # Calculate the cell that this particle lives above; use 64 bits
+                    # resolution as this is the same type as the positions
+                    particle_cell_x = int32(float_res_64 * x_pos)
+                    particle_cell_y = int32(float_res_64 * y_pos)
 
-        if (
-            # No overlap in z
-            distance_z_2 > (kernel_width * kernel_width)
-            # No overlap in x, y
-            or particle_cell_x + cells_spanned < 0
-            or particle_cell_x - cells_spanned > maximal_array_index
-            or particle_cell_y + cells_spanned < 0
-            or particle_cell_y - cells_spanned > maximal_array_index
-        ):
-            # We have no overlap, we can skip this particle.
-            continue
+                    # This is a constant for this particle
+                    distance_z = z_pos - z_slice
+                    distance_z_2 = distance_z * distance_z
 
-        # Now we loop over the square of cells that the kernel lives in
-        for cell_x in range(
-            # Ensure that the lowest x value is 0, otherwise we'll segfault
-            max(0, particle_cell_x - cells_spanned),
-            # Ensure that the highest x value lies within the array bounds,
-            # otherwise we'll segfault (oops).
-            min(particle_cell_x + cells_spanned, maximal_array_index + 1),
-        ):
-            # The distance in x to our new favourite cell -- remember that our x, y
-            # are all in a box of [0, 1]; calculate the distance to the cell centre
-            distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(x_pos)
-            distance_x_2 = distance_x * distance_x
-            for cell_y in range(
-                max(0, particle_cell_y - cells_spanned),
-                min(particle_cell_y + cells_spanned, maximal_array_index + 1),
-            ):
-                distance_y = (float32(cell_y) + 0.5) * pixel_width - float32(y_pos)
-                distance_y_2 = distance_y * distance_y
+                    # SWIFT stores hsml as the FWHM.
+                    kernel_width = kernel_gamma * hsml
+                    # The number of cells that this kernel spans
+                    cells_spanned = int32(1.0 + kernel_width * float_res)
 
-                r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
+                    if (
+                        # No overlap in z
+                        distance_z_2 > (kernel_width * kernel_width)
+                        # No overlap in x, y
+                        or particle_cell_x + cells_spanned < 0
+                        or particle_cell_x - cells_spanned > maximal_array_index
+                        or particle_cell_y + cells_spanned < 0
+                        or particle_cell_y - cells_spanned > maximal_array_index
+                    ):
+                        # We have no overlap, we can skip this particle.
+                        continue
 
-                kernel_eval = kernel(r, kernel_width)
+                    # Now we loop over the square of cells that the kernel lives in
+                    for cell_x in range(
+                        # Ensure that the lowest x value is 0, otherwise we'll segfault
+                        max(0, particle_cell_x - cells_spanned),
+                        # Ensure that the highest x value lies within the array bounds,
+                        # otherwise we'll segfault (oops).
+                        min(particle_cell_x + cells_spanned, maximal_array_index + 1),
+                    ):
+                        # The distance in x to our new favourite cell -- remember that our x, y
+                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
+                            x_pos
+                        )
+                        distance_x_2 = distance_x * distance_x
+                        for cell_y in range(
+                            max(0, particle_cell_y - cells_spanned),
+                            min(
+                                particle_cell_y + cells_spanned, maximal_array_index + 1
+                            ),
+                        ):
+                            distance_y = (
+                                float32(cell_y) + 0.5
+                            ) * pixel_width - float32(y_pos)
+                            distance_y_2 = distance_y * distance_y
 
-                image[cell_x, cell_y] += mass * kernel_eval
+                            r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
+
+                            kernel_eval = kernel(r, kernel_width)
+
+                            image[cell_x, cell_y] += mass * kernel_eval
 
     return image
 
@@ -195,11 +242,14 @@ def slice_scatter_parallel(
     h: float32,
     z_slice: float64,
     res: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+    box_z: float64 = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of slice_scatter
 
-    Creates a scatter plot of the given quantities for a particles in a data slice ignoring boundary effects.
+    Creates a scatter plot of the given quantities for a particles in a data slice including periodic boundary effects.
 
     Parameters
     ----------
@@ -217,6 +267,15 @@ def slice_scatter_parallel(
         the position at which we wish to create the slice
     res : int
         the number of pixels.
+    box_x: float64
+        box size in x, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_y: float64
+        box size in y, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
+    box_z: float64
+        box size in z, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
 
     Returns
     -------
@@ -263,6 +322,9 @@ def slice_scatter_parallel(
             h=h[left_edge:right_edge],
             z_slice=z_slice,
             res=res,
+            box_x=box_x,
+            box_y=box_y,
+            box_z=box_z,
         )
 
     return output
@@ -277,6 +339,7 @@ def slice_gas_pixel_grid(
     rotation_matrix: Union[None, array] = None,
     rotation_center: Union[None, unyt_array] = None,
     region: Union[None, unyt_array] = None,
+    periodic: bool = True,
 ):
     """
     Creates a 2D slice of a SWIFT dataset, weighted by data field, in the
@@ -323,6 +386,10 @@ def slice_gas_pixel_grid(
 
         Particles outside of this range are still considered if their
         smoothing lengths overlap with the range.
+
+    periodic : bool, optional
+        Account for periodic boundaries for the simulation box?
+        Default is ``True``.
 
     Returns
     -------
@@ -410,6 +477,15 @@ def slice_gas_pixel_grid(
                 f"Comoving smoothing length is not compatible with physical coordinates!"
             )
 
+    if periodic:
+        periodic_box_x = box_x / max_range
+        periodic_box_y = box_y / max_range
+        periodic_box_z = box_z / max_range
+    else:
+        periodic_box_x = 0.0
+        periodic_box_y = 0.0
+        periodic_box_z = 0.0
+
     common_parameters = dict(
         x=(x - x_min) / max_range,
         y=(y - y_min) / max_range,
@@ -418,6 +494,9 @@ def slice_gas_pixel_grid(
         h=hsml / max_range,
         z_slice=(z_center + z_slice) / max_range,
         res=resolution,
+        box_x=periodic_box_x,
+        box_y=periodic_box_y,
+        box_z=periodic_box_z,
     )
 
     if parallel:
@@ -442,6 +521,7 @@ def slice_gas(
     rotation_matrix: Union[None, array] = None,
     rotation_center: Union[None, unyt_array] = None,
     region: Union[None, unyt_array] = None,
+    periodic: bool = True,
 ):
     """
     Creates a 2D slice of a SWIFT dataset, weighted by data field
@@ -488,6 +568,10 @@ def slice_gas(
         Particles outside of this range are still considered if their
         smoothing lengths overlap with the range.
 
+    periodic : bool, optional
+        Account for periodic boundaries for the simulation box?
+        Default is ``True``.
+
     Returns
     -------
     ndarray of float32
@@ -517,6 +601,7 @@ def slice_gas(
         rotation_matrix,
         rotation_center,
         region,
+        periodic,
     )
 
     if region is not None:

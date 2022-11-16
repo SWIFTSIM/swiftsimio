@@ -6,7 +6,11 @@ from swiftsimio.visualisation.projection import (
     project_gas,
     project_pixel_grid,
 )
-from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
+from swiftsimio.visualisation.slice import (
+    slice_scatter,
+    slice_scatter_parallel,
+    slice_gas,
+)
 from swiftsimio.visualisation.volume_render import render_gas
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length_generation import (
@@ -40,6 +44,8 @@ def test_scatter(save=False):
                 np.array([1.0, 1.0, 1.0, 1.0]),
                 np.array([0.2, 0.2, 0.2, 0.000002]),
                 256,
+                1.0,
+                1.0,
             )
         except CudaSupportError:
             if CUDA_AVAILABLE:
@@ -65,7 +71,7 @@ def test_scatter_mass_conservation():
     total_mass = np.sum(m)
 
     for resolution in resolutions:
-        image = scatter(x, y, m, h, resolution)
+        image = scatter(x, y, m, h, resolution, 1.0, 1.0)
         mass_in_image = image.sum() / (resolution ** 2)
 
         # Check mass conservation to 5%
@@ -92,9 +98,9 @@ def test_scatter_parallel(save=False):
     hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
     masses = np.ones(number_of_parts, dtype=np.float32)
 
-    image = scatter(coordinates[0], coordinates[1], masses, hsml, resolution)
+    image = scatter(coordinates[0], coordinates[1], masses, hsml, resolution, 1.0, 1.0)
     image_par = scatter_parallel(
-        coordinates[0], coordinates[1], masses, hsml, resolution
+        coordinates[0], coordinates[1], masses, hsml, resolution, 1.0, 1.0
     )
 
     if save:
@@ -114,6 +120,9 @@ def test_slice(save=False):
         np.array([0.2, 0.2, 0.2, 0.000002]),
         0.99,
         256,
+        1.0,
+        1.0,
+        1.0,
     )
 
     if save:
@@ -149,6 +158,9 @@ def test_slice_parallel(save=False):
         hsml,
         z_slice,
         resolution,
+        1.0,
+        1.0,
+        1.0,
     )
     image_par = slice_scatter_parallel(
         coordinates[0],
@@ -158,6 +170,9 @@ def test_slice_parallel(save=False):
         hsml,
         z_slice,
         resolution,
+        1.0,
+        1.0,
+        1.0,
     )
 
     if save:
@@ -177,6 +192,9 @@ def test_volume_render():
         np.array([1.0, 1.0, 1.0, 1.0]),
         np.array([0.2, 0.2, 0.2, 0.000002]),
         64,
+        1.0,
+        1.0,
+        1.0,
     )
 
     return
@@ -196,10 +214,26 @@ def test_volume_parallel():
     masses = np.ones(number_of_parts, dtype=np.float32)
 
     image = volume_render.scatter(
-        coordinates[0], coordinates[1], coordinates[2], masses, hsml, resolution
+        coordinates[0],
+        coordinates[1],
+        coordinates[2],
+        masses,
+        hsml,
+        resolution,
+        1.0,
+        1.0,
+        1.0,
     )
     image_par = volume_render.scatter_parallel(
-        coordinates[0], coordinates[1], coordinates[2], masses, hsml, resolution
+        coordinates[0],
+        coordinates[1],
+        coordinates[2],
+        masses,
+        hsml,
+        resolution,
+        1.0,
+        1.0,
+        1.0,
     )
 
     assert np.isclose(image, image_par).all()
@@ -264,20 +298,20 @@ def test_render_outside_region():
     h = 10 ** np.random.rand(number_of_parts) - 1.0
     h[h > 0.5] = 0.05
     m = np.ones_like(h)
-    backends["histogram"](x, y, m, h, resolution)
+    backends["histogram"](x, y, m, h, resolution, 1.0, 1.0)
 
     for backend in backends_parallel.keys():
         try:
-            backends[backend](x, y, m, h, resolution)
+            backends[backend](x, y, m, h, resolution, 1.0, 1.0)
         except CudaSupportError:
             if CUDA_AVAILABLE:
                 raise ImportError("Optional loading of the CUDA module is broken")
             else:
                 continue
 
-    slice_scatter_parallel(x, y, z, m, h, 0.2, resolution)
+    slice_scatter_parallel(x, y, z, m, h, 0.2, resolution, 1.0, 1.0, 1.0)
 
-    volume_render.scatter_parallel(x, y, z, m, h, resolution)
+    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1.0, 1.0, 1.0)
 
 
 @requires("cosmological_volume.hdf5")
@@ -354,3 +388,107 @@ def test_nongas_smoothing_lengths(filename):
     assert not isinstance(hsml, cosmo_array)
 
     return
+
+
+def test_periodic_boundary_wrapping():
+    """
+    Test that periodic boundary wrapping works.
+    """
+
+    voxel_resolution = 10
+    pixel_resolution = 100
+    boxsize = 1.0
+
+    # set up a particle near the edge of the box that overlaps with the edge
+    coordinates_periodic = np.array([[0.1, 0.5, 0.5]])
+    hsml_periodic = np.array([0.2])
+    masses_periodic = np.array([1.0])
+
+    # set up a periodic copy of the particle on the other side of the box as well
+    # to test the case where we don't apply periodic wrapping
+    coordinates_non_periodic = np.array([[0.1, 0.5, 0.5], [1.1, 0.5, 0.5]])
+    hsml_non_periodic = np.array([0.2, 0.2])
+    masses_non_periodic = np.array([1.0, 1.0])
+
+    # test the projection backends scatter functions
+    for backend in backends.keys():
+        try:
+            image1 = backends[backend](
+                x=coordinates_periodic[:, 0],
+                y=coordinates_periodic[:, 1],
+                m=masses_periodic,
+                h=hsml_periodic,
+                res=pixel_resolution,
+                box_x=boxsize,
+                box_y=boxsize,
+            )
+            image2 = backends[backend](
+                x=coordinates_non_periodic[:, 0],
+                y=coordinates_non_periodic[:, 1],
+                m=masses_non_periodic,
+                h=hsml_non_periodic,
+                res=pixel_resolution,
+                box_x=0.0,
+                box_y=0.0,
+            )
+            assert (image1 == image2).all()
+        except CudaSupportError:
+            if CUDA_AVAILABLE:
+                raise ImportError("Optional loading of the CUDA module is broken")
+            else:
+                continue
+
+    # test the slice scatter function
+    image1 = slice_scatter(
+        x=coordinates_periodic[:, 0],
+        y=coordinates_periodic[:, 1],
+        z=coordinates_periodic[:, 2],
+        m=masses_periodic,
+        h=hsml_periodic,
+        z_slice=0.5,
+        res=pixel_resolution,
+        box_x=boxsize,
+        box_y=boxsize,
+        box_z=boxsize,
+    )
+    image2 = slice_scatter(
+        x=coordinates_non_periodic[:, 0],
+        y=coordinates_non_periodic[:, 1],
+        z=coordinates_non_periodic[:, 2],
+        m=masses_non_periodic,
+        h=hsml_non_periodic,
+        z_slice=0.5,
+        res=pixel_resolution,
+        box_x=0.0,
+        box_y=0.0,
+        box_z=0.0,
+    )
+
+    assert (image1 == image2).all()
+
+    # test the volume rendering scatter function
+    image1 = volume_render.scatter(
+        x=coordinates_periodic[:, 0],
+        y=coordinates_periodic[:, 1],
+        z=coordinates_periodic[:, 2],
+        m=masses_periodic,
+        h=hsml_periodic,
+        res=voxel_resolution,
+        box_x=boxsize,
+        box_y=boxsize,
+        box_z=boxsize,
+    )
+
+    image2 = volume_render.scatter(
+        x=coordinates_non_periodic[:, 0],
+        y=coordinates_non_periodic[:, 1],
+        z=coordinates_non_periodic[:, 2],
+        m=masses_non_periodic,
+        h=hsml_non_periodic,
+        res=voxel_resolution,
+        box_x=0.0,
+        box_y=0.0,
+        box_z=0.0,
+    )
+
+    assert (image1 == image2).all()

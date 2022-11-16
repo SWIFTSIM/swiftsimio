@@ -62,14 +62,24 @@ def kernel(r: float32, H: float32):
     return kernel
 
 
-@cuda_jit
-def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
+@cuda_jit(
+    "void(float64[:], float64[:], float32[:], float32[:], float64, float64, float32[:,:])"
+)
+def scatter_gpu(
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    box_x: float64,
+    box_y: float64,
+    img: float32,
+):
     """
     Creates a weighted scatter plot
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -85,6 +95,14 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
 
     h : np.array[float32]
         array of smoothing lengths of the particles
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     img : np.array[float32]
         The output image.
@@ -114,13 +132,14 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
     # Pre-calculate this constant for use with the above
     inverse_cell_area = res * res
 
-    i = cuda.grid(1)
+    # get the particle index and the x and y index of its periodic copy
+    i, dx, dy = cuda.grid(3)
     if i < len(x):
         # Get the correct particle
-        x_pos = x[i]
-        y_pos = y[i]
         mass = m[i]
         hsml = h[i]
+        x_pos = x[i] + (dx - 1.0) * box_x
+        y_pos = y[i] + (dy - 1.0) * box_y
 
         # Calculate the cell that this particle; use the 64 bit version of the
         # resolution as this is the same type as the positions
@@ -183,14 +202,22 @@ def scatter_gpu(x: float64, y: float64, m: float32, h: float32, img: float32):
                     cuda.atomic.add(img, (cell_x, cell_y), mass * kernel_eval)
 
 
-def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray:
+def scatter(
+    x: float64,
+    y: float64,
+    m: float32,
+    h: float32,
+    res: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+) -> ndarray:
     """
     Parallel implementation of scatter
 
     Creates a weighted scatter plot. Computes contributions from
     particles with positions (`x`,`y`) with smoothing lengths `h`
     weighted by quantities `m`.
-    This ignores boundary effects.
+    This includes periodic boundary effects.
 
     Parameters
     ----------
@@ -209,6 +236,14 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     res : int
         the number of pixels along one axis, i.e. this returns a square
         of res * res.
+
+    box_x: float64
+        box size in x, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
+
+    box_y: float64
+        box size in y, in the same rescaled length units as x and y. Used
+        for periodic wrapping.
 
     Returns
     -------
@@ -237,9 +272,25 @@ def scatter(x: float64, y: float64, m: float32, h: float32, res: int) -> ndarray
     output[:] = 0
 
     n_part = len(x)
-    threads_per_block = 16
-    blocks_per_grid = ceil(n_part / threads_per_block)
-    scatter_gpu[blocks_per_grid, threads_per_block](x, y, m, h, output)
+    if box_x == 0.0:
+        n_xshift = 1
+    else:
+        n_xshift = 3
+    if box_y == 0.0:
+        n_yshift = 1
+    else:
+        n_yshift = 3
+    # set up a 3D grid:
+    # the first dimension are the particles
+    # the second and third dimension are the periodic
+    # copies for each particle
+    threads_per_block = (16, 1, 1)
+    blocks_per_grid = (
+        ceil(n_part / threads_per_block[0]),
+        n_xshift // threads_per_block[1],
+        n_yshift // threads_per_block[2],
+    )
+    scatter_gpu[blocks_per_grid, threads_per_block](x, y, m, h, box_x, box_y, output)
 
     return output.copy_to_host()
 
