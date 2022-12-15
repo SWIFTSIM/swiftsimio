@@ -14,6 +14,43 @@ if ASTROPY_AVAILABLE:
     import astropy.units as astropy_units
     import numpy as np
 
+    def swift_neutrinos_to_astropy(N_eff, N_ur, M_nu_eV, deg_nu):
+        """
+        Parameters
+        ----------
+
+        N_eff: float
+            Fractional number of effective massless neutrinos at high redshift
+
+        N_ur: float
+            Fractional number of massless neutrino species
+
+        M_nu_eV: array of floats
+            Masses in eV of massive species only, up to degeneracy
+
+        deg_nu: array of floats
+            Fractional degeneracies of the massive neutrino species
+
+        Returns
+        -------
+
+        ap_m_nu
+            Array of neutrino masses in eV, replicated according to degeneracy,
+            including massless species, as desired by astropy
+        """
+        if np.isscalar(deg_nu):
+            deg_nu = np.array([deg_nu])
+        if np.isscalar(M_nu_eV):
+            M_nu_eV = np.array([M_nu_eV])
+        if not (deg_nu == deg_nu.astype(int)).all():
+            raise AttributeError("SWIFTsimIO uses astropy, which cannot handle this cosmological model.")
+        if not int(N_eff) == deg_nu.astype(int).sum() + int(N_ur):
+            raise AttributeError("SWIFTsimIO uses astropy, which cannot handle this cosmological model.")
+        ap_m_nu = [[m] * int(d) for m,d in zip(M_nu_eV, deg_nu)] # replicate
+        ap_m_nu = sum(ap_m_nu, []) + [0.] * int(N_ur) # flatten + add massless
+        ap_m_nu = np.array(ap_m_nu) * astropy_units.eV
+        return ap_m_nu
+
     def swift_cosmology_to_astropy(cosmo: dict, units) -> Cosmology:
         """
         Parameters
@@ -46,7 +83,9 @@ if ASTROPY_AVAILABLE:
         # in snapshots
         Tcmb0 = None
         Neff = None
-        m_nu = None
+        N_ur = None
+        M_nu_eV = None
+        deg_nu = None
 
         try:
             Tcmb0 = cosmo["T_CMB_0 [K]"][0]
@@ -71,9 +110,21 @@ if ASTROPY_AVAILABLE:
             Neff = 3.04  # Astropy default
 
         try:
-            m_nu = cosmo["M_nu_eV"][0]
+            M_nu_eV = cosmo["M_nu_eV"]
         except (IndexError, KeyError, AttributeError):
-            m_nu = 0.0
+            M_nu_eV = 0.0
+
+        try:
+            deg_nu = cosmo["deg_nu"]
+        except (IndexError, KeyError, AttributeError):
+            deg_nu = 0.0
+
+        try:
+            N_ur = cosmo["N_ur"]
+        except (IndexError, KeyError, AttributeError):
+            N_ur = 3.04 # Astropy default
+
+        ap_m_nu = swift_neutrinos_to_astropy(Neff, N_ur, M_nu_eV, deg_nu)
 
         return w0waCDM(
             H0=H0.to_astropy(),
@@ -84,7 +135,7 @@ if ASTROPY_AVAILABLE:
             Tcmb0=Tcmb0,
             Ob0=Omega_b,
             Neff=Neff,
-            m_nu=m_nu,
+            m_nu=ap_m_nu,
         )
 
 
