@@ -75,50 +75,47 @@ class SWIFTMask(object):
         self.counts = {}
         self.offsets = {}
 
-        with h5py.File(self.metadata.filename, "r") as handle:
-            cell_handle = handle["Cells"]
-            count_handle = cell_handle["Counts"]
-            metadata_handle = cell_handle["Meta-data"]
-            centers_handle = cell_handle["Centres"]
+        cell_handle = self.units.handle["Cells"]
+        count_handle = cell_handle["Counts"]
+        metadata_handle = cell_handle["Meta-data"]
+        centers_handle = cell_handle["Centres"]
 
-            try:
-                offset_handle = cell_handle["OffsetsInFile"]
-            except KeyError:
-                # Previous version of SWIFT did not have distributed
-                # file i/o implemented
-                offset_handle = cell_handle["Offsets"]
+        try:
+            offset_handle = cell_handle["OffsetsInFile"]
+        except KeyError:
+            # Previous version of SWIFT did not have distributed
+            # file i/o implemented
+            offset_handle = cell_handle["Offsets"]
 
-            # Only want to compute this once (even if it is fast, we do not
-            # have a reliable stable sort in the case where cells do not
-            # contain at least one of each type of particle).
-            sort = None
+        # Only want to compute this once (even if it is fast, we do not
+        # have a reliable stable sort in the case where cells do not
+        # contain at least one of each type of particle).
+        sort = None
 
-            for ptype, pname in zip(
-                self.metadata.present_particle_types,
-                self.metadata.present_particle_names,
-            ):
-                part_type = f"PartType{ptype}"
-                counts = count_handle[part_type][:]
-                offsets = offset_handle[part_type][:]
+        for ptype, pname in zip(
+            self.metadata.present_particle_types,
+            self.metadata.present_particle_names,
+        ):
+            part_type = f"PartType{ptype}"
+            counts = count_handle[part_type][:]
+            offsets = offset_handle[part_type][:]
 
-                # When using MPI, we cannot assume that these are sorted.
-                if sort is None:
-                    # Only compute once; not stable between particle
-                    # types if some datasets do not have particles in a cell!
-                    sort = np.argsort(offsets)
+            # When using MPI, we cannot assume that these are sorted.
+            if sort is None:
+                # Only compute once; not stable between particle
+                # types if some datasets do not have particles in a cell!
+                sort = np.argsort(offsets)
 
-                self.offsets[pname] = offsets[sort]
-                self.counts[pname] = counts[sort]
+            self.offsets[pname] = offsets[sort]
+            self.counts[pname] = counts[sort]
 
-            # Also need to sort centers in the same way
-            self.centers = unyt.unyt_array(
-                centers_handle[:][sort], units=self.units.length
-            )
+        # Also need to sort centers in the same way
+        self.centers = unyt.unyt_array(centers_handle[:][sort], units=self.units.length)
 
-            # Note that we cannot assume that these are cubic, unfortunately.
-            self.cell_size = unyt.unyt_array(
-                metadata_handle.attrs["size"], units=self.units.length
-            )
+        # Note that we cannot assume that these are cubic, unfortunately.
+        self.cell_size = unyt.unyt_array(
+            metadata_handle.attrs["size"], units=self.units.length
+        )
 
         return
 
