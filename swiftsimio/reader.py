@@ -23,8 +23,9 @@ import numpy as np
 import warnings
 
 from datetime import datetime
+from pathlib import Path
 
-from typing import Union, Callable, List
+from typing import Union, Callable, List, Optional
 
 
 class MassTable(object):
@@ -149,7 +150,7 @@ class SWIFTUnits(object):
 
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename: Path, handle: Optional[h5py.File] = None):
         """
         SWIFTUnits constructor
 
@@ -157,14 +158,41 @@ class SWIFTUnits(object):
 
         Parameters
         ----------
-        filename : str
-            name of file to read units from
+
+        filename : Path
+            Name of file to read units from
+
+        handle: h5py.File, optional
+            The h5py file handle, optional. Will open a new handle with the
+            filename if required.
+
         """
         self.filename = filename
+        self._handle = handle
 
         self.get_unit_dictionary()
 
         return
+
+    @property
+    def handle(self):
+        """
+        Property that gets the file handle, which can be shared
+        with other objects for efficiency reasons.
+        """
+        if isinstance(self._handle, h5py.File):
+            # Can be open or closed, let's test.
+            try:
+                file = self._handle.file
+
+                return self._handle
+            except ValueError:
+                # This will be the case if there is no active file handle
+                pass
+
+        self._handle = h5py.File(self.filename, "r")
+
+        return self._handle
 
     def get_unit_dictionary(self):
         """
@@ -174,13 +202,13 @@ class SWIFTUnits(object):
         also contains the metadata information that connects the unyt
         objects to the names that are stored in the SWIFT snapshots.
         """
-        with h5py.File(self.filename, "r") as handle:
-            self.units = {
-                name: unyt.unyt_quantity(
-                    value[0], units=metadata.unit_types.unit_names_to_unyt[name]
-                )
-                for name, value in handle["Units"].attrs.items()
-            }
+
+        self.units = {
+            name: unyt.unyt_quantity(
+                value[0], units=metadata.unit_types.unit_names_to_unyt[name]
+            )
+            for name, value in self.handle["Units"].attrs.items()
+        }
 
         # We now unpack this into variables.
         self.mass = metadata.unit_types.find_nearest_base_unit(
@@ -198,6 +226,10 @@ class SWIFTUnits(object):
         self.temperature = metadata.unit_types.find_nearest_base_unit(
             self.units["Unit temperature in cgs (U_T)"], "temperature"
         )
+
+    def __del__(self):
+        if isinstance(self._handle, h5py.File):
+            self._handle.close()
 
 
 class SWIFTMetadata(object):
@@ -240,19 +272,27 @@ class SWIFTMetadata(object):
         self.load_particle_types()
         self.extract_cosmology()
 
+        # After we've loaded all this metadata, we can safely release the file handle.
+        self.handle.close()
+
         return
+
+    @property
+    def handle(self):
+        # Handle, which is shared with units. Units handles
+        # file opening and closing.
+        return self.units.handle
 
     def get_metadata(self):
         """
         Loads the metadata as specified in metadata.metadata_fields.
         """
 
-        with h5py.File(self.filename, "r") as handle:
-            for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
-                try:
-                    setattr(self, name, dict(handle[field].attrs))
-                except KeyError:
-                    setattr(self, name, None)
+        for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
+            try:
+                setattr(self, name, dict(self.handle[field].attrs))
+            except KeyError:
+                setattr(self, name, None)
 
         return
 
@@ -263,12 +303,11 @@ class SWIFTMetadata(object):
         """
 
         try:
-            with h5py.File(self.filename, "r") as handle:
-                data = handle["SubgridScheme/NamedColumns"]
+            data = self.handle["SubgridScheme/NamedColumns"]
 
-                self.named_columns = {
-                    k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
-                }
+            self.named_columns = {
+                k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
+            }
         except KeyError:
             self.named_columns = {}
 
@@ -285,15 +324,12 @@ class SWIFTMetadata(object):
         """
 
         try:
-            with h5py.File(self.filename, "r") as handle:
-                possible_keys = handle["SubgridScheme"].keys()
+            possible_keys = self.handle["SubgridScheme"].keys()
 
-                available_keys = [
-                    key for key in possible_keys if key.endswith("Mapping")
-                ]
-                available_data = [
-                    handle[f"SubgridScheme/{key}"][:] for key in available_keys
-                ]
+            available_keys = [key for key in possible_keys if key.endswith("Mapping")]
+            available_data = [
+                self.handle[f"SubgridScheme/{key}"][:] for key in available_keys
+            ]
         except KeyError:
             available_keys = []
             available_data = []
@@ -352,12 +388,14 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -414,12 +452,14 @@ class SWIFTMetadata(object):
 
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
@@ -490,24 +530,22 @@ class SWIFTMetadata(object):
             pass
 
         # get photon group edges RT dataset from the SubgridScheme group
-        with h5py.File(self.filename, "r") as handle:
-            try:
-                self.photon_group_edges = (
-                    handle["SubgridScheme/PhotonGroupEdges"][:] / self.units.time
-                )
-            except KeyError:
-                self.photon_group_edges = None
+        try:
+            self.photon_group_edges = (
+                self.handle["SubgridScheme/PhotonGroupEdges"][:] / self.units.time
+            )
+        except KeyError:
+            self.photon_group_edges = None
 
         # get reduced speed of light RT dataset from the SubgridScheme group
-        with h5py.File(self.filename, "r") as handle:
-            try:
-                self.reduced_lightspeed = (
-                    handle["SubgridScheme/ReducedLightspeed"][0]
-                    * self.units.length
-                    / self.units.time
-                )
-            except KeyError:
-                self.reduced_lightspeed = None
+        try:
+            self.reduced_lightspeed = (
+                self.handle["SubgridScheme/ReducedLightspeed"][0]
+                * self.units.length
+                / self.units.time
+            )
+        except KeyError:
+            self.reduced_lightspeed = None
 
         # Store these separately as self.n_gas = number of gas particles for example
         for (
@@ -840,15 +878,15 @@ class SWIFTParticleTypeMetadata(object):
         def convert(name):
             return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
-        with h5py.File(self.filename, "r") as handle:
-            self.field_paths = [
-                f"PartType{self.particle_type}/{item}"
-                for item in handle[f"PartType{self.particle_type}"].keys()
-            ]
+        self.field_paths = [
+            f"PartType{self.particle_type}/{item}"
+            for item in self.metadata.handle[f"PartType{self.particle_type}"].keys()
+        ]
 
-            self.field_names = [
-                convert(item) for item in handle[f"PartType{self.particle_type}"].keys()
-            ]
+        self.field_names = [
+            convert(item)
+            for item in self.metadata.handle[f"PartType{self.particle_type}"].keys()
+        ]
 
         return
 
@@ -891,8 +929,9 @@ class SWIFTParticleTypeMetadata(object):
 
             return units
 
-        with h5py.File(self.filename, "r") as handle:
-            self.field_units = [get_units(handle[x].attrs) for x in self.field_paths]
+        self.field_units = [
+            get_units(self.metadata.handle[x].attrs) for x in self.field_paths
+        ]
 
         return
 
@@ -910,8 +949,9 @@ class SWIFTParticleTypeMetadata(object):
 
             return description
 
-        with h5py.File(self.filename, "r") as handle:
-            self.field_descriptions = [get_desc(handle[x]) for x in self.field_paths]
+        self.field_descriptions = [
+            get_desc(self.metadata.handle[x]) for x in self.field_paths
+        ]
 
         return
 
@@ -929,8 +969,9 @@ class SWIFTParticleTypeMetadata(object):
 
             return comp
 
-        with h5py.File(self.filename, "r") as handle:
-            self.field_compressions = [get_comp(handle[x]) for x in self.field_paths]
+        self.field_compressions = [
+            get_comp(self.metadata.handle[x]) for x in self.field_paths
+        ]
 
         return
 
@@ -952,8 +993,9 @@ class SWIFTParticleTypeMetadata(object):
 
             return cosmo_factor(a_factor_this_dataset, current_scale_factor)
 
-        with h5py.File(self.filename, "r") as handle:
-            self.field_cosmologies = [get_cosmo(handle[x]) for x in self.field_paths]
+        self.field_cosmologies = [
+            get_cosmo(self.metadata.handle[x]) for x in self.field_paths
+        ]
 
         return
 
@@ -1246,19 +1288,18 @@ class __SWIFTParticleDataset(object):
         _exist_ in the file, the variable is not created.
         """
 
-        with h5py.File(self.filename, "r") as handle:
-            for field_name, field_path in zip(
-                self.particle_metadata.field_names, self.particle_metadata.field_paths
-            ):
-                if field_path in handle:
-                    setattr(self, f"_{field_name}", None)
-                else:
-                    raise AttributeError(
-                        (
-                            f"Cannot find attribute {field_path} in file although"
-                            "it was present when searching initially."
-                        )
+        for field_name, field_path in zip(
+            self.particle_metadata.field_names, self.particle_metadata.field_paths
+        ):
+            if field_path in self.metadata.handle:
+                setattr(self, f"_{field_name}", None)
+            else:
+                raise AttributeError(
+                    (
+                        f"Cannot find attribute {field_path} in file although"
+                        "it was present when searching initially."
                     )
+                )
 
         return
 
