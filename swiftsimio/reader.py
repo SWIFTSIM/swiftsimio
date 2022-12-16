@@ -388,14 +388,12 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = (
-            metadata.metadata_fields.generate_units_header_unpack_arrays(
-                m=self.units.mass,
-                l=self.units.length,
-                t=self.units.time,
-                I=self.units.current,
-                T=self.units.temperature,
-            )
+        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -452,14 +450,12 @@ class SWIFTMetadata(object):
 
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = (
-            metadata.metadata_fields.generate_units_header_unpack_single_float(
-                m=self.units.mass,
-                l=self.units.length,
-                t=self.units.time,
-                I=self.units.current,
-                T=self.units.temperature,
-            )
+        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
         )
 
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():

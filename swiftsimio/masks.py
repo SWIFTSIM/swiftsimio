@@ -93,8 +93,7 @@ class SWIFTMask(object):
         sort = None
 
         for ptype, pname in zip(
-            self.metadata.present_particle_types,
-            self.metadata.present_particle_names,
+            self.metadata.present_particle_types, self.metadata.present_particle_names
         ):
             part_type = f"PartType{ptype}"
             counts = count_handle[part_type][:]
