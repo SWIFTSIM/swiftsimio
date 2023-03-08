@@ -407,7 +407,15 @@ class SWIFTMetadata(object):
 
         for field, name in metadata.metadata_fields.header_unpack_string.items():
             try:
-                setattr(self, name, self.header[field].decode("utf-8"))
+                # Deal with h5py's quirkiness that fixed-sized and variable-sized
+                # strings are read as strings or bytes
+                # See: https://github.com/h5py/h5py/issues/2172
+                raw = self.header[field]
+                try:
+                    string = raw.decode("utf-8")
+                except:
+                    string = raw
+                setattr(self, name, string)
             except KeyError:
                 # Must not be present, just skip it
                 setattr(self, name, "")
