@@ -413,7 +413,7 @@ class SWIFTMetadata(object):
                 raw = self.header[field]
                 try:
                     string = raw.decode("utf-8")
-                except:
+                except AttributeError:
                     string = raw
                 setattr(self, name, string)
             except KeyError:
