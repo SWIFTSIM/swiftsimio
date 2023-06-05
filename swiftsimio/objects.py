@@ -737,11 +737,22 @@ class cosmo_array(unyt_array):
                 registry=registry,
                 dtype=dtype,
                 bypass_validation=bypass_validation,
+                name=name,
+            )
+        except TypeError:
+            # Older versions of unyt (before input_units was deprecated)
+            obj = super().__new__(
+                cls,
+                input_array,
+                units=units,
+                registry=registry,
+                dtype=dtype,
+                bypass_validation=bypass_validation,
                 input_units=input_units,
                 name=name,
             )
         except TypeError:
-            # Older versions of unyt
+            # Even older versions of unyt (before name was added)
             obj = super().__new__(
                 cls,
                 input_array,
