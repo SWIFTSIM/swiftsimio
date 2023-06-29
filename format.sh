@@ -20,7 +20,7 @@ fi
 black="./black_formatting_env/bin/python3 -m black"
 
 # Formatting command
-files=$(echo {*.py,tests/*.py,swiftsimio/*.py,swiftsimio/*/*.py,swiftsimio/*/*/*.py})
+files=$(echo {tests/*.py,swiftsimio/*.py,swiftsimio/*/*.py,swiftsimio/*/*/*.py})
 cmd="$black -t py38 $files"
 
 # Print the help
