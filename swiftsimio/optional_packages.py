@@ -5,7 +5,6 @@ This includes:
 
 + tqdm: progress bars
 + scipy.spatial: KDTrees
-+ sphviewer: visualisation
 + numba/cuda: visualisation
 """
 
@@ -28,16 +27,6 @@ try:
 except (ImportError, ModuleNotFoundError):
     KDTree = None
     TREE_AVAILABLE = False
-
-
-# Py-sphviewer
-try:
-    import sphviewer as viewer
-
-    SPHVIEWER_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    viewer = None
-    SPHVIEWER_AVAILABLE = False
 
 
 # Astropy
