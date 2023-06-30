@@ -12,7 +12,7 @@ from swiftsimio.accelerated import (
 import numpy as np
 import h5py
 
-from helper import create_in_memory_hdf5
+from .helper import create_in_memory_hdf5
 
 
 def test_ranges_from_array():
