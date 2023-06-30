@@ -190,3 +190,7 @@ def swiftsnap():
         for name, scheme in data.subgrid_scheme.items():
             if name != "NamedColumns":
                 print(f"{name.replace('Model', 'model')}: {decode(scheme)}")
+
+
+if __name__ == "__main__":
+    swiftsnap()
