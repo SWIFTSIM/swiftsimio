@@ -24,8 +24,6 @@ The output of these functions comes with associated units and has the correct
 dimensions. There are lower-level APIs (also documented here) that provide
 additional functionality.
 
-Finally, we also describe here the integration with :mod:`py-sphviewer`.
-
 .. toctree::
    :maxdepth: 2
 
@@ -33,5 +31,4 @@ Finally, we also describe here the integration with :mod:`py-sphviewer`.
    slice
    volume_render
    tools
-   py-sphviewer
 

@@ -38,8 +38,6 @@ Optional packages
   that do not store this variable in the snapshots (e.g. dark matter)
 + ``tqdm``, required for progress bars for some long-running tasks. If not installed
   no progress bar will be shown.
-+ ``py-sphviewer``, if you wish to use our integration with this visualisation
-  code.
 
 
 Installing
