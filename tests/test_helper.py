@@ -2,7 +2,7 @@
 Tests the helper functions if necessary.
 """
 
-from helper import create_in_memory_hdf5
+from .helper import create_in_memory_hdf5
 
 
 def test_create_in_memory_hdf5():
