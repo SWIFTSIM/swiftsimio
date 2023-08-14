@@ -25,7 +25,7 @@ import warnings
 from datetime import datetime
 
 from typing import Union, Callable, List
-
+from pathlib import Path
 
 class MassTable(object):
     """
@@ -1019,6 +1019,7 @@ def generate_getter(
 ):
     """
     Generates a function that:
+    ORIGINALLY WE WOULD DO THIS:
 
     a) If self._`name` exists, return it
     b) If not, open `filename`
@@ -1026,6 +1027,13 @@ def generate_getter(
     d) Set self._`name`
     e) Return self._`name`.
 
+
+    BUT NOW WE WANT TO DO THIS:
+    a) If self._`name` exists, return it
+    b) If not, send a request to _the server_
+    c) Receive a response from the server
+    d) Set self._`name`
+    e) Return self._`name`.
     Parameters
     ----------
 
@@ -1570,6 +1578,134 @@ class SWIFTDataset(object):
                 self,
                 particle_name,
                 generate_dataset(
+                    getattr(self.metadata, f"{particle_name}_properties"), self.mask
+                ),
+            )
+
+        return
+
+
+class RemoteSWIFTDataset(object):
+    """
+    A collection object for:
+
+    + SWIFTUnits,
+    + SWIFTMetadata,
+    + SWIFTParticleDataset
+
+    ...when requested remotely from the server.
+
+    This object, in essence, completely represents a SWIFT snapshot. You can access
+    the different particles as follows:
+
+    + SWIFTDataset.gas.particle_ids
+    + SWIFTDataset.dark_matter.masses
+    + SWIFTDataset.gas.smoothing_lengths
+
+    These arrays all have units that are determined by the unit system in the file.
+
+    The unit system is available as SWIFTDataset.units and the metadata as
+    SWIFTDataset.metadata.
+
+    Methods
+    -------
+    def get_units(self):
+        Loads the units from the SWIFT snapshot.
+    def get_metadata(self):
+        Loads the metadata from the SWIFT snapshot.
+    def create_particle_datasets(self):
+        Creates particle datasets for whatever particle types and names
+        are specified in metadata.particle_types.
+    """
+
+    def __init__(self, server_address, credentials, simulation_alias, local_file, mask=None):
+        """
+        Constructor for SWIFTDataset class
+
+        Parameters
+        ----------
+        server_address : str
+            URL of API serving HDF5 files.
+        credentials : SWIFTCredentials
+            Server access credentials.
+        simulation_alias : str
+            The aliased name of a particular simulation.
+        local_file : Path
+            Path to local file containing snapshot
+        mask : np.ndarray, optional
+            mask object containing dataset to selected particles
+        """
+        self.server_address = server_address
+        self.credentials = credentials
+        self.simulation_alias = simulation_alias
+        self.filename = local_file
+        self.mask = mask
+
+        if mask is not None:
+            self.mask.convert_masks_to_ranges()
+
+        self.get_units()
+        self.get_metadata()
+        self.create_particle_datasets()
+
+        return
+
+    def __str__(self):
+        """
+        Prints out some more useful information, rather than just
+        the memory location.
+        """
+
+        return f"SWIFT dataset at {self.filename}."
+
+    def __repr__(self):
+        return self.__str__()
+
+    def get_units(self):
+        """
+        Requests units from the SWIFT snapshot on the server side.
+
+        Ordinarily this happens automatically, but you can call
+        this function again if you mess things up.
+        """
+
+        # run some API call here with server address and credentials
+        # server-side processing returns SWIFTUnits
+
+        self.units = SWIFTUnits(self.filename)
+
+        return
+
+    def get_metadata(self):
+        """
+        Requests metadata from the SWIFT snapshot on the server side.
+
+        Ordinarily this happens automatically, but you can call
+        this function again if you mess things up.
+        """
+        # run some API call here with server address and credentials
+        # server-side processing returns SWIFTMetadata
+
+        self.metadata = SWIFTMetadata(self.filename, self.units)
+
+        return
+
+    def create_particle_datasets(self):
+        """
+        Creates particle datasets for whatever particle types and names
+        are specified in metadata.particle_types.
+
+        These can then be accessed using their underscore names, e.g. gas.
+        """
+
+        if not hasattr(self, "metadata"):
+            self.get_metadata()
+
+        for particle_name in self.metadata.present_particle_names:
+            setattr(
+                self,
+                particle_name,
+                generate_dataset( # DELETE THIS COMMENT: generate_dataset should point to some remote function
                     getattr(self.metadata, f"{particle_name}_properties"), self.mask
                 ),
             )
