@@ -202,6 +202,15 @@ class SWIFTUnits(object):
         )
 
 
+class RemoteSWIFTUnits:
+    def __init__(self, unit_dict=None):
+        if unit_dict is not None:
+            for key, value in unit_dict.items():
+                setattr(self, key, unyt.unyt_quantity.from_string(value))
+                if isinstance(unit_dict[key], dict):
+                    for nested_key, nested_value in unit_dict[key].items():
+                        setattr(self, nested_key, nested_value)
+
 class SWIFTMetadata(object):
     """
     Loads all metadata (apart from Units, those are handled by SWIFTUnits)
@@ -1743,7 +1752,7 @@ class SWIFTDataset(object):
 class RemoteSWIFTUnitsException(Exception):
     pass
 
-class RemoteSWIFTDataset(object):
+class RemoteSWIFTDataset():
     """
     A collection object for:
 
@@ -1776,7 +1785,7 @@ class RemoteSWIFTDataset(object):
         are specified in metadata.particle_types.
     """
 
-    def __init__(self, server_address, credentials, simulation_alias, local_file, mask=None):
+    def __init__(self, server_address, credentials, simulation_alias, filename, mask=None):
         """
         Constructor for SWIFTDataset class
 
@@ -1788,11 +1797,16 @@ class RemoteSWIFTDataset(object):
             Server access credentials.
         simulation_alias : str
             The aliased name of a particular simulation.
-        local_file : Path
-            Path to local file containing snapshot
+        filename : Path
+            Full path to file containing snapshot
         mask : np.ndarray, optional
             mask object containing dataset to selected particles
         """
+        
+        # Perhaps make an abstract base class that both this and SWIFTDataset are based on
+        # this concrete implementation can't have the same init as SWIFTDataset as that calls a bunch
+        # of things that rely on locally available files.
+
         self.server_address = server_address
         self.credentials = credentials
         self.simulation_alias = simulation_alias
@@ -1800,7 +1814,7 @@ class RemoteSWIFTDataset(object):
         #self.filename = get_filename()
         # filename needs to be either the actual file path or an alias
 
-        self.filename = local_file
+        self.filename = filename
         self.mask = mask
 
         if mask is not None:
@@ -1862,12 +1876,15 @@ class RemoteSWIFTDataset(object):
             "filename": self.filename
         }
         units_response = requests.post(
-            self.server_address,
+            f"{self.server_address}/swiftunits",
             json = payload
         )
         json_response = units_response.json()
         
-        self.units = RemoteSWIFTDataset.create_unyt_quantities_from_json(json_response)
+        units_dict = RemoteSWIFTDataset.create_unyt_quantities_from_json(json_response)
+
+        self.units = RemoteSWIFTUnits(units_dict)
+
         return
 
     def get_metadata(self):
@@ -1879,6 +1896,10 @@ class RemoteSWIFTDataset(object):
         """
         # run some API call here with server address and credentials
         # server-side processing returns SWIFTMetadata
+
+        # Again this needs to happen remotely
+        # We can retrieve a units-like object here and send that through
+        # or create the units on the server.
 
         self.metadata = SWIFTMetadata(self.filename, self.units)
 
