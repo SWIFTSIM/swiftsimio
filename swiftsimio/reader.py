@@ -16,6 +16,7 @@ from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor, a
 from swiftsimio.conversions import swift_cosmology_to_astropy
 
+import cloudpickle
 import re
 import h5py
 import json
@@ -28,6 +29,7 @@ from datetime import datetime
 
 from typing import Union, Callable, List
 from pathlib import Path
+
 
 class MassTable(object):
     """
@@ -211,6 +213,7 @@ class RemoteSWIFTUnits:
                     for nested_key, nested_value in unit_dict[key].items():
                         setattr(self, nested_key, nested_value)
 
+
 class SWIFTMetadata(object):
     """
     Loads all metadata (apart from Units, those are handled by SWIFTUnits)
@@ -363,12 +366,14 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -433,12 +438,14 @@ class SWIFTMetadata(object):
 
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
@@ -894,7 +901,7 @@ class SWIFTParticleTypeMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
+                        units *= unit**unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
@@ -967,7 +974,7 @@ class SWIFTParticleTypeMetadata(object):
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
-            a_factor_this_dataset = a ** cosmo_exponent
+            a_factor_this_dataset = a**cosmo_exponent
 
             return cosmo_factor(a_factor_this_dataset, current_scale_factor)
 
@@ -1175,7 +1182,8 @@ def generate_getter(
         return getattr(self, f"_{name}")
 
     return getter
-    
+
+
 def generate_getter_remote(
     server_address: str,
     credentials: str,
@@ -1203,7 +1211,7 @@ def generate_getter_remote(
 
     server_address: str
         URI for the API that will serve HDF5 file contents.
-    
+
     credentials: str
         Credentials for the HDF5 API.
 
@@ -1289,9 +1297,11 @@ def generate_getter_remote(
                         "mask_size": mask_size,
                         "columns": columns,
                     }
-                    
-                    array_data = requests.get(server_address, credentials, params=request_parameters)
-                
+
+                    array_data = requests.get(
+                        server_address, credentials, params=request_parameters
+                    )
+
                     setattr(
                         self,
                         f"_{name}",
@@ -1308,9 +1318,11 @@ def generate_getter_remote(
                     request_parameters = {
                         "alias": simulation_alias,
                         "field": field,
-                        "columns": columns
+                        "columns": columns,
                     }
-                    array_data = requests.get(server_address, credentials, params=request_parameters)
+                    array_data = requests.get(
+                        server_address, credentials, params=request_parameters
+                    )
                     setattr(
                         self,
                         f"_{name}",
@@ -1749,10 +1761,12 @@ class SWIFTDataset(object):
 
         return
 
+
 class RemoteSWIFTUnitsException(Exception):
     pass
 
-class RemoteSWIFTDataset():
+
+class RemoteSWIFTDataset:
     """
     A collection object for:
 
@@ -1785,7 +1799,9 @@ class RemoteSWIFTDataset():
         are specified in metadata.particle_types.
     """
 
-    def __init__(self, server_address, credentials, simulation_alias, filename, mask=None):
+    def __init__(
+        self, server_address, credentials, simulation_alias, filename, mask=None
+    ):
         """
         Constructor for SWIFTDataset class
 
@@ -1802,7 +1818,7 @@ class RemoteSWIFTDataset():
         mask : np.ndarray, optional
             mask object containing dataset to selected particles
         """
-        
+
         # Perhaps make an abstract base class that both this and SWIFTDataset are based on
         # this concrete implementation can't have the same init as SWIFTDataset as that calls a bunch
         # of things that rely on locally available files.
@@ -1811,7 +1827,7 @@ class RemoteSWIFTDataset():
         self.credentials = credentials
         self.simulation_alias = simulation_alias
 
-        #self.filename = get_filename()
+        # self.filename = get_filename()
         # filename needs to be either the actual file path or an alias
 
         self.filename = filename
@@ -1825,7 +1841,7 @@ class RemoteSWIFTDataset():
         self.create_particle_datasets()
 
         return
-    
+
     def __str__(self):
         """
         Prints out some more useful information, rather than just
@@ -1871,16 +1887,12 @@ class RemoteSWIFTDataset():
 
         # run some API call here with server address and credentials
         # server-side processing returns SWIFTUnits
-        payload = {
-            "alias": self.simulation_alias,
-            "filename": self.filename
-        }
+        payload = {"alias": self.simulation_alias, "filename": self.filename}
         units_response = requests.post(
-            f"{self.server_address}/swiftunits",
-            json = payload
+            f"{self.server_address}/swiftunits", json=payload
         )
         json_response = units_response.json()
-        
+
         units_dict = RemoteSWIFTDataset.create_unyt_quantities_from_json(json_response)
 
         self.units = RemoteSWIFTUnits(units_dict)
@@ -1900,8 +1912,12 @@ class RemoteSWIFTDataset():
         # Again this needs to happen remotely
         # We can retrieve a units-like object here and send that through
         # or create the units on the server.
+        payload = {"alias": self.simulation_alias, "filename": self.filename}
+        metadata_response_pickle = requests.post(
+            f"{self.server_address}/swiftmetadata", json=payload
+        )
 
-        self.metadata = SWIFTMetadata(self.filename, self.units)
+        self.metadata = cloudpickle.loads(metadata_response_pickle)
 
         return
 
@@ -1920,7 +1936,7 @@ class RemoteSWIFTDataset():
             setattr(
                 self,
                 particle_name,
-                generate_dataset_remote( # DELETE THIS COMMENT: generate_dataset should point to some remote function
+                generate_dataset_remote(  # DELETE THIS COMMENT: generate_dataset should point to some remote function
                     getattr(self.metadata, f"{particle_name}_properties"), self.mask
                 ),
             )
