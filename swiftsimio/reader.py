@@ -651,7 +651,7 @@ class SWIFTMetadata(object):
         ]
 
     @property
-    def code_info(self):
+    def code_info(self) -> str:
         """
         Gets a nicely printed set of code information with:
 
@@ -672,7 +672,7 @@ class SWIFTMetadata(object):
         return output
 
     @property
-    def compiler_info(self):
+    def compiler_info(self) -> str:
         """
         Gets information about the compiler and formats it as:
 
@@ -691,7 +691,7 @@ class SWIFTMetadata(object):
         return output
 
     @property
-    def library_info(self):
+    def library_info(self) -> str:
         """
         Gets information about the libraries used and formats it as:
 
@@ -712,7 +712,7 @@ class SWIFTMetadata(object):
         return output
 
     @property
-    def hydro_info(self):
+    def hydro_info(self) -> str:
         r"""
         Gets information about the hydro scheme and formats it as:
 
@@ -743,7 +743,7 @@ class SWIFTMetadata(object):
         return output
 
     @property
-    def viscosity_info(self):
+    def viscosity_info(self) -> str:
         r"""
         Gets information about the viscosity scheme and formats it as:
 
@@ -770,7 +770,7 @@ class SWIFTMetadata(object):
         return output
 
     @property
-    def diffusion_info(self):
+    def diffusion_info(self) -> str:
         """
         Gets information about the diffusion scheme and formats it as:
 
@@ -790,6 +790,18 @@ class SWIFTMetadata(object):
         )
 
         return output
+    
+    @property
+    def partial_snapshot(self) -> bool:
+        """
+        Whether or not this snapshot is partial (e.g. a "x.0.hdf5" file), or
+        a file describing an entire snapshot.
+        """
+
+        # Partial snapshots have num_files_per_snapshot set to 1. Virtual snapshots
+        # collating multiple sub-snapshots together have num_files_per_snapshot = 1.
+
+        return self.num_files_per_snapshot > 1
 
 
 class SWIFTParticleTypeMetadata(object):
