@@ -381,7 +381,7 @@ class InvalidScaleFactor(Exception):
         Print warning message of invalid scale factor
         """
         return f"InvalidScaleFactor: {self.message}"
-    
+
 
 class InvalidSnapshot(Exception):
     """
@@ -406,7 +406,6 @@ class InvalidSnapshot(Exception):
         Print warning message of invalid snapshot
         """
         return f"InvalidSnapshot: {self.message}"
-
 
 
 class cosmo_factor:

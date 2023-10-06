@@ -790,7 +790,7 @@ class SWIFTMetadata(object):
         )
 
         return output
-    
+
     @property
     def partial_snapshot(self) -> bool:
         """
