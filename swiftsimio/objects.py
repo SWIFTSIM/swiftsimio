@@ -381,6 +381,32 @@ class InvalidScaleFactor(Exception):
         Print warning message of invalid scale factor
         """
         return f"InvalidScaleFactor: {self.message}"
+    
+
+class InvalidSnapshot(Exception):
+    """
+    Generated when a snapshot is invalid (e.g. you are trying to partially load a
+    sub-snapshot).
+    """
+
+    def __init__(self, message=None, *args):
+        """
+        Constructor for warning of invalid snapshot
+
+        Parameters
+        ----------
+
+        message : str, optional
+            Message to print in case of invalid snapshot
+        """
+        self.message = message
+
+    def __str__(self):
+        """
+        Print warning message of invalid snapshot
+        """
+        return f"InvalidSnapshot: {self.message}"
+
 
 
 class cosmo_factor:
