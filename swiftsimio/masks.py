@@ -316,7 +316,7 @@ class SWIFTMask(object):
 
         return
 
-    def constrain_spatial(self, restrict):
+    def constrain_spatial(self, restrict, intersect: bool = False):
         """
         Uses the cell metadata to create a spatial mask.
 
@@ -339,13 +339,25 @@ class SWIFTMask(object):
             These values must have units associated with them. It is also acceptable
             to have a row as None to not restrict in this direction.
 
+        intersect : bool
+            If `True`, intersect the spatial mask with any existing spatial mask to
+            select two (or more) regions with repeated calls to `constrain_spatial`.
+            By default (`False`) any existing mask is overwritten.
+
         See Also
         -------
 
         constrain_mask : method to further refine mask
         """
 
-        self.cell_mask = self._generate_cell_mask(restrict)
+        if hasattr(self, "cell_mask") and intersect:
+            # we already have a mask and are in intersect mode
+            self.cell_mask = np.logical_or(
+                self.cell_mask, self._generate_cell_mask(restrict)
+            )
+        else:
+            # we just make a new mask
+            self.cell_mask = self._generate_cell_mask(restrict)
 
         for ptype in self.metadata.present_particle_names:
             self._update_spatial_mask(restrict, ptype, self.cell_mask)
