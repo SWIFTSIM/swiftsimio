@@ -8,7 +8,7 @@ import h5py
 
 import numpy as np
 
-from swiftsimio import metadata, SWIFTMetadata, SWIFTUnits
+from swiftsimio import SWIFTMetadata
 
 from swiftsimio.accelerated import ranges_from_array
 from typing import Dict
