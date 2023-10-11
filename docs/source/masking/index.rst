@@ -77,6 +77,7 @@ For instance, to add the diagonally opposed octant to the selection made above
 (and so obtain a region shaped like two cubes with a single corner touching):
 
 .. code-block:: python
+
    additional_region = [[0.5 * b, 1.0 * b] for b in boxsize]
    mask.constrain_spatial(additional_region, intersect=True)
 
