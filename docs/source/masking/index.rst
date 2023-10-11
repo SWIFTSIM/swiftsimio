@@ -68,6 +68,23 @@ relatively small overhead when reading the data. This allows you to use snapshot
 that are much larger than the available memory on your machine and process them
 with ease.
 
+It is also possible to build up a region with a more complicated geometry by
+making repeated calls to :meth:`~swiftsimio.reader.SWIFTMask.constrain_spatial`
+and setting the optional argument `intersect=True`. By default any existing
+selection of cells would be overwritten; this option adds any additional cells
+that need to be selected for the new region to the existing selection instead.
+For instance, to add the diagonally opposed octant to the selection made above
+(and so obtain a region shaped like two cubes with a single corner touching):
+
+.. code-block:: python
+   additional_region = [[0.5 * b, 1.0 * b] for b in boxsize]
+   mask.constrain_spatial(additional_region, intersect=True)
+
+In the first call to :meth:`~swiftsimio.reader.SWIFTMask.constrain_spatial` the
+`intersect` argument can be set to `True` or left `False` (the default): since
+no mask yet exists both give the same result.
+
+
 Full mask
 ---------
 
