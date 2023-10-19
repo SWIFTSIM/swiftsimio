@@ -15,7 +15,6 @@ from swiftsimio import metadata
 from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor, a
 from swiftsimio.conversions import swift_cosmology_to_astropy
-from swiftsimio.masks import SWIFTMask
 
 import cloudpickle
 import re
@@ -215,12 +214,17 @@ class SWIFTUnits(object):
 
 class RemoteSWIFTUnits:
     def __init__(self, unit_dict=None):
+        excluded_fields = ["filename"]
         if unit_dict is not None:
             for key, value in unit_dict.items():
-                setattr(self, key, unyt.unyt_quantity.from_string(value))
-                if isinstance(unit_dict[key], dict):
-                    for nested_key, nested_value in unit_dict[key].items():
-                        setattr(self, nested_key, nested_value)
+                if key not in excluded_fields and not isinstance(
+                    value, unyt.unyt_quantity
+                ):
+                    if isinstance(unit_dict[key], dict):
+                        for nested_key, nested_value in unit_dict[key].items():
+                            setattr(self, nested_key, nested_value)
+                    else:
+                        setattr(self, key, unyt.unyt_quantity.from_string(value))
 
 
 class SWIFTMetadata(object):
@@ -375,14 +379,12 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = (
-            metadata.metadata_fields.generate_units_header_unpack_arrays(
-                m=self.units.mass,
-                l=self.units.length,
-                t=self.units.time,
-                I=self.units.current,
-                T=self.units.temperature,
-            )
+        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -447,14 +449,12 @@ class SWIFTMetadata(object):
 
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = (
-            metadata.metadata_fields.generate_units_header_unpack_single_float(
-                m=self.units.mass,
-                l=self.units.length,
-                t=self.units.time,
-                I=self.units.current,
-                T=self.units.temperature,
-            )
+        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
         )
 
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
@@ -910,7 +910,7 @@ class SWIFTParticleTypeMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit**unit_exponent
+                        units *= unit ** unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
@@ -983,7 +983,7 @@ class SWIFTParticleTypeMetadata(object):
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
-            a_factor_this_dataset = a**cosmo_exponent
+            a_factor_this_dataset = a ** cosmo_exponent
 
             return cosmo_factor(a_factor_this_dataset, current_scale_factor)
 
@@ -1185,10 +1185,7 @@ def generate_getter(
     return getter
 
 
-def load_ndarray_from_json(
-    json_array: str,
-    data_type: str | None,
-) -> npt.NDArray:
+def load_ndarray_from_json(json_array: str, data_type: str | None) -> npt.NDArray:
     """Convert JSON to a Numpy NDArray.
 
     Args:
@@ -1205,6 +1202,7 @@ def load_ndarray_from_json(
 
 def generate_getter_remote(
     server_address: str,
+    session: requests.Session,
     filename: str,
     name: str,
     field: str,
@@ -1301,15 +1299,17 @@ def generate_getter_remote(
             try:
                 if mask is not None:
                     payload = {
-                        "filename": filename,
-                        "field": field,
-                        "mask_array_json": json.dumps(mask, cls=NumpyEncoder),
-                        "mask_size": int(mask_size),
-                        "columns": columns,
+                        "data_spec": {
+                            "filename": filename,
+                            "field": field,
+                            "mask_array_json": json.dumps(mask, cls=NumpyEncoder),
+                            "mask_size": int(mask_size),
+                            "columns": columns,
+                        }
                     }
 
-                    array_data_response = requests.post(
-                        f"{server_address}/masked_dataset", json=payload
+                    array_data_response = session.post(
+                        f"{server_address}/swiftdata/masked_dataset", json=payload
                     )
                     if not array_data_response.status_code == 200:
                         raise RemoteSWIFTDatasetException(
@@ -1335,12 +1335,14 @@ def generate_getter_remote(
                     )
                 else:
                     payload = {
-                        "filename": filename,
-                        "field": field,
-                        "columns": columns,
+                        "data_spec": {
+                            "filename": filename,
+                            "field": field,
+                            "columns": columns,
+                        }
                     }
-                    array_data_response = requests.post(
-                        f"{server_address}/unmasked_dataset", json=payload
+                    array_data_response = session.post(
+                        f"{server_address}/swiftdata/unmasked_dataset", json=payload
                     )
 
                     if not array_data_response.status_code == 200:
@@ -1547,7 +1549,7 @@ class __SWIFTNamedColumnDataset(object):
         return self.named_columns == other.named_columns and self.name == other.name
 
 
-def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask: SWIFTMask):
+def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
     particle type given.
@@ -1683,7 +1685,10 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask: SWIFTMa
 
 
 def generate_remote_dataset(
-    particle_metadata: SWIFTParticleTypeMetadata, mask: SWIFTMask, server_address: str
+    particle_metadata: SWIFTParticleTypeMetadata,
+    mask,
+    server_address: str,
+    session: requests.Session,
 ):
     """
     Generates a SWIFTParticleDataset _class_ that corresponds to the
@@ -1707,6 +1712,8 @@ def generate_remote_dataset(
         the mask object for the dataset
     server_address : str
         API URL
+    session : requests.Session
+        Session object for persistent HTTP connection
     """
 
     filename = particle_metadata.filename
@@ -1761,6 +1768,7 @@ def generate_remote_dataset(
             field_property = property(
                 generate_getter_remote(
                     server_address,
+                    session,
                     filename,
                     field_name,
                     field_path,
@@ -1788,6 +1796,7 @@ def generate_remote_dataset(
                 this_named_column_dataset_dict[column] = property(
                     generate_getter_remote(
                         server_address,
+                        session,
                         filename,
                         column,
                         field_path,
@@ -1976,7 +1985,15 @@ class RemoteSWIFTDataset:
         are specified in metadata.particle_types.
     """
 
-    def __init__(self, server_address, simulation_alias=None, filename=None, mask=None):
+    def __init__(
+        self,
+        server_address: str,
+        username: str,
+        password: str,
+        simulation_alias=None,
+        filename=None,
+        mask=None,
+    ):
         """
         Constructor for SWIFTDataset class
 
@@ -1986,6 +2003,10 @@ class RemoteSWIFTDataset:
         ----------
         server_address : str
             Base URL of API serving HDF5 files.
+        username : str
+            VirgoDB username
+        password : str
+            VirgoDB password
         simulation_alias : str, optional
             The aliased name of a particular simulation.
         filename : str, optional
@@ -1998,10 +2019,21 @@ class RemoteSWIFTDataset:
         self.simulation_alias = simulation_alias
         self.filename = filename
 
+        self.session = requests.Session()
+        token_response = self.session.post(
+            f"{self.server_address}/token",
+            json={"username": username, "password": password},
+        )
+        token = token_response.json()["access_token"]
+
+        self.session.headers.update({"Authorization": f"Bearer {token}"})
+
         if not self.filename and self.simulation_alias:
-            payload = {"alias": self.simulation_alias, "filename": self.filename}
-            filepath_response = requests.post(
-                f"{self.server_address}/filepath", json=payload
+            payload = {
+                "data_spec": {"alias": self.simulation_alias, "filename": self.filename}
+            }
+            filepath_response = self.session.post(
+                f"{self.server_address}/swiftdata/filepath", json=payload
             )
             self.filename = filepath_response.json()
 
@@ -2028,8 +2060,8 @@ class RemoteSWIFTDataset:
         return self.__str__()
 
     @staticmethod
-    def create_unyt_quantities_from_json(input_json: str) -> dict:
-        swift_unit_dict = json.loads(input_json)
+    def create_unyt_quantities_from_json(swift_unit_dict: dict) -> dict:
+        # swift_unit_dict = json.loads(input_json)
 
         excluded_fields = ["filename", "units"]
         try:
@@ -2061,9 +2093,11 @@ class RemoteSWIFTDataset:
 
         # run some API call here with server address and credentials
         # server-side processing returns SWIFTUnits
-        payload = {"alias": self.simulation_alias, "filename": self.filename}
-        units_response = requests.post(
-            f"{self.server_address}/swiftunits", json=payload
+        payload = {
+            "data_spec": {"alias": self.simulation_alias, "filename": self.filename}
+        }
+        units_response = self.session.post(
+            f"{self.server_address}/swiftdata/units_dict", json=payload
         )
         json_response = units_response.json()
 
@@ -2081,10 +2115,13 @@ class RemoteSWIFTDataset:
         this function again if you mess things up.
         """
 
-        payload = {"alias": self.simulation_alias, "filename": self.filename}
-        metadata_response_pickle = requests.post(
-            f"{self.server_address}/swiftmetadata", json=payload
+        payload = {
+            "data_spec": {"alias": self.simulation_alias, "filename": self.filename}
+        }
+        metadata_response = self.session.post(
+            f"{self.server_address}/swiftdata/metadata", json=payload
         )
+        metadata_response_pickle = metadata_response.content
 
         self.metadata = cloudpickle.loads(metadata_response_pickle)
 
@@ -2108,7 +2145,8 @@ class RemoteSWIFTDataset:
                 generate_remote_dataset(
                     getattr(self.metadata, f"{particle_name}_properties"),
                     self.mask,
-                    remote=True,
+                    self.server_address,
+                    self.session,
                 ),
             )
 
