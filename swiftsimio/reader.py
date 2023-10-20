@@ -1223,7 +1223,7 @@ def generate_getter(
     return getter
 
 
-def load_ndarray_from_json(json_array: str, data_type: str | None) -> npt.NDArray:
+def load_ndarray_from_json(json_array: str, data_type: Union[str, None]) -> npt.NDArray:
     """Convert JSON to a Numpy NDArray.
 
     Args:
