@@ -7,9 +7,9 @@ packages = ["swiftsimio", "swiftsimio.initial_conditions", "swiftsimio.metadata"
 
 [project]
 name = "swiftsimio"
-version="7.0.1"
+version="7.0.2"
 authors = [
-    { name="Josh Borrow", email="joshua.borrow@durham.ac.uk" },
+    { name="Josh Borrow", email="josh@joshborrow.com" },
 ]
 description="SWIFTsim (swift.dur.ac.uk) i/o routines for python."
 readme = "README.md"

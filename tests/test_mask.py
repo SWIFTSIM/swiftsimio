@@ -4,6 +4,7 @@ Tests the masking using some test data.
 
 from tests.helper import requires
 from swiftsimio import load, mask
+import numpy as np
 
 from unyt import unyt_array as array, dimensionless
 
@@ -90,3 +91,26 @@ def test_region_mask_not_modified(filename):
     this_mask._generate_cell_mask(read)
 
     assert read == read_constant
+
+
+@requires("cosmological_volume.hdf5")
+def test_region_mask_intersection(filename):
+    """
+    Tests that the intersection of two spatial mask regions includes the same cells as two
+    separate masks of the same two regions.
+    """
+
+    mask_1 = mask(filename, spatial_only=True)
+    mask_2 = mask(filename, spatial_only=True)
+    mask_intersect = mask(filename, spatial_only=True)
+    bs = mask_intersect.metadata.boxsize
+    region_1 = [[0 * b, 0.1 * b] for b in bs]
+    region_2 = [[0.6 * b, 0.7 * b] for b in bs]
+    mask_1.constrain_spatial(region_1)
+    mask_2.constrain_spatial(region_2)
+    # the intersect=True flag is optional on the first call:
+    mask_intersect.constrain_spatial(region_1, intersect=True)
+    mask_intersect.constrain_spatial(region_2, intersect=True)
+    assert (
+        np.logical_or(mask_1.cell_mask, mask_2.cell_mask) == mask_intersect.cell_mask
+    ).all()
