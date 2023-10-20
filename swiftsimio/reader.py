@@ -2098,8 +2098,18 @@ class RemoteSWIFTDataset:
 
     @staticmethod
     def create_unyt_quantities_from_json(swift_unit_dict: dict) -> dict:
-        # swift_unit_dict = json.loads(input_json)
+        """
+        Converts strings to unyt quantities in a Unit object returned by the API.
 
+
+        Here we loop through all of the possible properties in the returned Units object.
+        We exclude the filename and 'units' fields, or anything that is not a string
+        representation of a quantity with units.
+
+        Parameters
+        ----------
+        swift_unit_dict : Dictionary containing quantities with units from the API
+        """
         excluded_fields = ["filename", "units"]
         try:
             swift_unit_dict["units"] = {
