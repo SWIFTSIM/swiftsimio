@@ -246,7 +246,7 @@ class SWIFTUnits(object):
 
 class RemoteSWIFTUnits:
     def __init__(self, unit_dict=None):
-        excluded_fields = ["filename"]
+        excluded_fields = ["filename", "_handle"]
         if unit_dict is not None:
             for key, value in unit_dict.items():
                 if key not in excluded_fields and not isinstance(
@@ -415,12 +415,14 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -485,12 +487,14 @@ class SWIFTMetadata(object):
 
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
@@ -944,7 +948,7 @@ class SWIFTParticleTypeMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
+                        units *= unit**unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
@@ -1020,7 +1024,7 @@ class SWIFTParticleTypeMetadata(object):
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
-            a_factor_this_dataset = a ** cosmo_exponent
+            a_factor_this_dataset = a**cosmo_exponent
 
             return cosmo_factor(a_factor_this_dataset, current_scale_factor)
 
@@ -2035,7 +2039,7 @@ class RemoteSWIFTDataset:
         Constructor for SWIFTDataset class
 
         One of simulation alias or filename should be set when initialising instances of this class.
-        
+
         Parameters
         ----------
         server_address : str
@@ -2110,7 +2114,7 @@ class RemoteSWIFTDataset:
         ----------
         swift_unit_dict : Dictionary containing quantities with units from the API
         """
-        excluded_fields = ["filename", "units"]
+        excluded_fields = ["filename", "units", "_handle"]
         try:
             swift_unit_dict["units"] = {
                 key: unyt.unyt_quantity.from_string(value)
