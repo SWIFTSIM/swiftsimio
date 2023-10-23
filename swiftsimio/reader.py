@@ -16,16 +16,28 @@ from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor, a
 from swiftsimio.conversions import swift_cosmology_to_astropy
 
+import cloudpickle
 import re
 import h5py
+import json
 import unyt
 import numpy as np
+import numpy.typing as npt
+import requests
 import warnings
 
 from datetime import datetime
 from pathlib import Path
 
 from typing import Union, Callable, List, Optional
+from pathlib import Path
+
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 
 class MassTable(object):
@@ -230,6 +242,21 @@ class SWIFTUnits(object):
     def __del__(self):
         if isinstance(self._handle, h5py.File):
             self._handle.close()
+
+
+class RemoteSWIFTUnits:
+    def __init__(self, unit_dict=None):
+        excluded_fields = ["filename"]
+        if unit_dict is not None:
+            for key, value in unit_dict.items():
+                if key not in excluded_fields and not isinstance(
+                    value, unyt.unyt_quantity
+                ):
+                    if isinstance(unit_dict[key], dict):
+                        for nested_key, nested_value in unit_dict[key].items():
+                            setattr(self, nested_key, nested_value)
+                    else:
+                        setattr(self, key, unyt.unyt_quantity.from_string(value))
 
 
 class SWIFTMetadata(object):
@@ -1196,6 +1223,198 @@ def generate_getter(
     return getter
 
 
+def load_ndarray_from_json(json_array: str, data_type: Union[str, None]) -> npt.NDArray:
+    """Convert JSON to a Numpy NDArray.
+
+    Args:
+        json_array (str): Numpy array as JSON
+        data_type (str): Data type of elements in the original array
+
+    Returns
+    -------
+        npt.NDArray: Numpy NDArray object
+    """
+    loaded_json = json.loads(json_array)
+    return np.asarray(loaded_json, dtype=data_type)
+
+
+def generate_getter_remote(
+    server_address: str,
+    session: requests.Session,
+    filename: str,
+    name: str,
+    field: str,
+    unit: unyt.unyt_quantity,
+    mask: Union[None, np.ndarray],
+    mask_size: int,
+    cosmo_factor: cosmo_factor,
+    description: str,
+    compression: str,
+    columns: Union[None, np.lib.index_tricks.IndexExpression] = None,
+):
+    """
+    Generates a function that:
+
+    a) If self._`name` exists, return it
+    b) If not, send a request to _the server_
+    c) Receive a response from the server
+    d) Set self._`name`
+    e) Return self._`name`.
+    Parameters
+    ----------
+
+    server_address: str
+        URI for the API that will serve HDF5 file contents.
+
+    name: str
+        Output name (snake_case) of the field.
+
+    field: str
+        Full path of field, including e.g. particle type. Examples include
+        ``/PartType0/Velocities``.
+
+    unit: unyt.unyt_quantity
+        Output unit of the resultant ``cosmo_array``
+
+    mask: None or np.ndarray
+        Mask to be used with ``accelerated.read_ranges_from_file``, i.e. an array of
+        integers that describe ranges to be read from the file.
+
+    mask_size: int
+        Size of the mask if present.
+
+    cosmo_factor: cosmo_factor
+        Cosmology factor object corresponding to this array.
+
+    description: str
+        Description (read from HDF5 file) of the data.
+
+    compression: str
+        String describing the lossy compression filters that were applied to the
+        data (read from the HDF5 file).
+
+    columns: np.lib.index_tricks.IndexEpression, optional
+        Index expression corresponding to which columns to read from the numpy array.
+        If not provided, we read all columns and return an n-dimensional array.
+
+
+    Returns
+    -------
+
+    getter: callable
+        A callable object that gets the value of the array that has been saved to
+        ``_name``. This function takes only ``self`` from the
+        :obj:``__SWIFTParticleDataset`` class.
+
+
+    Notes
+    -----
+
+    The major use of this function is for its side effect of setting ``_name`` as
+    a member of the class on first read. When the attribute is accessed, it will
+    be dynamically read from the file, to keep initial memory usage as minimal
+    as possible.
+
+    If the resultant array is modified, it will not be re-read from the file.
+
+    """
+
+    # Must do this _outside_ getter because of weird locality issues with the
+    # use of None as the default.
+    # Here, we need to ensure that in the cases where we're using columns,
+    # during a partial read, that we respect the single-column dataset nature.
+    use_columns = columns is not None
+
+    if not use_columns:
+        columns = np.s_[:]
+
+    def getter(self):
+        current_value = getattr(self, f"_{name}")
+
+        if current_value is not None:
+            return current_value
+        else:
+            try:
+                if mask is not None:
+                    payload = {
+                        "data_spec": {
+                            "filename": filename,
+                            "field": field,
+                            "mask_array_json": json.dumps(mask, cls=NumpyEncoder),
+                            "mask_size": int(mask_size),
+                            "columns": columns,
+                        }
+                    }
+
+                    array_data_response = session.post(
+                        f"{server_address}/swiftdata/masked_dataset", json=payload
+                    )
+                    if not array_data_response.status_code == 200:
+                        raise RemoteSWIFTDatasetException(
+                            "ERROR: Array data not found following request for masked dataset."
+                        )
+                        return None
+
+                    array_data_json = array_data_response.json()
+
+                    array_data = np.asarray(
+                        array_data_json["array"], dtype=array_data_json["dtype"]
+                    )
+                    setattr(
+                        self,
+                        f"_{name}",
+                        cosmo_array(
+                            array_data,
+                            unit,
+                            cosmo_factor=cosmo_factor,
+                            name=description,
+                            compression=compression,
+                        ),
+                    )
+                else:
+                    payload = {
+                        "data_spec": {
+                            "filename": filename,
+                            "field": field,
+                            "columns": columns,
+                        }
+                    }
+                    array_data_response = session.post(
+                        f"{server_address}/swiftdata/unmasked_dataset", json=payload
+                    )
+
+                    if not array_data_response.status_code == 200:
+                        raise RemoteSWIFTDatasetException(
+                            "ERROR: Array data not found following request for unmasked dataset."
+                        )
+                        return None
+
+                    array_data_json = array_data_response.json()
+
+                    array_data = np.asarray(
+                        array_data_json["array"], dtype=array_data_json["dtype"]
+                    )
+
+                    setattr(
+                        self,
+                        f"_{name}",
+                        cosmo_array(
+                            array_data,
+                            unit,
+                            cosmo_factor=cosmo_factor,
+                            name=description,
+                            compression=compression,
+                        ),
+                    )
+            except KeyError:
+                print(f"Could not read {field}")
+                return None
+
+        return getattr(self, f"_{name}")
+
+    return getter
+
+
 def generate_setter(name: str):
     """
     Generates a function that sets self._name to the value that is passed to it.
@@ -1502,6 +1721,154 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     return empty_dataset
 
 
+def generate_remote_dataset(
+    particle_metadata: SWIFTParticleTypeMetadata,
+    mask,
+    server_address: str,
+    session: requests.Session,
+):
+    """
+    Generates a SWIFTParticleDataset _class_ that corresponds to the
+    particle type given.
+
+    We _must_ do the following _outside_ of the class itself, as one
+    can assign properties to a _class_ but not _within_ a class
+    dynamically.
+
+    Here we loop through all of the possible properties in the metadata file.
+    We then use the builtin property() function and some generators to
+    create setters and getters for those properties. This will allow them
+    to be accessed from outside by using SWIFTParticleDataset.name, where
+    the name is, for example, coordinates.
+
+    Parameters
+    ----------
+    particle_metadata : SWIFTParticleTypeMetadata
+        the metadata for the particle type
+    mask : SWIFTMask
+        the mask object for the dataset
+    server_address : str
+        API URL
+    session : requests.Session
+        Session object for persistent HTTP connection
+    """
+
+    filename = particle_metadata.filename
+    particle_type = particle_metadata.particle_type
+    particle_name = particle_metadata.particle_name
+    particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
+
+    # Mask is an object that contains all masks for all possible datasets.
+    if mask is not None:
+        mask_array = getattr(mask, particle_name)
+        mask_size = getattr(mask, f"{particle_name}_size")
+    else:
+        mask_array = None
+        mask_size = -1
+
+    # Set up an iterator for us to loop over for all fields
+    field_paths = particle_metadata.field_paths
+    field_names = particle_metadata.field_names
+    field_cosmologies = particle_metadata.field_cosmologies
+    field_units = particle_metadata.field_units
+    field_descriptions = particle_metadata.field_descriptions
+    field_compressions = particle_metadata.field_compressions
+    field_named_columns = particle_metadata.named_columns
+
+    dataset_iterator = zip(
+        field_paths,
+        field_names,
+        field_cosmologies,
+        field_units,
+        field_descriptions,
+        field_compressions,
+    )
+
+    # This 'nice' piece of code ensures that our datasets have different _types_
+    # for different particle types. We initially fill a dict with the properties that
+    # we want, and then create a single instance of our class.
+
+    this_dataset_bases = (__SWIFTParticleDataset, object)
+    this_dataset_dict = {}
+
+    for (
+        field_path,
+        field_name,
+        field_cosmology,
+        field_unit,
+        field_description,
+        field_compression,
+    ) in dataset_iterator:
+        named_columns = field_named_columns[field_path]
+
+        if named_columns is None:
+            field_property = property(
+                generate_getter_remote(
+                    server_address,
+                    session,
+                    filename,
+                    field_name,
+                    field_path,
+                    unit=field_unit,
+                    mask=mask_array,
+                    mask_size=mask_size,
+                    cosmo_factor=field_cosmology,
+                    description=field_description,
+                    compression=field_compression,
+                ),
+                generate_setter(field_name),
+                generate_deleter(field_name),
+            )
+        else:
+            # TODO: Handle this case with recursion.
+
+            # Here we want to create an extra middleman object. So we can do something
+            # like {ptype}.{ThisNamedColumnDataset}.column_name. This follows from the
+            # above templating.
+
+            this_named_column_dataset_bases = (__SWIFTNamedColumnDataset, object)
+            this_named_column_dataset_dict = {}
+
+            for index, column in enumerate(named_columns):
+                this_named_column_dataset_dict[column] = property(
+                    generate_getter_remote(
+                        server_address,
+                        session,
+                        filename,
+                        column,
+                        field_path,
+                        unit=field_unit,
+                        mask=mask_array,
+                        mask_size=mask_size,
+                        cosmo_factor=field_cosmology,
+                        description=f"{field_description} [Column {index}, {column}]",
+                        compression=field_compression,
+                        columns=np.s_[index],
+                    ),
+                    generate_setter(column),
+                    generate_deleter(column),
+                )
+
+            ThisNamedColumnDataset = type(
+                f"{particle_nice_name}{field_path.split('/')[-1]}Columns",
+                this_named_column_dataset_bases,
+                this_named_column_dataset_dict,
+            )
+
+            field_property = ThisNamedColumnDataset(
+                field_path=field_path, named_columns=named_columns, name=field_name
+            )
+
+        this_dataset_dict[field_name] = field_property
+
+    ThisDataset = type(
+        f"{particle_nice_name}Dataset", this_dataset_bases, this_dataset_dict
+    )
+    empty_dataset = ThisDataset(particle_metadata)
+
+    return empty_dataset
+
+
 class SWIFTDataset(object):
     """
     A collection object for:
@@ -1608,6 +1975,225 @@ class SWIFTDataset(object):
                 particle_name,
                 generate_dataset(
                     getattr(self.metadata, f"{particle_name}_properties"), self.mask
+                ),
+            )
+
+        return
+
+
+class RemoteSWIFTUnitsException(Exception):
+    pass
+
+
+class RemoteSWIFTDatasetException(Exception):
+    pass
+
+
+class RemoteSWIFTDataset:
+    """
+    A collection object for:
+
+    + SWIFTUnits,
+    + SWIFTMetadata,
+    + SWIFTParticleDataset
+
+    ...when requested remotely from the server.
+
+    This object, in essence, completely represents a SWIFT snapshot. You can access
+    the different particles as follows:
+
+    + SWIFTDataset.gas.particle_ids
+    + SWIFTDataset.dark_matter.masses
+    + SWIFTDataset.gas.smoothing_lengths
+
+    These arrays all have units that are determined by the unit system in the file.
+
+    The unit system is available as SWIFTDataset.units and the metadata as
+    SWIFTDataset.metadata.
+
+    Methods
+    -------
+    def get_units(self):
+        Loads the units from the SWIFT snapshot.
+    def get_metadata(self):
+        Loads the metadata from the SWIFT snapshot.
+    def create_particle_datasets(self):
+        Creates particle datasets for whatever particle types and names
+        are specified in metadata.particle_types.
+    """
+
+    def __init__(
+        self,
+        server_address: str,
+        username: str,
+        password: str,
+        simulation_alias=None,
+        filename=None,
+        mask=None,
+    ):
+        """
+        Constructor for SWIFTDataset class
+
+        One of simulation alias or filename should be set when initialising instances of this class.
+        
+        Parameters
+        ----------
+        server_address : str
+            Base URL of API serving HDF5 files.
+        username : str
+            VirgoDB username
+        password : str
+            VirgoDB password
+        simulation_alias : str, optional
+            The aliased name of a particular simulation.
+        filename : str, optional
+            Full path to file containing snapshot
+        mask : SWIFTMask, optional
+            Optional SWIFTMask object for data masking
+        """
+
+        self.server_address = server_address
+        self.simulation_alias = simulation_alias
+        self.filename = filename
+
+        self.session = requests.Session()
+        token_response = self.session.post(
+            f"{self.server_address}/token",
+            json={"username": username, "password": password},
+        )
+        token = token_response.json()["access_token"]
+
+        self.session.headers.update({"Authorization": f"Bearer {token}"})
+
+        if not self.filename and self.simulation_alias:
+            payload = {
+                "data_spec": {"alias": self.simulation_alias, "filename": self.filename}
+            }
+            filepath_response = self.session.post(
+                f"{self.server_address}/swiftdata/filepath", json=payload
+            )
+            self.filename = filepath_response.json()
+
+        self.mask = mask
+
+        if mask is not None:
+            self.mask.convert_masks_to_ranges()
+
+        self.get_units()
+        self.get_metadata()
+        self.create_particle_datasets()
+
+        return
+
+    def __str__(self):
+        """
+        Prints out some more useful information, rather than just
+        the memory location.
+        """
+
+        return f"SWIFT dataset at {self.filename}."
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def create_unyt_quantities_from_json(swift_unit_dict: dict) -> dict:
+        """
+        Converts strings to unyt quantities in a Unit object returned by the API.
+
+
+        Here we loop through all of the possible properties in the returned Units object.
+        We exclude the filename and 'units' fields, or anything that is not a string
+        representation of a quantity with units.
+
+        Parameters
+        ----------
+        swift_unit_dict : Dictionary containing quantities with units from the API
+        """
+        excluded_fields = ["filename", "units"]
+        try:
+            swift_unit_dict["units"] = {
+                key: unyt.unyt_quantity.from_string(value)
+                for key, value in swift_unit_dict["units"].items()
+            }
+            swift_unit_dict = {
+                key: (
+                    unyt.unyt_quantity.from_string(value)
+                    if key not in excluded_fields
+                    else value
+                )
+                for key, value in swift_unit_dict.items()
+            }
+        except KeyError as error:
+            message = f"Missing key {error} in units object"
+            raise RemoteSWIFTUnitsException(message) from error
+
+        return swift_unit_dict
+
+    def get_units(self):
+        """
+        Requests units from the SWIFT snapshot on the server side.
+
+        Ordinarily this happens automatically, but you can call
+        this function again if you mess things up.
+        """
+
+        # run some API call here with server address and credentials
+        # server-side processing returns SWIFTUnits
+        payload = {
+            "data_spec": {"alias": self.simulation_alias, "filename": self.filename}
+        }
+        units_response = self.session.post(
+            f"{self.server_address}/swiftdata/units_dict", json=payload
+        )
+        json_response = units_response.json()
+
+        units_dict = RemoteSWIFTDataset.create_unyt_quantities_from_json(json_response)
+
+        self.units = RemoteSWIFTUnits(units_dict)
+
+        return
+
+    def get_metadata(self):
+        """
+        Requests metadata from the SWIFT snapshot on the server side.
+
+        Ordinarily this happens automatically, but you can call
+        this function again if you mess things up.
+        """
+
+        payload = {
+            "data_spec": {"alias": self.simulation_alias, "filename": self.filename}
+        }
+        metadata_response = self.session.post(
+            f"{self.server_address}/swiftdata/metadata", json=payload
+        )
+        metadata_response_pickle = metadata_response.content
+
+        self.metadata = cloudpickle.loads(metadata_response_pickle)
+
+        return
+
+    def create_particle_datasets(self):
+        """
+        Creates particle datasets for whatever particle types and names
+        are specified in metadata.particle_types.
+
+        These can then be accessed using their underscore names, e.g. gas.
+        """
+
+        if not hasattr(self, "metadata"):
+            self.get_metadata()
+
+        for particle_name in self.metadata.present_particle_names:
+            setattr(
+                self,
+                particle_name,
+                generate_remote_dataset(
+                    getattr(self.metadata, f"{particle_name}_properties"),
+                    self.mask,
+                    self.server_address,
+                    self.session,
                 ),
             )
 
