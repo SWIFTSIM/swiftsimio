@@ -29,8 +29,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from typing import Union, Callable, List, Optional
-from pathlib import Path
+from typing import Union, List, Optional
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -1330,7 +1329,7 @@ def generate_getter_remote(
     use_columns = columns is not None
 
     if not use_columns:
-        columns = np.s_[:]
+        columns = None  # not like local default of np.s_[:]
 
     def getter(self):
         current_value = getattr(self, f"_{name}")
