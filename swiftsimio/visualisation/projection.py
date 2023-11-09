@@ -3,7 +3,7 @@ Calls functions from `projection_backends`.
 """
 
 from typing import Union
-from math import sqrt
+from math import sqrt, ceil
 from numpy import (
     float64,
     float32,
@@ -258,8 +258,8 @@ def project_pixel_grid(
         image = backends[backend](**common_arguments)
 
     # determine the effective number of pixels for each dimension
-    xres = int(resolution * x_range / max_range)
-    yres = int(resolution * y_range / max_range)
+    xres = int(ceil(resolution * (x_range / max_range)))
+    yres = int(ceil(resolution * (y_range / max_range)))
 
     # trim the image to remove empty pixels
     return image[:xres, :yres]
