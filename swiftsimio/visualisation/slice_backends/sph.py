@@ -8,11 +8,13 @@ from numpy import (
     ndarray,
 )
 
+from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
 
 # Taken from Dehnen & Aly 2012
 kernel_gamma = 1.936492
 kernel_constant = 21.0 * 0.31830988618379067154 / 2.0
+
 
 @jit(nopython=True, fastmath=True)
 def kernel(r: Union[float, float32], H: Union[float, float32]):
@@ -58,6 +60,27 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
     return kernel
 
 
+def get_hsml(data: SWIFTDataset) -> cosmo_array:
+    """
+    Extract the smoothing lengths from the gas particles (used for slicing).
+
+    Parameters
+    ----------
+    data : SWIFTDataset
+        The Dataset from which slice will be extracted
+
+    Returns
+    -------
+    The extracted smoothing lengths.
+    """
+    try:
+        hsml = data.gas.smoothing_lengths
+    except AttributeError:
+        # Backwards compatibility
+        hsml = data.gas.smoothing_length
+    return hsml
+
+
 @jit(nopython=True, fastmath=True)
 def slice_scatter(
     x: float64,
@@ -88,8 +111,10 @@ def slice_scatter(
         smoothing lengths of the particles
     z_slice : float64
         the position at which we wish to create the slice
-    res : int
-        the number of pixels.
+    xres : int
+        the number of pixels in the x-direction.
+    yres : int
+        the number of pixels in the y-direction.
     box_x: float64
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
@@ -118,6 +143,7 @@ def slice_scatter(
     floats and integers is also an improvement over using the numba ones.
     """
     # Output array for our image
+    res = int(max(xres, yres))
     image = zeros((res, res), dtype=float32)
     maximal_array_index = int32(res) - 1
 
@@ -216,7 +242,8 @@ def slice_scatter(
 
                             image[cell_x, cell_y] += mass * kernel_eval
 
-    return image
+    # trim the image to remove empty pixels
+    return image[:xres, :yres]
 
 
 @jit(nopython=True, fastmath=True, parallel=True)
@@ -251,8 +278,10 @@ def slice_scatter_parallel(
         smoothing lengths of the particles
     z_slice : float64
         the position at which we wish to create the slice
-    res : int
-        the number of pixels.
+    xres : int
+        the number of pixels in the x-direction.
+    yres : int
+        the number of pixels in the y-direction.
     box_x: float64
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
@@ -286,7 +315,7 @@ def slice_scatter_parallel(
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
 
-    output = zeros((res, res), dtype=float32)
+    output = zeros((xres, int(yres)), dtype=float32)
 
     for thread in prange(NUM_THREADS):
         # Left edge is easy, just start at 0 and go to 'final'
@@ -307,7 +336,8 @@ def slice_scatter_parallel(
             m=m[left_edge:right_edge],
             h=h[left_edge:right_edge],
             z_slice=z_slice,
-            res=res,
+            xres=xres,
+            yres=yres,
             box_x=box_x,
             box_y=box_y,
             box_z=box_z,

@@ -11,10 +11,12 @@ from numpy import (
 )
 from unyt import unyt_array, unyt_quantity
 from swiftsimio import SWIFTDataset, cosmo_array
-from swiftsimio.visualisation.projection_backends import backends, backends_parallel
+from swiftsimio.visualisation.slice_backends import backends, backends_parallel, backends_get_hsml
 
-slice_scatter = backends["fast"]
-slice_scatter_parallel = backends_parallel["fast"]
+from swiftsimio.visualisation.slice_backends.sph import (kernel, kernel_constant, kernel_gamma)
+
+slice_scatter = backends["sph"]
+slice_scatter_parallel = backends_parallel["sph"]
 
 
 def slice_gas_pixel_grid(
@@ -153,11 +155,7 @@ def slice_gas_pixel_grid(
 
         z_center = 0 * box_z
 
-    try:
-        hsml = data.gas.smoothing_lengths
-    except AttributeError:
-        # Backwards compatibility
-        hsml = data.gas.smoothing_length
+    hsml = backends_get_hsml[backend](data)
     if data.gas.coordinates.comoving:
         if not hsml.compatible_with_comoving():
             raise AttributeError(
@@ -178,6 +176,10 @@ def slice_gas_pixel_grid(
         periodic_box_y = 0.0
         periodic_box_z = 0.0
 
+    # determine the effective number of pixels for each dimension
+    xres = int(resolution * x_range / max_range)
+    yres = int(resolution * y_range / max_range)
+
     common_parameters = dict(
         x=(x - x_min) / max_range,
         y=(y - y_min) / max_range,
@@ -185,23 +187,19 @@ def slice_gas_pixel_grid(
         m=m,
         h=hsml / max_range,
         z_slice=(z_center + z_slice) / max_range,
-        res=resolution,
+        xres=xres,
+        yres=yres,
         box_x=periodic_box_x,
         box_y=periodic_box_y,
         box_z=periodic_box_z,
     )
 
     if parallel:
-        image = backends[backend](**common_parameters)
-    else:
         image = backends_parallel[backend](**common_parameters)
+    else:
+        image = backends[backend](**common_parameters)
 
-    # determine the effective number of pixels for each dimension
-    xres = int(resolution * x_range / max_range)
-    yres = int(resolution * y_range / max_range)
-
-    # trim the image to remove empty pixels
-    return image[:xres, :yres]
+    return image
 
 
 def slice_gas(
