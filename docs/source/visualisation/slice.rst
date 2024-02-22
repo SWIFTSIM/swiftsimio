@@ -5,7 +5,7 @@ The :mod:`swiftsimio.visualisation.slice` sub-module provides an interface
 to render SWIFT data onto a slice. This takes your 3D data and finds the 3D
 density at fixed z-position, slicing through the box.
 
-This effectively solves the equation:
+The default :code:`"sph"` backend effectively solves the equation:
 
 :math:`\tilde{A}_i = \sum_j A_j W_{ij, 3D}`
 
@@ -13,6 +13,10 @@ with :math:`\tilde{A}_i` the smoothed quantity in pixel :math:`i`, and
 :math:`j` all particles in the simulation, with :math:`W` the 3D kernel.
 Here we use the Wendland-C2 kernel. Note that here we take the kernel
 at a fixed z-position.
+
+There is also an alternative :code:`"nearest_neighbors"` backend, which uses
+nearest-neighbor interpolation to compute the densities at each pixel.
+This backend is more suited for use with moving-mesh hydrodynamics schemes.
 
 The primary function here is
 :meth:`swiftsimio.visualisation.slice.slice_gas`, which allows you to

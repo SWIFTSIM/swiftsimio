@@ -81,7 +81,7 @@ def slice_gas_pixel_grid(
         smoothing lengths overlap with the range.
 
     backend : str, optional
-        Backend to use. Choices are "sph" for interpolation using kernel weights or
+        Backend to use. Choices are "sph" (default) for interpolation using kernel weights or
         "nearest_neighbours" for nearest neighbour interpolation.
 
     periodic : bool, optional
