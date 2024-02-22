@@ -12,7 +12,14 @@ from swiftsimio.visualisation.slice import (
     slice_gas,
 )
 from swiftsimio.visualisation.volume_render import render_gas
-from swiftsimio.visualisation.projection_backends import backends, backends_parallel
+from swiftsimio.visualisation.projection_backends import (
+    backends as projection_backends,
+    backends_parallel as projection_backends_parallel,
+)
+from swiftsimio.visualisation.slice_backends import (
+    backends as slice_backends,
+    backends_parallel as slice_backends_parallel,
+)
 from swiftsimio.visualisation.smoothing_length_generation import (
     generate_smoothing_lengths,
 )
@@ -36,9 +43,9 @@ def test_scatter(save=False):
     Tests the scatter functions from all backends.
     """
 
-    for backend in backends.keys():
+    for backend in projection_backends.keys():
         try:
-            image = backends[backend](
+            image = projection_backends[backend](
                 np.array([0.0, 1.0, 1.0, -0.000001]),
                 np.array([0.0, 0.0, 1.0, 1.000001]),
                 np.array([1.0, 1.0, 1.0, 1.0]),
@@ -150,35 +157,38 @@ def test_slice_parallel(save=False):
     hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
     masses = np.ones(number_of_parts, dtype=np.float32)
 
-    image = slice(
-        coordinates[0],
-        coordinates[1],
-        coordinates[2],
-        masses,
-        hsml,
-        z_slice,
-        resolution,
-        1.0,
-        1.0,
-        1.0,
-    )
-    image_par = slice_scatter_parallel(
-        coordinates[0],
-        coordinates[1],
-        coordinates[2],
-        masses,
-        hsml,
-        z_slice,
-        resolution,
-        1.0,
-        1.0,
-        1.0,
-    )
+    for backend in slice_backends.keys():
+        image = slice_backends[backend](
+            coordinates[0],
+            coordinates[1],
+            coordinates[2],
+            masses,
+            hsml,
+            z_slice,
+            resolution,
+            resolution,
+            1.0,
+            1.0,
+            1.0,
+        )
+        image_par = slice_backends_parallel[backend](
+            coordinates[0],
+            coordinates[1],
+            coordinates[2],
+            masses,
+            hsml,
+            z_slice,
+            resolution,
+            resolution,
+            1.0,
+            1.0,
+            1.0,
+        )
+
+        assert np.isclose(image, image_par).all()
 
     if save:
         imsave("test_image_creation.png", image)
-
-    assert np.isclose(image, image_par).all()
 
     return
 
@@ -298,11 +308,11 @@ def test_render_outside_region():
     h = 10 ** np.random.rand(number_of_parts) - 1.0
     h[h > 0.5] = 0.05
     m = np.ones_like(h)
-    backends["histogram"](x, y, m, h, resolution, 1.0, 1.0)
+    projection_backends["histogram"](x, y, m, h, resolution, 1.0, 1.0)
 
-    for backend in backends_parallel.keys():
+    for backend in projection_backends.keys():
         try:
-            backends[backend](x, y, m, h, resolution, 1.0, 1.0)
+            projection_backends[backend](x, y, m, h, resolution, 1.0, 1.0)
         except CudaSupportError:
             if CUDA_AVAILABLE:
                 raise ImportError("Optional loading of the CUDA module is broken")
@@ -411,9 +421,9 @@ def test_periodic_boundary_wrapping():
     masses_non_periodic = np.array([1.0, 1.0])
 
     # test the projection backends scatter functions
-    for backend in backends.keys():
+    for backend in projection_backends.keys():
         try:
-            image1 = backends[backend](
+            image1 = projection_backends[backend](
                 x=coordinates_periodic[:, 0],
                 y=coordinates_periodic[:, 1],
                 m=masses_periodic,
@@ -422,7 +432,7 @@ def test_periodic_boundary_wrapping():
                 box_x=boxsize,
                 box_y=boxsize,
             )
-            image2 = backends[backend](
+            image2 = projection_backends[backend](
                 x=coordinates_non_periodic[:, 0],
                 y=coordinates_non_periodic[:, 1],
                 m=masses_non_periodic,
@@ -439,32 +449,35 @@ def test_periodic_boundary_wrapping():
                 continue
 
     # test the slice scatter function
-    image1 = slice_scatter(
-        x=coordinates_periodic[:, 0],
-        y=coordinates_periodic[:, 1],
-        z=coordinates_periodic[:, 2],
-        m=masses_periodic,
-        h=hsml_periodic,
-        z_slice=0.5,
-        res=pixel_resolution,
-        box_x=boxsize,
-        box_y=boxsize,
-        box_z=boxsize,
-    )
-    image2 = slice_scatter(
-        x=coordinates_non_periodic[:, 0],
-        y=coordinates_non_periodic[:, 1],
-        z=coordinates_non_periodic[:, 2],
-        m=masses_non_periodic,
-        h=hsml_non_periodic,
-        z_slice=0.5,
-        res=pixel_resolution,
-        box_x=0.0,
-        box_y=0.0,
-        box_z=0.0,
-    )
+    for backend in slice_backends.keys():
+        image1 = slice_backends[backend](
+            x=coordinates_periodic[:, 0],
+            y=coordinates_periodic[:, 1],
+            z=coordinates_periodic[:, 2],
+            m=masses_periodic,
+            h=hsml_periodic,
+            z_slice=0.5,
+            xres=pixel_resolution,
+            yres=pixel_resolution,
+            box_x=boxsize,
+            box_y=boxsize,
+            box_z=boxsize,
+        )
+        image2 = slice_backends[backend](
+            x=coordinates_non_periodic[:, 0],
+            y=coordinates_non_periodic[:, 1],
+            z=coordinates_non_periodic[:, 2],
+            m=masses_non_periodic,
+            h=hsml_non_periodic,
+            z_slice=0.5,
+            xres=pixel_resolution,
+            yres=pixel_resolution,
+            box_x=0.0,
+            box_y=0.0,
+            box_z=0.0,
+        )
 
-    assert (image1 == image2).all()
+        assert (image1 == image2).all()
 
     # test the volume rendering scatter function
     image1 = volume_render.scatter(
