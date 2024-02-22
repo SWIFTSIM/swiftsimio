@@ -9,10 +9,7 @@ from swiftsimio.visualisation.slice_backends.nearest_neighbors import (
     get_hsml as nearest_neighbors_get_hsml,
 )
 
-backends = {
-    "sph": sph,
-    "nearest_neighbors": nearest_neighbors,
-}
+backends = {"sph": sph, "nearest_neighbors": nearest_neighbors}
 
 backends_parallel = {
     "sph": sph_parallel,

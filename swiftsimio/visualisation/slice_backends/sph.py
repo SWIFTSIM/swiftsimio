@@ -1,12 +1,6 @@
 from typing import Union
 from math import sqrt
-from numpy import (
-    float64,
-    float32,
-    int32,
-    zeros,
-    ndarray,
-)
+from numpy import float64, float32, int32, zeros, ndarray
 
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.accelerated import jit, prange, NUM_THREADS

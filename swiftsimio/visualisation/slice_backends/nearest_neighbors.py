@@ -1,19 +1,13 @@
-from numpy import (
-    float64,
-    float32,
-    ndarray,
-    linspace,
-    array,
-    stack,
-    meshgrid,
-)
+from numpy import float64, float32, ndarray, linspace, array, stack, meshgrid
 
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 from swiftsimio.visualisation.slice_backends.sph import get_hsml as sph_get_hsml
 
 
-def _build_tree(x: float64, y: float64, z: float64, box_x: float64, box_y: float64, box_z: float64) -> KDTree:
+def _build_tree(
+    x: float64, y: float64, z: float64, box_x: float64, box_y: float64, box_z: float64
+) -> KDTree:
     """
     Build the tree used for the nearest-neighbor calculations.
     In the periodic case, we must make sure that all particle coordinates fall inside the box.
@@ -43,7 +37,7 @@ def _build_tree(x: float64, y: float64, z: float64, box_x: float64, box_y: float
     """
     if not TREE_AVAILABLE:
         raise ImportError(
-            "The scipy.spatial.cKDTree class is required to use the \"nearest_neighbors\" slice backend."
+            'The scipy.spatial.cKDTree class is required to use the "nearest_neighbors" slice backend.'
         )
     if box_x != 0 or box_y != 0 or box_z != 0:
         if box_x != 0:
@@ -60,18 +54,18 @@ def _build_tree(x: float64, y: float64, z: float64, box_x: float64, box_y: float
 
 
 def _slice_scatter(
-        x: float64,
-        y: float64,
-        z: float64,
-        m: float32,
-        h: float32,
-        z_slice: float64,
-        xres: int,
-        yres: int,
-        box_x: float64 = 0.0,
-        box_y: float64 = 0.0,
-        box_z: float64 = 0.0,
-        workers: int = 1,
+    x: float64,
+    y: float64,
+    z: float64,
+    m: float32,
+    h: float32,
+    z_slice: float64,
+    xres: int,
+    yres: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+    box_z: float64 = 0.0,
+    workers: int = 1,
 ) -> ndarray:
     """
     The actual implementation of slice_scatter and slice_scatter_parallel below. See those for more info.
@@ -88,12 +82,18 @@ def _slice_scatter(
     """
 
     res = max(xres, yres)
-    pixel_coordinates = stack([arr.ravel() for arr in meshgrid(
-        linspace(0, xres / res, xres) + 0.5 / res,
-        linspace(0, yres / res, yres) + 0.5 / res,
-        array([z_slice, ]),
-        indexing="ij"
-    )], axis=1)
+    pixel_coordinates = stack(
+        [
+            arr.ravel()
+            for arr in meshgrid(
+                linspace(0, xres / res, xres) + 0.5 / res,
+                linspace(0, yres / res, yres) + 0.5 / res,
+                array([z_slice]),
+                indexing="ij",
+            )
+        ],
+        axis=1,
+    )
 
     tree = _build_tree(x, y, z, box_x, box_y, box_z)
     _, i = tree.query(pixel_coordinates, workers=workers)
@@ -117,13 +117,13 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
     The extracted "smoothing lengths".
     """
     try:
-        hsml = np.power(data.gas.volume, 1. / 3.)
+        hsml = np.power(data.gas.volume, 1.0 / 3.0)
     except AttributeError:
         try:
             # Try computing the volumes explicitly?
             masses = data.gas.masses
             densities = data.gas.densities
-            hsml = np.power(masses / densities, 1. / 3.)
+            hsml = np.power(masses / densities, 1.0 / 3.0)
         except AttributeError:
             # Fall back to SPH behavior if above didn't work...
             hsml = sph_get_hsml(data)
@@ -131,17 +131,17 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
 
 
 def slice_scatter(
-        x: float64,
-        y: float64,
-        z: float64,
-        m: float32,
-        h: float32,
-        z_slice: float64,
-        xres: int,
-        yres: int,
-        box_x: float64 = 0.0,
-        box_y: float64 = 0.0,
-        box_z: float64 = 0.0,
+    x: float64,
+    y: float64,
+    z: float64,
+    m: float32,
+    h: float32,
+    z_slice: float64,
+    xres: int,
+    yres: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+    box_z: float64 = 0.0,
 ) -> ndarray:
     """
     Creates a scatter plot of the given quantities for a particles in a data slice.
@@ -197,22 +197,22 @@ def slice_scatter(
         box_x=box_x,
         box_y=box_y,
         box_z=box_z,
-        workers=1
+        workers=1,
     )
 
 
 def slice_scatter_parallel(
-        x: float64,
-        y: float64,
-        z: float64,
-        m: float32,
-        h: float32,
-        z_slice: float64,
-        xres: int,
-        yres: int,
-        box_x: float64 = 0.0,
-        box_y: float64 = 0.0,
-        box_z: float64 = 0.0,
+    x: float64,
+    y: float64,
+    z: float64,
+    m: float32,
+    h: float32,
+    z_slice: float64,
+    xres: int,
+    yres: int,
+    box_x: float64 = 0.0,
+    box_y: float64 = 0.0,
+    box_z: float64 = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of slice_scatter
@@ -270,5 +270,5 @@ def slice_scatter_parallel(
         box_x=box_x,
         box_y=box_y,
         box_z=box_z,
-        workers=-1
+        workers=-1,
     )

@@ -3,17 +3,20 @@ Sub-module for slice plots in SWFITSIMio.
 """
 
 from typing import Union, Optional
-from numpy import (
-    float32,
-    array,
-    ones,
-    matmul,
-)
+from numpy import float32, array, ones, matmul
 from unyt import unyt_array, unyt_quantity
 from swiftsimio import SWIFTDataset, cosmo_array
-from swiftsimio.visualisation.slice_backends import backends, backends_parallel, backends_get_hsml
+from swiftsimio.visualisation.slice_backends import (
+    backends,
+    backends_parallel,
+    backends_get_hsml,
+)
 
-from swiftsimio.visualisation.slice_backends.sph import (kernel, kernel_constant, kernel_gamma)
+from swiftsimio.visualisation.slice_backends.sph import (
+    kernel,
+    kernel_constant,
+    kernel_gamma,
+)
 
 slice_scatter = backends["sph"]
 slice_scatter_parallel = backends_parallel["sph"]
