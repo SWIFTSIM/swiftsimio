@@ -1,4 +1,4 @@
-from numpy import float64, float32, ndarray, linspace, array, stack, meshgrid
+from numpy import float64, float32, ndarray, linspace, array, stack, meshgrid, power
 
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
@@ -117,13 +117,13 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
     The extracted "smoothing lengths".
     """
     try:
-        hsml = np.power(data.gas.volume, 1.0 / 3.0)
+        hsml = power(data.gas.volume, 1.0 / 3.0)
     except AttributeError:
         try:
             # Try computing the volumes explicitly?
             masses = data.gas.masses
             densities = data.gas.densities
-            hsml = np.power(masses / densities, 1.0 / 3.0)
+            hsml = power(masses / densities, 1.0 / 3.0)
         except AttributeError:
             # Fall back to SPH behavior if above didn't work...
             hsml = sph_get_hsml(data)
