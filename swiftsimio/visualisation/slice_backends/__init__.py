@@ -1,3 +1,7 @@
+"""
+Backends for density slicing.
+"""
+
 from swiftsimio.visualisation.slice_backends.sph import (
     slice_scatter as sph,
     slice_scatter_parallel as sph_parallel,
