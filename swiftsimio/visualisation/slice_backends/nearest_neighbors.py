@@ -6,7 +6,7 @@ from swiftsimio.visualisation.slice_backends.sph import get_hsml as sph_get_hsml
 
 
 def build_tree(
-        x: float64, y: float64, z: float64, box_x: float, box_y: float, box_z: float
+    x: float64, y: float64, z: float64, box_x: float, box_y: float, box_z: float
 ) -> KDTree:
     """
     Build the tree used for the nearest-neighbor calculations.
@@ -147,11 +147,11 @@ def slice_scatter(
         [
             arr.ravel()
             for arr in meshgrid(
-            linspace(0, xres / res, xres) + 0.5 / res,
-            linspace(0, yres / res, yres) + 0.5 / res,
-            array([z_slice]),
-            indexing="ij",
-        )
+                linspace(0, xres / res, xres) + 0.5 / res,
+                linspace(0, yres / res, yres) + 0.5 / res,
+                array([z_slice]),
+                indexing="ij",
+            )
         ],
         axis=1,
     )
