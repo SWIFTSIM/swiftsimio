@@ -53,55 +53,6 @@ def _build_tree(
         return KDTree(data)
 
 
-def _slice_scatter(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
-    z_slice: float64,
-    xres: int,
-    yres: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
-    workers: int = 1,
-) -> ndarray:
-    """
-    The actual implementation of slice_scatter and slice_scatter_parallel below. See those for more info.
-
-    Parameters
-    ----------
-    workers : int
-        The number of workers to use for the nearest-neighbor calculations. Set to -1 to use all available cpus.
-
-    Returns
-    -------
-    ndarray of float32
-        output array for scatterplot image
-    """
-
-    res = max(xres, yres)
-    pixel_coordinates = stack(
-        [
-            arr.ravel()
-            for arr in meshgrid(
-                linspace(0, xres / res, xres) + 0.5 / res,
-                linspace(0, yres / res, yres) + 0.5 / res,
-                array([z_slice]),
-                indexing="ij",
-            )
-        ],
-        axis=1,
-    )
-
-    tree = _build_tree(x, y, z, box_x, box_y, box_z)
-    _, i = tree.query(pixel_coordinates, workers=workers)
-
-    values = m / h ** 3
-    return values[i].reshape(xres, yres)
-
-
 def get_hsml(data: SWIFTDataset) -> cosmo_array:
     """
     Computes a "smoothing length" as the 3rd root of the volume of the particles.
@@ -142,6 +93,7 @@ def slice_scatter(
     box_x: float64 = 0.0,
     box_y: float64 = 0.0,
     box_z: float64 = 0.0,
+    workers: int = 1,
 ) -> ndarray:
     """
     Creates a scatter plot of the given quantities for a particles in a data slice.
@@ -173,6 +125,9 @@ def slice_scatter(
     box_z: float64
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
+    workers : int
+        The number of workers to use for the nearest-neighbor calculations.
+        Set to -1 to use all available cpus.
 
     Returns
     -------
@@ -185,20 +140,25 @@ def slice_scatter(
     scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
     slice_scatter_parallel : Create scatter plot of a slice of data in parallel
     """
-    return _slice_scatter(
-        x=x,
-        y=y,
-        z=z,
-        m=m,
-        h=h,
-        z_slice=z_slice,
-        xres=xres,
-        yres=yres,
-        box_x=box_x,
-        box_y=box_y,
-        box_z=box_z,
-        workers=1,
+    res = max(xres, yres)
+    pixel_coordinates = stack(
+        [
+            arr.ravel()
+            for arr in meshgrid(
+            linspace(0, xres / res, xres) + 0.5 / res,
+            linspace(0, yres / res, yres) + 0.5 / res,
+            array([z_slice]),
+            indexing="ij",
+        )
+        ],
+        axis=1,
     )
+
+    tree = _build_tree(x, y, z, box_x, box_y, box_z)
+    _, i = tree.query(pixel_coordinates, workers=workers)
+
+    values = m / h ** 3
+    return values[i].reshape(xres, yres)
 
 
 def slice_scatter_parallel(
@@ -258,7 +218,7 @@ def slice_scatter_parallel(
     scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
     slice_scatter_parallel : Create scatter plot of a slice of data in parallel
     """
-    return _slice_scatter(
+    return slice_scatter(
         x=x,
         y=y,
         z=z,
