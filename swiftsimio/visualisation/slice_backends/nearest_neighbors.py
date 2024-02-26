@@ -6,11 +6,12 @@ from swiftsimio.visualisation.slice_backends.sph import get_hsml as sph_get_hsml
 
 
 def _build_tree(
-    x: float64, y: float64, z: float64, box_x: float64, box_y: float64, box_z: float64
+        x: float64, y: float64, z: float64, box_x: float, box_y: float, box_z: float
 ) -> KDTree:
     """
     Build the tree used for the nearest-neighbor calculations.
-    In the periodic case, we must make sure that all particle coordinates fall inside the box.
+    In the periodic case, we must make sure that all particle coordinates
+    fall inside the box.
 
     Parameters
     ----------
@@ -20,13 +21,13 @@ def _build_tree(
         y-positions of the particles. Must be bounded by [0, 1].
     z : array of float64
         z-positions of the particles. Must be bounded by [0, 1].
-    box_x: float64
+    box_x: float
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_y: float64
+    box_y: float
         box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_z: float64
+    box_z: float
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
@@ -90,9 +91,9 @@ def slice_scatter(
     z_slice: float64,
     xres: int,
     yres: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
+    box_x: float = 0.0,
+    box_y: float = 0.0,
+    box_z: float = 0.0,
     workers: int = 1,
 ) -> ndarray:
     """
@@ -116,13 +117,13 @@ def slice_scatter(
         the number of pixels in x direction.
     yres : int
         the number of pixels in the y direction.
-    box_x: float64
+    box_x: float
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_y: float64
+    box_y: float
         box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_z: float64
+    box_z: float
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
     workers : int
@@ -170,9 +171,9 @@ def slice_scatter_parallel(
     z_slice: float64,
     xres: int,
     yres: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
+    box_x: float = 0.0,
+    box_y: float = 0.0,
+    box_z: float = 0.0,
 ) -> ndarray:
     """
     Parallel implementation of slice_scatter
@@ -197,13 +198,13 @@ def slice_scatter_parallel(
         the number of pixels in x direction.
     yres : int
         the number of pixels in the y direction.
-    box_x: float64
+    box_x: float
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_y: float64
+    box_y: float
         box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_z: float64
+    box_z: float
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
