@@ -5,7 +5,7 @@ from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 from swiftsimio.visualisation.slice_backends.sph import get_hsml as sph_get_hsml
 
 
-def _build_tree(
+def build_tree(
         x: float64, y: float64, z: float64, box_x: float, box_y: float, box_z: float
 ) -> KDTree:
     """
@@ -156,7 +156,7 @@ def slice_scatter(
         axis=1,
     )
 
-    tree = _build_tree(x, y, z, box_x, box_y, box_z)
+    tree = build_tree(x, y, z, box_x, box_y, box_z)
     _, i = tree.query(pixel_coordinates, workers=workers)
 
     values = m / h ** 3
