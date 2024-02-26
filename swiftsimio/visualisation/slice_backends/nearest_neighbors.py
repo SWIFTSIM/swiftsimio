@@ -38,7 +38,8 @@ def _build_tree(
     """
     if not TREE_AVAILABLE:
         raise ImportError(
-            'The scipy.spatial.cKDTree class is required to use the "nearest_neighbors" slice backend.'
+            "The scipy.spatial.cKDTree class is required to use the "
+            "'nearest_neighbors' slice backend."
         )
     if box_x != 0 or box_y != 0 or box_z != 0:
         if box_x != 0:
