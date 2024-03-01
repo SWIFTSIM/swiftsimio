@@ -98,7 +98,8 @@ def slice_scatter(
     workers: int = 1,
 ) -> ndarray:
     """
-    Creates a scatter plot of the given quantities for a particles in a data slice.
+    Creates a 2D numpy array (image) of the given quantities of all particles in
+    a data slice including periodic boundary effects.
 
     Parameters
     ----------
@@ -134,7 +135,7 @@ def slice_scatter(
     Returns
     -------
     ndarray of float32
-        output array for scatterplot image
+        output array for the slice image
 
     See Also
     --------
@@ -179,7 +180,8 @@ def slice_scatter_parallel(
     """
     Parallel implementation of slice_scatter
 
-    Creates a scatter plot of the given quantities for a particles in a data slice including periodic boundary effects.
+    Creates a 2D numpy array (image) of the given quantities of all particles in
+    a data slice including periodic boundary effects.
 
     Parameters
     ----------
@@ -212,7 +214,7 @@ def slice_scatter_parallel(
     Returns
     -------
     ndarray of float32
-        output array for scatterplot image
+        output array for the slice image
 
     See Also
     --------
