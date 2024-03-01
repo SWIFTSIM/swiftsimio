@@ -3,12 +3,13 @@ Routines for generating (approximate) smoothing lengths for particles
 that do not usually carry a smoothing length field (e.g. dark matter).
 """
 
-from swiftsimio.objects import cosmo_array
-from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
+from typing import Union
 from unyt import unyt_array
 from numpy import empty, float32
 
-from typing import Union
+from swiftsimio import SWIFTDataset, cosmo_array
+from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
+from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 
 
 def generate_smoothing_lengths(

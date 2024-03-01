@@ -20,9 +20,7 @@ from swiftsimio.visualisation.slice_backends import (
     backends as slice_backends,
     backends_parallel as slice_backends_parallel,
 )
-from swiftsimio.visualisation.smoothing_length_generation import (
-    generate_smoothing_lengths,
-)
+from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
 from swiftsimio.objects import cosmo_array, a
 from unyt.array import unyt_array

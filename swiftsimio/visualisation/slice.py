@@ -6,11 +6,8 @@ from typing import Union, Optional
 from numpy import float32, array, ones, matmul
 from unyt import unyt_array, unyt_quantity
 from swiftsimio import SWIFTDataset, cosmo_array
-from swiftsimio.visualisation.slice_backends import (
-    backends,
-    backends_parallel,
-    backends_get_hsml,
-)
+from swiftsimio.visualisation.slice_backends import backends, backends_parallel
+from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 
 from swiftsimio.visualisation.slice_backends.sph import (
     kernel,

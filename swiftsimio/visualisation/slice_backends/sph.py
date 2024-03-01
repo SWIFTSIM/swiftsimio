@@ -2,8 +2,8 @@ from typing import Union
 from math import sqrt
 from numpy import float64, float32, int32, zeros, ndarray
 
-from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
+
 
 # Taken from Dehnen & Aly 2012
 kernel_gamma = 1.936492
@@ -52,27 +52,6 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
         kernel *= kernel_constant * inverse_H * inverse_H * inverse_H
 
     return kernel
-
-
-def get_hsml(data: SWIFTDataset) -> cosmo_array:
-    """
-    Extract the smoothing lengths from the gas particles (used for slicing).
-
-    Parameters
-    ----------
-    data : SWIFTDataset
-        The Dataset from which slice will be extracted
-
-    Returns
-    -------
-    The extracted smoothing lengths.
-    """
-    try:
-        hsml = data.gas.smoothing_lengths
-    except AttributeError:
-        # Backwards compatibility
-        hsml = data.gas.smoothing_length
-    return hsml
 
 
 @jit(nopython=True, fastmath=True)
