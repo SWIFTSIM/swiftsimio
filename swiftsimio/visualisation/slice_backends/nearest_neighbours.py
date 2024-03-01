@@ -7,7 +7,7 @@ def build_tree(
     x: float64, y: float64, z: float64, box_x: float, box_y: float, box_z: float
 ) -> KDTree:
     """
-    Build the tree used for the nearest-neighbor calculations.
+    Build the tree used for the nearest-neighbour calculations.
     In the periodic case, we must make sure that all particle coordinates
     fall inside the box.
 
@@ -37,7 +37,7 @@ def build_tree(
     if not TREE_AVAILABLE:
         raise ImportError(
             "The scipy.spatial.cKDTree class is required to use the "
-            "'nearest_neighbors' slice backend."
+            "'nearest_neighbours' slice backend."
         )
     if box_x != 0 or box_y != 0 or box_z != 0:
         if box_x != 0:
@@ -99,7 +99,7 @@ def slice_scatter(
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
     workers : int
-        The number of workers to use for the nearest-neighbor calculations.
+        The number of workers to use for the nearest-neighbour calculations.
         Set to -1 to use all available cpus.
 
     Returns

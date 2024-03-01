@@ -14,8 +14,8 @@ with :math:`\tilde{A}_i` the smoothed quantity in pixel :math:`i`, and
 Here we use the Wendland-C2 kernel. Note that here we take the kernel
 at a fixed z-position.
 
-There is also an alternative :code:`"nearest_neighbors"` backend, which uses
-nearest-neighbor interpolation to compute the densities at each pixel.
+There is also an alternative :code:`"nearest_neighbours"` backend, which uses
+nearest-neighbour interpolation to compute the densities at each pixel.
 This backend is more suited for use with moving-mesh hydrodynamics schemes.
 
 The primary function here is
