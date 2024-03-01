@@ -23,13 +23,13 @@ def build_tree(
         z-positions of the particles. Must be bounded by [0, 1].
     box_x: float
         box size in x, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
     box_y: float
         box size in y, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
     box_z: float
         box size in z, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
 
     Returns
     -------
@@ -120,13 +120,13 @@ def slice_scatter(
         the number of pixels in the y direction.
     box_x: float
         box size in x, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
     box_y: float
         box size in y, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
     box_z: float
         box size in z, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
     workers : int
         The number of workers to use for the nearest-neighbor calculations.
         Set to -1 to use all available cpus.
@@ -201,13 +201,13 @@ def slice_scatter_parallel(
         the number of pixels in the y direction.
     box_x: float
         box size in x, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
     box_y: float
         box size in y, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
     box_z: float
         box size in z, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping.
+        Used for periodic wrapping (if not 0).
 
     Returns
     -------
