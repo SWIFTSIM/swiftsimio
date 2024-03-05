@@ -41,6 +41,7 @@ from numpy import (
     expm1,
     log1p,
     sqrt,
+    # cbrt,  # TODO: Needs upstream (unyt) support first
     square,
     reciprocal,
     sin,
@@ -218,6 +219,10 @@ def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
 
 def _square_cosmo_factor(ca_cf, **kwargs):
     return _power_cosmo_factor(ca_cf, (False, None), power=2)
+
+
+def _cbrt_cosmo_factor(ca_cf, **kwargs):
+    return _power_cosmo_factor(ca_cf, (False, None), power=1. / 3.)
 
 
 def _divide_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
@@ -640,6 +645,7 @@ class cosmo_array(unyt_array):
         log1p: _return_without_cosmo_factor,
         sqrt: _sqrt_cosmo_factor,
         square: _square_cosmo_factor,
+        # cbrt: _cbrt_cosmo_factor,  # TODO: Needs upstream (unyt) support first
         reciprocal: _reciprocal_cosmo_factor,
         sin: _return_without_cosmo_factor,
         cos: _return_without_cosmo_factor,
