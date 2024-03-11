@@ -24,9 +24,12 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
         volumes = data.gas.volumes
         units = (hasattr(volumes, "units"), getattr(volumes, "units", None))
         comoving = getattr(volumes, "comoving", None)
-        cosmo_factor = (hasattr(volumes, "cosmo_factor"), getattr(volumes, "cosmo_factor", None))
+        cosmo_factor = (
+            hasattr(volumes, "cosmo_factor"),
+            getattr(volumes, "cosmo_factor", None),
+        )
         if units[0]:
-            units_hsml = units[1] ** (1. / 3.)
+            units_hsml = units[1] ** (1.0 / 3.0)
         else:
             units_hsml = None
         hsml = cosmo_array(

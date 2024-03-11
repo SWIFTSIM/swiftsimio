@@ -222,7 +222,7 @@ def _square_cosmo_factor(ca_cf, **kwargs):
 
 
 def _cbrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=1. / 3.)
+    return _power_cosmo_factor(ca_cf, (False, None), power=1.0 / 3.0)
 
 
 def _divide_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
