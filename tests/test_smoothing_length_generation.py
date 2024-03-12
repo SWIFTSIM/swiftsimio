@@ -3,9 +3,7 @@ Tests the smoothing length generation code.
 """
 
 from swiftsimio import load
-from swiftsimio.visualisation.smoothing_length_generation import (
-    generate_smoothing_lengths,
-)
+from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 from tests.helper import requires
 
 from numpy import isclose
