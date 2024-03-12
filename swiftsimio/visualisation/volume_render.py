@@ -113,7 +113,7 @@ def scatter(
     drop_to_single_cell = pixel_width * 0.5
 
     # Pre-calculate this constant for use with the above
-    inverse_cell_volume = res * res * res
+    inverse_cell_volume = float_res * float_res * float_res
 
     if box_x == 0.0:
         xshift_min = 0
