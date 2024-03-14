@@ -616,7 +616,7 @@ def test_dark_matter_power_spectrum(filename, save=True):
     for folding in [8.0, 64.0]:#, 8.0, 512.0]:
         # Deposit the particles
         deposition = render_to_deposit(
-            data.dark_matter, 256, project="masses", folding=folding, parallel=False
+            data.dark_matter, 128, project="masses", folding=folding, parallel=False
         ).to("Msun / Mpc**3")
 
         # Calculate the power spectrum
@@ -633,7 +633,7 @@ def test_dark_matter_power_spectrum(filename, save=True):
             plt.plot(k, power_spectrum, label=f"Npix {npix}")
 
         for fold_id, (k, power_spectrum) in folding_output.items():
-            plt.plot(k, power_spectrum, label=f"Fold {fold_id} (Npix 256)", ls='dotted')
+            plt.plot(k, power_spectrum, label=f"Fold {fold_id} (Npix 128)", ls='dotted')
         plt.xlabel("k")
         plt.loglog()
         plt.axvline(2 * np.pi / data.metadata.boxsize[0].to("Mpc"), color="black", linestyle="--")

@@ -283,8 +283,8 @@ def deposition_to_power_spectrum(deposition: ndarray, box_size: cosmo_array, fol
     mean_deposition = np.mean(deposition.v)
     overdensity = (deposition.v - mean_deposition) / mean_deposition
 
-    fft = np.fft.fftn(overdensity)
-    fourier_amplitudes = (fft * fft.conj()).real
+    fft = np.fft.fftn(overdensity / np.prod(deposition.shape))
+    fourier_amplitudes = (fft * fft.conj()).real * box_size ** 3
 
     kfreq = np.fft.fftfreq(n=npix, d=pixel_size)
 
@@ -311,7 +311,6 @@ def deposition_to_power_spectrum(deposition: ndarray, box_size: cosmo_array, fol
         / np.histogram(knrm, bins=kbins)[0]
     )
     
-    # power_spectrum *= (4.0 / 3.0 * np.pi * (kbins[1:] ** 3 - kbins[:-1] ** 3))
     power_spectrum *= folding ** 3
 
-    return kvals, power_spectrum / np.prod(deposition.shape)
+    return kvals, power_spectrum
