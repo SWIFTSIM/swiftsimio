@@ -4,6 +4,7 @@ Tools for creating power spectra from SWIFT data.
 
 from numpy import float32, float64, int32, zeros, ndarray
 import numpy as np
+import unyt
 
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array
@@ -282,16 +283,24 @@ def deposition_to_power_spectrum(deposition: ndarray, box_size: cosmo_array, fol
     mean_deposition = np.mean(deposition.v)
     overdensity = (deposition.v - mean_deposition) / mean_deposition
 
-    fourier_amplitudes = np.abs(np.fft.fftn(overdensity)) ** 2
+    fft = np.fft.fftn(overdensity)
+    fourier_amplitudes = (fft * fft.conj()).real
 
     kfreq = np.fft.fftfreq(n=npix, d=pixel_size)
+
+    # Calculate k-value spacing (centered FFT)
+    dk = 2 * np.pi / (box_size)
+
+    # Create k-values array (adjust range based on your needs)
+    kfreq = np.fft.fftfreq(npix, d=1 / dk) * npix
     kfreq3d = np.meshgrid(kfreq, kfreq, kfreq)
     knrm = np.sqrt(kfreq3d[0] ** 2 + kfreq3d[1] ** 2 + kfreq3d[2] ** 2)
 
-    knrm = knrm.flatten()
-    fourier_amplitudes = fourier_amplitudes.flatten()
+    # knrm = knrm.flatten()
+    # fourier_amplitudes = fourier_amplitudes.flatten()
 
-    kbins = np.arange(0.5, npix // 2 + 1, 1.0) / box_size
+    kbins = np.linspace(kfreq.min(), kfreq.max(), npix // 2 + 1)
+    #kbins = np.arange(0.5, npix//2+1, 1.)
     # kvals are in pixel co-ordinates. We know the pixels
     # span the entire box, so we can convert to physical
     # co-ordinates.
@@ -302,7 +311,7 @@ def deposition_to_power_spectrum(deposition: ndarray, box_size: cosmo_array, fol
         / np.histogram(knrm, bins=kbins)[0]
     )
     
-    power_spectrum *= 4.0 / 3.0 * np.pi * (kbins[1:] ** 3 - kbins[:-1] ** 3)
+    # power_spectrum *= (4.0 / 3.0 * np.pi * (kbins[1:] ** 3 - kbins[:-1] ** 3))
     power_spectrum *= folding ** 3
 
-    return kvals, power_spectrum
+    return kvals, power_spectrum / np.prod(deposition.shape)
