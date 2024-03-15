@@ -170,7 +170,7 @@ def render_to_deposit(
     project: str = "masses",
     folding: float = 1.0,
     parallel: bool = False,
-) -> ndarray:
+) -> cosmo_array:
     """
     Render a dataset to a deposition.
 
@@ -190,7 +190,7 @@ def render_to_deposit(
 
     Returns
     -------
-    np.array[float32, float32, float32]
+    cosmo_array[float32, float32, float32]
         The deposition.
     """
 
