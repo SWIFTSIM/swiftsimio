@@ -25,6 +25,7 @@ from swiftsimio.visualisation.smoothing_length_generation import (
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
 from swiftsimio.objects import cosmo_array, a
 from unyt.array import unyt_array
+import unyt
 
 from tests.helper import requires
 
@@ -78,7 +79,7 @@ def test_scatter_mass_conservation():
 
     for resolution in resolutions:
         image = scatter(x, y, m, h, resolution, 1.0, 1.0)
-        mass_in_image = image.sum() / (resolution**2)
+        mass_in_image = image.sum() / (resolution ** 2)
 
         # Check mass conservation to 5%
         assert np.isclose(mass_in_image, total_mass, 0.05)
@@ -333,7 +334,7 @@ def test_comoving_versus_physical(filename):
         # conversion in this case
         img = func(data, resolution=256, project=None)
         assert img.comoving
-        assert img.cosmo_factor.expr == a**aexp
+        assert img.cosmo_factor.expr == a ** aexp
         img = func(data, resolution=256, project="densities")
         assert img.comoving
         assert img.cosmo_factor.expr == a ** (aexp - 3.0)
@@ -351,7 +352,7 @@ def test_comoving_versus_physical(filename):
         img = func(data, resolution=256, project="masses")
         # check that we get a physical result
         assert not img.comoving
-        assert img.cosmo_factor.expr == a**aexp
+        assert img.cosmo_factor.expr == a ** aexp
         # densities are still compatible with physical
         img = func(data, resolution=256, project="densities")
         assert not img.comoving
@@ -529,7 +530,7 @@ def test_volume_render_and_unfolded_deposit():
         boxsize,
         boxsize,
         boxsize,
-    ) / (res**3)
+    ) / (res ** 3)
 
     assert np.allclose(deposition, volume)
 
@@ -571,16 +572,18 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
     # Volume render the particles
     volume = render_gas(data, npix, parallel=False).to_physical()
 
-    mean_density_deposit = (np.sum(deposition) / npix**3).to("Msun / kpc**3").v
-    mean_density_volume = (np.sum(volume) / npix**3).to("Msun / kpc**3").v
-    mean_density_calculated = (np.sum(data.gas.masses) / (data.metadata.boxsize[0] * data.metadata.a)**3).to("Msun / kpc**3").v
+    mean_density_deposit = (np.sum(deposition) / npix ** 3).to("Msun / kpc**3").v
+    mean_density_volume = (np.sum(volume) / npix ** 3).to("Msun / kpc**3").v
+    mean_density_calculated = (
+        (np.sum(data.gas.masses) / (data.metadata.boxsize[0] * data.metadata.a) ** 3)
+        .to("Msun / kpc**3")
+        .v
+    )
 
     assert np.isclose(mean_density_deposit, mean_density_calculated)
     assert np.isclose(mean_density_volume, mean_density_calculated, rtol=0.2)
 
-    assert np.isclose(
-        mean_density_deposit, mean_density_volume, rtol=0.2
-    )
+    assert np.isclose(mean_density_deposit, mean_density_volume, rtol=0.2)
 
     # assert np.isclose(deposition.to(volume.units)[0, 0, 0].v, volume[0, 0, 0].v, rtol=0.2)
 
@@ -613,7 +616,7 @@ def test_dark_matter_power_spectrum(filename, save=True):
 
     folding_output = {}
 
-    for folding in [8.0, 64.0]:#, 8.0, 512.0]:
+    for folding in [8.0, 64.0]:  # , 8.0, 512.0]:
         # Deposit the particles
         deposition = render_to_deposit(
             data.dark_matter, 128, project="masses", folding=folding, parallel=False
@@ -629,18 +632,32 @@ def test_dark_matter_power_spectrum(filename, save=True):
     if save:
         import matplotlib.pyplot as plt
 
-        for npix, (k, power_spectrum) in output.items():
-            plt.plot(k, power_spectrum, label=f"Npix {npix}")
+        with unyt.matplotlib_support:
+            for npix, (k, power_spectrum) in output.items():
+                plt.plot(k, power_spectrum, label=f"Npix {npix}")
 
-        for fold_id, (k, power_spectrum) in folding_output.items():
-            plt.plot(k, power_spectrum, label=f"Fold {fold_id} (Npix 128)", ls='dotted')
-        plt.xlabel("k")
-        plt.loglog()
-        plt.axvline(2 * np.pi / data.metadata.boxsize[0].to("Mpc"), color="black", linestyle="--")
-        plt.axvline(2 * np.pi / (data.metadata.boxsize[0].to("Mpc") / len(data.dark_matter.smoothing_lengths)**(1/3)), color="black", linestyle="--")
-        plt.ylabel("P(k)")
-        plt.text(0.05, 0.05, data.metadata.boxsize, transform=plt.gca().transAxes)
-        plt.legend()
-        plt.savefig("dark_matter_power_spectrum.png")
+            for fold_id, (k, power_spectrum) in folding_output.items():
+                plt.plot(
+                    k, power_spectrum, label=f"Fold {fold_id} (Npix 128)", ls="dotted"
+                )
+            plt.loglog()
+            plt.axvline(
+                2 * np.pi / data.metadata.boxsize[0].to("Mpc"),
+                color="black",
+                linestyle="--",
+            )
+            plt.axvline(
+                2
+                * np.pi
+                / (
+                    data.metadata.boxsize[0].to("Mpc")
+                    / len(data.dark_matter.smoothing_lengths) ** (1 / 3)
+                ),
+                color="black",
+                linestyle="--",
+            )
+            plt.text(0.05, 0.05, data.metadata.boxsize, transform=plt.gca().transAxes)
+            plt.legend()
+            plt.savefig("dark_matter_power_spectrum.png")
 
     return

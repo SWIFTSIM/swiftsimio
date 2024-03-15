@@ -10,6 +10,7 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array
 from swiftsimio.reader import __SWIFTParticleDataset
 
+
 @jit(nopython=True, fastmath=True)
 def deposit(
     x: float64,
@@ -208,13 +209,12 @@ def render_to_deposit(
                     f'Comoving quantity "{project}" is not compatible with physical coordinates!'
                 )
 
-
     # Get the box size
     box_size = data.metadata.boxsize
 
     if not box_size.units == positions.units:
         raise AttributeError("Box size and positions have different units!")
-    
+
     # Deposit the particles
     arguments = dict(
         x=positions[:, 0].v,
@@ -227,7 +227,7 @@ def render_to_deposit(
         box_y=box_size[1].v,
         box_z=box_size[2].v,
     )
-    
+
     if parallel:
         deposition = deposit_parallel(**arguments)
     else:
@@ -236,17 +236,22 @@ def render_to_deposit(
     comoving = positions.comoving
     coord_cosmo_factor = positions.cosmo_factor
 
-    units = 1.0 / (data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2])
+    units = 1.0 / (
+        data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
+    )
     units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     units *= quantity.units
     new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor ** 3)
 
-    return cosmo_array(deposition, comoving=comoving, cosmo_factor=new_cosmo_factor, units=units)
-    
+    return cosmo_array(
+        deposition, comoving=comoving, cosmo_factor=new_cosmo_factor, units=units
+    )
 
 
-def deposition_to_power_spectrum(deposition: ndarray, box_size: cosmo_array, folding: float = 1.0) -> ndarray:
+def deposition_to_power_spectrum(
+    deposition: ndarray, box_size: cosmo_array, folding: float = 1.0
+) -> ndarray:
     """
     Convert a deposition to a power spectrum.
 
@@ -300,17 +305,28 @@ def deposition_to_power_spectrum(deposition: ndarray, box_size: cosmo_array, fol
     # fourier_amplitudes = fourier_amplitudes.flatten()
 
     kbins = np.linspace(kfreq.min(), kfreq.max(), npix // 2 + 1)
-    #kbins = np.arange(0.5, npix//2+1, 1.)
+    # kbins = np.arange(0.5, npix//2+1, 1.)
     # kvals are in pixel co-ordinates. We know the pixels
     # span the entire box, so we can convert to physical
     # co-ordinates.
     kvals = 0.5 * (kbins[1:] + kbins[:-1])
 
-    power_spectrum = (
-        np.histogram(knrm, bins=kbins, weights=fourier_amplitudes)[0]
-        / np.histogram(knrm, bins=kbins)[0]
+    binned_amplitudes = np.histogram(knrm, bins=kbins, weights=fourier_amplitudes.v)[0]
+    binned_counts = np.histogram(knrm, bins=kbins)[0]
+
+    zero_mask = binned_counts == 0
+
+    # Avoid divide by zero
+    binned_amplitudes[zero_mask] = 0.0
+    binned_counts[zero_mask] = 1.0
+
+    # Correct for folding
+    binned_amplitudes *= folding ** 3
+
+    # Correct units and names
+    kvals.name = "k"
+    power_spectrum = unyt.unyt_array(
+        binned_amplitudes / binned_counts, units=fourier_amplitudes.units, name="P(k)"
     )
-    
-    power_spectrum *= folding ** 3
 
     return kvals, power_spectrum
