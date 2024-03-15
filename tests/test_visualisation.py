@@ -601,11 +601,11 @@ def test_dark_matter_power_spectrum(filename, save=False):
         ).to("Msun / Mpc**3")
 
         # Calculate the power spectrum
-        k, power_spectrum = deposition_to_power_spectrum(
+        k, power_spectrum, scatter = deposition_to_power_spectrum(
             deposition, data.metadata.boxsize, folding=1.0
         )
 
-        output[npix] = (k, power_spectrum)
+        output[npix] = (k, power_spectrum, scatter)
 
     folding_output = {}
 
@@ -616,20 +616,20 @@ def test_dark_matter_power_spectrum(filename, save=False):
         ).to("Msun / Mpc**3")
 
         # Calculate the power spectrum
-        k, power_spectrum = deposition_to_power_spectrum(
+        k, power_spectrum, scatter = deposition_to_power_spectrum(
             deposition, data.metadata.boxsize, folding=folding
         )
 
-        folding_output[int(folding)] = (k, power_spectrum)
+        folding_output[int(folding)] = (k, power_spectrum, scatter)
 
     if save:
         import matplotlib.pyplot as plt
 
         with unyt.matplotlib_support:
-            for npix, (k, power_spectrum) in output.items():
+            for npix, (k, power_spectrum, _) in output.items():
                 plt.plot(k, power_spectrum, label=f"Npix {npix}")
 
-            for fold_id, (k, power_spectrum) in folding_output.items():
+            for fold_id, (k, power_spectrum, _) in folding_output.items():
                 plt.plot(
                     k, power_spectrum, label=f"Fold {fold_id} (Npix 128)", ls="dotted"
                 )
