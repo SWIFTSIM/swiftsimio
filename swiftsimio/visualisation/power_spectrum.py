@@ -264,8 +264,15 @@ def deposition_to_power_spectrum(
 
     Returns
     -------
-    np.array[float32]
-        The power spectrum of the deposition.
+
+    kvals: unyt.unyt_array[float32]
+        The k-values of the power spectrum, with units.
+
+    power_spectrum: unyt.unyt_array[float32]
+        The power spectrum, with units.
+
+    binned_counts: np.array[int32]
+        Bin counts for the power spectrum; useful for shot noise.
 
     Notes
     -----
@@ -315,7 +322,9 @@ def deposition_to_power_spectrum(
 
     # Avoid divide by zero
     binned_amplitudes[zero_mask] = 0.0
-    binned_counts[zero_mask] = 1.0
+
+    divisor = binned_counts.copy()
+    divisor[zero_mask] = 1
 
     # Correct for folding
     binned_amplitudes *= folding ** 3
@@ -323,7 +332,11 @@ def deposition_to_power_spectrum(
     # Correct units and names
     kvals.name = "k"
     power_spectrum = unyt.unyt_array(
-        binned_amplitudes / binned_counts, units=fourier_amplitudes.units, name="P(k)"
+        binned_amplitudes / divisor, units=fourier_amplitudes.units, name="P(k)"
     )
 
-    return kvals, power_spectrum
+    import pdb
+
+    pdb.set_trace()
+
+    return kvals, power_spectrum, binned_counts
