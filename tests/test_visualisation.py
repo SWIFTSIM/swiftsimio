@@ -530,7 +530,7 @@ def test_volume_render_and_unfolded_deposit():
         boxsize,
         boxsize,
         boxsize,
-    ) / (res ** 3)
+    )
 
     assert np.allclose(deposition, volume)
 
@@ -582,14 +582,7 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
 
     assert np.isclose(mean_density_deposit, mean_density_calculated)
     assert np.isclose(mean_density_volume, mean_density_calculated, rtol=0.2)
-
     assert np.isclose(mean_density_deposit, mean_density_volume, rtol=0.2)
-
-    # assert np.isclose(deposition.to(volume.units)[0, 0, 0].v, volume[0, 0, 0].v, rtol=0.2)
-
-    # assert np.isclose(deposition.to(volume.units).v, volume.v, rtol=0.2).any()
-
-    # assert np.isclose(deposition.to(volume.units).v, volume.v, rtol=0.2).all()
 
 
 @requires("cosmo_volume_example.hdf5")
