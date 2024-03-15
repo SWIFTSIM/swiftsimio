@@ -335,8 +335,4 @@ def deposition_to_power_spectrum(
         binned_amplitudes / divisor, units=fourier_amplitudes.units, name="P(k)"
     )
 
-    import pdb
-
-    pdb.set_trace()
-
     return kvals, power_spectrum, binned_counts
