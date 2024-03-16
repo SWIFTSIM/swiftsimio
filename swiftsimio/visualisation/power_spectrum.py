@@ -290,11 +290,7 @@ def deposition_to_power_spectrum(
     box_size = box_size[0] / folding
     npix = deposition.shape[0]
 
-    # Convert to overdensity
-    mean_deposition = np.mean(deposition.v)
-    overdensity = (deposition.v - mean_deposition) / mean_deposition
-
-    fft = np.fft.fftn(overdensity / np.prod(deposition.shape))
+    fft = np.fft.fftn(deposition.v / np.prod(deposition.shape))
     fourier_amplitudes = (fft * fft.conj()).real * box_size ** 3
 
     # Calculate k-value spacing (centered FFT)
