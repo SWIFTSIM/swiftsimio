@@ -10,6 +10,8 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array
 from swiftsimio.reader import __SWIFTParticleDataset
 
+from typing import Optional
+
 
 @jit(nopython=True, fastmath=True)
 def deposit(
@@ -239,10 +241,10 @@ def render_to_deposit(
     units = 1.0 / (
         data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
     )
-    units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+    units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     units *= quantity.units
-    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor ** 3)
+    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor**3)
 
     return cosmo_array(
         deposition, comoving=comoving, cosmo_factor=new_cosmo_factor, units=units
@@ -250,17 +252,23 @@ def render_to_deposit(
 
 
 def deposition_to_power_spectrum(
-    deposition: ndarray, box_size: cosmo_array, folding: float = 1.0
+    deposition: unyt.unyt_array,
+    box_size: cosmo_array,
+    folding: float = 1.0,
+    cross_deposition: Optional[unyt.unyt_array] = None,
 ) -> ndarray:
     """
     Convert a deposition to a power spectrum.
 
     Parameters
     ----------
-    deposition: np.array[float32, float32, float32]
+    deposition: unyt.unyt_array[float32, float32, float32]
         The deposition to convert to a power spectrum.
     box_size: cosmo_array
         The box size of the deposition, from the dataset.
+    cross_deposition: unyt.unyt_array[float32, float32, float32]
+        An optional second deposition to cross-correlate with the first.
+        If not provided, we assume you want an auto-spectrum.
 
     Returns
     -------
@@ -273,6 +281,7 @@ def deposition_to_power_spectrum(
 
     binned_counts: np.array[int32]
         Bin counts for the power spectrum; useful for shot noise.
+
 
     Notes
     -----
@@ -287,11 +296,23 @@ def deposition_to_power_spectrum(
     if not deposition.shape[0] == deposition.shape[1] == deposition.shape[2]:
         raise ValueError("Deposition must be a cube")
 
+    if cross_deposition is not None:
+        assert (
+            deposition.shape == cross_deposition.shape
+        ), "Depositions must have the same shape"
+
     box_size = box_size[0] / folding
     npix = deposition.shape[0]
 
     fft = np.fft.fftn(deposition.v / np.prod(deposition.shape))
-    fourier_amplitudes = (fft * fft.conj()).real * box_size ** 3
+
+    conj_fft = (
+        fft.conj()
+        if cross_deposition is None
+        else np.fft.fftn(cross_deposition.v / np.prod(deposition.shape)).conj()
+    )
+
+    fourier_amplitudes = (fft * conj_fft).real * box_size**3
 
     # Calculate k-value spacing (centered FFT)
     dk = 2 * np.pi / (box_size)
@@ -323,7 +344,7 @@ def deposition_to_power_spectrum(
     divisor[zero_mask] = 1
 
     # Correct for folding
-    binned_amplitudes *= folding ** 3
+    binned_amplitudes *= folding**3
 
     # Correct units and names
     kvals.name = "k"
