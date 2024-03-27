@@ -205,11 +205,11 @@ def render_to_deposit(
             raise AttributeError(
                 f'Physical quantity "{project}" is not compatible with comoving coordinates!'
             )
-        else:
-            if not quantity.compatible_with_physical():
-                raise AttributeError(
-                    f'Comoving quantity "{project}" is not compatible with physical coordinates!'
-                )
+    else:
+        if not quantity.compatible_with_physical():
+            raise AttributeError(
+                f'Comoving quantity "{project}" is not compatible with physical coordinates!'
+            )
 
     # Get the box size
     box_size = data.metadata.boxsize
