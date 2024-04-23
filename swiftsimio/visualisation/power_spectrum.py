@@ -292,6 +292,9 @@ def folded_depositions_to_power_spectrum(
 
     power_spectrum: unyt.unyt_array[float32]
         The power spectrum.
+
+    folding_tracker: np.array
+        A tracker of the contribution of various folded elements.
     """
 
     # Fraction of total bin range to use.
@@ -380,7 +383,8 @@ def deposition_to_power_spectrum(
     wavenumber_bins: Optional[unyt.unyt_array] = None,
 ) -> tuple[unyt.unyt_array]:
     """
-    Convert a deposition to a power spectrum.
+    Convert a deposition to a power spectrum, by default
+    using a linear binning strategy.
 
     Parameters
     ----------
@@ -388,6 +392,9 @@ def deposition_to_power_spectrum(
         The deposition to convert to a power spectrum.
     box_size: cosmo_array
         The box size of the deposition, from the dataset.
+    folding: float
+        The (real) folding that was used to generate the
+        deposition. 2 for a half-size box, 4 for quarter, etc.
     cross_deposition: unyt.unyt_array[float32, float32, float32]
         An optional second deposition to cross-correlate with the first.
         If not provided, we assume you want an auto-spectrum.
@@ -397,7 +404,7 @@ def deposition_to_power_spectrum(
     Returns
     -------
 
-    kvals: unyt.unyt_array[float32]
+    wavenumber_centers: unyt.unyt_array[float32]
         The k-values of the power spectrum, with units.
 
     power_spectrum: unyt.unyt_array[float32]
