@@ -10,7 +10,7 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array
 from swiftsimio.reader import __SWIFTParticleDataset
 
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 
 @jit(nopython=True, fastmath=True)
@@ -252,11 +252,11 @@ def render_to_deposit(
 
 
 def folded_depositions_to_power_spectrum(
-    depositions: dict[int, cosmo_array],
+    depositions: Dict[int, cosmo_array],
     box_size: cosmo_array,
     number_of_wavenumber_bins: int,
-    cross_depositions: Optional[dict[int, cosmo_array]] = None,
-    wavenumber_range: Optional[tuple[unyt.unyt_quantity]] = None,
+    cross_depositions: Optional[Dict[int, cosmo_array]] = None,
+    wavenumber_range: Optional[Tuple[unyt.unyt_quantity]] = None,
     log_wavenumber_bins: bool = True,
 ) -> tuple[unyt.unyt_array]:
     """
