@@ -241,10 +241,10 @@ def render_to_deposit(
     units = 1.0 / (
         data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
     )
-    units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
+    units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     units *= quantity.units
-    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor**3)
+    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor ** 3)
 
     return cosmo_array(
         deposition, comoving=comoving, cosmo_factor=new_cosmo_factor, units=units
@@ -343,7 +343,7 @@ def folded_depositions_to_power_spectrum(
         _, folded_power_spectrum, folded_counts = deposition_to_power_spectrum(
             deposition=depositions[folding],
             box_size=box_size,
-            folding=2.0**folding,
+            folding=2.0 ** folding,
             wavenumber_bins=wavenumber_bins,
         )
 
@@ -363,7 +363,7 @@ def folded_depositions_to_power_spectrum(
 
         # For debugging, we calculate an effective fold number.
         folding_tracker[use_bins] = (
-            (folding_tracker * previous_counts + (2.0**folding) * folded_counts)
+            (folding_tracker * previous_counts + (2.0 ** folding) * folded_counts)
             / transition_norm
         )[use_bins]
 
@@ -438,7 +438,7 @@ def deposition_to_power_spectrum(
         else np.fft.fftn(cross_deposition.v / np.prod(deposition.shape)).conj()
     )
 
-    fourier_amplitudes = (fft * conj_fft).real * box_size**3
+    fourier_amplitudes = (fft * conj_fft).real * box_size ** 3
 
     # Calculate k-value spacing (centered FFT)
     dk = 2 * np.pi / (box_size)
@@ -473,7 +473,7 @@ def deposition_to_power_spectrum(
     divisor[zero_mask] = 1
 
     # Correct for folding
-    binned_amplitudes *= folding**3
+    binned_amplitudes *= folding ** 3
 
     # Correct units and names
     kvals.name = "k"

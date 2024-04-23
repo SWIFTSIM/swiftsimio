@@ -619,7 +619,11 @@ def test_dark_matter_power_spectrum(filename, save=False):
     for folding in [2, 4, 6, 8]:  # , 8.0, 512.0]:
         # Deposit the particles
         deposition = render_to_deposit(
-            data.dark_matter, 32, project="masses", folding=2.0 ** folding, parallel=False
+            data.dark_matter,
+            32,
+            project="masses",
+            folding=2.0 ** folding,
+            parallel=False,
         ).to("Msun / Mpc**3")
 
         # Calculate the power spectrum
@@ -645,9 +649,8 @@ def test_dark_matter_power_spectrum(filename, save=False):
         log_wavenumber_bins=True,
     )
 
-
     # import pdb; pdb.set_trace()
-    
+
     if save:
         import matplotlib.pyplot as plt
         from matplotlib.colors import LogNorm
@@ -666,12 +669,18 @@ def test_dark_matter_power_spectrum(filename, save=False):
             norm = LogNorm()
             colors = cmap(norm(folding_tracker))
             plt.scatter(
-                all_centers, all_ps, label="Full Fold",
+                all_centers,
+                all_ps,
+                label="Full Fold",
                 color=colors,
                 edgecolor="pink",
-                zorder=10
+                zorder=10,
             )
-            plt.colorbar(mappable=ScalarMappable(norm=norm, cmap=cmap), ax=plt.gca(), label="Folding")
+            plt.colorbar(
+                mappable=ScalarMappable(norm=norm, cmap=cmap),
+                ax=plt.gca(),
+                label="Folding",
+            )
 
             plt.loglog()
             plt.axvline(
