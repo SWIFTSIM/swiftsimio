@@ -587,7 +587,7 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
 
 
 @requires("cosmo_volume_example.hdf5")
-def test_dark_matter_power_spectrum(filename, save=True):
+def test_dark_matter_power_spectrum(filename, save=False):
     data = load(filename)
 
     data.dark_matter.smoothing_lengths = generate_smoothing_lengths(
