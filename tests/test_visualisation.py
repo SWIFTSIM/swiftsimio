@@ -17,6 +17,7 @@ from swiftsimio.visualisation.power_spectrum import (
     deposit,
     deposition_to_power_spectrum,
     render_to_deposit,
+    folded_depositions_to_power_spectrum,
 )
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length_generation import (
@@ -586,12 +587,15 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
 
 
 @requires("cosmo_volume_example.hdf5")
-def test_dark_matter_power_spectrum(filename, save=False):
+def test_dark_matter_power_spectrum(filename, save=True):
     data = load(filename)
 
     data.dark_matter.smoothing_lengths = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
     )
+
+    # Collate a bunch of raw depositions
+    folds = {}
 
     output = {}
     for npix in [32, 64, 128, 256]:
@@ -605,23 +609,42 @@ def test_dark_matter_power_spectrum(filename, save=False):
             deposition, data.metadata.boxsize, folding=1.0
         )
 
+        if npix == 128:
+            folds[0] = deposition
+
         output[npix] = (k, power_spectrum, scatter)
 
     folding_output = {}
 
-    for folding in [8.0, 64.0]:  # , 8.0, 512.0]:
+    for folding in [2, 4]:  # , 8.0, 512.0]:
         # Deposit the particles
         deposition = render_to_deposit(
-            data.dark_matter, 128, project="masses", folding=folding, parallel=False
+            data.dark_matter, 128, project="masses", folding=2.0 ** folding, parallel=False
         ).to("Msun / Mpc**3")
 
         # Calculate the power spectrum
         k, power_spectrum, scatter = deposition_to_power_spectrum(
-            deposition, data.metadata.boxsize, folding=folding
+            deposition, data.metadata.boxsize, folding=2.0 ** folding
         )
 
-        folding_output[int(folding)] = (k, power_spectrum, scatter)
+        folds[folding] = deposition
 
+        folding_output[2 ** folding] = (k, power_spectrum, scatter)
+
+    # Now try doing them all together at once.
+
+    min_k = 1e-3 / unyt.Mpc
+    max_k = 1e2 / unyt.Mpc
+
+    _, all_centers, all_ps = folded_depositions_to_power_spectrum(
+        depositions=folds,
+        box_size=data.metadata.boxsize[0],
+        number_of_wavenumber_bins=64,
+        cross_depositions=None,
+        wavenumber_range=(min_k, max_k),
+        log_wavenumber_bins=True,
+    )
+    
     if save:
         import matplotlib.pyplot as plt
 
@@ -633,6 +656,10 @@ def test_dark_matter_power_spectrum(filename, save=False):
                 plt.plot(
                     k, power_spectrum, label=f"Fold {fold_id} (Npix 128)", ls="dotted"
                 )
+            plt.plot(
+                all_centers, all_ps, linestyle="dashed", label="Full Fold", zorder=-10, lw=3
+            )
+            
             plt.loglog()
             plt.axvline(
                 2 * np.pi / data.metadata.boxsize[0].to("Mpc"),

@@ -251,12 +251,125 @@ def render_to_deposit(
     )
 
 
+def folded_depositions_to_power_spectrum(
+    depositions: dict[int, cosmo_array],
+    box_size: cosmo_array,
+    number_of_wavenumber_bins: int,
+    cross_depositions: Optional[dict[int, cosmo_array]] = None,
+    wavenumber_range: Optional[tuple[unyt.unyt_quantity]] = None,
+    log_wavenumber_bins: bool = True,
+) -> tuple[unyt.unyt_array]:
+    """
+    Convert some folded depositions to power spectra.
+
+    Parameters
+    ----------
+
+    depositions: dict[int, cosmo_array]
+        Dictionary of depositions, where the key is the base folding.
+        So that would be 0 for no folding, 1 for a half-box-size folding,
+        2 for a quarter, etc. The 'real' folding is 2 ** depositions.keys().
+    box_size: cosmo_array
+        The box size of the deposition, from the dataset.
+    number_of_wavenumber_bins: int
+        The number of bins to use in the power spectrum.
+    cross_depositions: Optional[dict[int, cosmo_array]]
+        An optional dictionary of cross-depositions, where the key is the folding.
+    wavenumber_range: Optional[tuple[unyt.unyt_quantity]]
+        The range of wavenumbers to use. Officially optional, but is required for
+        now.
+    log_wavenumber_bins: bool
+        Whether to use logarithmic bins. By default true.
+
+    Returns
+    -------
+
+    wavenumber_bins: unyt.unyt_array[float32]
+        The wavenumber bins.
+
+    wavenumber_centers: unyt.unyt_array[float32]
+        The centers of the wavenumber bins.
+
+    power_spectrum: unyt.unyt_array[float32]
+        The power spectrum.
+    """
+
+    # Fraction of total bin range to use.
+    WAVENUMBER_TOLERANCE = 0.75
+
+    if cross_depositions is not None:
+        if not set(depositions.keys()) == set(cross_depositions.keys()):
+            raise ValueError(
+                "Depositions and cross depositions need to have the same foldings."
+            )
+
+    if wavenumber_range is None:
+        raise NotImplementedError
+
+    if log_wavenumber_bins:
+        wavenumber_bins = unyt.unyt_array(
+            np.logspace(
+                np.log10(min(wavenumber_range).v),
+                np.log10(max(wavenumber_range).v),
+                number_of_wavenumber_bins + 1,
+            ),
+            wavenumber_range[0].units,
+            name="Wavenumber bins",
+        )
+    else:
+        wavenumber_bins = unyt.unyt_array(
+            np.linspace(
+                min(wavenumber_range).v,
+                max(wavenumber_range).v,
+                number_of_wavenumber_bins + 1,
+            ),
+            wavenumber_range[0].units,
+            name="Wavenumber bins",
+        )
+
+    wavenumber_centers = 0.5 * (wavenumber_bins[1:] + wavenumber_bins[:-1])
+    wavenumber_centers.name = r"Wavenumbers $k$"
+    box_volume = np.prod(box_size) 
+    power_spectrum = unyt.unyt_array(
+        np.zeros(number_of_wavenumber_bins),
+        units=box_volume.units,
+        name="Power spectrum $P(k)$",
+    )
+
+    previous_max_wavenumber = 0.0
+
+    for folding in sorted(list(depositions.keys())):
+        _, folded_power_spectrum, _ = deposition_to_power_spectrum(
+            deposition=depositions[folding],
+            box_size=box_size,
+            folding=2.0**folding,
+            wavenumber_bins=wavenumber_bins,
+        )
+
+        current_max_wavenumber = np.max(wavenumber_centers[folded_power_spectrum > 0])
+        wavenumber_range_for_fold = [
+            WAVENUMBER_TOLERANCE * previous_max_wavenumber,
+            WAVENUMBER_TOLERANCE * current_max_wavenumber,
+        ]
+        useful_bins = np.logical_and(
+            wavenumber_centers >= wavenumber_range_for_fold[0],
+            wavenumber_centers < wavenumber_range_for_fold[1],
+        )
+
+        power_spectrum[useful_bins] = folded_power_spectrum[useful_bins]
+
+        previous_max_wavenumber = current_max_wavenumber
+
+    return wavenumber_bins, wavenumber_centers, power_spectrum
+
+
 def deposition_to_power_spectrum(
     deposition: unyt.unyt_array,
     box_size: cosmo_array,
     folding: float = 1.0,
     cross_deposition: Optional[unyt.unyt_array] = None,
-) -> ndarray:
+    wavenumber_bins: Optional[unyt.unyt_array] = None,
+) -> tuple[unyt.unyt_array]:
     """
     Convert a deposition to a power spectrum.
 
@@ -269,6 +382,8 @@ def deposition_to_power_spectrum(
     cross_deposition: unyt.unyt_array[float32, float32, float32]
         An optional second deposition to cross-correlate with the first.
         If not provided, we assume you want an auto-spectrum.
+    wavenumber_bins: unyt.unyt_array[float32], optional
+        Optionally you can provide the specific bins that you would like to use.
 
     Returns
     -------
@@ -281,7 +396,6 @@ def deposition_to_power_spectrum(
 
     binned_counts: np.array[int32]
         Bin counts for the power spectrum; useful for shot noise.
-
 
     Notes
     -----
@@ -304,7 +418,10 @@ def deposition_to_power_spectrum(
     box_size = box_size[0] / folding
     npix = deposition.shape[0]
 
-    fft = np.fft.fftn(deposition.v / np.prod(deposition.shape))
+    mean_deposition = np.mean(deposition.v)
+    overdensity = (deposition.v - mean_deposition) / mean_deposition
+
+    fft = np.fft.fftn(overdensity / np.prod(deposition.shape))
 
     conj_fft = (
         fft.conj()
@@ -325,7 +442,10 @@ def deposition_to_power_spectrum(
     # knrm = knrm.flatten()
     # fourier_amplitudes = fourier_amplitudes.flatten()
 
-    kbins = np.linspace(kfreq.min(), kfreq.max(), npix // 2 + 1)
+    if wavenumber_bins is None:
+        kbins = np.linspace(kfreq.min(), kfreq.max(), npix // 2 + 1)
+    else:
+        kbins = wavenumber_bins
     # kbins = np.arange(0.5, npix//2+1, 1.)
     # kvals are in pixel co-ordinates. We know the pixels
     # span the entire box, so we can convert to physical
