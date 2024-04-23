@@ -32,10 +32,10 @@ dataset. For example:
         parallel=True,
     )
 
-The specific field being depositied can be controlled with the `project`
-keyword argument. The `resolution` argument gives the one-dimensional
-resolution of the 3D grid, so in this case you would recieve a `512x512x512`
-grid. Note that the `gas_mass_deposit` is a :cls:`swiftsimio.cosmo_array`,
+The specific field being depositied can be controlled with the ``project``
+keyword argument. The ``resolution``` argument gives the one-dimensional
+resolution of the 3D grid, so in this case you would recieve a ``512x512x512``
+grid. Note that the ``gas_mass_deposit`` is a :obj:`swiftsimio.cosmo_array`,
 and as such includes cosmological and unit information that is used later
 in the process.
 
@@ -59,7 +59,7 @@ function. For example, using the above deposit:
 
 This power spectrum can then be plotted. Units are included on both the wavenumbers
 and the power spectrum. Cross-spectra are also supported through the
-`cross_deposition` keyword, but by default this generates the auto power.
+``cross_deposition`` keyword, but by default this generates the auto power.
 
 
 More Complex Scenarios
@@ -76,15 +76,15 @@ As in a power spectrum we are only interested in the periodicity of the
 system, we can fold it back in on itself during the rendering process.
 The position of the particle in the box is set to be:
 
-:math:`x_i' := \left(x_i % \frac{L}{2^{n}}\right)\frac{2^{n}}{L}`
+:math:`x_i' := \left( x_i \% \frac{L}{2^{n}} \right) \frac{2^{n}}{L}`
 
 where :math:`L` is the box-size and :math:`n` is some integer greater
 than or equal to zero. This allows you to probe modes in the reduced
 box-length :math:`L / 2^{n}` with the same fixed resolution deposition
 buffer.
 
-The `folding` parameter is available for both `render_to_deposit`
-and `deposition_to_power_spectrum`, but it may be easier to use the
+The ``folding`` parameter is available for both ``render_to_deposit``
+and ``deposition_to_power_spectrum``, but it may be easier to use the
 utility functions provided for automatically stitching together
 the folded spectra. The function
 :meth:`swiftsimio.visualsation.power_spectrum.folded_depositions_to_power_spectrum`
@@ -119,6 +119,6 @@ number of grid points included in the bin. For two overlapping foldings,
 
 :math:`P(k) = \frac{N(k)_i^{1/3} P(k)_i + N(k)_j^{1/3} P(k)_j}{N(k)_i^{1/3} + N(k)_j^{1/3}}`
 
-which can be visualised using the `folding_tracker` return value of the
+which can be visualised using the ``folding_tracker`` return value of the
 function.
 
