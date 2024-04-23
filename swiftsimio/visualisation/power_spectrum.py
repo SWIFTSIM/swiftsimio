@@ -258,7 +258,7 @@ def folded_depositions_to_power_spectrum(
     cross_depositions: Optional[Dict[int, cosmo_array]] = None,
     wavenumber_range: Optional[Tuple[unyt.unyt_quantity]] = None,
     log_wavenumber_bins: bool = True,
-) -> tuple[unyt.unyt_array]:
+) -> Tuple[unyt.unyt_array]:
     """
     Convert some folded depositions to power spectra.
 
@@ -381,7 +381,7 @@ def deposition_to_power_spectrum(
     folding: float = 1.0,
     cross_deposition: Optional[unyt.unyt_array] = None,
     wavenumber_bins: Optional[unyt.unyt_array] = None,
-) -> tuple[unyt.unyt_array]:
+) -> Tuple[unyt.unyt_array]:
     """
     Convert a deposition to a power spectrum, by default
     using a linear binning strategy.
