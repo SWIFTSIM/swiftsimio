@@ -295,6 +295,7 @@ def folded_depositions_to_power_spectrum(
     """
 
     # Fraction of total bin range to use.
+    # No longer used.
     WAVENUMBER_TOLERANCE = 0.75
 
     if cross_depositions is not None:
@@ -329,38 +330,46 @@ def folded_depositions_to_power_spectrum(
 
     wavenumber_centers = 0.5 * (wavenumber_bins[1:] + wavenumber_bins[:-1])
     wavenumber_centers.name = r"Wavenumbers $k$"
-    box_volume = np.prod(box_size) 
+    box_volume = np.prod(box_size)
     power_spectrum = unyt.unyt_array(
         np.zeros(number_of_wavenumber_bins),
         units=box_volume.units,
         name="Power spectrum $P(k)$",
     )
+    folding_tracker = np.ones(number_of_wavenumber_bins, dtype=float)
+    previous_counts = np.ones(number_of_wavenumber_bins, dtype=int)
 
-    previous_max_wavenumber = 0.0
-
-    for folding in sorted(list(depositions.keys())):
-        _, folded_power_spectrum, _ = deposition_to_power_spectrum(
+    for folding in reversed(sorted(list(depositions.keys()))):
+        _, folded_power_spectrum, folded_counts = deposition_to_power_spectrum(
             deposition=depositions[folding],
             box_size=box_size,
             folding=2.0**folding,
             wavenumber_bins=wavenumber_bins,
         )
 
-        current_max_wavenumber = np.max(wavenumber_centers[folded_power_spectrum > 0])
-        wavenumber_range_for_fold = [
-            WAVENUMBER_TOLERANCE * previous_max_wavenumber,
-            WAVENUMBER_TOLERANCE * current_max_wavenumber,
-        ]
-        useful_bins = np.logical_and(
-            wavenumber_centers >= wavenumber_range_for_fold[0],
-            wavenumber_centers < wavenumber_range_for_fold[1],
-        )
+        use_bins = folded_counts > 0
 
-        power_spectrum[useful_bins] = folded_power_spectrum[useful_bins]
+        # Cbrt gives you the 'linear' number of included bins.
+        folded_counts = np.cbrt(folded_counts)
 
-        previous_max_wavenumber = current_max_wavenumber
+        # Smoothly transition between folds, prioritizing better-sampled
+        # bins in newer (or older!) folds.
+        transition_norm = np.maximum(previous_counts + folded_counts, 1)
 
-    return wavenumber_bins, wavenumber_centers, power_spectrum
+        power_spectrum[use_bins] = (
+            (power_spectrum * previous_counts + folded_counts * folded_power_spectrum)
+            / transition_norm
+        )[use_bins]
+
+        # For debugging, we calculate an effective fold number.
+        folding_tracker[use_bins] = (
+            (folding_tracker * previous_counts + (2.0**folding) * folded_counts)
+            / transition_norm
+        )[use_bins]
+
+        previous_counts = folded_counts
+
+    return wavenumber_bins, wavenumber_centers, power_spectrum, folding_tracker
 
 
 def deposition_to_power_spectrum(
