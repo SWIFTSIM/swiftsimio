@@ -45,7 +45,7 @@ def deposit(
         of res * res * res.
     fold: float64
         the number of times to fold the box. Note that this is the
-        number of times to fold the box, not the number of folds.
+        floating-point version (i.e. 2.0^folding).
     box_x: float64
         box size in x, in the same rescaled length units as x, y, and z. c
     box_y: float64
@@ -125,7 +125,7 @@ def deposit_parallel(
         of res * res * res.
     fold: float64
         the number of times to fold the box. Note that this is the
-        number of times to fold the box, not the number of folds.
+        floating-point version (i.e. 2.0^folding).
     box_x: float64
         box size in x, in the same rescaled length units as x, y, and z. c
     box_y: float64
@@ -170,7 +170,7 @@ def render_to_deposit(
     data: __SWIFTParticleDataset,
     resolution: int,
     project: str = "masses",
-    folding: float = 1.0,
+    folding: int = 0,
     parallel: bool = False,
 ) -> cosmo_array:
     """
@@ -197,6 +197,7 @@ def render_to_deposit(
     """
 
     # Get the positions and masses
+    folding = 2.0 ** folding
     positions = data.coordinates
     quantity = getattr(data, project)
 
@@ -341,12 +342,13 @@ def folded_depositions_to_power_spectrum(
     )
     folding_tracker = np.ones(number_of_wavenumber_bins, dtype=float)
     previous_counts = np.ones(number_of_wavenumber_bins, dtype=int)
+    corrected_wavenumber_centers = wavenumber_centers.copy()
 
     for folding in reversed(sorted(list(depositions.keys()))):
-        _, folded_power_spectrum, folded_counts = deposition_to_power_spectrum(
+        folded_wavenumber_centers, folded_power_spectrum, folded_counts = deposition_to_power_spectrum(
             deposition=depositions[folding],
             box_size=box_size,
-            folding=2.0 ** folding,
+            folding=folding,
             wavenumber_bins=wavenumber_bins,
         )
 
@@ -364,6 +366,14 @@ def folded_depositions_to_power_spectrum(
             / transition_norm
         )[use_bins]
 
+        corrected_wavenumber_centers[use_bins] = (
+            (
+                corrected_wavenumber_centers * previous_counts
+                + folded_wavenumber_centers * folded_counts
+            )
+            / transition_norm
+        )[use_bins].to(corrected_wavenumber_centers.units)
+
         # For debugging, we calculate an effective fold number.
         folding_tracker[use_bins] = (
             (folding_tracker * previous_counts + (2.0 ** folding) * folded_counts)
@@ -372,13 +382,18 @@ def folded_depositions_to_power_spectrum(
 
         previous_counts = folded_counts
 
-    return wavenumber_bins, wavenumber_centers, power_spectrum, folding_tracker
+    return (
+        wavenumber_bins,
+        corrected_wavenumber_centers,
+        power_spectrum,
+        folding_tracker,
+    )
 
 
 def deposition_to_power_spectrum(
     deposition: unyt.unyt_array,
     box_size: cosmo_array,
-    folding: float = 1.0,
+    folding: int = 0,
     cross_deposition: Optional[unyt.unyt_array] = None,
     wavenumber_bins: Optional[unyt.unyt_array] = None,
 ) -> Tuple[unyt.unyt_array]:
@@ -392,9 +407,9 @@ def deposition_to_power_spectrum(
         The deposition to convert to a power spectrum.
     box_size: cosmo_array
         The box size of the deposition, from the dataset.
-    folding: float
-        The (real) folding that was used to generate the
-        deposition. 2 for a half-size box, 4 for quarter, etc.
+    folding: int
+        The folding number (i.e. box-size is divided by 2^folding)
+        that was used here.
     cross_deposition: unyt.unyt_array[float32, float32, float32]
         An optional second deposition to cross-correlate with the first.
         If not provided, we assume you want an auto-spectrum.
@@ -405,7 +420,9 @@ def deposition_to_power_spectrum(
     -------
 
     wavenumber_centers: unyt.unyt_array[float32]
-        The k-values of the power spectrum, with units.
+        The k-values of the power spectrum, with units. These are the
+        real bin centers, calculated from the mean value of k that was
+        used in the binning process.
 
     power_spectrum: unyt.unyt_array[float32]
         The power spectrum, with units.
@@ -430,6 +447,8 @@ def deposition_to_power_spectrum(
         assert (
             deposition.shape == cross_deposition.shape
         ), "Depositions must have the same shape"
+
+    folding = 2.0 ** folding
 
     box_size = box_size[0] / folding
     npix = deposition.shape[0]
@@ -470,6 +489,8 @@ def deposition_to_power_spectrum(
 
     binned_amplitudes = np.histogram(knrm, bins=kbins, weights=fourier_amplitudes.v)[0]
     binned_counts = np.histogram(knrm, bins=kbins)[0]
+    # Also compute the 'real' average wavenumber point contributing to this bin.
+    binned_wavenumbers = np.histogram(knrm, bins=kbins, weights=knrm)[0]
 
     zero_mask = binned_counts == 0
 
@@ -483,9 +504,14 @@ def deposition_to_power_spectrum(
     binned_amplitudes *= folding ** 3
 
     # Correct units and names
-    kvals.name = "k"
-    power_spectrum = unyt.unyt_array(
-        binned_amplitudes / divisor, units=fourier_amplitudes.units, name="P(k)"
+    wavenumbers = unyt.unyt_array(
+        binned_wavenumbers / divisor, units=knrm.units, name="Wavenumber $k$"
     )
 
-    return kvals, power_spectrum, binned_counts
+    power_spectrum = unyt.unyt_array(
+        binned_amplitudes / divisor,
+        units=fourier_amplitudes.units,
+        name="Power Spectrum $P(k)$",
+    )
+
+    return wavenumbers, power_spectrum, binned_counts

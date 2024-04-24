@@ -601,12 +601,12 @@ def test_dark_matter_power_spectrum(filename, save=False):
     for npix in [32, 64, 128, 256]:
         # Deposit the particles
         deposition = render_to_deposit(
-            data.dark_matter, npix, project="masses", folding=1.0, parallel=False
+            data.dark_matter, npix, project="masses", folding=0, parallel=False
         ).to("Msun / Mpc**3")
 
         # Calculate the power spectrum
         k, power_spectrum, scatter = deposition_to_power_spectrum(
-            deposition, data.metadata.boxsize, folding=1.0
+            deposition, data.metadata.boxsize, folding=0
         )
 
         if npix == 32:
@@ -619,16 +619,12 @@ def test_dark_matter_power_spectrum(filename, save=False):
     for folding in [2, 4, 6, 8]:  # , 8.0, 512.0]:
         # Deposit the particles
         deposition = render_to_deposit(
-            data.dark_matter,
-            32,
-            project="masses",
-            folding=2.0 ** folding,
-            parallel=False,
+            data.dark_matter, 32, project="masses", folding=folding, parallel=False
         ).to("Msun / Mpc**3")
 
         # Calculate the power spectrum
         k, power_spectrum, scatter = deposition_to_power_spectrum(
-            deposition, data.metadata.boxsize, folding=2.0 ** folding
+            deposition, data.metadata.boxsize, folding=folding
         )
 
         folds[folding] = deposition

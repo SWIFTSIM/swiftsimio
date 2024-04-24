@@ -97,13 +97,13 @@ allows you to do this easily:
 
     folded_depositions = {}
 
-    for fold in [x * 2 for x in range(5)]:
-        folded_depositions[fold] = render_to_deposit(
+    for folding in [x * 2 for x in range(5)]:
+        folded_depositions[folding] = render_to_deposit(
             data.gas,
             resolution=512,
             project="masses",
             parallel=True,
-            folding=2.0 ** fold,
+            folding=folding,
         )
 
     bins, centers, power_spectrum, foldings = folded_depositions_to_power_spectrum(
