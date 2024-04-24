@@ -122,3 +122,6 @@ number of grid points included in the bin. For two overlapping foldings,
 which can be visualised using the ``folding_tracker`` return value of the
 function.
 
+The returned bin centers are actually calcualted as the weighted mean
+k-values directly from the grid that contributed to each bin.
+
