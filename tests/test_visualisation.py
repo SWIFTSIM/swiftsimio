@@ -567,7 +567,7 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
 
     # Deposit the particles
     deposition = render_to_deposit(
-        data.gas, npix, project="masses", folding=1.0, parallel=False
+        data.gas, npix, project="masses", folding=0, parallel=False
     ).to_physical()
 
     # Volume render the particles
