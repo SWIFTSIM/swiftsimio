@@ -4,8 +4,10 @@ Tools for creating power spectra from SWIFT data.
 
 from numpy import float32, float64, int32, zeros, ndarray
 import numpy as np
+import scipy.fft
 import unyt
 
+from swiftsimio.optional_packages import tqdm
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array
 from swiftsimio.reader import __SWIFTParticleDataset
@@ -197,7 +199,7 @@ def render_to_deposit(
     """
 
     # Get the positions and masses
-    folding = 2.0 ** folding
+    folding = 2.0**folding
     positions = data.coordinates
     quantity = getattr(data, project)
 
@@ -242,10 +244,10 @@ def render_to_deposit(
     units = 1.0 / (
         data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
     )
-    units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+    units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     units *= quantity.units
-    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor ** 3)
+    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor**3)
 
     return cosmo_array(
         deposition, comoving=comoving, cosmo_factor=new_cosmo_factor, units=units
@@ -259,6 +261,12 @@ def folded_depositions_to_power_spectrum(
     cross_depositions: Optional[Dict[int, cosmo_array]] = None,
     wavenumber_range: Optional[Tuple[unyt.unyt_quantity]] = None,
     log_wavenumber_bins: bool = True,
+    workers: Optional[int] = None,
+    minimal_sample_modes: Optional[int] = 0,
+    cutoff_above_wavenumber_fraction: Optional[float] = None,
+    track_progress: bool = False,
+    transition: str = "simple",
+    shot_noise_norm: Optional[float] = None,
 ) -> Tuple[unyt.unyt_array]:
     """
     Convert some folded depositions to power spectra.
@@ -281,6 +289,26 @@ def folded_depositions_to_power_spectrum(
         now.
     log_wavenumber_bins: bool
         Whether to use logarithmic bins. By default true.
+    workers: Optional[int]
+        The number of threads to use.
+    minimal_sample_modes: Optional[int]
+        The minimum number of modes to sample from each indivudal
+        power spectrum. Useful to cut down on small-scale sample noise
+        completely.
+    cutoff_above_wavenumber_fraction: Optional[float]
+        Cut off the individual spectra at this fraction of their
+        maximally sampled wavenumber. Ignored for the last fold.
+    track_progress: bool = False
+        Whether to display a progress bar representing each fold.
+        Requires the tqdm package to be installed.
+    transition: str
+        How to transition between different folds.
+        "simple" means use a simple scheme where the lowest number
+        of modes is used. "average" uses a weighted averaging
+        scheme.
+    shot_noise_norm: Optional[float]
+        The normalization to apply to the shot noise. Usually the number of
+        particles or galaxies used to create the mesh.
 
     Returns
     -------
@@ -297,10 +325,6 @@ def folded_depositions_to_power_spectrum(
     folding_tracker: np.array
         A tracker of the contribution of various folded elements.
     """
-
-    # Fraction of total bin range to use.
-    # No longer used.
-    WAVENUMBER_TOLERANCE = 0.75
 
     if cross_depositions is not None:
         if not set(depositions.keys()) == set(cross_depositions.keys()):
@@ -341,46 +365,92 @@ def folded_depositions_to_power_spectrum(
         name="Power spectrum $P(k)$",
     )
     folding_tracker = np.ones(number_of_wavenumber_bins, dtype=float)
-    previous_counts = np.ones(number_of_wavenumber_bins, dtype=int)
+    contributed_counts = np.zeros(number_of_wavenumber_bins, dtype=int)
     corrected_wavenumber_centers = wavenumber_centers.copy()
+    first_folding = min(depositions.keys())
+    final_folding = max(depositions.keys())
 
-    for folding in reversed(sorted(list(depositions.keys()))):
-        folded_wavenumber_centers, folded_power_spectrum, folded_counts = deposition_to_power_spectrum(
+    iterator = sorted(list(depositions.keys()))
+
+    # In this case, we need to prefer all fresh data over anything
+    if transition == "simple":
+        contributed_counts[:] = 1_000_000_000_000
+
+    if track_progress:
+        iterator = tqdm(iterator, desc="Processing folds")
+
+    for folding in iterator:
+        (
+            folded_wavenumber_centers,
+            folded_power_spectrum,
+            folded_counts,
+        ) = deposition_to_power_spectrum(
             deposition=depositions[folding],
             box_size=box_size,
             folding=folding,
             wavenumber_bins=wavenumber_bins,
+            workers=workers,
+            shot_noise_norm=shot_noise_norm,
         )
 
-        use_bins = folded_counts > 0
+        use_bins = folded_counts > (
+            minimal_sample_modes if folding != first_folding else 0
+        )
 
-        # Cbrt gives you the 'linear' number of included bins.
-        folded_counts = np.cbrt(folded_counts)
-
-        # Smoothly transition between folds, prioritizing better-sampled
-        # bins in newer (or older!) folds.
-        transition_norm = np.maximum(previous_counts + folded_counts, 1)
-
-        power_spectrum[use_bins] = (
-            (power_spectrum * previous_counts + folded_counts * folded_power_spectrum)
-            / transition_norm
-        )[use_bins]
-
-        corrected_wavenumber_centers[use_bins] = (
-            (
-                corrected_wavenumber_centers * previous_counts
-                + folded_wavenumber_centers * folded_counts
+        if cutoff_above_wavenumber_fraction is not None and folding != final_folding:
+            maximally_sampled_wavenumber = np.max(folded_wavenumber_centers[use_bins])
+            cutoff_wavenumber = (
+                cutoff_above_wavenumber_fraction * maximally_sampled_wavenumber
             )
-            / transition_norm
-        )[use_bins].to(corrected_wavenumber_centers.units)
 
-        # For debugging, we calculate an effective fold number.
-        folding_tracker[use_bins] = (
-            (folding_tracker * previous_counts + (2.0 ** folding) * folded_counts)
-            / transition_norm
-        )[use_bins]
+            use_bins = np.logical_and(
+                use_bins, folded_wavenumber_centers < cutoff_wavenumber
+            )
 
-        previous_counts = folded_counts
+        if transition == "simple":
+            # Simple scheme. Lowest number of counts (above our minimum)
+            # wins.
+            prefer_bins = np.logical_and(folded_counts < contributed_counts, use_bins)
+
+            power_spectrum[prefer_bins] = folded_power_spectrum[prefer_bins]
+            corrected_wavenumber_centers[prefer_bins] = folded_wavenumber_centers[
+                prefer_bins
+            ].to(corrected_wavenumber_centers.units)
+            folding_tracker[prefer_bins] = 2.0**folding
+
+            contributed_counts[prefer_bins] = folded_counts[prefer_bins]
+        elif transition == "average":
+            # Our more complex averaging scheme.
+            # Cbrt gives you the 'linear' number of included bins.
+            new_weight = np.cbrt(folded_counts)
+            existing_weight = np.cbrt(contributed_counts)
+
+            # Smoothly transition between folds, prioritizing better-sampled
+            # bins in newer (or older!) folds.
+            transition_norm = np.maximum(new_weight + existing_weight, 1)
+
+            power_spectrum[use_bins] = (
+                (power_spectrum * existing_weight + new_weight * folded_power_spectrum)
+                / transition_norm
+            )[use_bins]
+
+            corrected_wavenumber_centers[use_bins] = (
+                (
+                    corrected_wavenumber_centers * existing_weight
+                    + folded_wavenumber_centers * new_weight
+                )
+                / transition_norm
+            )[use_bins].to(corrected_wavenumber_centers.units)
+
+            # For debugging, we calculate an effective fold number.
+            folding_tracker[use_bins] = (
+                (folding_tracker * existing_weight + (2.0**folding) * new_weight)
+                / transition_norm
+            )[use_bins]
+
+            contributed_counts[use_bins] += folded_counts[use_bins]
+        else:
+            raise ValueError("Unacceptable transition scheme.")
 
     return (
         wavenumber_bins,
@@ -396,6 +466,8 @@ def deposition_to_power_spectrum(
     folding: int = 0,
     cross_deposition: Optional[unyt.unyt_array] = None,
     wavenumber_bins: Optional[unyt.unyt_array] = None,
+    workers: Optional[int] = None,
+    shot_noise_norm: Optional[float] = None,
 ) -> Tuple[unyt.unyt_array]:
     """
     Convert a deposition to a power spectrum, by default
@@ -415,6 +487,11 @@ def deposition_to_power_spectrum(
         If not provided, we assume you want an auto-spectrum.
     wavenumber_bins: unyt.unyt_array[float32], optional
         Optionally you can provide the specific bins that you would like to use.
+    workers: Optional[int]
+        The number of threads to use.
+    shot_noise_norm: Optional[float]
+        The normalization to apply to the shot noise. Usually the number of
+        particles or galaxies used to create the mesh.
 
     Returns
     -------
@@ -448,26 +525,32 @@ def deposition_to_power_spectrum(
             deposition.shape == cross_deposition.shape
         ), "Depositions must have the same shape"
 
-    folding = 2.0 ** folding
+    folding = 2.0**folding
 
-    box_size = box_size[0] / folding
+    box_size_folded = box_size[0] / folding
     npix = deposition.shape[0]
 
     mean_deposition = np.mean(deposition.v)
     overdensity = (deposition.v - mean_deposition) / mean_deposition
 
-    fft = np.fft.fftn(overdensity / np.prod(deposition.shape))
+    fft = scipy.fft.fftn(overdensity / np.prod(deposition.shape), workers=workers)
 
-    conj_fft = (
-        fft.conj()
-        if cross_deposition is None
-        else np.fft.fftn(cross_deposition.v / np.prod(deposition.shape)).conj()
-    )
+    if cross_deposition is not None:
+        mean_cross_deposition = np.mean(cross_deposition.v)
+        cross_overdensity = (
+            cross_deposition.v - mean_cross_deposition
+        ) / mean_cross_deposition
 
-    fourier_amplitudes = (fft * conj_fft).real * box_size ** 3
+        conj_fft = scipy.fft.fftn(
+            cross_overdensity / np.prod(deposition.shape), workers=workers
+        ).conj()
+    else:
+        conj_fft = fft.conj()
+
+    fourier_amplitudes = (fft * conj_fft).real * box_size_folded**3
 
     # Calculate k-value spacing (centered FFT)
-    dk = 2 * np.pi / (box_size)
+    dk = 2 * np.pi / (box_size_folded)
 
     # Create k-values array (adjust range based on your needs)
     kfreq = np.fft.fftfreq(npix, d=1 / dk) * npix
@@ -501,17 +584,25 @@ def deposition_to_power_spectrum(
     divisor[zero_mask] = 1
 
     # Correct for folding
-    binned_amplitudes *= folding ** 3
+    binned_amplitudes *= folding**3
 
     # Correct units and names
     wavenumbers = unyt.unyt_array(
         binned_wavenumbers / divisor, units=knrm.units, name="Wavenumber $k$"
     )
 
-    power_spectrum = unyt.unyt_array(
-        binned_amplitudes / divisor,
-        units=fourier_amplitudes.units,
-        name="Power Spectrum $P(k)$",
+    shot_noise = (
+        (box_size[0] ** 3 / shot_noise_norm) if shot_noise_norm is not None else 0.0
     )
+
+    power_spectrum = (
+        unyt.unyt_array(
+            (binned_amplitudes) / divisor,
+            units=fourier_amplitudes.units,
+        )
+        - shot_noise
+    )
+
+    power_spectrum.name = "Power Spectrum $P(k)$"
 
     return wavenumbers, power_spectrum, binned_counts

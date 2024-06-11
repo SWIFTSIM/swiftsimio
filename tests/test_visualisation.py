@@ -587,7 +587,7 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
 
 
 @requires("cosmo_volume_example.hdf5")
-def test_dark_matter_power_spectrum(filename, save=False):
+def test_dark_matter_power_spectrum(filename, save=True):
     data = load(filename)
 
     data.dark_matter.smoothing_lengths = generate_smoothing_lengths(
@@ -597,8 +597,17 @@ def test_dark_matter_power_spectrum(filename, save=False):
     # Collate a bunch of raw depositions
     folds = {}
 
+
+    min_k = 1e-2 / unyt.Mpc
+    max_k = 1e2 / unyt.Mpc
+
+    bins = unyt.unyt_array(
+        np.logspace(np.log10(min_k.v), np.log10(max_k.v), 32),
+        units=min_k.units,
+    )
+
     output = {}
-    for npix in [32, 64, 128, 256]:
+    for npix in [32, 128]:
         # Deposit the particles
         deposition = render_to_deposit(
             data.dark_matter, npix, project="masses", folding=0, parallel=False
@@ -606,7 +615,7 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
         # Calculate the power spectrum
         k, power_spectrum, scatter = deposition_to_power_spectrum(
-            deposition, data.metadata.boxsize, folding=0
+            deposition, data.metadata.boxsize, folding=0, wavenumber_bins=bins
         )
 
         if npix == 32:
@@ -624,7 +633,7 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
         # Calculate the power spectrum
         k, power_spectrum, scatter = deposition_to_power_spectrum(
-            deposition, data.metadata.boxsize, folding=folding
+            deposition, data.metadata.boxsize, folding=folding, wavenumber_bins=bins
         )
 
         folds[folding] = deposition
@@ -633,13 +642,10 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
     # Now try doing them all together at once.
 
-    min_k = 1e-2 / unyt.Mpc
-    max_k = 1e2 / unyt.Mpc
-
     _, all_centers, all_ps, folding_tracker = folded_depositions_to_power_spectrum(
         depositions=folds,
         box_size=data.metadata.boxsize,
-        number_of_wavenumber_bins=64,
+        number_of_wavenumber_bins=32,
         cross_depositions=None,
         wavenumber_range=(min_k, max_k),
         log_wavenumber_bins=True,
@@ -670,7 +676,6 @@ def test_dark_matter_power_spectrum(filename, save=False):
                 label="Full Fold",
                 color=colors,
                 edgecolor="pink",
-                zorder=10,
             )
             plt.colorbar(
                 mappable=ScalarMappable(norm=norm, cmap=cmap),
