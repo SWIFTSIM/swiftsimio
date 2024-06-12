@@ -19,9 +19,7 @@ from swiftsimio.visualisation.power_spectrum import (
     render_to_deposit,
     folded_depositions_to_power_spectrum,
 )
-from swiftsimio.visualisation.smoothing_length_generation import (
-    generate_smoothing_lengths,
-)
+from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 from swiftsimio.visualisation.projection_backends import (
     backends as projection_backends,
     backends_parallel as projection_backends_parallel,
