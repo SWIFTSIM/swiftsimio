@@ -397,11 +397,23 @@ def folded_depositions_to_power_spectrum(
             minimal_sample_modes if folding != first_folding else 0
         )
 
-        if cutoff_above_wavenumber_fraction is not None and folding != final_folding:
-            maximally_sampled_wavenumber = np.max(folded_wavenumber_centers[use_bins])
+        # Even if we do not have a specified cutoff, we should still not allow
+        # any weird noise make us take bins above our theoretical best, though
+        # for the last one we don't really care so much.
+
+        if folding != final_folding:
             cutoff_wavenumber = (
-                cutoff_above_wavenumber_fraction * maximally_sampled_wavenumber
+                2.0**folding * np.min(depositions[folding].shape) / np.min(box_size)
             )
+
+            if cutoff_above_wavenumber_fraction is not None:
+                maximally_sampled_wavenumber = np.max(
+                    folded_wavenumber_centers[use_bins]
+                )
+                cutoff_wavenumber = min(
+                    cutoff_above_wavenumber_fraction * maximally_sampled_wavenumber,
+                    cutoff_above_wavenumber_fraction * cutoff_wavenumber,
+                )
 
             use_bins = np.logical_and(
                 use_bins, folded_wavenumber_centers < cutoff_wavenumber
@@ -420,6 +432,11 @@ def folded_depositions_to_power_spectrum(
 
             contributed_counts[prefer_bins] = folded_counts[prefer_bins]
         elif transition == "average":
+            # This more complex averaging scheme is left in here for prosperity, but
+            # shouldn't be used as it underestimates power on large scales.
+            # We should use the simple scheme instead.
+            raise ValueError("The average scheme is not supported. Use simple.")
+
             # Our more complex averaging scheme.
             # Cbrt gives you the 'linear' number of included bins.
             new_weight = np.cbrt(folded_counts)
@@ -564,11 +581,6 @@ def deposition_to_power_spectrum(
         kbins = np.linspace(kfreq.min(), kfreq.max(), npix // 2 + 1)
     else:
         kbins = wavenumber_bins
-    # kbins = np.arange(0.5, npix//2+1, 1.)
-    # kvals are in pixel co-ordinates. We know the pixels
-    # span the entire box, so we can convert to physical
-    # co-ordinates.
-    kvals = 0.5 * (kbins[1:] + kbins[:-1])
 
     binned_amplitudes = np.histogram(knrm, bins=kbins, weights=fourier_amplitudes.v)[0]
     binned_counts = np.histogram(knrm, bins=kbins)[0]

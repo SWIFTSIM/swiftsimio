@@ -60,6 +60,8 @@ function. For example, using the above deposit:
 This power spectrum can then be plotted. Units are included on both the wavenumbers
 and the power spectrum. Cross-spectra are also supported through the
 ``cross_deposition`` keyword, but by default this generates the auto power.
+Wavenumbers are calculated to be at the weighted mean of the k-values in each
+bin, rather than representing the center of the bin.
 
 
 More Complex Scenarios
@@ -112,16 +114,34 @@ allows you to do this easily:
         number_of_wavenumber_bins=128,
         wavenumber_range=[1e-2 / unyt.Mpc, 1e2 / unyt.Mpc],
         log_wavenumber_bins=True,
+        workers=4,
+        minimal_sample_modes=8192,
+        cutoff_above_wavenumber_fraction=0.75,
+        shot_noise_norm=len(gas_mass_deposit),
+        
     )
 
-Depositions are automatically faded between using the cube-root of the
-number of grid points included in the bin. For two overlapping foldings,
+The 'used' foldings of the power spectrum are shown in the
+``foldings`` return vaule, which is an array containing the folding
+that was used for each given bin. This is useful for debugging and
+visualisation.
 
-:math:`P(k) = \frac{N(k)_i^{1/3} P(k)_i + N(k)_j^{1/3} P(k)_j}{N(k)_i^{1/3} + N(k)_j^{1/3}}`
+There are a few crucial parameters to this function:
 
-which can be visualised using the ``folding_tracker`` return value of the
-function.
-
-The returned bin centers are actually calcualted as the weighted mean
-k-values directly from the grid that contributed to each bin.
-
+1. ``workers`` is the number of threads to use for the calculation of
+   the fourier transforms.
+2. ``minimal_sample_modes`` is the minimum number of modes that must be
+    present in a bin for it to be included in the final power spectrum.
+    Generally for a big simulation you want to set this to around 10'000,
+    and this number is ignored for the lowest wavenumber bin.
+3. ``cutoff_above_wavenumber_fraction`` is the fraction of the
+   individual fold's (as represented by the FFT itself) maximally sampled
+   wavenumber. Ignored for the last fold, and we always cap the maximal
+   wavenumber to the nyquist frequency.
+4. ``shot_noise_norm`` is the number of particles in the simulation
+    that contribute to the power spectrum. This is used to normalise
+    the power spectrum to the shot noise level. This is very
+    important in this case because of the use of NGP deposition.
+   
+Foldings are stitched using a simple method where the 'better sampled'
+foldings are used preferentially, up to the cutoff value.
