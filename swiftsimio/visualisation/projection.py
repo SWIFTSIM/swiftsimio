@@ -22,7 +22,7 @@ from numpy import (
 from unyt import unyt_array, unyt_quantity, exceptions
 from swiftsimio import SWIFTDataset, cosmo_array
 
-from swiftsimio.reader import __SWIFTParticleDataset
+from swiftsimio.reader import __SWIFTGroupDatasets
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
@@ -42,7 +42,7 @@ scatter_parallel = backends_parallel["fast"]
 
 
 def project_pixel_grid(
-    data: __SWIFTParticleDataset,
+    data: __SWIFTGroupDatasets,
     boxsize: unyt_array,
     resolution: int,
     project: Union[str, None] = "masses",
@@ -65,7 +65,7 @@ def project_pixel_grid(
     Parameters
     ----------
 
-    data: __SWIFTParticleDataset
+    data: __SWIFTGroupDatasets
         The SWIFT dataset that you wish to visualise (get this from ``load``)
 
     boxsize: unyt_array

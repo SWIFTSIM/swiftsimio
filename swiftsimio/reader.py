@@ -4,7 +4,7 @@ This file contains four major objects:
 + SWIFTUnits, which is a unit system that can be queried for units (and converts arrays
   to relevant unyt arrays when read from the HDF5 file)
 + SWIFTMetadata, which contains all of the metadata from the file
-+ __SWIFTParticleDataset, which contains particle information but should never be
++ __SWIFTGroupDatasets, which contains particle information but should never be
   directly accessed. Use generate_dataset to create one of these. The reasoning
   here is that properties can only be added to the class afterwards, and not
   directly in an _instance_ of the class.
@@ -269,7 +269,9 @@ class SWIFTMetadata(object):
 
         self.postprocess_header()
 
-        self.load_particle_types()
+        self.get_filetype()
+
+        self.load_groups()
         self.extract_cosmology()
 
         # After we've loaded all this metadata, we can safely release the file handle.
@@ -578,11 +580,25 @@ class SWIFTMetadata(object):
 
         return
 
-    def load_particle_types(self):
+    def get_filetype(self):
         """
-        Loads the particle types and metadata into objects:
+        Determine what type of file we are reading
+        """
+        # TODO: Is there a better way to do this?
+        if self.output_type == "FullVolume":
+            self.filetype = "snapshot"
+        elif self.output_type == "FOF":
+            self.filetype = "FOF"
+        else:
+            self.filetype = "snapshot"
+            # TODO: Raise this error after fixing tests
+            # raise NotImplementedError(f'Unsupported filetype: {self.output_type}')
 
-            metadata.<type>_properties
+    def load_groups(self):
+        """
+        Loads the groups and metadata into objects:
+
+            metadata.<group_name>_properties
 
         This contains six arrays,
 
@@ -593,22 +609,17 @@ class SWIFTMetadata(object):
             metadata.<type>_properties.field_descriptions
             metadata.<type>_properties.field_compressions
 
-        As well as some more information about the particle type.
+        As well as some more information about the group.
         """
 
-        for particle_type, particle_name in zip(
-            self.present_particle_types, self.present_particle_names
-        ):
-            setattr(
-                self,
-                f"{particle_name}_properties",
-                SWIFTParticleTypeMetadata(
-                    particle_type=particle_type,
-                    particle_name=particle_name,
-                    metadata=self,
-                    scale_factor=self.scale_factor,
-                ),
+        for group, name in zip(self.present_groups, self.present_group_names):
+            filetype_metadata = SWIFTGroupMetadata(
+                group=group,
+                group_name=name,
+                metadata=self,
+                scale_factor=self.scale_factor,
             )
+            setattr(self, f"{name}_properties", filetype_metadata)
 
         return
 
@@ -632,23 +643,29 @@ class SWIFTMetadata(object):
         return
 
     @property
-    def present_particle_types(self):
+    def present_groups(self):
         """
-        The particle types that are present in the file.
+        The groups containing datasets that are present in the file.
         """
-
-        return np.where(np.array(getattr(self, "has_type", self.num_part)) != 0)[0]
+        if self.filetype == "snapshot":
+            types = np.where(np.array(getattr(self, "has_type", self.num_part)) != 0)[0]
+            return [f"PartType{i}" for i in types]
+        elif self.filetype == "FOF":
+            return ["Groups"]
 
     @property
-    def present_particle_names(self):
+    def present_group_names(self):
         """
-        The particle _names_ that are present in the simulation.
+        The names of the groups that we want to expose.
         """
 
-        return [
-            metadata.particle_types.particle_name_underscores[x]
-            for x in self.present_particle_types
-        ]
+        if self.filetype == "snapshot":
+            return [
+                metadata.particle_types.particle_name_underscores[x]
+                for x in self.present_groups
+            ]
+        elif self.filetype == "FOF":
+            return ["fof_groups"]
 
     @property
     def code_info(self) -> str:
@@ -804,12 +821,12 @@ class SWIFTMetadata(object):
         return self.num_files_per_snapshot > 1
 
 
-class SWIFTParticleTypeMetadata(object):
+class SWIFTGroupMetadata(object):
     """
-    Object that contains the metadata for one particle type.
+    Object that contains the metadata for one hdf5 group.
 
     This, for instance, could be part type 0, or 'gas'. This will load in
-    the names of all particle datasets, their units, possible named fields,
+    the names of all datasets, their units, possible named fields,
     and their cosmology, and present them for use in the actual i/o routines.
 
     Methods
@@ -831,28 +848,24 @@ class SWIFTParticleTypeMetadata(object):
     """
 
     def __init__(
-        self,
-        particle_type: int,
-        particle_name: str,
-        metadata: SWIFTMetadata,
-        scale_factor: float,
+        self, group: str, group_name: str, metadata: SWIFTMetadata, scale_factor: float
     ):
         """
-        Constructor for SWIFTParticleTypeMetadata class
+        Constructor for SWIFTGroupMetadata class
 
         Parameters
         ----------
-        partycle_type : int
-            the integer particle type
-        particle_name : str
-            the corresponding particle name
+        group: str 
+            the name of the group in the hdf5 file
+        group_name : str
+            the corresponding group name for swiftsimio
         metadata : SWIFTMetadata
             the snapshot metadata
         scale_factor : float
             the snapshot scale factor
         """
-        self.particle_type = particle_type
-        self.particle_name = particle_name
+        self.group = group
+        self.group_name = group_name
         self.metadata = metadata
         self.units = metadata.units
         self.scale_factor = scale_factor
@@ -864,7 +877,7 @@ class SWIFTParticleTypeMetadata(object):
         return
 
     def __str__(self):
-        return f"Metadata class for PartType{self.particle_type} ({self.particle_name})"
+        return f"Metadata class for {self.group} ({self.group_name})"
 
     def __repr__(self):
         return self.__str__()
@@ -895,13 +908,12 @@ class SWIFTParticleTypeMetadata(object):
             return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
         self.field_paths = [
-            f"PartType{self.particle_type}/{item}"
-            for item in self.metadata.handle[f"PartType{self.particle_type}"].keys()
+            f"{self.group}/{item}"
+            for item in self.metadata.handle[f"{self.group}"].keys()
         ]
 
         self.field_names = [
-            convert(item)
-            for item in self.metadata.handle[f"PartType{self.particle_type}"].keys()
+            convert(item) for item in self.metadata.handle[f"{self.group}"].keys()
         ]
 
         return
@@ -1121,7 +1133,7 @@ def generate_getter(
     getter: callable
         A callable object that gets the value of the array that has been saved to
         ``_name``. This function takes only ``self`` from the
-        :obj:``__SWIFTParticleDataset`` class.
+        :obj:``__SWIFTGroupDataset`` class.
 
 
     Notes
@@ -1257,7 +1269,7 @@ def generate_deleter(name: str):
     return deleter
 
 
-class __SWIFTParticleDataset(object):
+class __SWIFTGroupDatasets(object):
     """
     Creates empty property fields
 
@@ -1270,26 +1282,26 @@ class __SWIFTParticleDataset(object):
         creates empty properties to be accessed through setter and getter functions
     """
 
-    def __init__(self, particle_metadata: SWIFTParticleTypeMetadata):
+    def __init__(self, group_metadata: SWIFTGroupMetadata):
         """
-        Constructor for SWIFTParticleDataset class
+        Constructor for SWIFTGroupDatasets class
 
         This function primarily calls the generate_empty_properties
         function to ensure that defaults are set correctly.
 
         Parameters
         ----------
-        particle_metadata : SWIFTParticleTypeMetadata
+        group_metadata : SWIFTGroupMetadata
             the metadata used to generate empty properties
         """
-        self.filename = particle_metadata.filename
-        self.units = particle_metadata.units
+        self.filename = group_metadata.filename
+        self.units = group_metadata.units
 
-        self.particle_type = particle_metadata.particle_type
-        self.particle_name = particle_metadata.particle_name
+        self.group = group_metadata.group
+        self.group_name = group_metadata.group_name
 
-        self.particle_metadata = particle_metadata
-        self.metadata = particle_metadata.metadata
+        self.group_metadata = group_metadata
+        self.metadata = group_metadata.metadata
 
         self.generate_empty_properties()
 
@@ -1305,7 +1317,7 @@ class __SWIFTParticleDataset(object):
         """
 
         for field_name, field_path in zip(
-            self.particle_metadata.field_names, self.particle_metadata.field_paths
+            self.group_metadata.field_names, self.group_metadata.field_paths
         ):
             if field_path in self.metadata.handle:
                 setattr(self, f"_{field_name}", None)
@@ -1323,7 +1335,7 @@ class __SWIFTParticleDataset(object):
 class __SWIFTNamedColumnDataset(object):
     """
     Holder class for individual named datasets. Very similar to
-    __SWIFTParticleDataset but much simpler.
+    __SWIFTGroupsDatasets but much simpler.
     """
 
     def __init__(self, field_path: str, named_columns: List[str], name: str):
@@ -1379,9 +1391,9 @@ class __SWIFTNamedColumnDataset(object):
         return self.named_columns == other.named_columns and self.name == other.name
 
 
-def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
+def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     """
-    Generates a SWIFTParticleDataset _class_ that corresponds to the
+    Generates a SWIFTGroupDatasets _class_ that corresponds to the
     particle type given.
 
     We _must_ do the following _outside_ of the class itself, as one
@@ -1391,38 +1403,44 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     Here we loop through all of the possible properties in the metadata file.
     We then use the builtin property() function and some generators to
     create setters and getters for those properties. This will allow them
-    to be accessed from outside by using SWIFTParticleDataset.name, where
+    to be accessed from outside by using SWIFTGroupDatasets.name, where
     the name is, for example, coordinates.
 
     Parameters
     ----------
-    particle_metadata : SWIFTParticleTypeMetadata
-        the metadata for the particle type
+    group_metadata : SWIFTGroupMetadata
+        the metadata for the group
     mask : SWIFTMask
-        the mask object for the dataset
+        the mask object for the datasets
     """
 
-    filename = particle_metadata.filename
-    particle_type = particle_metadata.particle_type
-    particle_name = particle_metadata.particle_name
-    particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
+    filename = group_metadata.filename
+    group = group_metadata.group
+    group_name = group_metadata.group_name
+
+    # Set nice name for group
+    if group_metadata.metadata.filetype == "snapshot":
+        group_nice_name = metadata.particle_types.particle_name_class[group]
+    if group_metadata.metadata.filetype == "FOF":
+        group_nice_name = "FOFGroups"
 
     # Mask is an object that contains all masks for all possible datasets.
     if mask is not None:
-        mask_array = getattr(mask, particle_name)
-        mask_size = getattr(mask, f"{particle_name}_size")
+        # TODO: Handle masks
+        mask_array = getattr(mask, group_name)
+        mask_size = getattr(mask, f"{group_name}_size")
     else:
         mask_array = None
         mask_size = -1
 
     # Set up an iterator for us to loop over for all fields
-    field_paths = particle_metadata.field_paths
-    field_names = particle_metadata.field_names
-    field_cosmologies = particle_metadata.field_cosmologies
-    field_units = particle_metadata.field_units
-    field_descriptions = particle_metadata.field_descriptions
-    field_compressions = particle_metadata.field_compressions
-    field_named_columns = particle_metadata.named_columns
+    field_paths = group_metadata.field_paths
+    field_names = group_metadata.field_names
+    field_cosmologies = group_metadata.field_cosmologies
+    field_units = group_metadata.field_units
+    field_descriptions = group_metadata.field_descriptions
+    field_compressions = group_metadata.field_compressions
+    field_named_columns = group_metadata.named_columns
 
     dataset_iterator = zip(
         field_paths,
@@ -1437,7 +1455,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
     # for different particle types. We initially fill a dict with the properties that
     # we want, and then create a single instance of our class.
 
-    this_dataset_bases = (__SWIFTParticleDataset, object)
+    this_dataset_bases = (__SWIFTGroupDatasets, object)
     this_dataset_dict = {}
 
     for (
@@ -1495,7 +1513,7 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
                 )
 
             ThisNamedColumnDataset = type(
-                f"{particle_nice_name}{field_path.split('/')[-1]}Columns",
+                f"{group_nice_name}{field_path.split('/')[-1]}Columns",
                 this_named_column_dataset_bases,
                 this_named_column_dataset_dict,
             )
@@ -1507,9 +1525,9 @@ def generate_dataset(particle_metadata: SWIFTParticleTypeMetadata, mask):
         this_dataset_dict[field_name] = field_property
 
     ThisDataset = type(
-        f"{particle_nice_name}Dataset", this_dataset_bases, this_dataset_dict
+        f"{group_nice_name}Dataset", this_dataset_bases, this_dataset_dict
     )
-    empty_dataset = ThisDataset(particle_metadata)
+    empty_dataset = ThisDataset(group_metadata)
 
     return empty_dataset
 
@@ -1520,7 +1538,7 @@ class SWIFTDataset(object):
 
     + SWIFTUnits,
     + SWIFTMetadata,
-    + SWIFTParticleDataset
+    + SWIFTGroupDatasets
 
     This object, in essence, completely represents a SWIFT snapshot. You can access
     the different particles as follows:
@@ -1543,6 +1561,7 @@ class SWIFTDataset(object):
     def create_particle_datasets(self):
         Creates particle datasets for whatever particle types and names
         are specified in metadata.particle_types.
+    # TODO: UPDATE DOCS
     """
 
     def __init__(self, filename, mask=None):
@@ -1564,7 +1583,7 @@ class SWIFTDataset(object):
 
         self.get_units()
         self.get_metadata()
-        self.create_particle_datasets()
+        self.create_datasets()
 
         return
 
@@ -1603,10 +1622,10 @@ class SWIFTDataset(object):
 
         return
 
-    def create_particle_datasets(self):
+    def create_datasets(self):
         """
-        Creates particle datasets for whatever particle types and names
-        are specified in metadata.particle_types.
+        Creates datasets for whichever groups
+        are specified in metadata.present_group_names.
 
         These can then be accessed using their underscore names, e.g. gas.
         """
@@ -1614,12 +1633,12 @@ class SWIFTDataset(object):
         if not hasattr(self, "metadata"):
             self.get_metadata()
 
-        for particle_name in self.metadata.present_particle_names:
+        for group_name in self.metadata.present_group_names:
             setattr(
                 self,
-                particle_name,
-                generate_dataset(
-                    getattr(self.metadata, f"{particle_name}_properties"), self.mask
+                group_name,
+                generate_datasets(
+                    getattr(self.metadata, f"{group_name}_properties"), self.mask
                 ),
             )
 

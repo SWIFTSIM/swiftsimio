@@ -4,31 +4,31 @@ Includes the fancy names.
 
 # Describes the conversion of particle types to names
 particle_name_underscores = {
-    0: "gas",
-    1: "dark_matter",
-    2: "boundary",
-    3: "sinks",
-    4: "stars",
-    5: "black_holes",
-    6: "neutrinos",
+    "PartType0": "gas",
+    "PartType1": "dark_matter",
+    "PartType2": "boundary",
+    "PartType3": "sinks",
+    "PartType4": "stars",
+    "PartType5": "black_holes",
+    "PartType6": "neutrinos",
 }
 
 particle_name_class = {
-    0: "Gas",
-    1: "DarkMatter",
-    2: "Boundary",
-    3: "Sinks",
-    4: "Stars",
-    5: "BlackHoles",
-    6: "Neutrinos",
+    "PartType0": "Gas",
+    "PartType1": "DarkMatter",
+    "PartType2": "Boundary",
+    "PartType3": "Sinks",
+    "PartType4": "Stars",
+    "PartType5": "BlackHoles",
+    "PartType6": "Neutrinos",
 }
 
 particle_name_text = {
-    0: "Gas",
-    1: "Dark Matter",
-    2: "Boundary",
-    3: "Sinks",
-    4: "Stars",
-    5: "Black Holes",
-    6: "Neutrinos",
+    "PartType0": "Gas",
+    "PartType1": "Dark Matter",
+    "PartType2": "Boundary",
+    "PartType3": "Sinks",
+    "PartType4": "Stars",
+    "PartType5": "Black Holes",
+    "PartType6": "Neutrinos",
 }
