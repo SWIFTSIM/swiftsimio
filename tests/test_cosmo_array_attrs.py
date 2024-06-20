@@ -11,15 +11,7 @@ from swiftsimio.objects import cosmo_array, cosmo_factor, a, multiple_output_ope
 
 class TestCopyFuncs:
     @pytest.mark.parametrize(
-        ("func"),
-        [
-            "byteswap",
-            "diagonal",
-            "flatten",
-            "ravel",
-            "transpose",
-            "view",
-        ],
+        ("func"), ["byteswap", "diagonal", "flatten", "ravel", "transpose", "view"]
     )
     def test_argless_copyfuncs(self, func):
         arr = cosmo_array(
