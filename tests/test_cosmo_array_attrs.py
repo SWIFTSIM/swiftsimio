@@ -16,7 +16,6 @@ class TestCopyFuncs:
             "byteswap",
             "diagonal",
             "flatten",
-            "newbyteorder",
             "ravel",
             "transpose",
             "view",
