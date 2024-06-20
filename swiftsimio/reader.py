@@ -1065,7 +1065,7 @@ def generate_getter(
     cosmo_factor: cosmo_factor,
     description: str,
     compression: str,
-    columns: Union[None, np.lib.index_tricks.IndexExpression] = None,
+    columns: Union[None, slice] = None,
 ):
     """
     Generates a function that:
