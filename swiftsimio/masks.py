@@ -48,6 +48,10 @@ class SWIFTMask(object):
         self.units = metadata.units
         self.spatial_only = spatial_only
 
+        if self.metadata.filetype == "FOF":
+            # No virtual snapshots or cells metadata for fof currently
+            raise NotImplementedError("Masking not supported for FOF filetype")
+
         if self.metadata.partial_snapshot:
             raise InvalidSnapshot(
                 "You cannot use masks on partial snapshots. Please use the virtual "
@@ -65,9 +69,11 @@ class SWIFTMask(object):
         types.
         """
 
-        for ptype in self.metadata.present_particle_names:
+        for group_name in self.metadata.present_group_names:
             setattr(
-                self, ptype, np.ones(getattr(self.metadata, f"n_{ptype}"), dtype=bool)
+                self,
+                group_name,
+                np.ones(getattr(self.metadata, f"n_{group_name}"), dtype=bool),
             )
 
         return
@@ -100,12 +106,15 @@ class SWIFTMask(object):
         # contain at least one of each type of particle).
         sort = None
 
-        for ptype, pname in zip(
-            self.metadata.present_particle_types, self.metadata.present_particle_names
+        for group, group_name in zip(
+            self.metadata.present_groups, self.metadata.present_group_names
         ):
-            part_type = f"PartType{ptype}"
-            counts = count_handle[part_type][:]
-            offsets = offset_handle[part_type][:]
+            if self.metadata.filetype == "SOAP":
+                counts = count_handle["Subhalos"][:]
+                offsets = offset_handle["Subhalos"][:]
+            elif self.metadata.filetype == "snapshot":
+                counts = count_handle[group][:]
+                offsets = offset_handle[group][:]
 
             # When using MPI, we cannot assume that these are sorted.
             if sort is None:
@@ -113,8 +122,8 @@ class SWIFTMask(object):
                 # types if some datasets do not have particles in a cell!
                 sort = np.argsort(offsets)
 
-            self.offsets[pname] = offsets[sort]
-            self.counts[pname] = counts[sort]
+            self.offsets[group_name] = offsets[sort]
+            self.counts[group_name] = counts[sort]
 
         # Also need to sort centers in the same way
         self.centers = unyt.unyt_array(centers_handle[:][sort], units=self.units.length)
@@ -128,7 +137,7 @@ class SWIFTMask(object):
 
     def constrain_mask(
         self,
-        ptype: str,
+        group_name: str,
         quantity: str,
         lower: unyt.array.unyt_quantity,
         upper: unyt.array.unyt_quantity,
@@ -139,13 +148,13 @@ class SWIFTMask(object):
 
         We update the mask such that
 
-            lower < ptype.quantity <= upper
+            lower < group_name.quantity <= upper
 
         The quantities must have units attached.
 
         Parameters
         ----------
-        ptype : str
+        group_name : str
             particle type
 
         quantity : str
@@ -169,23 +178,17 @@ class SWIFTMask(object):
             print("Please re-initialise the SWIFTMask object with spatial_only=False")
             return
 
-        current_mask = getattr(self, ptype)
+        current_mask = getattr(self, group_name)
 
-        particle_metadata = getattr(self.metadata, f"{ptype}_properties")
+        group_metadata = getattr(self.metadata, f"{group_name}_properties")
         unit_dict = {
-            k: v
-            for k, v in zip(
-                particle_metadata.field_names, particle_metadata.field_units
-            )
+            k: v for k, v in zip(group_metadata.field_names, group_metadata.field_units)
         }
 
         unit = unit_dict[quantity]
 
         handle_dict = {
-            k: v
-            for k, v in zip(
-                particle_metadata.field_names, particle_metadata.field_paths
-            )
+            k: v for k, v in zip(group_metadata.field_names, group_metadata.field_paths)
         }
 
         handle = handle_dict[quantity]
@@ -203,7 +206,7 @@ class SWIFTMask(object):
 
         current_mask[current_mask] = new_mask
 
-        setattr(self, ptype, current_mask)
+        setattr(self, group_name, current_mask)
 
         return
 
@@ -282,7 +285,7 @@ class SWIFTMask(object):
 
         return cell_mask
 
-    def _update_spatial_mask(self, restrict, ptype: str, cell_mask: np.array):
+    def _update_spatial_mask(self, restrict, group_name: str, cell_mask: np.array):
         """
         Updates the particle mask using the cell mask.
 
@@ -296,7 +299,7 @@ class SWIFTMask(object):
         restrict : list
             currently unused
 
-        ptype : str
+        group_name : str
             particle type to update
 
         cell_mask : np.array
@@ -304,20 +307,20 @@ class SWIFTMask(object):
         """
 
         if self.spatial_only:
-            counts = self.counts[ptype][cell_mask]
-            offsets = self.offsets[ptype][cell_mask]
+            counts = self.counts[group_name][cell_mask]
+            offsets = self.offsets[group_name][cell_mask]
 
             this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
 
-            setattr(self, ptype, np.array(this_mask))
-            setattr(self, f"{ptype}_size", np.sum(counts))
+            setattr(self, group_name, np.array(this_mask))
+            setattr(self, f"{group_name}_size", np.sum(counts))
 
         else:
-            counts = self.counts[ptype][~cell_mask]
-            offsets = self.offsets[ptype][~cell_mask]
+            counts = self.counts[group_name][~cell_mask]
+            offsets = self.offsets[group_name][~cell_mask]
 
             # We must do the whole boolean mask business.
-            this_mask = getattr(self, ptype)
+            this_mask = getattr(self, group_name)
 
             for count, offset in zip(counts, offsets):
                 this_mask[offset : count + offset] = False
@@ -367,8 +370,8 @@ class SWIFTMask(object):
             # we just make a new mask
             self.cell_mask = self._generate_cell_mask(restrict)
 
-        for ptype in self.metadata.present_particle_names:
-            self._update_spatial_mask(restrict, ptype, self.cell_mask)
+        for group_name in self.metadata.present_group_names:
+            self._update_spatial_mask(restrict, group_name, self.cell_mask)
 
         return
 
@@ -391,18 +394,18 @@ class SWIFTMask(object):
             # Use the accelerate.ranges_from_array function to convert
             # This into a set of ranges.
 
-            for ptype in self.metadata.present_particle_names:
+            for group_name in self.metadata.present_group_names:
                 setattr(
                     self,
-                    ptype,
+                    group_name,
                     # Because it nests things in a list for some reason.
-                    np.where(getattr(self, ptype))[0],
+                    np.where(getattr(self, group_name))[0],
                 )
 
-                setattr(self, f"{ptype}_size", getattr(self, ptype).size)
+                setattr(self, f"{group_name}_size", getattr(self, group_name).size)
 
-            for ptype in self.metadata.present_particle_names:
-                setattr(self, ptype, ranges_from_array(getattr(self, ptype)))
+            for group_name in self.metadata.present_group_names:
+                setattr(self, group_name, ranges_from_array(getattr(self, group_name)))
 
         return
 

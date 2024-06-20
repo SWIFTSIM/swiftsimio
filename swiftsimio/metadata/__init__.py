@@ -6,8 +6,12 @@ information contained in each snapshot that may be read.
 from .particle import particle_types
 from .particle import particle_fields
 
-from .fof import fof_types
+# TODO: Is this needed
 from .fof import fof_fields
+
+from .soap import soap_types
+
+# TODO: Do we want soap_fields?
 
 from .unit import unit_types
 from .unit import unit_fields

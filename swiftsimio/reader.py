@@ -508,11 +508,17 @@ class SWIFTMetadata(object):
         # Date and time of snapshot dump
         try:
             try:
+                # Try and decode bytes, otherwise save raw string
+                snapshot_date = self.header.get(
+                    "SnapshotDate", self.header.get("Snapshot date", b"")
+                ).decode("utf-8")
+            except AttributeError:
+                snapshot_date = self.header.get(
+                    "SnapshotDate", self.header.get("Snapshot date", "")
+                )
+            try:
                 self.snapshot_date = datetime.strptime(
-                    self.header.get(
-                        "SnapshotDate", self.header.get("Snapshot date", b"")
-                    ).decode("utf-8"),
-                    "%H:%M:%S %Y-%m-%d %Z",
+                    snapshot_date, "%H:%M:%S %Y-%m-%d %Z"
                 )
             except ValueError:
                 # Backwards compatibility; this was used previously due to simplicity
@@ -520,17 +526,10 @@ class SWIFTMetadata(object):
                 # a British (en_GB) machine, and then tried to read on a Dutch
                 # machine (nl_NL), this would _not_ work because %c is different.
                 try:
-                    self.snapshot_date = datetime.strptime(
-                        self.header.get(
-                            "SnapshotDate", self.header.get("Snapshot date", b"")
-                        ).decode("utf-8"),
-                        "%c\n",
-                    )
+                    self.snapshot_date = datetime.strptime(snapshot_date, "%c\n")
                 except ValueError:
                     # Oh dear this has gone _very_wrong. Let's just keep it as a string.
-                    self.snapshot_date = self.header.get(
-                        "SnapshotDate", self.header.get("Snapshot date", b"")
-                    ).decode("utf-8")
+                    self.snapshot_date = snapshot_date
         except KeyError:
             # Old file
             pass
@@ -568,8 +567,8 @@ class SWIFTMetadata(object):
         try:
             self.gas_gamma = self.hydro_scheme["Adiabatic index"]
         except (KeyError, TypeError):
-            print("Could not find gas gamma, assuming 5./3.")
-            self.gas_gamma = 5.0 / 3.0
+            # We can set a default and print a message whenever we require this value
+            self.gas_gamma = None
 
         try:
             self.a = self.scale_factor
@@ -589,6 +588,8 @@ class SWIFTMetadata(object):
             self.filetype = "snapshot"
         elif self.output_type == "FOF":
             self.filetype = "FOF"
+        elif self.output_type == "SOAP":
+            self.filetype = "SOAP"
         else:
             self.filetype = "snapshot"
             # TODO: Raise this error after fixing tests
@@ -652,6 +653,8 @@ class SWIFTMetadata(object):
             return [f"PartType{i}" for i in types]
         elif self.filetype == "FOF":
             return ["Groups"]
+        elif self.filetype == "SOAP":
+            return self.subhalo_types
 
     @property
     def present_group_names(self):
@@ -666,6 +669,11 @@ class SWIFTMetadata(object):
             ]
         elif self.filetype == "FOF":
             return ["fof_groups"]
+        elif self.filetype == "SOAP":
+            return [
+                metadata.soap_types.get_soap_name_underscore(x)
+                for x in self.present_groups
+            ]
 
     @property
     def code_info(self) -> str:
@@ -907,9 +915,11 @@ class SWIFTGroupMetadata(object):
         def convert(name):
             return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
+        # Skip fields which are groups themselves
         self.field_paths = [
             f"{self.group}/{item}"
             for item in self.metadata.handle[f"{self.group}"].keys()
+            if f"{self.group}/{item}" not in self.metadata.present_groups
         ]
 
         self.field_names = [
@@ -971,6 +981,9 @@ class SWIFTGroupMetadata(object):
         def get_desc(dataset):
             try:
                 description = dataset.attrs["Description"].decode("utf-8")
+            except AttributeError:
+                # Description is saved as a string not bytes
+                description = dataset.attrs["Description"]
             except KeyError:
                 # Can't load description!
                 description = "No description available"
@@ -991,6 +1004,9 @@ class SWIFTGroupMetadata(object):
         def get_comp(dataset):
             try:
                 comp = dataset.attrs["Lossy compression filter"].decode("utf-8")
+            except AttributeError:
+                # Compression is saved as str not bytes
+                comp = dataset.attrs["Lossy compression filter"]
             except KeyError:
                 # Can't load compression string!
                 comp = "No compression info available"
@@ -1421,12 +1437,13 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     # Set nice name for group
     if group_metadata.metadata.filetype == "snapshot":
         group_nice_name = metadata.particle_types.particle_name_class[group]
-    if group_metadata.metadata.filetype == "FOF":
+    elif group_metadata.metadata.filetype == "FOF":
         group_nice_name = "FOFGroups"
+    elif group_metadata.metadata.filetype == "SOAP":
+        group_nice_name = metadata.soap_types.get_soap_name_nice(group)
 
     # Mask is an object that contains all masks for all possible datasets.
     if mask is not None:
-        # TODO: Handle masks
         mask_array = getattr(mask, group_name)
         mask_size = getattr(mask, f"{group_name}_size")
     else:
