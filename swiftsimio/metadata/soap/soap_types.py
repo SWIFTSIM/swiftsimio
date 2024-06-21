@@ -28,20 +28,6 @@ def get_soap_name_nice(group: str) -> str:
         "SOAP": "SOAP",
         "ProjectedAperture": "ProjectedAperture",
     }
-    return "TODO"
-    # TODO:
-    # split_name = group.split('/')
-    # split_name[0] = soap_name_underscores[split_name[0]]
-    # return '_'.join(name.lower() for name in split_name)
+    split_name = group.split('/')
+    return ''.join(name.capitalize() for name in split_name)
 
-
-# TODO:
-soap_name_text = {
-    "BoundSubhalo": "Bound Subhalo",
-    "InputHalos": "Input Halos",
-    "InclusiveSphere": "Inclusive Sphere",
-    "ExclusiveSphere": "Exclusive Sphere",
-    "SO": "Spherical Overdensities",
-    "SOAP": "SOAP",
-    "ProjectedAperture": "Projected Aperture",
-}

@@ -976,6 +976,7 @@ class SWIFTGroupMetadata(object):
     def load_field_descriptions(self):
         """
         Loads in the text descriptions of the fields for each dataset.
+        For SOAP filetypes a description of the mask is included.
         """
 
         def get_desc(dataset):
@@ -988,7 +989,26 @@ class SWIFTGroupMetadata(object):
                 # Can't load description!
                 description = "No description available"
 
-            return description
+            if self.metadata.filetype != 'SOAP':
+                return description
+
+            try:
+                is_masked = dataset.attrs["Masked"]
+            except KeyError:
+                is_masked = False
+            if not is_masked:
+                return description + ' Not masked.'
+
+            # TODO: Update for https://github.com/SWIFTSIM/SOAP/pull/81
+            # TODO: Also need to add group mask data for that PR
+            # If is_masked is true then these other attributes should exist
+            mask_datasets = dataset.attrs["Mask Datasets"]
+            mask_threshold = dataset.attrs["Mask Threshold"]
+            if len(mask_datasets) == 1:
+                mask_str = f' Only computed for objects with {mask_datasets[0]} >= {mask_threshold}.'
+            else:
+                mask_str = f' Only computed for objects where {" + ".join(mask_datasets)} >= {mask_threshold}.'
+            return description + mask_str
 
         self.field_descriptions = [
             get_desc(self.metadata.handle[x]) for x in self.field_paths
@@ -1003,6 +1023,11 @@ class SWIFTGroupMetadata(object):
 
         def get_comp(dataset):
             try:
+                # SOAP catalogues can be compressed/uncompressed
+                is_compressed = dataset.attrs["Is Compressed"]
+            except KeyError:
+                is_compressed = True
+            try:
                 comp = dataset.attrs["Lossy compression filter"].decode("utf-8")
             except AttributeError:
                 # Compression is saved as str not bytes
@@ -1011,7 +1036,7 @@ class SWIFTGroupMetadata(object):
                 # Can't load compression string!
                 comp = "No compression info available"
 
-            return comp
+            return comp if is_compressed else "Not compressed."
 
         self.field_compressions = [
             get_comp(self.metadata.handle[x]) for x in self.field_paths
