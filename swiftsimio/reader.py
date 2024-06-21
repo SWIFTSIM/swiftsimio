@@ -989,7 +989,7 @@ class SWIFTGroupMetadata(object):
                 # Can't load description!
                 description = "No description available"
 
-            if self.metadata.filetype != 'SOAP':
+            if self.metadata.filetype != "SOAP":
                 return description
 
             try:
@@ -997,7 +997,7 @@ class SWIFTGroupMetadata(object):
             except KeyError:
                 is_masked = False
             if not is_masked:
-                return description + ' Not masked.'
+                return description + " Not masked."
 
             # TODO: Update for https://github.com/SWIFTSIM/SOAP/pull/81
             # TODO: Also need to add group mask data for that PR
@@ -1005,7 +1005,7 @@ class SWIFTGroupMetadata(object):
             mask_datasets = dataset.attrs["Mask Datasets"]
             mask_threshold = dataset.attrs["Mask Threshold"]
             if len(mask_datasets) == 1:
-                mask_str = f' Only computed for objects with {mask_datasets[0]} >= {mask_threshold}.'
+                mask_str = f" Only computed for objects with {mask_datasets[0]} >= {mask_threshold}."
             else:
                 mask_str = f' Only computed for objects where {" + ".join(mask_datasets)} >= {mask_threshold}.'
             return description + mask_str

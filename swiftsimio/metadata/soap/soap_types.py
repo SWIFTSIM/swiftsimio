@@ -28,6 +28,5 @@ def get_soap_name_nice(group: str) -> str:
         "SOAP": "SOAP",
         "ProjectedAperture": "ProjectedAperture",
     }
-    split_name = group.split('/')
-    return ''.join(name.capitalize() for name in split_name)
-
+    split_name = group.split("/")
+    return "".join(name.capitalize() for name in split_name)
