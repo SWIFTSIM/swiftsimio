@@ -25,6 +25,8 @@ header_unpack_arrays = {
     "NumPart_ThisFile": "num_part",
     "CanHaveTypes": "has_type",
     "NumFilesPerSnapshot": "num_files_per_snapshot",
+    "OutputType": "output_type",
+    "SubhaloTypes": "subhalo_types",
 }
 
 # Some of these 'arrays' are really types of mass table, so unpack
