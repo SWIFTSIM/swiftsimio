@@ -303,7 +303,7 @@ def folded_depositions_to_power_spectrum(
         Requires the tqdm package to be installed.
     transition: str
         How to transition between different folds.
-        "simple" means use a simple scheme where the lowest number
+        "simple" means use a simple scheme where the highest number
         of modes is used. "average" uses a weighted averaging
         scheme.
     shot_noise_norm: Optional[float]
@@ -372,10 +372,6 @@ def folded_depositions_to_power_spectrum(
 
     iterator = sorted(list(depositions.keys()))
 
-    # In this case, we need to prefer all fresh data over anything
-    if transition == "simple":
-        contributed_counts[:] = 1_000_000_000_000
-
     if track_progress:
         iterator = tqdm(iterator, desc="Processing folds")
 
@@ -420,9 +416,9 @@ def folded_depositions_to_power_spectrum(
             )
 
         if transition == "simple":
-            # Simple scheme. Lowest number of counts (above our minimum)
-            # wins.
-            prefer_bins = np.logical_and(folded_counts < contributed_counts, use_bins)
+            # Simple scheme. Highest number of counts (i.e. best 'resolved')
+            # bins wins.
+            prefer_bins = np.logical_and(folded_counts > contributed_counts, use_bins)
 
             power_spectrum[prefer_bins] = folded_power_spectrum[prefer_bins]
             corrected_wavenumber_centers[prefer_bins] = folded_wavenumber_centers[
