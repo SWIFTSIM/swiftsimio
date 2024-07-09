@@ -819,6 +819,15 @@ class cosmo_array(unyt_array):
 
         return super().__str__() + " " + comoving_str
 
+    def __repr__(self):
+        if self.comoving:
+            comoving_str = ", comoving=True)"
+        else:
+            comoving_str = ", comoving=False)"
+
+        # Remove final parenthesis and append comoving flag
+        return super().__repr__()[:-1] + comoving_str
+
     def __reduce__(self):
         """
         Pickle reduction method
