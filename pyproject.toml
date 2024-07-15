@@ -3,11 +3,25 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["swiftsimio", "swiftsimio.initial_conditions", "swiftsimio.metadata", "swiftsimio.metadata.cosmology", "swiftsimio.metadata.metadata", "swiftsimio.metadata.particle", "swiftsimio.metadata.unit", "swiftsimio.metadata.writer", "swiftsimio.visualisation", "swiftsimio.visualisation.projection_backends", "swiftsimio.visualisation.slice_backends", "swiftsimio.visualisation.tools"]
+packages = [
+    "swiftsimio",
+    "swiftsimio.initial_conditions",
+    "swiftsimio.metadata",
+    "swiftsimio.metadata.cosmology",
+    "swiftsimio.metadata.metadata",
+    "swiftsimio.metadata.particle",
+    "swiftsimio.metadata.unit",
+    "swiftsimio.metadata.writer",
+    "swiftsimio.visualisation",
+    "swiftsimio.visualisation.projection_backends",
+    "swiftsimio.visualisation.slice_backends",
+    "swiftsimio.visualisation.tools",
+    "swiftsimio.visualisation.smoothing_length"
+]
 
 [project]
 name = "swiftsimio"
-version="8.0.0"
+version="8.0.1"
 authors = [
     { name="Josh Borrow", email="josh@joshborrow.com" },
 ]
