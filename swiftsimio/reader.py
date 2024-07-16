@@ -601,7 +601,7 @@ class SWIFTMetadata(object):
 
             metadata.<group_name>_properties
 
-        This contains six arrays,
+        This contains eight arrays,
 
             metadata.<type>_properties.field_names
             metadata.<type>_properties.field_paths
@@ -609,6 +609,8 @@ class SWIFTMetadata(object):
             metadata.<type>_properties.field_cosmologies
             metadata.<type>_properties.field_descriptions
             metadata.<type>_properties.field_compressions
+            metadata.<type>_properties.field_physicals
+            metadata.<type>_properties.field_valid_transforms
 
         As well as some more information about the group.
         """
@@ -851,6 +853,10 @@ class SWIFTGroupMetadata(object):
         Loads in compressions of the fields for each dataset.
     load_cosmology(self):
         Loads in the field cosmologies.
+    load_physical(self):
+        Loads in whether the field is saved as comoving or physical.
+    load_valid_transforms(self):
+        Loads in whether the field can be converted to comoving.
     load_named_columns(self):
         Loads the named column data for relevant fields.
     """
@@ -903,6 +909,8 @@ class SWIFTGroupMetadata(object):
         self.load_field_descriptions()
         self.load_field_compressions()
         self.load_cosmology()
+        self.load_physical()
+        self.load_valid_transforms()
         self.load_named_columns()
 
     def load_field_names(self):
@@ -1000,7 +1008,7 @@ class SWIFTGroupMetadata(object):
                 return description + " Not masked."
 
             # TODO: Update for https://github.com/SWIFTSIM/SOAP/pull/81
-            # TODO: Also need to add group mask data for that PR
+            # TODO: Also need to add metadata for each halo type for that PR
             # If is_masked is true then these other attributes should exist
             mask_datasets = dataset.attrs["Mask Datasets"]
             mask_threshold = dataset.attrs["Mask Threshold"]
@@ -1068,6 +1076,44 @@ class SWIFTGroupMetadata(object):
 
         return
 
+    def load_physical(self):
+        """
+        Loads in whether the field is saved as comoving or physical.
+        """
+
+        def get_physical(dataset):
+            try:
+                physical = dataset.attrs["Value stored as physical"][0] == 1
+            except:
+                physical = False
+            return physical
+
+        self.field_physicals = [
+            get_physical(self.metadata.handle[x]) for x in self.field_paths
+        ]
+
+        return
+
+    def load_valid_transforms(self):
+        """
+        Loads in whether the field can be converted to comoving.
+        """
+
+        def get_valid_transform(dataset):
+            try:
+                valid_transform = (
+                    dataset.attrs["Property can be converted to comoving"][0] == 1
+                )
+            except:
+                valid_transform = True
+            return valid_transform
+
+        self.field_valid_transforms = [
+            get_valid_transform(self.metadata.handle[x]) for x in self.field_paths
+        ]
+
+        return
+
     def load_named_columns(self):
         """
         Loads the named column data for relevant fields.
@@ -1118,6 +1164,8 @@ def generate_getter(
     cosmo_factor: cosmo_factor,
     description: str,
     compression: str,
+    physical: bool,
+    valid_transform: bool,
     columns: Union[None, np.lib.index_tricks.IndexExpression] = None,
 ):
     """
@@ -1162,6 +1210,14 @@ def generate_getter(
     compression: str
         String describing the lossy compression filters that were applied to the
         data (read from the HDF5 file).
+
+    physical: bool
+        Bool that describes whether the data in the file is stored in comoving
+        or physical units.
+
+    valid_transform: bool
+        Bool that describes whether converting this field from physical to comoving
+        units is a valid operation.
 
     columns: np.lib.index_tricks.IndexEpression, optional
         Index expression corresponding to which columns to read from the numpy array.
@@ -1234,6 +1290,8 @@ def generate_getter(
                                 cosmo_factor=cosmo_factor,
                                 name=description,
                                 compression=compression,
+                                comoving=not physical,
+                                valid_transform=valid_transform,
                             ),
                         )
                     else:
@@ -1250,6 +1308,8 @@ def generate_getter(
                                 cosmo_factor=cosmo_factor,
                                 name=description,
                                 compression=compression,
+                                comoving=not physical,
+                                valid_transform=valid_transform,
                             ),
                         )
                 except KeyError:
@@ -1480,6 +1540,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     field_names = group_metadata.field_names
     field_cosmologies = group_metadata.field_cosmologies
     field_units = group_metadata.field_units
+    field_physicals = group_metadata.field_physicals
+    field_valid_transforms = group_metadata.field_valid_transforms
     field_descriptions = group_metadata.field_descriptions
     field_compressions = group_metadata.field_compressions
     field_named_columns = group_metadata.named_columns
@@ -1489,6 +1551,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
         field_names,
         field_cosmologies,
         field_units,
+        field_physicals,
+        field_valid_transforms,
         field_descriptions,
         field_compressions,
     )
@@ -1505,6 +1569,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
         field_name,
         field_cosmology,
         field_unit,
+        field_physical,
+        field_valid_transform,
         field_description,
         field_compression,
     ) in dataset_iterator:
@@ -1522,6 +1588,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
                     cosmo_factor=field_cosmology,
                     description=field_description,
                     compression=field_compression,
+                    physical=field_physical,
+                    valid_transform=field_valid_transform,
                 ),
                 generate_setter(field_name),
                 generate_deleter(field_name),
@@ -1548,6 +1616,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
                         cosmo_factor=field_cosmology,
                         description=f"{field_description} [Column {index}, {column}]",
                         compression=field_compression,
+                        physical=field_physical,
+                        valid_transform=field_valid_transform,
                         columns=np.s_[index],
                     ),
                     generate_setter(column),

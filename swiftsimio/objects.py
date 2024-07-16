@@ -116,6 +116,8 @@ def _propagate_cosmo_array_attributes(func):
             ret.cosmo_factor = self.cosmo_factor
         if hasattr(self, "comoving"):
             ret.comoving = self.comoving
+        if hasattr(self, "valid_transform"):
+            ret.valid_transform = self.valid_transform
         return ret
 
     return wrapped
@@ -591,7 +593,7 @@ class cosmo_array(unyt_array):
     Cosmology array class.
 
     This inherits from the unyt.unyt_array, and adds
-    three variables: compression, cosmo_factor, and comoving.
+    four variables: compression, cosmo_factor, comoving, and valid_transform.
     Data is assumed to be comoving when passed to the object but you
     can override this by setting the latter flag to be False.
 
@@ -615,8 +617,12 @@ class cosmo_array(unyt_array):
         String describing any compression that was applied to this array in the
         hdf5 file.
 
+    valid_transform: bool
+       if True then the array can be converted from physical to comoving units
+
     """
 
+    # TODO:
     _cosmo_factor_ufunc_registry = {
         add: _preserve_cosmo_factor,
         subtract: _preserve_cosmo_factor,
@@ -718,6 +724,7 @@ class cosmo_array(unyt_array):
         name=None,
         cosmo_factor=None,
         comoving=True,
+        valid_transform=True,
         compression=None,
     ):
         """
@@ -753,6 +760,8 @@ class cosmo_array(unyt_array):
             coordinates
         comoving : bool
             flag to indicate whether using comoving coordinates
+        valid_transform : bool
+            flag to indicate whether this array can be converted to comoving
         compression : string
             description of the compression filters that were applied to that array in the
             hdf5 file
@@ -800,6 +809,11 @@ class cosmo_array(unyt_array):
         obj.cosmo_factor = cosmo_factor
         obj.comoving = comoving
         obj.compression = compression
+        obj.valid_transform = valid_transform
+        if not obj.valid_transform:
+            assert (
+                not obj.comoving
+            ), "Cosmo arrays without a valid transform to comoving units must be physical"
 
         return obj
 
@@ -810,6 +824,7 @@ class cosmo_array(unyt_array):
         self.cosmo_factor = getattr(obj, "cosmo_factor", None)
         self.comoving = getattr(obj, "comoving", True)
         self.compression = getattr(obj, "compression", None)
+        self.valid_transform = getattr(obj, "valid_transform", True)
 
     def __str__(self):
         if self.comoving:
@@ -837,7 +852,9 @@ class cosmo_array(unyt_array):
         """
         np_ret = super(cosmo_array, self).__reduce__()
         obj_state = np_ret[2]
-        cosmo_state = (((self.cosmo_factor, self.comoving),) + obj_state[:],)
+        cosmo_state = (
+            ((self.cosmo_factor, self.comoving, self.valid_transform),) + obj_state[:],
+        )
         new_ret = np_ret[:2] + cosmo_state + np_ret[3:]
         return new_ret
 
@@ -849,7 +866,7 @@ class cosmo_array(unyt_array):
         state and pass the rest to unyt_array.__setstate__.
         """
         super(cosmo_array, self).__setstate__(state[1:])
-        self.cosmo_factor, self.comoving = state[0]
+        self.cosmo_factor, self.comoving, self.valid_transform = state[0]
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
@@ -889,6 +906,9 @@ class cosmo_array(unyt_array):
         """
         if self.comoving:
             return
+        if not self.valid_transform:
+            # TODO: Decide on error/warning
+            print("What are you doing???")
         else:
             # Best to just modify values as otherwise we're just going to have
             # to do a convert_to_units anyway.
@@ -932,6 +952,9 @@ class cosmo_array(unyt_array):
         cosmo_array
             copy of cosmo_array in comoving units
         """
+        if not self.valid_transform:
+            # TODO: Decide on error/warning
+            print("What are you doing???")
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_comoving()
 
@@ -939,12 +962,13 @@ class cosmo_array(unyt_array):
 
     def compatible_with_comoving(self):
         """
+        # TODO: Is this the same question as "can be converted to comoving?"
         Is this cosmo_array compatible with a comoving cosmo_array?
 
         This is the case if the cosmo_array is comoving, or if the scale factor
         exponent is 0 (cosmo_factor.a_factor() == 1)
         """
-        return self.comoving or (self.cosmo_factor.a_factor == 1.0)
+        return self.valid_transform
 
     def compatible_with_physical(self):
         """
@@ -953,11 +977,18 @@ class cosmo_array(unyt_array):
         This is the case if the cosmo_array is physical, or if the scale factor
         exponent is 0 (cosmo_factor.a_factor == 1)
         """
+        # TODO: Isn't this always true? We can convert it to physical if needed?
         return (not self.comoving) or (self.cosmo_factor.a_factor == 1.0)
 
     @classmethod
     def from_astropy(
-        cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None
+        cls,
+        arr,
+        unit_registry=None,
+        comoving=True,
+        cosmo_factor=None,
+        compression=None,
+        valid_transform=True,
     ):
         """
         Convert an AstroPy "Quantity" to a cosmo_array.
@@ -977,6 +1008,8 @@ class cosmo_array(unyt_array):
         compression : string
             String describing any compression that was applied to this array in the hdf5
             file.
+        valid_transform : bool
+            flag to indicate whether this array can be converted to comoving
 
         Example
         -------
@@ -989,12 +1022,19 @@ class cosmo_array(unyt_array):
         obj.comoving = comoving
         obj.cosmo_factor = cosmo_factor
         obj.compression = compression
+        obj.valid_trasform = valid_transform
 
         return obj
 
     @classmethod
     def from_pint(
-        cls, arr, unit_registry=None, comoving=True, cosmo_factor=None, compression=None
+        cls,
+        arr,
+        unit_registry=None,
+        comoving=True,
+        cosmo_factor=None,
+        compression=None,
+        valid_transform=True,
     ):
         """
         Convert a Pint "Quantity" to a cosmo_array.
@@ -1014,6 +1054,8 @@ class cosmo_array(unyt_array):
         compression : string
             String describing any compression that was applied to this array in the hdf5
             file.
+        valid_transform : bool
+            flag to indicate whether this array can be converted to comoving
 
         Examples
         --------
@@ -1032,9 +1074,11 @@ class cosmo_array(unyt_array):
         obj.comoving = comoving
         obj.cosmo_factor = cosmo_factor
         obj.compression = compression
+        obj.valid_trasform = valid_transform
 
         return obj
 
+    # TODO:
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         cms = [
             (hasattr(inp, "comoving"), getattr(inp, "comoving", None)) for inp in inputs
