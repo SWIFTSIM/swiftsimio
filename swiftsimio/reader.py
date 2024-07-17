@@ -388,12 +388,14 @@ class SWIFTMetadata(object):
         """
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -458,12 +460,14 @@ class SWIFTMetadata(object):
 
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
 
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
@@ -506,10 +510,15 @@ class SWIFTMetadata(object):
         # Date and time of snapshot dump
         try:
             try:
+                raw = self.header.get(
+                    "SnapshotDate", self.header.get("Snapshot date", b"")
+                )
+                try:
+                    snap_date = raw.decode("utf-8")
+                except AttributeError:
+                    snap_date = raw
                 self.snapshot_date = datetime.strptime(
-                    self.header.get(
-                        "SnapshotDate", self.header.get("Snapshot date", b"")
-                    ).decode("utf-8"),
+                    snap_date,
                     "%H:%M:%S %Y-%m-%d %Z",
                 )
             except ValueError:
@@ -929,7 +938,7 @@ class SWIFTParticleTypeMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
+                        units *= unit**unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
@@ -1005,7 +1014,7 @@ class SWIFTParticleTypeMetadata(object):
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
-            a_factor_this_dataset = a ** cosmo_exponent
+            a_factor_this_dataset = a**cosmo_exponent
 
             return cosmo_factor(a_factor_this_dataset, current_scale_factor)
 
@@ -1190,9 +1199,11 @@ def generate_getter(
                             cosmo_array(
                                 # Only use column data if array is multidimensional, otherwise
                                 # we will crash here
-                                handle[field][:, columns]
-                                if handle[field].ndim > 1
-                                else handle[field][:],
+                                (
+                                    handle[field][:, columns]
+                                    if handle[field].ndim > 1
+                                    else handle[field][:]
+                                ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
                                 name=description,
