@@ -924,15 +924,13 @@ class SWIFTGroupMetadata(object):
             return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
         # Skip fields which are groups themselves
-        self.field_paths = [
-            f"{self.group}/{item}"
-            for item in self.metadata.handle[f"{self.group}"].keys()
-            if f"{self.group}/{item}" not in self.metadata.present_groups
-        ]
-
-        self.field_names = [
-            convert(item) for item in self.metadata.handle[f"{self.group}"].keys()
-        ]
+        self.field_paths = []
+        self.field_names = []
+        for item in self.metadata.handle[f"{self.group}"].keys():
+            # Skip fields which are groups themselves
+            if f"{self.group}/{item}" not in self.metadata.present_groups:
+                self.field_paths.append(f"{self.group}/{item}")
+                self.field_names.append(convert(item))
 
         return
 
