@@ -17,6 +17,23 @@ from swiftsimio import metadata
 from swiftsimio.metadata.cosmology.cosmology_fields import a_exponents
 
 
+def _ptype_str_to_int(ptype_str):
+    """
+    Convert a string like `"PartType0"` to an integer (in this example, `0`).
+
+    Parameters
+    ----------
+    ptype_str : str
+        The particle type string.
+
+    Returns
+    -------
+    out : int
+        The corresponding integer.
+    """
+    return int(ptype_str.strip("PartType")) if "PartType" in ptype_str else ptype_str
+
+
 class __SWIFTWriterParticleDataset(object):
     """
     A particle dataset for _writing_ with. This is explicitly different
@@ -59,7 +76,6 @@ class __SWIFTWriterParticleDataset(object):
         self.unit_system = unit_system
         self.particle_type = particle_type
 
-        self.particle_handle = f"PartType{self.particle_type}"
         self.particle_name = metadata.particle_types.particle_name_underscores[
             self.particle_type
         ]
@@ -191,7 +207,7 @@ class __SWIFTWriterParticleDataset(object):
             flag to indicate whether to turn on gzip compression
         """
 
-        particle_group = file_handle.create_group(self.particle_handle)
+        particle_group = file_handle.create_group(self.particle_type)
 
         if compress:
             compression = "gzip"
@@ -223,7 +239,7 @@ class __SWIFTWriterParticleDataset(object):
         for name, output_handle in getattr(
             metadata.required_fields, self.particle_name
         ).items():
-            obj = file_handle[f"/PartType{self.particle_type}/{output_handle}"]
+            obj = file_handle[f"/{self.particle_type}/{output_handle}"]
             for attr_name, attr_value in dset_attributes[output_handle].items():
                 obj.attrs.create(attr_name, attr_value)
 
@@ -255,7 +271,7 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the scale factor associated quantities
             a_exp = a_exponents.get(name, 0)
-            a_factor = scale_factor ** a_exp
+            a_factor = scale_factor**a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
@@ -601,14 +617,24 @@ class SWIFTWriterDataset(object):
         names_to_write : list
             list of metadata fields to write
         """
-        part_types = max(metadata.particle.particle_name_underscores.keys()) + 1
+        part_types = (
+            max(
+                [
+                    _ptype_str_to_int(k)
+                    for k in metadata.particle.particle_name_underscores.keys()
+                ]
+            )
+            + 1
+        )
         number_of_particles = [0] * part_types
         mass_table = [0.0] * part_types
 
         for number, name in metadata.particle_types.particle_name_underscores.items():
             if name in names_to_write:
-                number_of_particles[number] = getattr(self, name).n_part
-                mass_table[number] = getattr(self, name).masses[0]
+                number_of_particles[_ptype_str_to_int(number)] = getattr(
+                    self, name
+                ).n_part
+                mass_table[_ptype_str_to_int(number)] = getattr(self, name).masses[0]
 
         attrs = {
             "BoxSize": self.box_size,
