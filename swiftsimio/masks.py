@@ -3,6 +3,8 @@ Loading functions and objects that use masked information from the SWIFT
 snapshots.
 """
 
+import warnings
+
 import unyt
 import h5py
 
@@ -407,6 +409,25 @@ class SWIFTMask(object):
             for group_name in self.metadata.present_group_names:
                 setattr(self, group_name, ranges_from_array(getattr(self, group_name)))
 
+        return
+
+    def constrain_index(self, index: int):
+        """
+        Constrain the mask to a single row.
+
+        Intended for use with SOAP catalogues, mask to read only a single row.
+
+        Parameters
+        ----------
+        index : int
+            The index of the row to select.
+        """
+        if not self.metadata.filetype == "SOAP":
+            warnings.warn("Not masking a SOAP catalogue, nothing constrained.")
+            return
+        for group_name in self.metadata.present_group_names:
+            setattr(self, group_name, np.array([[index, index + 1]]))
+            setattr(self, f"{group_name}_size", 1)
         return
 
     def get_masked_counts_offsets(self) -> (Dict[str, np.array], Dict[str, np.array]):
