@@ -1164,7 +1164,7 @@ def generate_getter(
     compression: str,
     physical: bool,
     valid_transform: bool,
-    columns: Union[None, np.lib.index_tricks.IndexExpression] = None,
+    columns: Union[None, slice] = None,
 ):
     """
     Generates a function that:

@@ -877,7 +877,6 @@ class cosmo_array(unyt_array):
     compress = _propagate_cosmo_array_attributes(unyt_array.compress)
     diagonal = _propagate_cosmo_array_attributes(unyt_array.diagonal)
     flatten = _propagate_cosmo_array_attributes(unyt_array.flatten)
-    newbyteorder = _propagate_cosmo_array_attributes(unyt_array.newbyteorder)
     ravel = _propagate_cosmo_array_attributes(unyt_array.ravel)
     repeat = _propagate_cosmo_array_attributes(unyt_array.repeat)
     reshape = _propagate_cosmo_array_attributes(unyt_array.reshape)

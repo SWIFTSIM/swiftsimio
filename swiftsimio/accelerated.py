@@ -84,7 +84,7 @@ def read_ranges_from_file_unchunked(
     ranges: np.ndarray,
     output_shape: Tuple,
     output_type: type = np.float64,
-    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
+    columns: slice = np.s_[:],
 ) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
@@ -107,7 +107,7 @@ def read_ranges_from_file_unchunked(
     output_type: type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
-    columns: np.lib.index_tricks.IndexExpression, optional
+    columns: slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
 
@@ -368,7 +368,7 @@ def read_ranges_from_file_chunked(
     ranges: np.ndarray,
     output_shape: Tuple,
     output_type: type = np.float64,
-    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
+    columns: slice = np.s_[:],
 ) -> np.array:
     """
     Takes a hdf5 dataset, and the set of ranges from
@@ -391,7 +391,7 @@ def read_ranges_from_file_chunked(
     output_type: type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
-    columns: np.lib.index_tricks.IndexExpression, optional
+    columns: slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
 
@@ -462,7 +462,7 @@ def read_ranges_from_file(
     ranges: np.ndarray,
     output_shape: Tuple,
     output_type: type = np.float64,
-    columns: np.lib.index_tricks.IndexExpression = np.s_[:],
+    columns: slice = np.s_[:],
 ) -> np.array:
     """
     Wrapper function to correctly select which version of read_ranges_from_file
@@ -483,7 +483,7 @@ def read_ranges_from_file(
     output_type: type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
-    columns: np.lib.index_tricks.IndexExpression, optional
+    columns: slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
 
