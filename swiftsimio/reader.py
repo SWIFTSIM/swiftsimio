@@ -553,10 +553,9 @@ class SWIFTMetadata(object):
             self.reduced_lightspeed = None
 
         # Store these separately as self.n_gas = number of gas particles for example
-        for (
-            part_number,
-            part_name,
-        ) in metadata.particle_types.particle_name_underscores.items():
+        for (part_number, (_, part_name)) in enumerate(
+            metadata.particle_types.particle_name_underscores.items()
+        ):
             try:
                 setattr(self, f"n_{part_name}", self.num_part[part_number])
             except IndexError:

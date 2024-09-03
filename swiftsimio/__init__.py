@@ -1,5 +1,5 @@
 from .reader import *
-from .writer import SWIFTWriterDataset
+from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
 from .__version__ import __version__
@@ -109,5 +109,11 @@ def load_statistics(filename) -> SWIFTStatisticsFile:
     return SWIFTStatisticsFile(filename=filename)
 
 
-# Rename this object to something simpler.
-Writer = SWIFTWriterDataset
+class Writer:
+    def __new__(cls, *args, **kwargs):
+        # Default to SWIFTSnapshotWriter if no filetype is passed
+        filetype = kwargs.get("filetype", "snapshot")
+        if filetype == "snapshot":
+            return SWIFTSnapshotWriter(*args, **kwargs)
+        # TODO implement other writers
+        # elif filetype == '

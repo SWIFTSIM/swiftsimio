@@ -1,7 +1,7 @@
 """
 Contains functions and objects for creating SWIFT datasets.
 
-Essentially all you want to do is use SWIFTWriterDataset and fill the attributes
+Essentially all you want to do is use SWIFTSnapshotWriter and fill the attributes
 that are required for each particle type. More information is available in the
 README.
 """
@@ -271,7 +271,7 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the scale factor associated quantities
             a_exp = a_exponents.get(name, 0)
-            a_factor = scale_factor**a_exp
+            a_factor = scale_factor ** a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
@@ -493,7 +493,7 @@ def generate_dataset(
     return empty_dataset
 
 
-class SWIFTWriterDataset(object):
+class SWIFTSnapshotWriter(object):
     """
     The SWIFT writer dataset. This is used to store all particle arrays and do
     some extra processing before writing a HDF5 file containing:
@@ -516,7 +516,7 @@ class SWIFTWriterDataset(object):
         scale_factor: np.float32 = 1.0,
     ):
         """
-        Creates SWIFTWriterDataset object
+        Creates SWIFTSnapshotWriter object
 
         Parameters
         ----------

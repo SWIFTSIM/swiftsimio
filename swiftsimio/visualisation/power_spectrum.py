@@ -10,7 +10,7 @@ import unyt
 from swiftsimio.optional_packages import tqdm
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array
-from swiftsimio.reader import __SWIFTParticleDataset
+from swiftsimio.reader import __SWIFTGroupDatasets
 
 from typing import Optional, Dict, Tuple
 
@@ -169,7 +169,7 @@ def deposit_parallel(
 
 
 def render_to_deposit(
-    data: __SWIFTParticleDataset,
+    data: __SWIFTGroupDatasets,
     resolution: int,
     project: str = "masses",
     folding: int = 0,
@@ -199,7 +199,7 @@ def render_to_deposit(
     """
 
     # Get the positions and masses
-    folding = 2.0**folding
+    folding = 2.0 ** folding
     positions = data.coordinates
     quantity = getattr(data, project)
 
@@ -244,10 +244,10 @@ def render_to_deposit(
     units = 1.0 / (
         data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
     )
-    units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
+    units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     units *= quantity.units
-    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor**3)
+    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor ** 3)
 
     return cosmo_array(
         deposition, comoving=comoving, cosmo_factor=new_cosmo_factor, units=units
@@ -399,7 +399,7 @@ def folded_depositions_to_power_spectrum(
 
         if folding != final_folding:
             cutoff_wavenumber = (
-                2.0**folding * np.min(depositions[folding].shape) / np.min(box_size)
+                2.0 ** folding * np.min(depositions[folding].shape) / np.min(box_size)
             )
 
             if cutoff_above_wavenumber_fraction is not None:
@@ -424,7 +424,7 @@ def folded_depositions_to_power_spectrum(
             corrected_wavenumber_centers[prefer_bins] = folded_wavenumber_centers[
                 prefer_bins
             ].to(corrected_wavenumber_centers.units)
-            folding_tracker[prefer_bins] = 2.0**folding
+            folding_tracker[prefer_bins] = 2.0 ** folding
 
             contributed_counts[prefer_bins] = folded_counts[prefer_bins]
         elif transition == "average":
@@ -457,7 +457,7 @@ def folded_depositions_to_power_spectrum(
 
             # For debugging, we calculate an effective fold number.
             folding_tracker[use_bins] = (
-                (folding_tracker * existing_weight + (2.0**folding) * new_weight)
+                (folding_tracker * existing_weight + (2.0 ** folding) * new_weight)
                 / transition_norm
             )[use_bins]
 
@@ -538,7 +538,7 @@ def deposition_to_power_spectrum(
             deposition.shape == cross_deposition.shape
         ), "Depositions must have the same shape"
 
-    folding = 2.0**folding
+    folding = 2.0 ** folding
 
     box_size_folded = box_size[0] / folding
     npix = deposition.shape[0]
@@ -560,7 +560,7 @@ def deposition_to_power_spectrum(
     else:
         conj_fft = fft.conj()
 
-    fourier_amplitudes = (fft * conj_fft).real * box_size_folded**3
+    fourier_amplitudes = (fft * conj_fft).real * box_size_folded ** 3
 
     # Calculate k-value spacing (centered FFT)
     dk = 2 * np.pi / (box_size_folded)
@@ -592,7 +592,7 @@ def deposition_to_power_spectrum(
     divisor[zero_mask] = 1
 
     # Correct for folding
-    binned_amplitudes *= folding**3
+    binned_amplitudes *= folding ** 3
 
     # Correct units and names
     wavenumbers = unyt.unyt_array(

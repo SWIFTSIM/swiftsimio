@@ -961,13 +961,12 @@ class cosmo_array(unyt_array):
 
     def compatible_with_comoving(self):
         """
-        # TODO: Is this the same question as "can be converted to comoving?"
         Is this cosmo_array compatible with a comoving cosmo_array?
 
         This is the case if the cosmo_array is comoving, or if the scale factor
         exponent is 0 (cosmo_factor.a_factor() == 1)
         """
-        return self.valid_transform
+        return self.comoving or (self.cosmo_factor.a_factor == 1.0)
 
     def compatible_with_physical(self):
         """
@@ -976,7 +975,6 @@ class cosmo_array(unyt_array):
         This is the case if the cosmo_array is physical, or if the scale factor
         exponent is 0 (cosmo_factor.a_factor == 1)
         """
-        # TODO: Isn't this always true? We can convert it to physical if needed?
         return (not self.comoving) or (self.cosmo_factor.a_factor == 1.0)
 
     @classmethod

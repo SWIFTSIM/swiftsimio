@@ -28,14 +28,13 @@ def get_swift_name(name: str) -> str:
     str
         SWIFT particle type corresponding to `name` (e.g. PartType0)
     """
-    part_type_nums = [
+    part_type_names = [
         k for k, v in metadata.particle_types.particle_name_underscores.items()
     ]
     part_types = [
         v for k, v in metadata.particle_types.particle_name_underscores.items()
     ]
-    part_type_num = part_type_nums[part_types.index(name)]
-    return f"PartType{part_type_num}"
+    return part_type_names[part_types.index(name)]
 
 
 def get_dataset_mask(
@@ -66,7 +65,7 @@ def get_dataset_mask(
     suffix = "" if suffix is None else suffix
 
     if "PartType" in dataset_name:
-        part_type = [int(x) for x in filter(str.isdigit, dataset_name)][0]
+        part_type = dataset_name.lstrip("/").split("/")[0]
         mask_name = metadata.particle_types.particle_name_underscores[part_type]
         return getattr(mask, f"{mask_name}{suffix}", None)
     else:
