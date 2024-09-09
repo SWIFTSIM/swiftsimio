@@ -14,9 +14,9 @@ import math
 
 from swiftsimio.objects import cosmo_array
 from swiftsimio.reader import __SWIFTParticleDataset, SWIFTDataset
-from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma, kernel
+from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma, kernel_double_precision as kernel
 
-from swiftismio.accelerated import jit
+from swiftsimio.accelerated import jit
 import unyt
 
 @jit(nopython=True, fastmath=True)
@@ -87,7 +87,7 @@ def core_panels(
     inverse_cell_area = float_res * float_res
 
     for i in range(number_of_particles):
-        panel = z[i] // z_per_panel
+        panel = int(z[i] / z_per_panel)
 
         if panel < 0 or panel >= panels:
             continue
@@ -108,7 +108,13 @@ def core_panels(
             continue
 
         if cells_spanned <= 1:
-            output[particle_cell_x, particle_cell_y, panel] += m[i] * inverse_cell_area
+            if (
+                particle_cell_x >= 0
+                and particle_cell_x <= maximal_array_index
+                and particle_cell_y >= 0
+                and particle_cell_y <= maximal_array_index
+            ):
+                output[particle_cell_x, particle_cell_y, panel] += (m[i] * inverse_cell_area)
             continue
 
         normalisation = 0.0
@@ -127,7 +133,7 @@ def core_panels(
 
                 r = math.sqrt(distance_x_2 + distance_y_2)
 
-                normalisation += kernel(r / kernel_width)
+                normalisation += kernel(r, kernel_width)
 
         # Now have the normalisation
         normalisation = m[i] * inverse_cell_area / normalisation
@@ -152,7 +158,7 @@ def core_panels(
                 r = math.sqrt(distance_x_2 + distance_y_2)
 
                 output[cell_x, cell_y, panel] += (
-                    kernel(r / kernel_width) * normalisation
+                    kernel(r, kernel_width) * normalisation
                 )
 
     return output
@@ -207,13 +213,10 @@ def panel_pixel_grid(
     box_x, box_y, box_z = boxsize
 
     # Set the limits of the image.
-    z_slice_included = False
-
     if region is not None:
         x_min, x_max, y_min, y_max = region[:4]
 
         if len(region) == 6:
-            z_slice_included = True
             z_min, z_max = region[4:]
         else:
             z_min = unyt.unyt_quantity(0.0, units=box_z.units)
@@ -243,12 +246,12 @@ def panel_pixel_grid(
     if data.coordinates.comoving:
         if not hsml.compatible_with_comoving():
             raise AttributeError(
-                f"Physical smoothing length is not compatible with comoving coordinates!"
+                "Physical smoothing length is not compatible with comoving coordinates!"
             )
     else:
         if not hsml.compatible_with_physical():
             raise AttributeError(
-                f"Comoving smoothing length is not compatible with physical coordinates!"
+                "Comoving smoothing length is not compatible with physical coordinates!"
             )
 
     if rotation_center is not None:
@@ -262,10 +265,10 @@ def panel_pixel_grid(
         x, y, z = data.coordinates.T
 
     return core_panels(
-        x=x[mask],
-        y=y[mask],
+        x=x[mask] / max_range,
+        y=y[mask] / max_range,
         z=z[mask],
-        h=hsml[mask],
+        h=hsml[mask] / max_range,
         m=m[mask],
         res=resolution,
         panels=panels,
@@ -322,3 +325,103 @@ def panel_gas(
     return cosmo_array(
         image, units=units, cosmo_factor=new_cosmo_factor, comoving=comoving
     )
+
+
+
+# --- Functions that actually perform the 'ray tracing'.
+
+
+def transfer_function(value, width, center):
+    """
+    A simple gaussian transfer function centered around a specific value.
+    """
+    return  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((value - center) / width) ** 2)
+
+@jit(fastmath=True, nopython=True)
+def integrate_ray_numba_specific(input: np.array, red: float, green: float, blue: float, center: float, width: float):
+    """
+    Given a ray, integrate the transfer function along it
+    """
+
+    value = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+    color = np.array([red, green, blue], dtype=np.float32)
+
+    for i in input:
+        value += color *  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((i - center) / width) ** 2)
+
+    return value / len(input)
+
+@jit(fastmath=True, nopython=True)
+def integrate_ray_numba_nocolor(input: np.array, center: float, width: float):
+    """
+    Given a ray, integrate the transfer function along it
+    """
+
+    value = np.float32(0.0)
+
+    for i in input:
+        value *= 0.99
+        value +=  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((i - center) / width) ** 2)
+
+    return np.float32(value / len(input))
+
+
+# #%%
+# data = np.load("voxel_1024.npy")
+# # %%
+# log_data = np.log10(data)
+# # %%
+# transfer = lambda x: transfer_function(x, np.mean(log_data), np.std(log_data) * 0.5)
+# # %%
+# color = np.array([1.0, 0.0, 0.0], dtype=np.float32)
+# #%%
+# from tqdm import tqdm
+# # %%
+# @numba.njit(fastmath=True)
+# def make_grid(color, center, width):
+#     output = np.zeros((len(log_data), len(log_data[0])), dtype=np.float32)
+#     for x in numba.prange(len(log_data)):
+#         for y in range(len(log_data)):
+#             data = log_data[x, y]
+
+#             value = np.float32(0.0)
+
+#             for index, i in enumerate(data):
+#                 factor = index / len(data)
+
+#                 if factor > 0.5:
+#                     factor = 1.0 - factor
+
+#                 value +=  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((i - center) / width) ** 2)
+
+#             output[x, y] = value
+
+#     return output
+
+
+
+# # %%
+# import matplotlib.pyplot as plt
+# import swiftascmaps
+# # %%
+# std = np.std(log_data)
+# width = 0.05
+# centers = [np.mean(log_data) + x * std for x in [0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5]]
+# # %%
+# colors = plt.get_cmap("swift.nineteen_eighty_nine")((np.linspace(0, 1, len(centers))))[:, :3]
+
+# grids = [
+#     make_grid(color, center, width) for color, center in zip(colors, centers)
+# ]
+# #%%
+
+# #%%
+# make_image = lambda x, y: np.array([x * y[0], x * y[1], x * y[2]]).T
+# images = [make_image(grid / np.max(grid), color) for color, grid in zip(colors, grids)]
+# # %%
+# combined_image = sum(images)
+# plt.imsave("test.png", combined_image / np.max(combined_image))
+# # %%
+# for id, image in zip(centers, images):
+#     plt.imsave(f"test{id}.png", image)
+# # %%
