@@ -39,6 +39,15 @@ except (ImportError, ModuleNotFoundError):
     ASTROPY_AVAILABLE = False
 
 
+# matplotlib
+try:
+    import matplotlib.pyplot as plt
+
+    MATPLOTLIB_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    plt = None
+    MATPLOTLIB_AVAILABLE = False
+
 # Numba/CUDA
 try:
     from numba.cuda.cudadrv.error import CudaSupportError
@@ -83,3 +92,5 @@ if not CUDA_AVAILABLE:
 
     # For additional CUDA API access
     cuda = None
+
+

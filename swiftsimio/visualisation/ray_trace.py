@@ -16,7 +16,7 @@ from swiftsimio.objects import cosmo_array
 from swiftsimio.reader import __SWIFTParticleDataset, SWIFTDataset
 from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma, kernel_double_precision as kernel
 
-from swiftsimio.accelerated import jit
+from swiftsimio.accelerated import jit, prange, NUM_THREADS
 import unyt
 
 @jit(nopython=True, fastmath=True)
@@ -160,6 +160,52 @@ def core_panels(
                 output[cell_x, cell_y, panel] += (
                     kernel(r, kernel_width) * normalisation
                 )
+
+    return output
+
+@jit(nopython=True, fastmath=True)
+def core_panels_parallel(
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    h: np.float32,
+    m: np.float32,
+    res: int,
+    panels: int,
+    min_z: np.float64,
+    max_z: np.float64,
+):
+    # Same as scatter, but executes in parallel! This is actually trivial,
+    # we just make NUM_THREADS images and add them together at the end.
+
+    number_of_particles = x.size
+    core_particles = number_of_particles // NUM_THREADS
+
+    output = np.zeros((res, res, panels), dtype=np.float32)
+
+    for thread in prange(NUM_THREADS):
+        # Left edge is easy, just start at 0 and go to 'final'
+        left_edge = thread * core_particles
+
+        # Right edge is harder in case of left over particles...
+        right_edge = thread + 1
+
+        if right_edge == NUM_THREADS:
+            right_edge = number_of_particles
+        else:
+            right_edge *= core_particles
+
+        output += core_panels(
+            x[left_edge:right_edge],
+            y[left_edge:right_edge],
+            z[left_edge:right_edge],
+            h[left_edge:right_edge],
+            m[left_edge:right_edge],
+            res,
+            panels,
+            min_z,
+            max_z,
+        )
 
     return output
 
