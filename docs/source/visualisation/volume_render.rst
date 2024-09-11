@@ -244,6 +244,7 @@ you to see what densities your rendering is picking out:
 .. image:: volume_render_options.png
 
 .. code-block:: python   
+   
    # Now we can really visualize the rendering.
    img, norms = volume_render.visualise_render(
        log_rendered,
