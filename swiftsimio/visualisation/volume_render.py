@@ -882,11 +882,11 @@ def render_voxel_to_array(data, center, width):
 def visualise_render(
     render: ndarray,
     centers: list[float],
-    widths: list[float] | float,
+    widths: Union[list[float], float],
     cmap: str = "viridis",
     return_type: Literal["all", "lighten", "add"] = "lighten",
     norm: Union[list["plt.Normalize"], "plt.Normalize", None] = None,
-) -> tuple[list[ndarray] | ndarray, list["plt.Normalize"]]:
+) -> tuple[Union[list[ndarray], ndarray], list["plt.Normalize"]]:
     """
     Visualises a render with multiple centers and widths.
 
@@ -961,7 +961,7 @@ def visualise_render(
 
 def visualise_render_options(
     centers: list[float],
-    widths: list[float] | float,
+    widths: Union[list[float],  float],
     cmap: str = "viridis",
 ) -> tuple["plt.Figure", "plt.Axes"]:
     """
