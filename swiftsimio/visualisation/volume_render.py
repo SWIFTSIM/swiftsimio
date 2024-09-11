@@ -845,14 +845,14 @@ def render_gas(
             * data.metadata.boxsize[1]
             * data.metadata.boxsize[2]
         )
-        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 
@@ -946,7 +946,8 @@ def visualise_render(
     ]
 
     images = [
-        array([color[0] * x, color[1] * x, color[2] * x]).T for color, x in zip(colors, images)
+        array([color[0] * x, color[1] * x, color[2] * x]).T
+        for color, x in zip(colors, images)
     ]
 
     if return_type == "all":
@@ -960,9 +961,7 @@ def visualise_render(
 
 
 def visualise_render_options(
-    centers: list[float],
-    widths: Union[list[float],  float],
-    cmap: str = "viridis",
+    centers: list[float], widths: Union[list[float], float], cmap: str = "viridis"
 ) -> tuple["plt.Figure", "plt.Axes"]:
     """
     Creates a figure of your rendering options. The y-axis is the output value
@@ -998,7 +997,10 @@ def visualise_render_options(
 
     for center, width, color in zip(centers, widths, colors):
         xs = linspace(center - 5.0 * width, center + 5.0 * width, 100)
-        ys = [exp(-0.5 * ((center - x) / width)**2) / (width * sqrt(2.0 * pi)) for x in xs]
+        ys = [
+            exp(-0.5 * ((center - x) / width) ** 2) / (width * sqrt(2.0 * pi))
+            for x in xs
+        ]
 
         ax.axvline(center, color=color, linestyle="--")
 

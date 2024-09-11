@@ -92,5 +92,3 @@ if not CUDA_AVAILABLE:
 
     # For additional CUDA API access
     cuda = None
-
-

@@ -14,10 +14,14 @@ import math
 
 from swiftsimio.objects import cosmo_array
 from swiftsimio.reader import __SWIFTParticleDataset, SWIFTDataset
-from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma, kernel_double_precision as kernel
+from swiftsimio.visualisation.projection_backends.kernels import (
+    kernel_gamma,
+    kernel_double_precision as kernel,
+)
 
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
 import unyt
+
 
 @jit(nopython=True, fastmath=True)
 def core_panels(
@@ -114,7 +118,9 @@ def core_panels(
                 and particle_cell_y >= 0
                 and particle_cell_y <= maximal_array_index
             ):
-                output[particle_cell_x, particle_cell_y, panel] += (m[i] * inverse_cell_area)
+                output[particle_cell_x, particle_cell_y, panel] += (
+                    m[i] * inverse_cell_area
+                )
             continue
 
         normalisation = 0.0
@@ -157,11 +163,10 @@ def core_panels(
 
                 r = math.sqrt(distance_x_2 + distance_y_2)
 
-                output[cell_x, cell_y, panel] += (
-                    kernel(r, kernel_width) * normalisation
-                )
+                output[cell_x, cell_y, panel] += kernel(r, kernel_width) * normalisation
 
     return output
+
 
 @jit(nopython=True, fastmath=True)
 def core_panels_parallel(
@@ -250,9 +255,9 @@ def panel_pixel_grid(
                 raise AttributeError(
                     f'Comoving quantity "{project}" is not compatible with physical coordinates!'
                 )
-        m = m.value 
+        m = m.value
 
-     # This provides a default 'slice it all' mask.
+    # This provides a default 'slice it all' mask.
     if mask is None:
         mask = np.s_[:]
 
@@ -275,7 +280,6 @@ def panel_pixel_grid(
         z_min = unyt.unyt_quantity(0.0, units=box_z.units)
         z_max = box_z
 
-
     x_range = x_max - x_min
     y_range = y_max - y_min
 
@@ -283,7 +287,7 @@ def panel_pixel_grid(
     # we always use the maximum of x_range and y_range to normalise the coordinates
     # empty pixels in the resulting square image are trimmed afterwards
     max_range = max(x_range, y_range)
-    
+
     try:
         hsml = data.smoothing_lengths
     except AttributeError:
@@ -321,6 +325,7 @@ def panel_pixel_grid(
         min_z=z_min,
         max_z=z_max,
     )
+
 
 def panel_gas(
     data: SWIFTDataset,
@@ -373,7 +378,6 @@ def panel_gas(
     )
 
 
-
 # --- Functions that actually perform the 'ray tracing'.
 
 
@@ -381,10 +385,17 @@ def transfer_function(value, width, center):
     """
     A simple gaussian transfer function centered around a specific value.
     """
-    return  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((value - center) / width) ** 2)
+    return (
+        1
+        / (width * np.sqrt(2.0 * np.pi))
+        * np.exp(-0.5 * ((value - center) / width) ** 2)
+    )
+
 
 @jit(fastmath=True, nopython=True)
-def integrate_ray_numba_specific(input: np.array, red: float, green: float, blue: float, center: float, width: float):
+def integrate_ray_numba_specific(
+    input: np.array, red: float, green: float, blue: float, center: float, width: float
+):
     """
     Given a ray, integrate the transfer function along it
     """
@@ -393,9 +404,15 @@ def integrate_ray_numba_specific(input: np.array, red: float, green: float, blue
     color = np.array([red, green, blue], dtype=np.float32)
 
     for i in input:
-        value += color *  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((i - center) / width) ** 2)
+        value += (
+            color
+            * 1
+            / (width * np.sqrt(2.0 * np.pi))
+            * np.exp(-0.5 * ((i - center) / width) ** 2)
+        )
 
     return value / len(input)
+
 
 @jit(fastmath=True, nopython=True)
 def integrate_ray_numba_nocolor(input: np.array, center: float, width: float):
@@ -407,7 +424,11 @@ def integrate_ray_numba_nocolor(input: np.array, center: float, width: float):
 
     for i in input:
         value *= 0.99
-        value +=  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((i - center) / width) ** 2)
+        value += (
+            1
+            / (width * np.sqrt(2.0 * np.pi))
+            * np.exp(-0.5 * ((i - center) / width) ** 2)
+        )
 
     return np.float32(value / len(input))
 
@@ -443,7 +464,6 @@ def integrate_ray_numba_nocolor(input: np.array, center: float, width: float):
 #             output[x, y] = value
 
 #     return output
-
 
 
 # # %%

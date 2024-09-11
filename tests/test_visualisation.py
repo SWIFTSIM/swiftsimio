@@ -416,25 +416,24 @@ def test_panel_rendering(filename):
     res = 1024
 
     # Test the panel rendering
-    panel = panel_gas(
-        data,
-        resolution=res,
-        panels=N_depth,
-        project="masses",
-    )
+    panel = panel_gas(data, resolution=res, panels=N_depth, project="masses")
 
     assert panel.shape[-1] == N_depth
 
     import matplotlib.pyplot as plt
     from matplotlib.colors import LogNorm
 
-    plt.imsave("panels_added.png", plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(np.sum(panel, axis=-1))))
-
-    projected = project_gas(
-        data, res, "masses", backend="renormalised"
+    plt.imsave(
+        "panels_added.png",
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(np.sum(panel, axis=-1))),
     )
 
-    plt.imsave("projected.png", plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(projected)),)
+    projected = project_gas(data, res, "masses", backend="renormalised")
+
+    plt.imsave(
+        "projected.png",
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(projected)),
+    )
 
     fullstack = np.zeros((res, res))
 
@@ -443,10 +442,18 @@ def test_panel_rendering(filename):
 
     offset = 32
 
-    plt.imsave("stacked.png", plt.get_cmap()(LogNorm()(fullstack[offset:-offset, offset:-offset])))
+    plt.imsave(
+        "stacked.png",
+        plt.get_cmap()(LogNorm()(fullstack[offset:-offset, offset:-offset])),
+    )
 
-    assert np.isclose(panel.sum(axis=-1)[offset:-offset, offset:-offset], projected[offset:-offset, offset:-offset], rtol=0.1).all()
+    assert np.isclose(
+        panel.sum(axis=-1)[offset:-offset, offset:-offset],
+        projected[offset:-offset, offset:-offset],
+        rtol=0.1,
+    ).all()
     return
+
 
 def test_periodic_boundary_wrapping():
     """
