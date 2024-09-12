@@ -3,7 +3,7 @@ Basic volume render for SPH data. This takes the 3D positions
 of the particles and projects them onto a grid.
 """
 
-from typing import List, Literal, Union
+from typing import List, Literal, Tuple, Union
 from math import sqrt, exp, pi
 from numpy import (
     float64,
@@ -886,7 +886,7 @@ def visualise_render(
     cmap: str = "viridis",
     return_type: Literal["all", "lighten", "add"] = "lighten",
     norm: Union[List["plt.Normalize"], "plt.Normalize", None] = None,
-) -> tuple[Union[List[ndarray], ndarray], List["plt.Normalize"]]:
+) -> Tuple[Union[List[ndarray], ndarray], List["plt.Normalize"]]:
     """
     Visualises a render with multiple centers and widths.
 
@@ -962,7 +962,7 @@ def visualise_render(
 
 def visualise_render_options(
     centers: List[float], widths: Union[List[float], float], cmap: str = "viridis"
-) -> tuple["plt.Figure", "plt.Axes"]:
+) -> Tuple["plt.Figure", "plt.Axes"]:
     """
     Creates a figure of your rendering options. The y-axis is the output value
     of the rendering function. The x-axis is your input quantity. You may wish
