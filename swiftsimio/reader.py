@@ -582,17 +582,13 @@ class SWIFTMetadata(object):
         """
         Determine what type of file we are reading
         """
-        # TODO: Is there a better way to do this?
-        if self.output_type == "FullVolume":
-            self.filetype = "snapshot"
-        elif self.output_type == "FOF":
+        if self.output_type == "FOF":
             self.filetype = "FOF"
         elif self.output_type == "SOAP":
             self.filetype = "SOAP"
         else:
+            # Default to snapshot
             self.filetype = "snapshot"
-            # TODO: Raise this error after fixing tests
-            # raise NotImplementedError(f'Unsupported filetype: {self.output_type}')
 
     def load_groups(self):
         """
@@ -1670,7 +1666,6 @@ class SWIFTDataset(object):
     def create_particle_datasets(self):
         Creates particle datasets for whatever particle types and names
         are specified in metadata.particle_types.
-    # TODO: UPDATE DOCS
     """
 
     def __init__(self, filename, mask=None):

@@ -106,6 +106,9 @@ except ImportError:
 # The scale factor!
 a = sympy.symbols("a")
 
+class InvalidConversionError(Exception):
+    def __init__(self, message="Could not convert to comoving coordinates"):
+        self.message = message
 
 def _propagate_cosmo_array_attributes(func):
     def wrapped(self, *args, **kwargs):
@@ -814,6 +817,8 @@ class cosmo_array(unyt_array):
             assert (
                 not obj.comoving
             ), "Cosmo arrays without a valid transform to comoving units must be physical"
+        if obj.comoving:
+            assert obj.valid_transform, "Comoving Cosmo arrays must be able to be transformed to physical"
 
         return obj
 
@@ -906,14 +911,12 @@ class cosmo_array(unyt_array):
         if self.comoving:
             return
         if not self.valid_transform:
-            # TODO: Decide on error/warning
-            print("What are you doing???")
-        else:
-            # Best to just modify values as otherwise we're just going to have
-            # to do a convert_to_units anyway.
-            values = self.d
-            values /= self.cosmo_factor.a_factor
-            self.comoving = True
+            raise InvalidConversionError
+        # Best to just modify values as otherwise we're just going to have
+        # to do a convert_to_units anyway.
+        values = self.d
+        values /= self.cosmo_factor.a_factor
+        self.comoving = True
 
     def convert_to_physical(self) -> None:
         """
@@ -952,8 +955,7 @@ class cosmo_array(unyt_array):
             copy of cosmo_array in comoving units
         """
         if not self.valid_transform:
-            # TODO: Decide on error/warning
-            print("What are you doing???")
+            raise InvalidConversionError
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_comoving()
 
