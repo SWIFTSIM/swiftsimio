@@ -106,9 +106,11 @@ except ImportError:
 # The scale factor!
 a = sympy.symbols("a")
 
+
 class InvalidConversionError(Exception):
     def __init__(self, message="Could not convert to comoving coordinates"):
         self.message = message
+
 
 def _propagate_cosmo_array_attributes(func):
     def wrapped(self, *args, **kwargs):
@@ -818,7 +820,9 @@ class cosmo_array(unyt_array):
                 not obj.comoving
             ), "Cosmo arrays without a valid transform to comoving units must be physical"
         if obj.comoving:
-            assert obj.valid_transform, "Comoving Cosmo arrays must be able to be transformed to physical"
+            assert (
+                obj.valid_transform
+            ), "Comoving Cosmo arrays must be able to be transformed to physical"
 
         return obj
 
