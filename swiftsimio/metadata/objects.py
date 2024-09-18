@@ -586,6 +586,7 @@ class SWIFTMetadata(ABC):
     units: SWIFTUnits
     header: dict
     masking_valid: bool = False
+    shared_cell_counts: str|None = None
 
     @abstractmethod
     def __init__(self, filename, units: SWIFTUnits):
@@ -1215,6 +1216,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
 class SWIFTSOAPMetadata(SWIFTMetadata):
     masking_valid: bool = True
+    shared_cell_counts: str|None = "Subhalos"
 
     def __init__(self, filename: str, units: SWIFTUnits):
         self.filename = filename
