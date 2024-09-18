@@ -399,7 +399,10 @@ class SWIFTGroupMetadata(object):
         for field in self.field_paths:
             property_name = field.split("/")[-1]
 
-            if property_name in self.metadata.named_columns.keys():
+            # Not all datasets have named columns
+            named_columns_metadata = getattr(self.metadata, "named_columns", {})
+
+            if property_name in named_columns_metadata.keys():
                 field_names = self.metadata.named_columns[property_name]
 
                 # Now need to make a decision on capitalisation. If we have a set of
