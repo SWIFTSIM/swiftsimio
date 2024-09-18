@@ -395,13 +395,7 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     group = group_metadata.group
     group_name = group_metadata.group_name
 
-    # Set nice name for group
-    if group_metadata.metadata.filetype == "snapshot":
-        group_nice_name = metadata.particle_types.particle_name_class[group]
-    elif group_metadata.metadata.filetype == "FOF":
-        group_nice_name = "FOFGroups"
-    elif group_metadata.metadata.filetype == "SOAP":
-        group_nice_name = metadata.soap_types.get_soap_name_nice(group)
+    group_nice_name = group_metadata.metadata.get_nice_name(group)
 
     # Mask is an object that contains all masks for all possible datasets.
     if mask is not None:

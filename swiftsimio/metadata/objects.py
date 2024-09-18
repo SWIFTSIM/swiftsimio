@@ -5,6 +5,7 @@ import unyt
 import h5py
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
+from swiftsimio.objects import cosmo_array, cosmo_factor, a
 from abc import ABC, abstractmethod
 
 import re
@@ -280,19 +281,10 @@ class SWIFTGroupMetadata(object):
                 # Can't load description!
                 description = "No description available"
 
-            if self.metadata.filetype != "SOAP":
-                return description
-
-            try:
-                is_masked = dataset.attrs["Masked"]
-            except KeyError:
-                is_masked = False
+            is_masked = dataset.attrs.get("Masked", False)
             if not is_masked:
                 return description + " Not masked."
 
-            # TODO: Update for https://github.com/SWIFTSIM/SOAP/pull/81
-            # TODO: Also need to add metadata for each halo type for that PR
-            # If is_masked is true then these other attributes should exist
             mask_datasets = dataset.attrs["Mask Datasets"]
             mask_threshold = dataset.attrs["Mask Threshold"]
             if len(mask_datasets) == 1:
@@ -1179,6 +1171,9 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         return self.num_files_per_snapshot > 1
     
+    @staticmethod
+    def get_nice_name(group):
+        return metadata.particle_types.particle_name_class[group]
 
 class SWIFTFOFMetadata(SWIFTMetadata):
     masking_valid: bool = False
@@ -1211,6 +1206,9 @@ class SWIFTFOFMetadata(SWIFTMetadata):
         """
         return ["fof_groups"]
     
+    @staticmethod
+    def get_nice_name(group):
+        return "FOFGroups"
 
 class SWIFTSOAPMetadata(SWIFTMetadata):
     masking_valid: bool = True
@@ -1245,3 +1243,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
             metadata.soap_types.get_soap_name_underscore(x)
             for x in self.present_groups
         ]
+
+    @staticmethod
+    def get_nice_name(group):
+        return metadata.soap_types.get_soap_name_nice(group)
