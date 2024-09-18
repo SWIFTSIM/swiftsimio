@@ -50,9 +50,8 @@ class SWIFTMask(object):
         self.units = metadata.units
         self.spatial_only = spatial_only
 
-        if self.metadata.filetype == "FOF":
-            # No virtual snapshots or cells metadata for fof currently
-            raise NotImplementedError("Masking not supported for FOF filetype")
+        if not self.metadata.masking_valid:
+            raise NotImplementedError(f"Masking not supported for {self.metadata.output_type} filetype")
 
         if self.metadata.partial_snapshot:
             raise InvalidSnapshot(
