@@ -1272,6 +1272,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
         self.get_metadata()
         self.postprocess_header()
+        self.unpack_subhalo_number()
 
         self.load_groups()
 
@@ -1279,6 +1280,9 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
         self.handle.close()
 
         return
+    
+    def unpack_subhalo_number(self):
+        self.n_subhalos = int(self.num_subhalo[0])
 
     @property
     def present_groups(self):
