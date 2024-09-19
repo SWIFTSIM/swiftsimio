@@ -296,3 +296,11 @@ You can load SOAP files as follows:
    #        574.      489.5     233.75      0.     1406.      367.5    2308.
    #        ...
    #        0.      534.        0.      191.75   1450.      600.      290.   ] 10000000000.0*Msun (Physical)
+
+What's going on here? Under the hood, ``swiftsimio`` has a discrimination function
+between different metadata types, based upon a property stored in the HDF5 file,
+``Header/OutputType``. If this is set to ``FullVolume``, we have a snapshot,
+and use the :obj:`swiftsimio.metadata.objects.SWIFTSnapshotMetadata`
+class. If it is ``SOAP``, we use
+:obj:`swiftsimio.metadata.objects.SWIFTSOAPMetadata`, which instructs
+``swiftsimio`` to read slightly different properties from the HDF5 file.
