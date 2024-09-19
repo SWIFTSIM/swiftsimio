@@ -1,3 +1,11 @@
+"""
+Objects describing the metadata in SWIFTsimIO files. There is a main
+abstract class, ``SWIFTMetadata``, that contains the required base
+methods to correctly represent the internal representation of an
+HDF5 file to what SWIFTsimIO expects to be able to unpack into the
+object notation (e.g. PartType0/Coordinates -> gas.coordinates).
+"""
+
 
 import numpy as np
 import unyt
@@ -15,6 +23,334 @@ from datetime import datetime
 from pathlib import Path
 
 from typing import List, Optional
+
+
+class SWIFTMetadata(ABC):
+    """
+    An abstract base class for all SWIFT-related file metadata.
+    """
+
+    # Underlying path to the file that this metadata is associated with.
+    filename: str
+    # The units object associated with this file. All SWIFT metadata objects
+    # must use this units system.
+    units: "SWIFTUnits"
+    # The header dictionary which will later be unpackaged according to the
+    # metadata fields.
+    header: dict
+    # Whether this type of file can be masked or not (this is a fixed parameter
+    # that should probably not be changed at run-time).
+    masking_valid: bool = False
+    # Whether this file uses shared metadata cell counts for all particle types
+    # (as is the case in SOAP) or whether each type (e.g. Gas, Dark Matter, etc.)
+    # has its own top-level cell grid counts.
+    shared_cell_counts: str | None = None
+
+    @abstractmethod
+    def __init__(self, filename, units: "SWIFTUnits"):
+        raise NotImplementedError
+
+    @property
+    def handle(self):
+        # Handle, which is shared with units. Units handles
+        # file opening and closing.
+        return self.units.handle
+
+    def load_groups(self):
+        """
+        Loads the groups and metadata into objects:
+
+            metadata.<group_name>_properties
+
+        This contains eight arrays,
+
+            metadata.<type>_properties.field_names
+            metadata.<type>_properties.field_paths
+            metadata.<type>_properties.field_units
+            metadata.<type>_properties.field_cosmologies
+            metadata.<type>_properties.field_descriptions
+            metadata.<type>_properties.field_compressions
+            metadata.<type>_properties.field_physicals
+            metadata.<type>_properties.field_valid_transforms
+
+        As well as some more information about the group.
+        """
+
+        for group, name in zip(self.present_groups, self.present_group_names):
+            filetype_metadata = SWIFTGroupMetadata(
+                group=group,
+                group_name=name,
+                metadata=self,
+                scale_factor=self.scale_factor,
+            )
+            setattr(self, f"{name}_properties", filetype_metadata)
+
+        return
+
+    def get_metadata(self):
+        """
+        Loads the metadata as specified in metadata.metadata_fields.
+        """
+
+        for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
+            try:
+                setattr(self, name, dict(self.handle[field].attrs))
+            except KeyError:
+                setattr(self, name, None)
+
+        return
+
+    def postprocess_header(self):
+        """
+        Some minor postprocessing on the header to local variables.
+        """
+
+        # These are just read straight in to variables
+        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
+        )
+
+        for field, name in metadata.metadata_fields.header_unpack_arrays.items():
+            try:
+                if name in header_unpack_arrays_units.keys():
+                    setattr(
+                        self,
+                        name,
+                        unyt.unyt_array(
+                            self.header[field], units=header_unpack_arrays_units[name]
+                        ),
+                    )
+                    # This is required or we automatically get everything in CGS!
+                    getattr(self, name).convert_to_units(
+                        header_unpack_arrays_units[name]
+                    )
+                else:
+                    # Must not have any units! Oh well.
+                    setattr(self, name, self.header[field])
+            except KeyError:
+                # Must not be present, just skip it
+                continue
+
+        # Now unpack the 'mass table' type items:
+        for field, name in metadata.metadata_fields.header_unpack_mass_tables.items():
+            try:
+                setattr(
+                    self,
+                    name,
+                    MassTable(
+                        base_mass_table=self.header[field], mass_units=self.units.mass
+                    ),
+                )
+            except KeyError:
+                setattr(
+                    self,
+                    name,
+                    MassTable(
+                        base_mass_table=np.zeros(
+                            len(metadata.particle_types.particle_name_underscores)
+                        ),
+                        mass_units=self.units.mass,
+                    ),
+                )
+
+        # These must be unpacked as 'real' strings (i.e. converted to utf-8)
+
+        for field, name in metadata.metadata_fields.header_unpack_string.items():
+            try:
+                # Deal with h5py's quirkiness that fixed-sized and variable-sized
+                # strings are read as strings or bytes
+                # See: https://github.com/h5py/h5py/issues/2172
+                raw = self.header[field]
+                try:
+                    string = raw.decode("utf-8")
+                except AttributeError:
+                    string = raw
+                setattr(self, name, string)
+            except KeyError:
+                # Must not be present, just skip it
+                setattr(self, name, "")
+
+        # These must be unpacked as they are stored as length-1 arrays
+
+        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
+        )
+
+        for field, names in metadata.metadata_fields.header_unpack_single_float.items():
+            try:
+                if isinstance(names, list):
+                    # Sometimes we store a list in case we have multiple names, for example
+                    # Redshift -> metadata.redshift AND metadata.z. Can't just do the iteration
+                    # because we may loop over the letters in the string.
+                    for variable in names:
+                        if variable in header_unpack_float_units.keys():
+                            # We have an associated unit!
+                            unit = header_unpack_float_units[variable]
+                            setattr(
+                                self,
+                                variable,
+                                unyt.unyt_quantity(self.header[field][0], units=unit),
+                            )
+                        else:
+                            # No unit
+                            setattr(self, variable, self.header[field][0])
+                else:
+                    # We can just check for the unit and set the attribute
+                    variable = names
+                    if variable in header_unpack_float_units.keys():
+                        # We have an associated unit!
+                        unit = header_unpack_float_units[variable]
+                        setattr(
+                            self,
+                            variable,
+                            unyt.unyt_quantity(self.header[field][0], units=unit),
+                        )
+                    else:
+                        # No unit
+                        setattr(self, variable, self.header[field][0])
+            except KeyError:
+                # Must not be present, just skip it
+                continue
+
+        # These are special cases, sorry!
+        # Date and time of snapshot dump
+        try:
+            try:
+                # Try and decode bytes, otherwise save raw string
+                snapshot_date = self.header.get(
+                    "SnapshotDate", self.header.get("Snapshot date", b"")
+                ).decode("utf-8")
+            except AttributeError:
+                snapshot_date = self.header.get(
+                    "SnapshotDate", self.header.get("Snapshot date", "")
+                )
+            try:
+                self.snapshot_date = datetime.strptime(
+                    snapshot_date, "%H:%M:%S %Y-%m-%d %Z"
+                )
+            except ValueError:
+                # Backwards compatibility; this was used previously due to simplicity
+                # but is not portable between regions. So if you ran a simulation on
+                # a British (en_GB) machine, and then tried to read on a Dutch
+                # machine (nl_NL), this would _not_ work because %c is different.
+                try:
+                    self.snapshot_date = datetime.strptime(snapshot_date, "%c\n")
+                except ValueError:
+                    # Oh dear this has gone _very_wrong. Let's just keep it as a string.
+                    self.snapshot_date = snapshot_date
+        except KeyError:
+            # Old file
+            pass
+
+        # get photon group edges RT dataset from the SubgridScheme group
+        try:
+            self.photon_group_edges = (
+                self.handle["SubgridScheme/PhotonGroupEdges"][:] / self.units.time
+            )
+        except KeyError:
+            self.photon_group_edges = None
+
+        # get reduced speed of light RT dataset from the SubgridScheme group
+        try:
+            self.reduced_lightspeed = (
+                self.handle["SubgridScheme/ReducedLightspeed"][0]
+                * self.units.length
+                / self.units.time
+            )
+        except KeyError:
+            self.reduced_lightspeed = None
+
+        # Store these separately as self.n_gas = number of gas particles for example
+        for (part_number, (_, part_name)) in enumerate(
+            metadata.particle_types.particle_name_underscores.items()
+        ):
+            try:
+                setattr(self, f"n_{part_name}", self.num_part[part_number])
+            except IndexError:
+                # Backwards compatibility; mass/number table can change size.
+                setattr(self, f"n_{part_name}", 0)
+
+        # Need to unpack the gas gamma for cosmology
+        try:
+            self.gas_gamma = self.hydro_scheme["Adiabatic index"]
+        except (KeyError, TypeError):
+            # We can set a default and print a message whenever we require this value
+            self.gas_gamma = None
+
+        try:
+            self.a = self.scale_factor
+        except AttributeError:
+            # These must always be present for the initialisation of cosmology properties
+            self.a = 1.0
+            self.scale_factor = 1.0
+
+        return
+
+    def extract_cosmology(self):
+        """
+        Creates an astropy.cosmology object from the internal cosmology system.
+
+        This will be saved as ``self.cosmology``.
+        """
+
+        if self.cosmology_raw is not None:
+            cosmo = self.cosmology_raw
+        else:
+            cosmo = {"Cosmological run": 0}
+
+        if cosmo.get("Cosmological run", 0):
+            self.cosmology = swift_cosmology_to_astropy(cosmo, units=self.units)
+        else:
+            self.cosmology = None
+
+        return
+
+    @property
+    @abstractmethod
+    def present_groups(self) -> list[str]:
+        """
+        A property giving the present particle groups in the file to be unpackaged
+        into top-level properties. For instance, in a regular snapshot, this would be
+        ["PartType0", "PartType1", "PartType4", ...]. In SOAP, this would be
+        ["SO/200_crit", "SO/200_mean", ...], i.e. one per aperture. 
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def present_group_names(self) -> list[str]:
+        """
+        A property giving the mapping for the names in ``present_groups`` to what the
+        objects are called on the SWIFTsimIO objects. For instance, in a regular snapshot,
+        this would be ["gas", "dark_matter", "stars", ...]. In SOAP, this would be
+        ["spherical_overdensity_200_crit", ...].
+        """
+        raise NotImplementedError
+
+    @property
+    def partial_snapshot(self) -> bool:
+        """
+        A property defining whether this is a partial snapshot (e.g. a `.0.hdf5` file) or
+        a full/virtual snapsoht covering all particles. This must be computed at run-time.
+        """
+        return False
+
+    @staticmethod
+    @abstractmethod
+    def get_nice_name(group: str) -> str:
+        """
+        Converts the group name to a 'nice name' (i.e. for printing) for the SWIFTsimIO objects.
+        """
+        raise NotImplementedError
+
 
 class MassTable(object):
     """
@@ -114,7 +450,6 @@ class MappingTable(object):
 
     def __repr__(self):
         return f"{self.__str__()}. Raw data: " "\n" f"{self.data}."
-    
 
 
 class SWIFTGroupMetadata(object):
@@ -148,7 +483,11 @@ class SWIFTGroupMetadata(object):
     """
 
     def __init__(
-        self, group: str, group_name: str, metadata: "SWIFTMetadata", scale_factor: float
+        self,
+        group: str,
+        group_name: str,
+        metadata: "SWIFTMetadata",
+        scale_factor: float,
     ):
         """
         Constructor for SWIFTGroupMetadata class
@@ -538,7 +877,6 @@ class SWIFTUnits(object):
             self._handle.close()
 
 
-
 def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
     """
     Discriminates between the different types of metadata objects read from SWIFT-compatible
@@ -574,316 +912,15 @@ def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
         return SWIFTFOFMetadata(filename, units)
     else:
         raise ValueError(f"File type {file_type} not recognised.")
-    
 
-
-class SWIFTMetadata(ABC):
-    """
-    An abstract base class for all SWIFT-related file metadata.
-    """
-
-    filename: str
-    units: SWIFTUnits
-    header: dict
-    masking_valid: bool = False
-    shared_cell_counts: str|None = None
-
-    @abstractmethod
-    def __init__(self, filename, units: SWIFTUnits):
-        raise NotImplementedError
-
-    @property
-    def handle(self):
-        # Handle, which is shared with units. Units handles
-        # file opening and closing.
-        return self.units.handle
-
-    def load_groups(self):
-        """
-        Loads the groups and metadata into objects:
-
-            metadata.<group_name>_properties
-
-        This contains eight arrays,
-
-            metadata.<type>_properties.field_names
-            metadata.<type>_properties.field_paths
-            metadata.<type>_properties.field_units
-            metadata.<type>_properties.field_cosmologies
-            metadata.<type>_properties.field_descriptions
-            metadata.<type>_properties.field_compressions
-            metadata.<type>_properties.field_physicals
-            metadata.<type>_properties.field_valid_transforms
-
-        As well as some more information about the group.
-        """
-
-        for group, name in zip(self.present_groups, self.present_group_names):
-            filetype_metadata = SWIFTGroupMetadata(
-                group=group,
-                group_name=name,
-                metadata=self,
-                scale_factor=self.scale_factor,
-            )
-            setattr(self, f"{name}_properties", filetype_metadata)
-
-        return
-    
-    def get_metadata(self):
-        """
-        Loads the metadata as specified in metadata.metadata_fields.
-        """
-
-        for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
-            try:
-                setattr(self, name, dict(self.handle[field].attrs))
-            except KeyError:
-                setattr(self, name, None)
-
-        return
-    
-    def postprocess_header(self):
-        """
-        Some minor postprocessing on the header to local variables.
-        """
-
-        # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
-        )
-
-        for field, name in metadata.metadata_fields.header_unpack_arrays.items():
-            try:
-                if name in header_unpack_arrays_units.keys():
-                    setattr(
-                        self,
-                        name,
-                        unyt.unyt_array(
-                            self.header[field], units=header_unpack_arrays_units[name]
-                        ),
-                    )
-                    # This is required or we automatically get everything in CGS!
-                    getattr(self, name).convert_to_units(
-                        header_unpack_arrays_units[name]
-                    )
-                else:
-                    # Must not have any units! Oh well.
-                    setattr(self, name, self.header[field])
-            except KeyError:
-                # Must not be present, just skip it
-                continue
-
-        # Now unpack the 'mass table' type items:
-        for field, name in metadata.metadata_fields.header_unpack_mass_tables.items():
-            try:
-                setattr(
-                    self,
-                    name,
-                    MassTable(
-                        base_mass_table=self.header[field], mass_units=self.units.mass
-                    ),
-                )
-            except KeyError:
-                setattr(
-                    self,
-                    name,
-                    MassTable(
-                        base_mass_table=np.zeros(
-                            len(metadata.particle_types.particle_name_underscores)
-                        ),
-                        mass_units=self.units.mass,
-                    ),
-                )
-
-        # These must be unpacked as 'real' strings (i.e. converted to utf-8)
-
-        for field, name in metadata.metadata_fields.header_unpack_string.items():
-            try:
-                # Deal with h5py's quirkiness that fixed-sized and variable-sized
-                # strings are read as strings or bytes
-                # See: https://github.com/h5py/h5py/issues/2172
-                raw = self.header[field]
-                try:
-                    string = raw.decode("utf-8")
-                except AttributeError:
-                    string = raw
-                setattr(self, name, string)
-            except KeyError:
-                # Must not be present, just skip it
-                setattr(self, name, "")
-
-        # These must be unpacked as they are stored as length-1 arrays
-
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
-        )
-
-        for field, names in metadata.metadata_fields.header_unpack_single_float.items():
-            try:
-                if isinstance(names, list):
-                    # Sometimes we store a list in case we have multiple names, for example
-                    # Redshift -> metadata.redshift AND metadata.z. Can't just do the iteration
-                    # because we may loop over the letters in the string.
-                    for variable in names:
-                        if variable in header_unpack_float_units.keys():
-                            # We have an associated unit!
-                            unit = header_unpack_float_units[variable]
-                            setattr(
-                                self,
-                                variable,
-                                unyt.unyt_quantity(self.header[field][0], units=unit),
-                            )
-                        else:
-                            # No unit
-                            setattr(self, variable, self.header[field][0])
-                else:
-                    # We can just check for the unit and set the attribute
-                    variable = names
-                    if variable in header_unpack_float_units.keys():
-                        # We have an associated unit!
-                        unit = header_unpack_float_units[variable]
-                        setattr(
-                            self,
-                            variable,
-                            unyt.unyt_quantity(self.header[field][0], units=unit),
-                        )
-                    else:
-                        # No unit
-                        setattr(self, variable, self.header[field][0])
-            except KeyError:
-                # Must not be present, just skip it
-                continue
-
-        # These are special cases, sorry!
-        # Date and time of snapshot dump
-        try:
-            try:
-                # Try and decode bytes, otherwise save raw string
-                snapshot_date = self.header.get(
-                    "SnapshotDate", self.header.get("Snapshot date", b"")
-                ).decode("utf-8")
-            except AttributeError:
-                snapshot_date = self.header.get(
-                    "SnapshotDate", self.header.get("Snapshot date", "")
-                )
-            try:
-                self.snapshot_date = datetime.strptime(
-                    snapshot_date, "%H:%M:%S %Y-%m-%d %Z"
-                )
-            except ValueError:
-                # Backwards compatibility; this was used previously due to simplicity
-                # but is not portable between regions. So if you ran a simulation on
-                # a British (en_GB) machine, and then tried to read on a Dutch
-                # machine (nl_NL), this would _not_ work because %c is different.
-                try:
-                    self.snapshot_date = datetime.strptime(snapshot_date, "%c\n")
-                except ValueError:
-                    # Oh dear this has gone _very_wrong. Let's just keep it as a string.
-                    self.snapshot_date = snapshot_date
-        except KeyError:
-            # Old file
-            pass
-
-        # get photon group edges RT dataset from the SubgridScheme group
-        try:
-            self.photon_group_edges = (
-                self.handle["SubgridScheme/PhotonGroupEdges"][:] / self.units.time
-            )
-        except KeyError:
-            self.photon_group_edges = None
-
-        # get reduced speed of light RT dataset from the SubgridScheme group
-        try:
-            self.reduced_lightspeed = (
-                self.handle["SubgridScheme/ReducedLightspeed"][0]
-                * self.units.length
-                / self.units.time
-            )
-        except KeyError:
-            self.reduced_lightspeed = None
-
-        # Store these separately as self.n_gas = number of gas particles for example
-        for (part_number, (_, part_name)) in enumerate(
-            metadata.particle_types.particle_name_underscores.items()
-        ):
-            try:
-                setattr(self, f"n_{part_name}", self.num_part[part_number])
-            except IndexError:
-                # Backwards compatibility; mass/number table can change size.
-                setattr(self, f"n_{part_name}", 0)
-
-        # Need to unpack the gas gamma for cosmology
-        try:
-            self.gas_gamma = self.hydro_scheme["Adiabatic index"]
-        except (KeyError, TypeError):
-            # We can set a default and print a message whenever we require this value
-            self.gas_gamma = None
-
-        try:
-            self.a = self.scale_factor
-        except AttributeError:
-            # These must always be present for the initialisation of cosmology properties
-            self.a = 1.0
-            self.scale_factor = 1.0
-
-        return
-    
-
-    def extract_cosmology(self):
-        """
-        Creates an astropy.cosmology object from the internal cosmology system.
-
-        This will be saved as ``self.cosmology``.
-        """
-
-        if self.cosmology_raw is not None:
-            cosmo = self.cosmology_raw
-        else:
-            cosmo = {"Cosmological run": 0}
-
-        if cosmo.get("Cosmological run", 0):
-            self.cosmology = swift_cosmology_to_astropy(cosmo, units=self.units)
-        else:
-            self.cosmology = None
-
-        return
-    
-    @property
-    @abstractmethod
-    def present_groups(self):
-        raise NotImplementedError
-    
-    @property
-    @abstractmethod
-    def present_group_names(self):
-        raise NotImplementedError
-    
-    @property
-    def partial_snapshot(self) -> bool:
-        return False
 
 class SWIFTSnapshotMetadata(SWIFTMetadata):
     """
-    Loads all metadata (apart from Units, those are handled by SWIFTUnits)
-    into dictionaries.
-
-    This also does some extra parsing on some well-used metadata.
+    SWIFT Metadata for a snapshot-style file containing particle
+    information. For more documentation, see the main :cls:`SWIFTMetadata`
+    class.
     """
 
-    # Name of the file that has been read from
-    filename: str
-    # Unit instance associated with this file
-    units: SWIFTUnits
-    # Header dictionary, metadata about snapshot.
-    header: dict
     masking_valid: bool = True
 
     def __init__(self, filename, units: SWIFTUnits):
@@ -1001,7 +1038,6 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
                 )
 
         return
-
 
     @property
     def present_groups(self):
@@ -1174,13 +1210,18 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         # collating multiple sub-snapshots together have num_files_per_snapshot = 1.
 
         return self.num_files_per_snapshot > 1
-    
+
     @staticmethod
     def get_nice_name(group):
         return metadata.particle_types.particle_name_class[group]
 
+
 class SWIFTFOFMetadata(SWIFTMetadata):
-    masking_valid: bool = False
+    """
+    SWIFT Metadata for a snapshot-style file containing particle
+    information. For more documentation, see the main :cls:`SWIFTMetadata`
+    class.
+    """
 
     def __init__(self, filename: str, units: SWIFTUnits):
         self.filename = filename
@@ -1195,28 +1236,35 @@ class SWIFTFOFMetadata(SWIFTMetadata):
         self.handle.close()
 
         return
-    
+
     @property
     def present_groups(self):
         """
         The groups containing datasets that are present in the file.
         """
         return ["Groups"]
-    
+
     @property
     def present_group_names(self):
         """
         The names of the groups that we want to expose.
         """
         return ["fof_groups"]
-    
+
     @staticmethod
     def get_nice_name(group):
         return "FOFGroups"
 
+
 class SWIFTSOAPMetadata(SWIFTMetadata):
+    """
+    SWIFT Metadata for a snapshot-style file containing particle
+    information. For more documentation, see the main :cls:`SWIFTMetadata`
+    class.
+    """
+
     masking_valid: bool = True
-    shared_cell_counts: str|None = "Subhalos"
+    shared_cell_counts: str = "Subhalos"
 
     def __init__(self, filename: str, units: SWIFTUnits):
         self.filename = filename
@@ -1231,22 +1279,21 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
         self.handle.close()
 
         return
-    
+
     @property
     def present_groups(self):
         """
         The groups containing datasets that are present in the file.
         """
         return self.subhalo_types
-    
+
     @property
     def present_group_names(self):
         """
         The names of the groups that we want to expose.
         """
         return [
-            metadata.soap_types.get_soap_name_underscore(x)
-            for x in self.present_groups
+            metadata.soap_types.get_soap_name_underscore(x) for x in self.present_groups
         ]
 
     @staticmethod

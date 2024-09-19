@@ -15,7 +15,12 @@ This file contains four major objects:
 from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor, a
 
-from swiftsimio.metadata.objects import metadata_discriminator, SWIFTUnits, SWIFTGroupMetadata, SWIFTMetadata
+from swiftsimio.metadata.objects import (
+    metadata_discriminator,
+    SWIFTUnits,
+    SWIFTGroupMetadata,
+    SWIFTMetadata,
+)
 
 import re
 import h5py
@@ -27,7 +32,6 @@ from datetime import datetime
 from pathlib import Path
 
 from typing import Union, Callable, List, Optional
-
 
 
 def generate_getter(

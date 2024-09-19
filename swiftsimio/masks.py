@@ -51,7 +51,9 @@ class SWIFTMask(object):
         self.spatial_only = spatial_only
 
         if not self.metadata.masking_valid:
-            raise NotImplementedError(f"Masking not supported for {self.metadata.output_type} filetype")
+            raise NotImplementedError(
+                f"Masking not supported for {self.metadata.output_type} filetype"
+            )
 
         if self.metadata.partial_snapshot:
             raise InvalidSnapshot(
