@@ -15,7 +15,7 @@ from swiftsimio import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot
 
 from swiftsimio.accelerated import ranges_from_array
-from typing import Dict
+from typing import Dict, List
 
 
 class SWIFTMask(object):
@@ -431,6 +431,33 @@ class SWIFTMask(object):
         for group_name in self.metadata.present_group_names:
             setattr(self, group_name, np.array([[index, index + 1]]))
             setattr(self, f"{group_name}_size", 1)
+        return
+
+    def constrain_indices(self, indices: List):
+        """
+        Constrain the mask to a list of rows.
+
+        Parameters
+        ----------
+        indices : List
+            An list of the indices of the rows to mask.
+        """
+        if not self.metadata.homogeneous_arrays:
+            warnings.warn(
+                "Different datasets correspond to different objects, nothing constrained."
+            )
+            return
+        if self.spatial_only:
+            warnings.warn(
+                "You cannot constrain a mask if spatial_only=True \n"
+                "Please re-initialise the SWIFTMask object with spatial_only=False"
+                "Nothing constrained."
+            )
+            return
+
+        self._shared[...] = False
+        self._shared[indices] = True
+        self._shared_size = len(indices)
         return
 
     def get_masked_counts_offsets(self) -> (Dict[str, np.array], Dict[str, np.array]):
