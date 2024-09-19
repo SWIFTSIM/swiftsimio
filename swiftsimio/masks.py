@@ -23,6 +23,9 @@ class SWIFTMask(object):
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
     """
+    
+    group_mapping: dict | None = None
+    group_size_mapping: dict | None = None
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
         """
@@ -73,6 +76,9 @@ class SWIFTMask(object):
         names. Allows for pointers to be used instead of re-creating masks.
         """
 
+        if self.group_mapping is not None:
+            return self.group_mapping
+
         if self.metadata.shared_cell_counts is None:
             # Each and every particle type has its own cell counts, offsets,
             # and hence masks.
@@ -87,6 +93,29 @@ class SWIFTMask(object):
 
         return self.group_mapping
     
+    def _generate_size_mapping_dictionary(self) -> dict[str, str]:
+        """
+        Creates cross-links between 'group names' and their underlying cell metadata
+        names. Allows for pointers to be used instead of re-creating masks.
+        """
+
+        if self.group_size_mapping is not None:
+            return self.group_size_mapping
+
+        if self.metadata.shared_cell_counts is None:
+            # Each and every particle type has its own cell counts, offsets,
+            # and hence masks.
+            self.group_size_mapping = {
+                f"{group}_size": f"_{group}_size" for group in self.metadata.present_group_names
+            }
+        else:
+            # We actually only have _one_ mask!
+            self.group_size_mapping = {
+                f"{group}_size": "_shared_size" for group in self.metadata.present_group_names
+            }
+
+        return self.group_size_mapping
+    
     def _generate_update_list(self) -> list[str]:
         """
         Gets a list of internal mask variables that need to be updated when
@@ -100,22 +129,21 @@ class SWIFTMask(object):
         else:
             # We actually only have _one_ mask!
             return ["_shared"]
+
+    def __getattr__(self, name):
+        """
+        Overloads the getattr method to allow for direct access to the masks
+        for each particle type.
+        """
+        mappings = {**self._generate_mapping_dictionary(), **self._generate_size_mapping_dictionary()}
+
+        underlying_name = mappings.get(name, None)
+
+        if underlying_name is not None:
+            return getattr(self, underlying_name)
         
-    def _create_pointers(self):
-        # Create pointers for every single particle type.
-        for group_name, data_name in self._generate_mapping_dictionary().items():
-            setattr(
-                self,
-                group_name,
-                getattr(self, data_name)
-            )
-
-            setattr(
-                self,
-                f"{group_name}_size",
-                getattr(self, f"{data_name}_size")
-            )
-
+        raise AttributeError(f"Attribute {name} not found in SWIFTMask")
+        
 
     def _generate_empty_masks(self):
         """
@@ -136,8 +164,6 @@ class SWIFTMask(object):
                 size = getattr(self.metadata, f"n_{group_name}")
                 setattr(self, data_name, np.ones(size, dtype=bool))
                 setattr(self, f"{data_name}_size", size)
-
-        self._create_pointers()
 
         return
 
@@ -451,8 +477,6 @@ class SWIFTMask(object):
         for mask in self._generate_update_list():
             self._update_spatial_mask(restrict, mask, self.cell_mask)
 
-        self._create_pointers()
-
         return
 
     def convert_masks_to_ranges(self):
@@ -476,8 +500,6 @@ class SWIFTMask(object):
                 setattr(self, f"{mask}_size", where_array.size)
                 print(mask, where_array)
                 setattr(self, mask, ranges_from_array(where_array))
-
-        self._create_pointers()
 
         return
 
