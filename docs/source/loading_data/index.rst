@@ -280,8 +280,7 @@ with snapshots with these files, assuming the files conform to the
 correct metadata standard.
 
 An example SOAP file is available at
-``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/soap_example
-.hdf5``
+``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/soap_example.hdf5``
 
 You can load SOAP files as follows:
 
