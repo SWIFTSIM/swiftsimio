@@ -3,12 +3,10 @@ Contains functions for reading a subset of a SWIFT dataset and writing
 it to a new file.
 """
 
-from swiftsimio.reader import SWIFTUnits, SWIFTMetadata
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
 import swiftsimio.metadata as metadata
 
-import unyt
 import h5py
 import numpy as np
 from typing import Optional, List
