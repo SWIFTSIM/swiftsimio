@@ -107,13 +107,3 @@ def load_statistics(filename) -> SWIFTStatisticsFile:
     """
 
     return SWIFTStatisticsFile(filename=filename)
-
-
-class Writer:
-    def __new__(cls, *args, **kwargs):
-        # Default to SWIFTSnapshotWriter if no filetype is passed
-        filetype = kwargs.get("filetype", "snapshot")
-        if filetype == "snapshot":
-            return SWIFTSnapshotWriter(*args, **kwargs)
-        # TODO implement other writers
-        # elif filetype == '
