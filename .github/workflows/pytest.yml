@@ -27,10 +27,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install uv
-        uv --system pip install flake8 pytest
-        if [ -f requirements.txt ]; then uv --system pip install -r requirements.txt; fi
-        if [ -f optional_requirements.txt ]; then uv --system pip install -r optional_requirements.txt; fi
-        uv --system pip install -e .
+        uv pip install --system flake8 pytest
+        if [ -f requirements.txt ]; then uv pip install --system -r requirements.txt; fi
+        if [ -f optional_requirements.txt ]; then uvpip install --system -r optional_requirements.txt; fi
+        uv pip install --system -e .
     - name: Test with pytest
       run: |
         pytest
