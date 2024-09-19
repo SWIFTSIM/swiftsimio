@@ -11,27 +11,20 @@ This file contains four major objects:
 + SWIFTDataset, a container class for all of the above.
 """
 
-
 from swiftsimio.accelerated import read_ranges_from_file
-from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.objects import cosmo_array, cosmo_factor
 
 from swiftsimio.metadata.objects import (
     metadata_discriminator,
     SWIFTUnits,
     SWIFTGroupMetadata,
-    SWIFTMetadata,
 )
 
-import re
 import h5py
 import unyt
 import numpy as np
-import warnings
 
-from datetime import datetime
-from pathlib import Path
-
-from typing import Union, Callable, List, Optional
+from typing import Union, List
 
 
 def generate_getter(
@@ -181,9 +174,11 @@ def generate_getter(
                             cosmo_array(
                                 # Only use column data if array is multidimensional, otherwise
                                 # we will crash here
-                                handle[field][:, columns]
-                                if handle[field].ndim > 1
-                                else handle[field][:],
+                                (
+                                    handle[field][:, columns]
+                                    if handle[field].ndim > 1
+                                    else handle[field][:]
+                                ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
                                 name=description,
@@ -316,7 +311,7 @@ class __SWIFTGroupDataset(object):
 class __SWIFTNamedColumnDataset(object):
     """
     Holder class for individual named datasets. Very similar to
-    __SWIFTGroupsDatasets but much simpler.
+    __SWIFTGroupDatasets but much simpler.
     """
 
     def __init__(self, field_path: str, named_columns: List[str], name: str):
