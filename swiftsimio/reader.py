@@ -4,7 +4,7 @@ This file contains four major objects:
 + SWIFTUnits, which is a unit system that can be queried for units (and converts arrays
   to relevant unyt arrays when read from the HDF5 file)
 + SWIFTMetadata, which contains all of the metadata from the file
-+ __SWIFTGroupDatasets, which contains particle information but should never be
++ __SWIFTGroupDataset, which contains particle information but should never be
   directly accessed. Use generate_dataset to create one of these. The reasoning
   here is that properties can only be added to the class afterwards, and not
   directly in an _instance_ of the class.
@@ -250,7 +250,7 @@ def generate_deleter(name: str):
     return deleter
 
 
-class __SWIFTGroupDatasets(object):
+class __SWIFTGroupDataset(object):
     """
     Creates empty property fields
 
@@ -435,7 +435,7 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     # for different particle types. We initially fill a dict with the properties that
     # we want, and then create a single instance of our class.
 
-    this_dataset_bases = (__SWIFTGroupDatasets, object)
+    this_dataset_bases = (__SWIFTGroupDataset, object)
     this_dataset_dict = {}
 
     for (

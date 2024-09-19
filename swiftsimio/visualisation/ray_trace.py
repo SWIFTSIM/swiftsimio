@@ -13,7 +13,7 @@ import numpy as np
 import math
 
 from swiftsimio.objects import cosmo_array
-from swiftsimio.reader import __SWIFTParticleDataset, SWIFTDataset
+from swiftsimio.reader import __SWIFTGroupDataset, SWIFTDataset
 from swiftsimio.visualisation.projection_backends.kernels import (
     kernel_gamma,
     kernel_double_precision as kernel,
@@ -216,7 +216,7 @@ def core_panels_parallel(
 
 
 def panel_pixel_grid(
-    data: __SWIFTParticleDataset,
+    data: __SWIFTGroupDataset,
     boxsize: unyt.unyt_array,
     resolution: int,
     panels: int,
