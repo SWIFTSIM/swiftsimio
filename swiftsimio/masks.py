@@ -277,9 +277,10 @@ class SWIFTMask(object):
         """
 
         if self.spatial_only:
-            print("You cannot constrain a mask if spatial_only=True")
-            print("Please re-initialise the SWIFTMask object with spatial_only=False")
-            return
+            raise ValueError(
+                "You cannot constrain a mask if spatial_only=True. "
+                "Please re-initialise the SWIFTMask object with spatial_only=False"
+            )
 
         mapping = self._generate_mapping_dictionary()
         data_name = mapping[group_name]
@@ -526,7 +527,7 @@ class SWIFTMask(object):
         return
 
     def get_masked_counts_offsets(
-        self
+        self,
     ) -> tuple[dict[str, np.array], dict[str, np.array]]:
         """
         Returns the particle counts and offsets in cells selected by the mask

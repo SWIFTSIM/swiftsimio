@@ -36,3 +36,14 @@ def test_soap_can_mask_non_spatial(filename):
     data = load(filename, mask=this_mask)
 
     data.spherical_overdensity_200_mean.total_mass[0]
+
+
+@requires("soap_example.hdf5")
+def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
+    this_mask = mask(filename, spatial_only=False)
+
+    this_mask.constrain_mask("spherical_overdensity_200_mean", "total_mass", 1e5, 1e9)
+
+    data = load(filename, mask=this_mask)
+
+    data.spherical_overdensity_200_mean.total_mass[0]
