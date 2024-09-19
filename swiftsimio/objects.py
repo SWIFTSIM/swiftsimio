@@ -96,10 +96,10 @@ from numpy import (
     heaviside,
     matmul,
 )
-from numpy.core.umath import _ones_like
+from numpy._core.umath import _ones_like
 
 try:
-    from numpy.core.umath import clip
+    from numpy._core.umath import clip
 except ImportError:
     clip = None
 
