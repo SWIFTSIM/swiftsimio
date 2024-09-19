@@ -249,6 +249,7 @@ def test_volume_parallel():
         masses,
         hsml,
         resolution,
+        1,
         1.0,
         1.0,
         1.0,
@@ -329,7 +330,7 @@ def test_render_outside_region():
 
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution, 1.0, 1.0, 1.0)
 
-    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1.0, 1.0, 1.0)
+    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1, 1.0, 1.0, 1.0)
 
 
 @requires("cosmological_volume.hdf5")
