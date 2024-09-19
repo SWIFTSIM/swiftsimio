@@ -416,15 +416,17 @@ class SWIFTMask(object):
         """
         Constrain the mask to a single row.
 
-        Intended for use with SOAP catalogues, mask to read only a single row.
+        Intended for use with halo catalogues, mask to read only a single row.
 
         Parameters
         ----------
         index : int
             The index of the row to select.
         """
-        if not self.metadata.filetype == "SOAP":
-            warnings.warn("Not masking a SOAP catalogue, nothing constrained.")
+        if not self.metadata.homogeneous_arrays:
+            warnings.warn(
+                "Different datasets correspond to different objects, nothing constrained."
+            )
             return
         for group_name in self.metadata.present_group_names:
             setattr(self, group_name, np.array([[index, index + 1]]))
