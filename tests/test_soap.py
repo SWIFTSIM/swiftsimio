@@ -19,9 +19,7 @@ def test_soap_can_mask_spatial(filename):
     this_mask = mask(filename, spatial_only=True)
 
     bs = this_mask.metadata.boxsize
-    this_mask.constrain_spatial(
-     [[0 * b, 0.5 * b] for b in bs]
-    )
+    this_mask.constrain_spatial([[0 * b, 0.5 * b] for b in bs])
 
     data = load(filename, mask=this_mask)
 
@@ -33,9 +31,7 @@ def test_soap_can_mask_non_spatial(filename):
     this_mask = mask(filename, spatial_only=False)
 
     bs = this_mask.metadata.boxsize
-    this_mask.constrain_spatial(
-     [[0 * b, 0.5 * b] for b in bs]
-    )
+    this_mask.constrain_spatial([[0 * b, 0.5 * b] for b in bs])
 
     data = load(filename, mask=this_mask)
 

@@ -69,7 +69,6 @@ class SWIFTMask(object):
         if not spatial_only:
             self._generate_empty_masks()
 
-
     def _generate_mapping_dictionary(self) -> dict[str, str]:
         """
         Creates cross-links between 'group names' and their underlying cell metadata
@@ -154,7 +153,9 @@ class SWIFTMask(object):
         mapping = self._generate_mapping_dictionary()
 
         if self.metadata.shared_cell_counts is not None:
-            size = getattr(self.metadata, f"n_{self.metadata.shared_cell_counts.lower()}")
+            size = getattr(
+                self.metadata, f"n_{self.metadata.shared_cell_counts.lower()}"
+            )
             self._shared = np.ones(size, dtype=bool)
             self._shared_size = size
 
@@ -190,7 +191,6 @@ class SWIFTMask(object):
             # file i/o implemented
             offset_handle = cell_handle["Offsets"]
 
-
         if self.metadata.shared_cell_counts is not None:
             # Single - called _shared.
             self.offsets["shared"] = offset_handle[self.metadata.shared_cell_counts][:]
@@ -210,7 +210,7 @@ class SWIFTMask(object):
         # contain at least one of each type of particle).
         sort = None
 
-        # Now perform sort:        
+        # Now perform sort:
         for key in self.offsets.keys():
             offsets = self.offsets[key]
             counts = self.counts[key]
@@ -276,7 +276,7 @@ class SWIFTMask(object):
             print("You cannot constrain a mask if spatial_only=True")
             print("Please re-initialise the SWIFTMask object with spatial_only=False")
             return
-        
+
         mapping = self._generate_mapping_dictionary()
         data_name = mapping[group_name]
 
@@ -522,7 +522,9 @@ class SWIFTMask(object):
             setattr(self, f"{group_name}_size", 1)
         return
 
-    def get_masked_counts_offsets(self) -> tuple[dict[str, np.array], dict[str, np.array]]:
+    def get_masked_counts_offsets(
+        self
+    ) -> tuple[dict[str, np.array], dict[str, np.array]]:
         """
         Returns the particle counts and offsets in cells selected by the mask
 
