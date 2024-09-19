@@ -75,7 +75,7 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
     """
 
     units = SWIFTUnits(filename)
-    metadata = SWIFTMetadata(filename, units)
+    metadata = metadata_discriminator(filename, units)
 
     return SWIFTMask(metadata=metadata, spatial_only=spatial_only)
 
