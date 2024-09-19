@@ -4,9 +4,9 @@ Loading Data
 The main purpose of :mod:`swiftsimio` is to load data. This section will tell
 you all about four main objects:
 
-+ :obj:`swiftsimio.reader.SWIFTUnits`, responsible for creating a correspondence between
++ :obj:`swiftsimio.metadata.objects.SWIFTUnits`, responsible for creating a correspondence between
   the SWIFT units and :mod:`unyt` objects.
-+ :obj:`swiftsimio.reader.SWIFTMetadata`, responsible for loading any required information
++ :obj:`swiftsimio.metadata.objects.SWIFTMetadata`, responsible for loading any required information
   from the SWIFT headers into python-readable data.
 + :obj:`swiftsimio.reader.SWIFTDataset`, responsible for holding all particle data, and
   keeping track of the above two objects.
@@ -47,8 +47,8 @@ notebook, and you will see that it contains several sub-objects:
   simulation.
 + ``data.dark_matter``, likewise containing information about the dark matter
   particles in the simulation.
-+ ``data.metadata``, an instance of :obj:`swiftsimio.reader.SWIFTMetadata`
-+ ``data.units``, an instance of :obj:`swiftsimio.reader.SWIFTUnits`
++ ``data.metadata``, an instance of :obj:`swiftsimio.metadata.objects.SWIFTSnapshotMetadata`
++ ``data.units``, an instance of :obj:`swiftsimio.metadata.objects.SWIFTUnits`
 
 Using metadata
 --------------
@@ -268,3 +268,32 @@ in SWIFT will be automatically read.
    data = sw.load(
        "extra_test.hdf5",
    )
+
+
+Halo Catalogues
+---------------
+
+SWIFT-compatible halo catalogues, such as those written with SOAP, can be
+loaded entirely transparently with ``swiftsimio``. It is generally possible
+to use all of the functionality (masking, visualisation, etc.) that is used
+with snapshots with these files, assuming the files conform to the
+correct metadata standard.
+
+An example SOAP file is available at
+``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/soap_example
+.hdf5``
+
+You can load SOAP files as follows:
+
+.. code-block:: python
+
+   from swiftsimio import load
+
+   catalogue = load("soap_example.hdf5")
+
+   print(catalogue.spherical_overdensity_200_mean.total_mass)
+
+   # >>> [  591.      328.5     361.      553.      530.      507.      795.
+   #        574.      489.5     233.75      0.     1406.      367.5    2308.
+   #        ...
+   #        0.      534.        0.      191.75   1450.      600.      290.   ] 10000000000.0*Msun (Physical)
