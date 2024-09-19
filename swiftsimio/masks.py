@@ -502,7 +502,6 @@ class SWIFTMask(object):
             for mask in self._generate_update_list():
                 where_array = np.where(getattr(self, mask))[0]
                 setattr(self, f"{mask}_size", where_array.size)
-                print(mask, where_array)
                 setattr(self, mask, ranges_from_array(where_array))
 
         return
