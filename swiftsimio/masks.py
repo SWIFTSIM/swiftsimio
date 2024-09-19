@@ -23,7 +23,7 @@ class SWIFTMask(object):
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
     """
-    
+
     group_mapping: dict | None = None
     group_size_mapping: dict | None = None
 
@@ -91,7 +91,7 @@ class SWIFTMask(object):
             }
 
         return self.group_mapping
-    
+
     def _generate_size_mapping_dictionary(self) -> dict[str, str]:
         """
         Creates cross-links between 'group names' and their underlying cell metadata
@@ -105,16 +105,18 @@ class SWIFTMask(object):
             # Each and every particle type has its own cell counts, offsets,
             # and hence masks.
             self.group_size_mapping = {
-                f"{group}_size": f"_{group}_size" for group in self.metadata.present_group_names
+                f"{group}_size": f"_{group}_size"
+                for group in self.metadata.present_group_names
             }
         else:
             # We actually only have _one_ mask!
             self.group_size_mapping = {
-                f"{group}_size": "_shared_size" for group in self.metadata.present_group_names
+                f"{group}_size": "_shared_size"
+                for group in self.metadata.present_group_names
             }
 
         return self.group_size_mapping
-    
+
     def _generate_update_list(self) -> list[str]:
         """
         Gets a list of internal mask variables that need to be updated when
@@ -134,15 +136,17 @@ class SWIFTMask(object):
         Overloads the getattr method to allow for direct access to the masks
         for each particle type.
         """
-        mappings = {**self._generate_mapping_dictionary(), **self._generate_size_mapping_dictionary()}
+        mappings = {
+            **self._generate_mapping_dictionary(),
+            **self._generate_size_mapping_dictionary(),
+        }
 
         underlying_name = mappings.get(name, None)
 
         if underlying_name is not None:
             return getattr(self, underlying_name)
-        
+
         raise AttributeError(f"Attribute {name} not found in SWIFTMask")
-        
 
     def _generate_empty_masks(self):
         """
