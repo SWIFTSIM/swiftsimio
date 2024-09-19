@@ -108,4 +108,5 @@ def load_statistics(filename) -> SWIFTStatisticsFile:
 
     return SWIFTStatisticsFile(filename=filename)
 
+
 Writer = SWIFTSnapshotWriter
