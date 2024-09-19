@@ -521,9 +521,9 @@ class SWIFTMask(object):
         if not self.metadata.filetype == "SOAP":
             warnings.warn("Not masking a SOAP catalogue, nothing constrained.")
             return
-        for group_name in self.metadata.present_group_names:
-            setattr(self, group_name, np.array([[index, index + 1]]))
-            setattr(self, f"{group_name}_size", 1)
+        self._shared = np.array([[index, index + 1]])
+        self._shared_size = 1
+
         return
 
     def get_masked_counts_offsets(
