@@ -50,9 +50,10 @@ class SWIFTMask(object):
         self.units = metadata.units
         self.spatial_only = spatial_only
 
-        if self.metadata.filetype == "FOF":
-            # No virtual snapshots or cells metadata for fof currently
-            raise NotImplementedError("Masking not supported for FOF filetype")
+        if not self.metadata.masking_valid:
+            raise NotImplementedError(
+                f"Masking not supported for {self.metadata.output_type} filetype"
+            )
 
         if self.metadata.partial_snapshot:
             raise InvalidSnapshot(
@@ -111,12 +112,12 @@ class SWIFTMask(object):
         for group, group_name in zip(
             self.metadata.present_groups, self.metadata.present_group_names
         ):
-            if self.metadata.filetype == "SOAP":
-                counts = count_handle["Subhalos"][:]
-                offsets = offset_handle["Subhalos"][:]
-            elif self.metadata.filetype == "snapshot":
+            if self.metadata.shared_cell_counts is None:
                 counts = count_handle[group][:]
                 offsets = offset_handle[group][:]
+            else:
+                counts = count_handle[self.metadata.shared_cell_counts][:]
+                offsets = offset_handle[self.metadata.shared_cell_counts][:]
 
             # When using MPI, we cannot assume that these are sorted.
             if sort is None:
