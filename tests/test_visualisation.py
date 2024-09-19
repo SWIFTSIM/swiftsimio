@@ -249,6 +249,7 @@ def test_volume_parallel():
         masses,
         hsml,
         resolution,
+        1,
         1.0,
         1.0,
         1.0,
@@ -329,7 +330,7 @@ def test_render_outside_region():
 
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution, 1.0, 1.0, 1.0)
 
-    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1.0, 1.0, 1.0)
+    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1, 1.0, 1.0, 1.0)
 
 
 @requires("cosmological_volume.hdf5")
@@ -345,10 +346,10 @@ def test_comoving_versus_physical(filename):
         # conversion in this case
         img = func(data, resolution=256, project=None)
         assert img.comoving
-        assert img.cosmo_factor.expr == a ** aexp
+        assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
         img = func(data, resolution=256, project="densities")
         assert img.comoving
-        assert img.cosmo_factor.expr == a ** (aexp - 3.0)
+        assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
         # try to mix comoving coordinates with a physical variable
         data.gas.densities.convert_to_physical()
         with pytest.raises(AttributeError, match="not compatible with comoving"):
@@ -363,11 +364,11 @@ def test_comoving_versus_physical(filename):
         img = func(data, resolution=256, project="masses")
         # check that we get a physical result
         assert not img.comoving
-        assert img.cosmo_factor.expr == a ** aexp
+        assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
         # densities are still compatible with physical
         img = func(data, resolution=256, project="densities")
         assert not img.comoving
-        assert img.cosmo_factor.expr == a ** (aexp - 3.0)
+        assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
         # now try again with comoving densities
         data.gas.densities.convert_to_comoving()
         with pytest.raises(AttributeError, match="not compatible with physical"):

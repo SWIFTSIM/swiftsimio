@@ -23,8 +23,12 @@ metadata_fields_to_read = {
 header_unpack_arrays = {
     "BoxSize": "boxsize",
     "NumPart_ThisFile": "num_part",
+    "NumGroup_ThisFile": "num_group",
+    "NumSubhalos_ThisFile": "num_subhalo",
     "CanHaveTypes": "has_type",
     "NumFilesPerSnapshot": "num_files_per_snapshot",
+    "OutputType": "output_type",
+    "SubhaloTypes": "subhalo_types",
 }
 
 # Some of these 'arrays' are really types of mass table, so unpack

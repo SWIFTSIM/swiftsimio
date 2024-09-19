@@ -12,27 +12,27 @@ packages = [
     "swiftsimio.metadata.particle",
     "swiftsimio.metadata.unit",
     "swiftsimio.metadata.writer",
+    "swiftsimio.metadata.soap",
     "swiftsimio.visualisation",
     "swiftsimio.visualisation.projection_backends",
     "swiftsimio.visualisation.slice_backends",
     "swiftsimio.visualisation.tools",
-    "swiftsimio.visualisation.smoothing_length"
+    "swiftsimio.visualisation.smoothing_length",
 ]
 
 [project]
 name = "swiftsimio"
-version="8.0.1"
+version="9.0.0"
 authors = [
     { name="Josh Borrow", email="josh@joshborrow.com" },
 ]
-description="SWIFTsim (swift.dur.ac.uk) i/o routines for python."
+description="SWIFTsim (swiftsim.com) i/o routines for python."
 readme = "README.md"
-requires-python = ">3.8.0"
+requires-python = ">3.10.0"
 classifiers = [
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
     "Operating System :: OS Independent",
 ]

@@ -104,8 +104,8 @@ def test_units(filename):
 
         # Now need to extract the particle paths in the original hdf5 file
         # for comparison...
-        paths = numpy_array(field.particle_metadata.field_paths)
-        names = numpy_array(field.particle_metadata.field_names)
+        paths = numpy_array(field.group_metadata.field_paths)
+        names = numpy_array(field.group_metadata.field_names)
 
         for property in properties:
             # Read the 0th element, and compare in CGS units.

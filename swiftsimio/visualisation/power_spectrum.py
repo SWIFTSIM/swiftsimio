@@ -10,7 +10,7 @@ import unyt
 from swiftsimio.optional_packages import tqdm
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array
-from swiftsimio.reader import __SWIFTParticleDataset
+from swiftsimio.reader import __SWIFTGroupDataset
 
 from typing import Optional, Dict, Tuple
 
@@ -169,7 +169,7 @@ def deposit_parallel(
 
 
 def render_to_deposit(
-    data: __SWIFTParticleDataset,
+    data: __SWIFTGroupDataset,
     resolution: int,
     project: str = "masses",
     folding: int = 0,
