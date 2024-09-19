@@ -1280,7 +1280,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
         self.handle.close()
 
         return
-    
+
     def unpack_subhalo_number(self):
         self.n_subhalos = int(self.num_subhalo[0])
 
