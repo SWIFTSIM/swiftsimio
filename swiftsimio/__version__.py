@@ -1,1 +1,3 @@
-__version__ = "8.0.1"
+import importlib.metadata
+
+__version__ = importlib.metadata.version("swiftsimio")
