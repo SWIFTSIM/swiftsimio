@@ -63,6 +63,7 @@ parser.add_argument(
 
 def swiftsnap():
     import swiftsimio as sw
+    from swiftsimio.metadata.objects import metadata_discriminator
     import unyt
 
     from swiftsimio.metadata.particle import particle_name_underscores
@@ -82,7 +83,7 @@ def swiftsnap():
 
     # Now that we know they are valid, we can load the metadata.
     units = [sw.SWIFTUnits(snap) for snap in snapshots]
-    metadata = [sw.SWIFTMetadata(snap, units) for snap, units in zip(snapshots, units)]
+    metadata = [metadata_discriminator(snap, units) for snap, units in zip(snapshots, units)]
 
     if args.redshift:
         redshifts = [f"{snap.z:.4g}" for snap in metadata]
