@@ -10,7 +10,7 @@ import h5py
 
 import numpy as np
 
-from swiftsimio import SWIFTMetadata
+from swiftsimio.metadata.objects import SWIFTMetadata
 
 from swiftsimio.objects import InvalidSnapshot
 
