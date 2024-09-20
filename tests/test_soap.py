@@ -5,6 +5,7 @@ Tests that we can open SOAP files
 from tests.helper import requires
 
 from swiftsimio import load, mask
+import unyt
 
 
 @requires("soap_example.hdf5")
@@ -42,11 +43,24 @@ def test_soap_can_mask_non_spatial(filename):
 def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
     this_mask = mask(filename, spatial_only=False)
 
-    this_mask.constrain_mask("spherical_overdensity_200_mean", "total_mass", 1e5, 1e9)
+    lower = unyt.unyt_quantity(1e5, "Msun")
+    upper = unyt.unyt_quantity(1e13, "Msun")
+    this_mask.constrain_mask("spherical_overdensity_200_mean", "total_mass", lower, upper)
 
     data = load(filename, mask=this_mask)
 
-    data.spherical_overdensity_200_mean.total_mass[0]
+    masses = data.spherical_overdensity_200_mean.total_mass
+
+    assert len(masses) > 0
+
+    data2 = load(filename)
+
+    masses2 = data2.spherical_overdensity_200_mean.total_mass
+
+    # Manually mask
+    custom_mask = (masses2 >= lower) & (masses2 <= upper)
+
+    assert len(masses2[custom_mask]) == len(masses)
 
 
 @requires("soap_example.hdf5")
