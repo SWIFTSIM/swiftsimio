@@ -123,6 +123,31 @@ ask for the temperature of particles, it will recieve an array containing
 temperatures of particles that lie in the region [0.2, 0.7] and have a
 density between 0.4 and 0.8 g/cm^3.
 
+Row Masking
+-----------
+
+For certian scenarios, in particular halo catalogues, all arrays are of the
+same length (you can check this through the ``metadata.homogeneous_arrays``
+attribute). Often, you are interested in a handful of, or a single, row,
+corresponding to the properties of a particular object. You can use the
+methods ``constrain_index`` and ``constrain_indices`` to do this, which
+return ``swiftsimio`` data objects containing arrays with only those
+rows.
+
+.. code-block:: python
+    
+    import swiftsimio as sw
+
+    mask = sw.mask(filename)
+
+    mask.constrain_indices([1, 99, 23421])
+
+    data = sw.load(filename, mask=mask)
+
+Here, the length of all the arrays will be 3. A quick performance note: if you
+are using many indices (over 1000), you will want to set ``spatial_only=False``
+to potentially benefit from range reading of overlapping rows in a single chunk.
+
 Writing subset of snapshot
 --------------------------
 In some cases it may be useful to write a subset of an existing snapshot to its
