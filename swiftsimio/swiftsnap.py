@@ -114,10 +114,12 @@ def swiftsnap():
         for policy_string in policy_strings:
             print(policy_string)
 
+        print()
         output_type_string = (
             f"Output type: {data.output_type}, Output selection: {data.select_output}"
         )
         print(f"{output_type_string}")
+        print()
 
         numbers_of_particles = "Number of particles: " + ", ".join(
             [
