@@ -45,7 +45,9 @@ def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
 
     lower = unyt.unyt_quantity(1e5, "Msun")
     upper = unyt.unyt_quantity(1e13, "Msun")
-    this_mask.constrain_mask("spherical_overdensity_200_mean", "total_mass", lower, upper)
+    this_mask.constrain_mask(
+        "spherical_overdensity_200_mean", "total_mass", lower, upper
+    )
 
     data = load(filename, mask=this_mask)
 
