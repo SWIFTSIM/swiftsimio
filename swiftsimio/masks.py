@@ -518,11 +518,22 @@ class SWIFTMask(object):
         index : int
             The index of the row to select.
         """
-        if not self.metadata.filetype == "SOAP":
-            warnings.warn("Not masking a SOAP catalogue, nothing constrained.")
-            return
-        self._shared = np.array([[index, index + 1]])
-        self._shared_size = 1
+
+        if not self.metadata.homogeneous_arrays:
+            raise RuntimeError(
+                "Cannot constrain to a single row in a non-homogeneous array; you currently "
+                f"are using a {self.metadata.output_type} file"
+            )
+
+        if not self.spatial_only:
+            raise RuntimeError(
+                "Cannot constrain to a single row in a non-spatial mask; you currently "
+                "are using a non-spatial mask"
+            )
+
+        for mask in self._generate_update_list():
+            setattr(self, mask, np.array([[index, index + 1]]))
+            setattr(self, f"{mask}_size", 1)
 
         return
 
