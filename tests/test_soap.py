@@ -58,3 +58,29 @@ def test_soap_single_row_mask(filename):
     data = load(filename, mask=this_mask)
 
     assert len(data.spherical_overdensity_200_mean.total_mass) == 1
+
+
+@requires("soap_example.hdf5")
+def test_soap_multiple_row_mask_non_spatial(filename):
+    this_mask = mask(filename, spatial_only=False)
+
+    IDC = [0, 1, 2, 3, 6, 23, 94, 57]
+
+    this_mask.constrain_indices(IDC)
+
+    data = load(filename, mask=this_mask)
+
+    assert len(data.spherical_overdensity_200_mean.total_mass) == len(IDC)
+
+
+@requires("soap_example.hdf5")
+def test_soap_multiple_row_mask_spatial(filename):
+    this_mask = mask(filename, spatial_only=False)
+
+    IDC = [0, 1, 2, 3, 6, 23, 94, 57]
+
+    this_mask.constrain_indices(IDC)
+
+    data = load(filename, mask=this_mask)
+
+    assert len(data.spherical_overdensity_200_mean.total_mass) == len(IDC)

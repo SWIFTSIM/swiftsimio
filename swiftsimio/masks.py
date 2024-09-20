@@ -537,6 +537,43 @@ class SWIFTMask(object):
 
         return
 
+    def constrain_indices(self, indices: list[int]):
+        """
+        Constrain the mask to a list of rows.
+        Parameters
+        ----------
+        indices : list[int]
+            An list of the indices of the rows to mask.
+        """
+
+        if not self.metadata.homogeneous_arrays:
+            raise RuntimeError(
+                "Cannot constrain to a single row in a non-homogeneous array; you currently "
+                f"are using a {self.metadata.output_type} file"
+            )
+
+        if self.spatial_only:
+            if len(indices) > 1000:
+                warnings.warn(
+                    "You are constraining a large number of indices with a spatial "
+                    "mask, potentially leading to lots of overlap. You should "
+                    "use a non-spatial mask (i.e. spatial_only=False)"
+                )
+
+            for mask in self._generate_update_list():
+                setattr(self, mask, np.array([[i, i + 1] for i in indices]))
+                setattr(self, f"{mask}_size", len(indices))
+
+        else:
+            for mask in self._generate_update_list():
+                comparison_array = np.zeros(getattr(self, mask).size, dtype=bool)
+                comparison_array[indices] = True
+                setattr(
+                    self, mask, np.logical_and(getattr(self, mask), comparison_array)
+                )
+
+        return
+
     def get_masked_counts_offsets(
         self,
     ) -> tuple[dict[str, np.array], dict[str, np.array]]:
