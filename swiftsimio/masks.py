@@ -10,7 +10,7 @@ import h5py
 
 import numpy as np
 
-from swiftsimio import SWIFTMetadata
+from swiftsimio.metadata.objects import SWIFTMetadata
 
 from swiftsimio.objects import InvalidSnapshot
 
@@ -23,6 +23,9 @@ class SWIFTMask(object):
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
     """
+
+    group_mapping: dict | None = None
+    group_size_mapping: dict | None = None
 
     def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
         """
@@ -72,6 +75,9 @@ class SWIFTMask(object):
         names. Allows for pointers to be used instead of re-creating masks.
         """
 
+        if self.group_mapping is not None:
+            return self.group_mapping
+
         if self.metadata.shared_cell_counts is None:
             # Each and every particle type has its own cell counts, offsets,
             # and hence masks.
@@ -85,6 +91,31 @@ class SWIFTMask(object):
             }
 
         return self.group_mapping
+
+    def _generate_size_mapping_dictionary(self) -> dict[str, str]:
+        """
+        Creates cross-links between 'group names' and their underlying cell metadata
+        names. Allows for pointers to be used instead of re-creating masks.
+        """
+
+        if self.group_size_mapping is not None:
+            return self.group_size_mapping
+
+        if self.metadata.shared_cell_counts is None:
+            # Each and every particle type has its own cell counts, offsets,
+            # and hence masks.
+            self.group_size_mapping = {
+                f"{group}_size": f"_{group}_size"
+                for group in self.metadata.present_group_names
+            }
+        else:
+            # We actually only have _one_ mask!
+            self.group_size_mapping = {
+                f"{group}_size": "_shared_size"
+                for group in self.metadata.present_group_names
+            }
+
+        return self.group_size_mapping
 
     def _generate_update_list(self) -> list[str]:
         """
@@ -100,12 +131,22 @@ class SWIFTMask(object):
             # We actually only have _one_ mask!
             return ["_shared"]
 
-    def _create_pointers(self):
-        # Create pointers for every single particle type.
-        for group_name, data_name in self._generate_mapping_dictionary().items():
-            setattr(self, group_name, getattr(self, data_name))
+    def __getattr__(self, name):
+        """
+        Overloads the getattr method to allow for direct access to the masks
+        for each particle type.
+        """
+        mappings = {
+            **self._generate_mapping_dictionary(),
+            **self._generate_size_mapping_dictionary(),
+        }
 
-            setattr(self, f"{group_name}_size", getattr(self, f"{data_name}_size"))
+        underlying_name = mappings.get(name, None)
+
+        if underlying_name is not None:
+            return getattr(self, underlying_name)
+
+        raise AttributeError(f"Attribute {name} not found in SWIFTMask")
 
     def _generate_empty_masks(self):
         """
@@ -128,8 +169,6 @@ class SWIFTMask(object):
                 size = getattr(self.metadata, f"n_{group_name}")
                 setattr(self, data_name, np.ones(size, dtype=bool))
                 setattr(self, f"{data_name}_size", size)
-
-        self._create_pointers()
 
         return
 
@@ -238,9 +277,10 @@ class SWIFTMask(object):
         """
 
         if self.spatial_only:
-            print("You cannot constrain a mask if spatial_only=True")
-            print("Please re-initialise the SWIFTMask object with spatial_only=False")
-            return
+            raise ValueError(
+                "You cannot constrain a mask if spatial_only=True. "
+                "Please re-initialise the SWIFTMask object with spatial_only=False"
+            )
 
         mapping = self._generate_mapping_dictionary()
         data_name = mapping[group_name]
@@ -442,8 +482,6 @@ class SWIFTMask(object):
         for mask in self._generate_update_list():
             self._update_spatial_mask(restrict, mask, self.cell_mask)
 
-        self._create_pointers()
-
         return
 
     def convert_masks_to_ranges(self):
@@ -465,10 +503,7 @@ class SWIFTMask(object):
             for mask in self._generate_update_list():
                 where_array = np.where(getattr(self, mask))[0]
                 setattr(self, f"{mask}_size", where_array.size)
-                print(mask, where_array)
                 setattr(self, mask, ranges_from_array(where_array))
-
-        self._create_pointers()
 
         return
 
@@ -483,16 +518,64 @@ class SWIFTMask(object):
         index : int
             The index of the row to select.
         """
-        if not self.metadata.filetype == "SOAP":
-            warnings.warn("Not masking a SOAP catalogue, nothing constrained.")
-            return
-        for group_name in self.metadata.present_group_names:
-            setattr(self, group_name, np.array([[index, index + 1]]))
-            setattr(self, f"{group_name}_size", 1)
+
+        if not self.metadata.homogeneous_arrays:
+            raise RuntimeError(
+                "Cannot constrain to a single row in a non-homogeneous array; you currently "
+                f"are using a {self.metadata.output_type} file"
+            )
+
+        if not self.spatial_only:
+            raise RuntimeError(
+                "Cannot constrain to a single row in a non-spatial mask; you currently "
+                "are using a non-spatial mask"
+            )
+
+        for mask in self._generate_update_list():
+            setattr(self, mask, np.array([[index, index + 1]]))
+            setattr(self, f"{mask}_size", 1)
+
+        return
+
+    def constrain_indices(self, indices: list[int]):
+        """
+        Constrain the mask to a list of rows.
+        Parameters
+        ----------
+        indices : list[int]
+            An list of the indices of the rows to mask.
+        """
+
+        if not self.metadata.homogeneous_arrays:
+            raise RuntimeError(
+                "Cannot constrain to a single row in a non-homogeneous array; you currently "
+                f"are using a {self.metadata.output_type} file"
+            )
+
+        if self.spatial_only:
+            if len(indices) > 1000:
+                warnings.warn(
+                    "You are constraining a large number of indices with a spatial "
+                    "mask, potentially leading to lots of overlap. You should "
+                    "use a non-spatial mask (i.e. spatial_only=False)"
+                )
+
+            for mask in self._generate_update_list():
+                setattr(self, mask, np.array([[i, i + 1] for i in indices]))
+                setattr(self, f"{mask}_size", len(indices))
+
+        else:
+            for mask in self._generate_update_list():
+                comparison_array = np.zeros(getattr(self, mask).size, dtype=bool)
+                comparison_array[indices] = True
+                setattr(
+                    self, mask, np.logical_and(getattr(self, mask), comparison_array)
+                )
+
         return
 
     def get_masked_counts_offsets(
-        self
+        self,
     ) -> tuple[dict[str, np.array], dict[str, np.array]]:
         """
         Returns the particle counts and offsets in cells selected by the mask

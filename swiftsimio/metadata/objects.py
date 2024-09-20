@@ -45,6 +45,11 @@ class SWIFTMetadata(ABC):
     # (as is the case in SOAP) or whether each type (e.g. Gas, Dark Matter, etc.)
     # has its own top-level cell grid counts.
     shared_cell_counts: str | None = None
+    # Whether all the arrays in this files have the same length and order (as is
+    # the case for SOAP, all arrays correspond to subhalos) or whether there are
+    # multiple types (e.g. Gas, Dark Matter, etc.). Allows you to use constrain_index
+    # in masking as everyone uses the same _shared mask!
+    homogeneous_arrays: bool = False
 
     @abstractmethod
     def __init__(self, filename, units: "SWIFTUnits"):
@@ -1223,6 +1228,8 @@ class SWIFTFOFMetadata(SWIFTMetadata):
     class.
     """
 
+    homogeneous_arrays: bool = True
+
     def __init__(self, filename: str, units: SWIFTUnits):
         self.filename = filename
         self.units = units
@@ -1265,6 +1272,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
     masking_valid: bool = True
     shared_cell_counts: str = "Subhalos"
+    homogeneous_arrays: bool = True
 
     def __init__(self, filename: str, units: SWIFTUnits):
         self.filename = filename
