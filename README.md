@@ -24,7 +24,7 @@ to make the experience better and these are recommended.
 Requirements
 ------------
 
-This requires `python` `v3.8.0` or higher. Unfortunately it is not
+This requires `python` `v3.10.0` or higher. Unfortunately it is not
 possible to support `swiftsimio` on versions of python lower than this.
 It is important that you upgrade if you are still a `python2` user.
 
