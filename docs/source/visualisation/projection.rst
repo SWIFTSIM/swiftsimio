@@ -295,13 +295,13 @@ of correctly applied units to these projections soon.
 To use this feature for particle types that do not have smoothing lengths, you
 will need to generate them, as in the example below where we create a
 mass density map for dark matter. We provide a utility to do this through
-:meth:`swiftsimio.visualisation.smoothing_length_generation.generate_smoothing_lengths`.
+:meth:`swiftsimio.visualisation.smoothing_length.generate_smoothing_lengths`.
 
 .. code-block:: python
 
    from swiftsimio import load
    from swiftsimio.visualisation.projection import project_pixel_grid
-   from swiftsimio.visualisation.smoothing_length_generation import generate_smoothing_lengths
+   from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 
    data = load("cosmo_volume_example.hdf5")
 
