@@ -377,7 +377,9 @@ class MassTable(object):
 
         # TODO: Extract these names from the files themselves if possible.
 
-        for index, name in metadata.particle_types.particle_name_underscores.items():
+        for index, name in enumerate(
+            metadata.particle_types.particle_name_underscores.values()
+        ):
             try:
                 setattr(
                     self,
