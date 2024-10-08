@@ -12,7 +12,7 @@ from swiftsimio import load, mask
 
 import h5py
 
-from unyt import K
+from unyt import K, Msun
 from numpy import logical_and, isclose, float64
 from numpy import array as numpy_array
 
@@ -53,12 +53,24 @@ def test_time_metadata(filename):
 @requires("cosmological_volume.hdf5")
 def test_temperature_units(filename):
     """
-    This tests checks if we correctly read in temperature units. Based on a past bug, to make
-    sure we never break this again.
+    This tests checks if we correctly read in temperature units. Based
+    on a past bug, to make sure we never break this again.
     """
 
     data = load(filename)
     data.gas.temperatures.convert_to_units(K)
+
+    return
+
+@requires("cosmological_volume.hdf5")
+def test_initial_mass_table(filename):
+    """
+    This tests checks if we correctly read in the initial mass table. Based
+    on a past bug, to make sure we never break this again.
+    """
+
+    data = load(filename)
+    data.metadata.initial_mass_table.gas.convert_to_units(Msun)
 
     return
 
