@@ -62,6 +62,7 @@ def test_temperature_units(filename):
 
     return
 
+
 @requires("cosmological_volume.hdf5")
 def test_initial_mass_table(filename):
     """
