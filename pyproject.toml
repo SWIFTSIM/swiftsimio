@@ -40,7 +40,8 @@ dependencies = [
     "numpy>=2.0",
     "h5py",
     "unyt>=2.9.0",
-    "numba>=0.50.0",
+    "numba>=0.60.0",
+    "scipy",
 ]
 
 [project.urls]

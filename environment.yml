@@ -9,7 +9,7 @@ dependencies:
   - h5py
   - ipython
   - matplotlib
-  - numba>=0.50
+  - numba>=0.60
   - numpy>=2.0
   - pip
   - pykdtree
