@@ -57,6 +57,7 @@ stars = {
     "BirthTime": "birth_time",
     "InitialMasses": "initial_masses",
     "SmoothingLength": "smoothing_length",
+    "StellarParticleType": "stellar_particle_type",
     **shared,
     **baryon,
 }
