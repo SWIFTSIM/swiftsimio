@@ -10,7 +10,7 @@ dependencies:
   - ipython
   - matplotlib
   - numba>=0.50
-  - numpy
+  - numpy>=2.0
   - pip
   - pykdtree
   - pytest

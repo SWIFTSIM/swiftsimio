@@ -22,7 +22,11 @@ boundary = {**shared}
 
 sinks = {**shared}
 
-stars = {**shared, "smoothing_length": "SmoothingLength"}
+stars = { 
+    "smoothing_length": "SmoothingLength",
+    "stellar_particle_type": "StellarParticleType",
+    **shared,
+}
 
 black_holes = {**shared}
 
