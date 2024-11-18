@@ -307,6 +307,17 @@ class __SWIFTGroupDataset(object):
 
         return
 
+    def __str__(self):
+        """
+        Prints out some more useful information, rather than just
+        the memory location.
+        """
+        field_names = ", ".join(self.group_metadata.field_names)
+        return f"SWIFT dataset at {self.filename}. \nAvailable fields: {field_names}"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class __SWIFTNamedColumnDataset(object):
     """
@@ -572,8 +583,8 @@ class SWIFTDataset(object):
         Prints out some more useful information, rather than just
         the memory location.
         """
-
-        return f"SWIFT dataset at {self.filename}."
+        group_names = ", ".join(self.metadata.present_group_names)
+        return f"SWIFT dataset at {self.filename}. \nAvailable groups: {group_names}"
 
     def __repr__(self):
         return self.__str__()
