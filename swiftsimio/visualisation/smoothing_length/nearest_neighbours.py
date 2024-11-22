@@ -20,30 +20,11 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
     The extracted "smoothing lengths".
     """
     try:
-        # TODO remove this hack once np.cbrt is supported by unyt
-        volumes = data.gas.volumes
-        units = (hasattr(volumes, "units"), getattr(volumes, "units", None))
-        comoving = getattr(volumes, "comoving", None)
-        cosmo_factor = (
-            hasattr(volumes, "cosmo_factor"),
-            getattr(volumes, "cosmo_factor", None),
-        )
-        if units[0]:
-            units_hsml = units[1] ** (1.0 / 3.0)
-        else:
-            units_hsml = None
-        hsml = cosmo_array(
-            cbrt(volumes.value),
-            units=units_hsml,
-            comoving=comoving,
-            cosmo_factor=_cbrt_cosmo_factor(cosmo_factor),
-        )
+        hsml = cbrt(data.gas.volumes)
     except AttributeError:
         try:
             # Try computing the volumes explicitly?
-            masses = data.gas.masses
-            densities = data.gas.densities
-            hsml = cbrt(masses / densities)
+            hsml = cbrt(data.gas.masses / data.gas.densities)
         except AttributeError:
             # Fall back to SPH behavior if above didn't work...
             hsml = get_hsml_sph(data)
