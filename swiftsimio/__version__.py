@@ -1,1 +1,3 @@
-__version__ = "7.0.3"
+import importlib.metadata
+
+__version__ = importlib.metadata.version("swiftsimio")

@@ -34,7 +34,7 @@ def compare_data_contents(A, B):
         A_type = getattr(A, part_type)
         B_type = getattr(B, part_type)
         particle_dataset_field_names = set(
-            A_type.particle_metadata.field_names + B_type.particle_metadata.field_names
+            A_type.group_metadata.field_names + B_type.group_metadata.field_names
         )
 
         for attr in particle_dataset_field_names:

@@ -1,5 +1,5 @@
 from .reader import *
-from .writer import SWIFTWriterDataset
+from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
 from .__version__ import __version__
@@ -75,7 +75,7 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
     """
 
     units = SWIFTUnits(filename)
-    metadata = SWIFTMetadata(filename, units)
+    metadata = metadata_discriminator(filename, units)
 
     return SWIFTMask(metadata=metadata, spatial_only=spatial_only)
 
@@ -109,5 +109,4 @@ def load_statistics(filename) -> SWIFTStatisticsFile:
     return SWIFTStatisticsFile(filename=filename)
 
 
-# Rename this object to something simpler.
-Writer = SWIFTWriterDataset
+Writer = SWIFTSnapshotWriter
