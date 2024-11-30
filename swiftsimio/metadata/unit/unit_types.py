@@ -9,7 +9,7 @@ unit_names_to_unyt = {
     "Unit mass in cgs (U_M)": unyt.g,
     "Unit length in cgs (U_L)": unyt.cm,
     "Unit time in cgs (U_t)": unyt.s,
-    "Unit current in cgs (U_I)": unyt.statA,
+    "Unit current in cgs (U_I)": unyt.A,
     "Unit temperature in cgs (U_T)": unyt.K,
 }
 
@@ -27,7 +27,7 @@ possible_base_units = {
         unyt.Gpc,
     ],
     "time": [unyt.s, unyt.year, unyt.Myr, unyt.Gyr],
-    "current": [unyt.statA],
+    "current": [unyt.A],
     "temperature": [unyt.K],
 }
 

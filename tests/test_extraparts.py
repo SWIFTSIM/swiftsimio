@@ -87,9 +87,9 @@ def test_write():
     )
     # Specify a new type in the metadata - currently done by editing the dictionaries directly.
     # TODO: Remove this terrible way of setting up different particle types.
-    swp.particle_name_underscores[6] = "extratype"
-    swp.particle_name_class[6] = "Extratype"
-    swp.particle_name_text[6] = "Extratype"
+    swp.particle_name_underscores["PartType7"] = "extratype"
+    swp.particle_name_class["PartType7"] = "Extratype"
+    swp.particle_name_text["PartType7"] = "Extratype"
 
     swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw.shared}
 
@@ -110,9 +110,9 @@ def test_write():
     x.write("extra_test.hdf5")
 
     # Clean up these global variables we screwed around with...
-    swp.particle_name_underscores.pop(6)
-    swp.particle_name_class.pop(6)
-    swp.particle_name_text.pop(6)
+    swp.particle_name_underscores.pop("PartType7")
+    swp.particle_name_class.pop("PartType7")
+    swp.particle_name_text.pop("PartType7")
 
 
 def test_read():
@@ -120,9 +120,9 @@ def test_read():
     Tests whether swiftsimio can handle a new particle type. Has a few asserts to check the
     data is read in correctly.
     """
-    swp.particle_name_underscores[6] = "extratype"
-    swp.particle_name_class[6] = "Extratype"
-    swp.particle_name_text[6] = "Extratype"
+    swp.particle_name_underscores["PartType7"] = "extratype"
+    swp.particle_name_class["PartType7"] = "Extratype"
+    swp.particle_name_text["PartType7"] = "Extratype"
 
     swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw.shared}
 
@@ -136,6 +136,6 @@ def test_read():
     os.remove("extra_test.hdf5")
 
     # Clean up these global variables we screwed around with...
-    swp.particle_name_underscores.pop(6)
-    swp.particle_name_class.pop(6)
-    swp.particle_name_text.pop(6)
+    swp.particle_name_underscores.pop("PartType7")
+    swp.particle_name_class.pop("PartType7")
+    swp.particle_name_text.pop("PartType7")

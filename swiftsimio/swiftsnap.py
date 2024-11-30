@@ -63,6 +63,7 @@ parser.add_argument(
 
 def swiftsnap():
     import swiftsimio as sw
+    from swiftsimio.metadata.objects import metadata_discriminator
     import unyt
 
     from swiftsimio.metadata.particle import particle_name_underscores
@@ -82,7 +83,9 @@ def swiftsnap():
 
     # Now that we know they are valid, we can load the metadata.
     units = [sw.SWIFTUnits(snap) for snap in snapshots]
-    metadata = [sw.SWIFTMetadata(snap, units) for snap, units in zip(snapshots, units)]
+    metadata = [
+        metadata_discriminator(snap, units) for snap, units in zip(snapshots, units)
+    ]
 
     if args.redshift:
         redshifts = [f"{snap.z:.4g}" for snap in metadata]
@@ -111,10 +114,12 @@ def swiftsnap():
         for policy_string in policy_strings:
             print(policy_string)
 
+        print()
         output_type_string = (
             f"Output type: {data.output_type}, Output selection: {data.select_output}"
         )
         print(f"{output_type_string}")
+        print()
 
         numbers_of_particles = "Number of particles: " + ", ".join(
             [
@@ -140,36 +145,8 @@ def swiftsnap():
             f"Simulation state: z={data.z:.4g}, a={data.a:.4g}, t={data.time:.4g}"
         )
         print(f"{time_string}")
-        if data.cosmology["Cosmological run"]:
-            # TODO: encapsulate this better within swiftismio
-            hubble_constant = unyt.unyt_quantity(
-                data.cosmology["H0 [internal units]"][0], units=1.0 / data.units.time
-            )
-            hubble_constant.convert_to_units("km / (s * Mpc)")
-            critical_density = unyt.unyt_quantity(
-                data.cosmology["Critical density [internal units]"][0],
-                units=data.units.mass / (data.units.length ** 3),
-            )
-            critical_density = critical_density.to("g / (cm**3)") / unyt.mh
-
-            print(f"H_0={hubble_constant:.4g}, ρ_crit={critical_density:.4g}")
-
-            omegas = [
-                f"{k.replace('Omega', 'Ω')}={v[0]:.4g}"
-                for k, v in data.cosmology.items()
-                if "Omega" in k
-            ]
-            omegas_string = ", ".join(omegas)
-            print(omegas_string)
-
-            dark_energy = [
-                f"{k.replace('w', 'ω')}={v[0]:.4g}"
-                for k, v in data.cosmology.items()
-                if k[0] == "w"
-            ]
-            dark_energy_string = ", ".join(dark_energy)
-            print(dark_energy_string)
-
+        print()
+        print(f"Cosmology: {data.cosmology}")
         print()
 
         # Physics information

@@ -4,9 +4,9 @@ Loading Data
 The main purpose of :mod:`swiftsimio` is to load data. This section will tell
 you all about four main objects:
 
-+ :obj:`swiftsimio.reader.SWIFTUnits`, responsible for creating a correspondence between
++ :obj:`swiftsimio.metadata.objects.SWIFTUnits`, responsible for creating a correspondence between
   the SWIFT units and :mod:`unyt` objects.
-+ :obj:`swiftsimio.reader.SWIFTMetadata`, responsible for loading any required information
++ :obj:`swiftsimio.metadata.objects.SWIFTMetadata`, responsible for loading any required information
   from the SWIFT headers into python-readable data.
 + :obj:`swiftsimio.reader.SWIFTDataset`, responsible for holding all particle data, and
   keeping track of the above two objects.
@@ -47,8 +47,8 @@ notebook, and you will see that it contains several sub-objects:
   simulation.
 + ``data.dark_matter``, likewise containing information about the dark matter
   particles in the simulation.
-+ ``data.metadata``, an instance of :obj:`swiftsimio.reader.SWIFTMetadata`
-+ ``data.units``, an instance of :obj:`swiftsimio.reader.SWIFTUnits`
++ ``data.metadata``, an instance of :obj:`swiftsimio.metadata.objects.SWIFTSnapshotMetadata`
++ ``data.units``, an instance of :obj:`swiftsimio.metadata.objects.SWIFTUnits`
 
 Using metadata
 --------------
@@ -116,8 +116,49 @@ as a summary:
 Reading particle data
 ---------------------
 
-To find out what particle properties are present in our snapshot, we can use
-the instance of :obj:`swiftsimio.reader.SWIFTMetadata`, ``data.metadata``,
+To find out what particle properties are present in our snapshot, we can print
+the available particle types. For example:
+
+.. code-block:: python
+
+   data
+   
+prints the available particle types (or, more generally, groups):
+
+.. code-block:: python
+
+   SWIFT dataset at cosmo_volume_example.hdf5.
+   Available groups: gas, dark_matter, stars, black_holes
+
+The properties available for a particle type can be similarly printed:
+
+.. code-block:: python
+
+   data.dark_matter
+
+gives:
+
+.. code-block:: python
+
+   SWIFT dataset at cosmo_volume_example.hdf5.
+   Available fields: coordinates, masses, particle_ids, velocities
+   
+With compatible python interpreters, the available fields (and other attributes
+such as functions) can be seen using the tab completion feature, for example
+typing `>>> data.dark_matter.` at the command prompt and pressing tab twice
+gives:
+
+.. code-block:: python
+
+   data.dark_matter.coordinates                  data.dark_matter.masses
+   data.dark_matter.filename                     data.dark_matter.metadata
+   data.dark_matter.particle_ids                 data.dark_matter.generate_empty_properties()
+   data.dark_matter.group                        data.dark_matter.units
+   data.dark_matter.group_metadata               data.dark_matter.velocities
+   data.dark_matter.group_name                   
+
+The available fields can also be accessed programatically using the instance of
+:obj:`swiftsimio.reader.SWIFTMetadata`, ``data.metadata``,
 which contains several instances of
 :obj:`swiftsimio.reader.SWIFTParticleTypeMetadata` describing what kinds of
 fields are present in gas or dark matter:
@@ -268,3 +309,39 @@ in SWIFT will be automatically read.
    data = sw.load(
        "extra_test.hdf5",
    )
+
+
+Halo Catalogues
+---------------
+
+SWIFT-compatible halo catalogues, such as those written with SOAP, can be
+loaded entirely transparently with ``swiftsimio``. It is generally possible
+to use all of the functionality (masking, visualisation, etc.) that is used
+with snapshots with these files, assuming the files conform to the
+correct metadata standard.
+
+An example SOAP file is available at
+``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/soap_example.hdf5``
+
+You can load SOAP files as follows:
+
+.. code-block:: python
+
+   from swiftsimio import load
+
+   catalogue = load("soap_example.hdf5")
+
+   print(catalogue.spherical_overdensity_200_mean.total_mass)
+
+   # >>> [  591.      328.5     361.      553.      530.      507.      795.
+   #        574.      489.5     233.75      0.     1406.      367.5    2308.
+   #        ...
+   #        0.      534.        0.      191.75   1450.      600.      290.   ] 10000000000.0*Msun (Physical)
+
+What's going on here? Under the hood, ``swiftsimio`` has a discrimination function
+between different metadata types, based upon a property stored in the HDF5 file,
+``Header/OutputType``. If this is set to ``FullVolume``, we have a snapshot,
+and use the :obj:`swiftsimio.metadata.objects.SWIFTSnapshotMetadata`
+class. If it is ``SOAP``, we use
+:obj:`swiftsimio.metadata.objects.SWIFTSOAPMetadata`, which instructs
+``swiftsimio`` to read slightly different properties from the HDF5 file.

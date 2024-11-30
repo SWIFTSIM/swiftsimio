@@ -19,6 +19,7 @@ from swiftsimio.visualisation.power_spectrum import (
     render_to_deposit,
     folded_depositions_to_power_spectrum,
 )
+from swiftsimio.visualisation.ray_trace import panel_gas
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 from swiftsimio.visualisation.projection_backends import (
     backends as projection_backends,
@@ -248,6 +249,7 @@ def test_volume_parallel():
         masses,
         hsml,
         resolution,
+        1,
         1.0,
         1.0,
         1.0,
@@ -328,7 +330,7 @@ def test_render_outside_region():
 
     slice_scatter_parallel(x, y, z, m, h, 0.2, resolution, 1.0, 1.0, 1.0)
 
-    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1.0, 1.0, 1.0)
+    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1, 1.0, 1.0, 1.0)
 
 
 @requires("cosmological_volume.hdf5")
@@ -344,10 +346,10 @@ def test_comoving_versus_physical(filename):
         # conversion in this case
         img = func(data, resolution=256, project=None)
         assert img.comoving
-        assert img.cosmo_factor.expr == a ** aexp
+        assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
         img = func(data, resolution=256, project="densities")
         assert img.comoving
-        assert img.cosmo_factor.expr == a ** (aexp - 3.0)
+        assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
         # try to mix comoving coordinates with a physical variable
         data.gas.densities.convert_to_physical()
         with pytest.raises(AttributeError, match="not compatible with comoving"):
@@ -362,11 +364,11 @@ def test_comoving_versus_physical(filename):
         img = func(data, resolution=256, project="masses")
         # check that we get a physical result
         assert not img.comoving
-        assert img.cosmo_factor.expr == a ** aexp
+        assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
         # densities are still compatible with physical
         img = func(data, resolution=256, project="densities")
         assert not img.comoving
-        assert img.cosmo_factor.expr == a ** (aexp - 3.0)
+        assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
         # now try again with comoving densities
         data.gas.densities.convert_to_comoving()
         with pytest.raises(AttributeError, match="not compatible with physical"):
@@ -404,6 +406,53 @@ def test_nongas_smoothing_lengths(filename):
     assert isinstance(hsml, unyt_array)
     assert not isinstance(hsml, cosmo_array)
 
+    return
+
+
+@requires("cosmological_volume.hdf5")
+def test_panel_rendering(filename):
+    data = load(filename)
+
+    N_depth = 32
+    res = 1024
+
+    # Test the panel rendering
+    panel = panel_gas(data, resolution=res, panels=N_depth, project="masses")
+
+    assert panel.shape[-1] == N_depth
+
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import LogNorm
+
+    plt.imsave(
+        "panels_added.png",
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(np.sum(panel, axis=-1))),
+    )
+
+    projected = project_gas(data, res, "masses", backend="renormalised")
+
+    plt.imsave(
+        "projected.png",
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(projected)),
+    )
+
+    fullstack = np.zeros((res, res))
+
+    for i in range(N_depth):
+        fullstack = fullstack * 0.5 + panel[:, :, i].v
+
+    offset = 32
+
+    plt.imsave(
+        "stacked.png",
+        plt.get_cmap()(LogNorm()(fullstack[offset:-offset, offset:-offset])),
+    )
+
+    assert np.isclose(
+        panel.sum(axis=-1)[offset:-offset, offset:-offset],
+        projected[offset:-offset, offset:-offset],
+        rtol=0.1,
+    ).all()
     return
 
 
