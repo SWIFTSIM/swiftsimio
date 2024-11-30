@@ -116,8 +116,49 @@ as a summary:
 Reading particle data
 ---------------------
 
-To find out what particle properties are present in our snapshot, we can use
-the instance of :obj:`swiftsimio.reader.SWIFTMetadata`, ``data.metadata``,
+To find out what particle properties are present in our snapshot, we can print
+the available particle types. For example:
+
+.. code-block:: python
+
+   data
+   
+prints the available particle types (or, more generally, groups):
+
+.. code-block:: python
+
+   SWIFT dataset at cosmo_volume_example.hdf5.
+   Available groups: gas, dark_matter, stars, black_holes
+
+The properties available for a particle type can be similarly printed:
+
+.. code-block:: python
+
+   data.dark_matter
+
+gives:
+
+.. code-block:: python
+
+   SWIFT dataset at cosmo_volume_example.hdf5.
+   Available fields: coordinates, masses, particle_ids, velocities
+   
+With compatible python interpreters, the available fields (and other attributes
+such as functions) can be seen using the tab completion feature, for example
+typing `>>> data.dark_matter.` at the command prompt and pressing tab twice
+gives:
+
+.. code-block:: python
+
+   data.dark_matter.coordinates                  data.dark_matter.masses
+   data.dark_matter.filename                     data.dark_matter.metadata
+   data.dark_matter.particle_ids                 data.dark_matter.generate_empty_properties()
+   data.dark_matter.group                        data.dark_matter.units
+   data.dark_matter.group_metadata               data.dark_matter.velocities
+   data.dark_matter.group_name                   
+
+The available fields can also be accessed programatically using the instance of
+:obj:`swiftsimio.reader.SWIFTMetadata`, ``data.metadata``,
 which contains several instances of
 :obj:`swiftsimio.reader.SWIFTParticleTypeMetadata` describing what kinds of
 fields are present in gas or dark matter:
