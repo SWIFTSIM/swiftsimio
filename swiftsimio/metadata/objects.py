@@ -6,7 +6,6 @@ HDF5 file to what SWIFTsimIO expects to be able to unpack into the
 object notation (e.g. PartType0/Coordinates -> gas.coordinates).
 """
 
-
 import numpy as np
 import unyt
 
@@ -110,25 +109,100 @@ class SWIFTMetadata(ABC):
         Some minor postprocessing on the header to local variables.
         """
 
+        # We need the scale factor to initialize `cosmo_array`s, so start with the float
+        # items including the scale factor.
+        # These must be unpacked as they are stored as length-1 arrays
+
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
+        )
+        for field, names in metadata.metadata_fields.header_unpack_single_float.items():
+            try:
+                if isinstance(names, list):
+                    # Sometimes we store a list in case we have multiple names, for
+                    # example Redshift -> metadata.redshift AND metadata.z. Can't just do
+                    # the iteration because we may loop over the letters in the string.
+                    for variable in names:
+                        if variable in header_unpack_float_units.keys():
+                            # We have an associated unit!
+                            unit = header_unpack_float_units[variable]
+                            setattr(
+                                self,
+                                variable,
+                                unyt.unyt_quantity(self.header[field][0], units=unit),
+                            )
+                        else:
+                            # No unit
+                            setattr(self, variable, self.header[field][0])
+                else:
+                    # We can just check for the unit and set the attribute
+                    variable = names
+                    if variable in header_unpack_float_units.keys():
+                        # We have an associated unit!
+                        unit = header_unpack_float_units[variable]
+                        setattr(
+                            self,
+                            variable,
+                            unyt.unyt_quantity(self.header[field][0], units=unit),
+                        )
+                    else:
+                        # No unit
+                        setattr(self, variable, self.header[field][0])
+            except KeyError:
+                # Must not be present, just skip it
+                continue
+        # need the scale factor first for cosmology on other header attributes
+        try:
+            self.a = self.scale_factor
+        except AttributeError:
+            # These must always be present for the initialisation of cosmology properties
+            self.a = 1.0
+            self.scale_factor = 1.0
+
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
+        )
+        header_unpack_arrays_cosmo_args = (
+            metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
+                self.scale_factor
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
             try:
                 if name in header_unpack_arrays_units.keys():
-                    setattr(
-                        self,
-                        name,
-                        unyt.unyt_array(
-                            self.header[field], units=header_unpack_arrays_units[name]
-                        ),
-                    )
+                    if name in header_unpack_arrays_cosmo_args.keys():
+                        setattr(
+                            self,
+                            name,
+                            cosmo_array(
+                                self.header[field],
+                                units=header_unpack_arrays_units[name],
+                                **header_unpack_arrays_cosmo_args[name],
+                            ),
+                        )
+                    else:
+                        setattr(
+                            self,
+                            name,
+                            unyt.unyt_array(
+                                self.header[field],
+                                units=header_unpack_arrays_units[name],
+                            ),
+                        )
                     # This is required or we automatically get everything in CGS!
                     getattr(self, name).convert_to_units(
                         header_unpack_arrays_units[name]
@@ -179,52 +253,6 @@ class SWIFTMetadata(ABC):
                 # Must not be present, just skip it
                 setattr(self, name, "")
 
-        # These must be unpacked as they are stored as length-1 arrays
-
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
-        )
-
-        for field, names in metadata.metadata_fields.header_unpack_single_float.items():
-            try:
-                if isinstance(names, list):
-                    # Sometimes we store a list in case we have multiple names, for example
-                    # Redshift -> metadata.redshift AND metadata.z. Can't just do the iteration
-                    # because we may loop over the letters in the string.
-                    for variable in names:
-                        if variable in header_unpack_float_units.keys():
-                            # We have an associated unit!
-                            unit = header_unpack_float_units[variable]
-                            setattr(
-                                self,
-                                variable,
-                                unyt.unyt_quantity(self.header[field][0], units=unit),
-                            )
-                        else:
-                            # No unit
-                            setattr(self, variable, self.header[field][0])
-                else:
-                    # We can just check for the unit and set the attribute
-                    variable = names
-                    if variable in header_unpack_float_units.keys():
-                        # We have an associated unit!
-                        unit = header_unpack_float_units[variable]
-                        setattr(
-                            self,
-                            variable,
-                            unyt.unyt_quantity(self.header[field][0], units=unit),
-                        )
-                    else:
-                        # No unit
-                        setattr(self, variable, self.header[field][0])
-            except KeyError:
-                # Must not be present, just skip it
-                continue
-
         # These are special cases, sorry!
         # Date and time of snapshot dump
         try:
@@ -274,7 +302,7 @@ class SWIFTMetadata(ABC):
             self.reduced_lightspeed = None
 
         # Store these separately as self.n_gas = number of gas particles for example
-        for (part_number, (_, part_name)) in enumerate(
+        for part_number, (_, part_name) in enumerate(
             metadata.particle_types.particle_name_underscores.items()
         ):
             try:
@@ -289,13 +317,6 @@ class SWIFTMetadata(ABC):
         except (KeyError, TypeError):
             # We can set a default and print a message whenever we require this value
             self.gas_gamma = None
-
-        try:
-            self.a = self.scale_factor
-        except AttributeError:
-            # These must always be present for the initialisation of cosmology properties
-            self.a = 1.0
-            self.scale_factor = 1.0
 
         return
 
@@ -325,7 +346,7 @@ class SWIFTMetadata(ABC):
         A property giving the present particle groups in the file to be unpackaged
         into top-level properties. For instance, in a regular snapshot, this would be
         ["PartType0", "PartType1", "PartType4", ...]. In SOAP, this would be
-        ["SO/200_crit", "SO/200_mean", ...], i.e. one per aperture. 
+        ["SO/200_crit", "SO/200_mean", ...], i.e. one per aperture.
         """
         raise NotImplementedError
 
@@ -501,7 +522,7 @@ class SWIFTGroupMetadata(object):
 
         Parameters
         ----------
-        group: str 
+        group: str
             the name of the group in the hdf5 file
         group_name : str
             the corresponding group name for swiftsimio
@@ -589,7 +610,7 @@ class SWIFTGroupMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
+                        units *= unit**unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
@@ -687,7 +708,7 @@ class SWIFTGroupMetadata(object):
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
-            a_factor_this_dataset = a ** cosmo_exponent
+            a_factor_this_dataset = a**cosmo_exponent
 
             return cosmo_factor(a_factor_this_dataset, current_scale_factor)
 
@@ -886,7 +907,7 @@ class SWIFTUnits(object):
 
 def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
     """
-    Discriminates between the different types of metadata objects read from SWIFT-compatible
+    Discriminates between the different types of metadata objects read from SWIFT-compatile
     files.
 
     Parameters
@@ -898,7 +919,7 @@ def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
     units : SWIFTUnits
         The units object associated with the file
 
-    
+
     Returns
     -------
 
