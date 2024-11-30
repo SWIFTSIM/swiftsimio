@@ -439,6 +439,18 @@ class TestCosmoArrayUfuncs:
         assert res.comoving is False
         assert res.cosmo_factor == inp.cosmo_factor ** 2
 
+    def test_cbrt_ufunc(self):
+        inp = cosmo_array(
+            [8],
+            u.kpc,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+        )
+        res = np.cbrt(inp)
+        assert res.to_value(u.kpc ** (1.0 / 3.0)) == 2  # also ensures units ok
+        assert res.comoving is False
+        assert res.cosmo_factor == inp.cosmo_factor ** (1.0 / 3.0)
+
     def test_reciprocal_ufunc(self):
         inp = cosmo_array(
             [2.0],

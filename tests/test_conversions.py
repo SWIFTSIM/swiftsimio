@@ -41,4 +41,4 @@ def test_nonzero_tcmb(filename):
 
     output_cosmology = swift_cosmology_to_astropy(cosmo=cosmo, units=units)
 
-    assert isclose(output_cosmology._Ogamma0, 0.1)
+    assert isclose(output_cosmology.Ogamma0, 0.1)
