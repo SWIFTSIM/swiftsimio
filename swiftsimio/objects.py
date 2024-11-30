@@ -41,7 +41,7 @@ from numpy import (
     expm1,
     log1p,
     sqrt,
-    # cbrt,  # TODO: Needs upstream (unyt) support first
+    cbrt,
     square,
     reciprocal,
     sin,
@@ -656,7 +656,7 @@ class cosmo_array(unyt_array):
         log1p: _return_without_cosmo_factor,
         sqrt: _sqrt_cosmo_factor,
         square: _square_cosmo_factor,
-        # cbrt: _cbrt_cosmo_factor,  # TODO: Needs upstream (unyt) support first
+        cbrt: _cbrt_cosmo_factor,
         reciprocal: _reciprocal_cosmo_factor,
         sin: _return_without_cosmo_factor,
         cos: _return_without_cosmo_factor,
