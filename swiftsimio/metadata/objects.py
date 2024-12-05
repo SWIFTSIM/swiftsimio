@@ -1255,6 +1255,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
         self.postprocess_header()
 
         self.load_groups()
+        self.extract_cosmology()
 
         # After we've loaded all this metadata, we can safely release the file handle.
         self.handle.close()
@@ -1300,6 +1301,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
         self.unpack_subhalo_number()
 
         self.load_groups()
+        self.extract_cosmology()
 
         # After we've loaded all this metadata, we can safely release the file handle.
         self.handle.close()
