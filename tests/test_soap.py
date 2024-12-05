@@ -60,7 +60,9 @@ def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
     masses2 = data2.spherical_overdensity_200_mean.total_mass
 
     # Manually mask
-    custom_mask = (masses2 >= lower) & (masses2 <= upper)
+    custom_mask = (
+        unyt.unyt_array(masses2.to_value(masses2.units), masses2.units) >= lower
+    ) & (unyt.unyt_array(masses2.to_value(masses2.units), masses2.units) <= upper)
 
     assert len(masses2[custom_mask]) == len(masses)
 

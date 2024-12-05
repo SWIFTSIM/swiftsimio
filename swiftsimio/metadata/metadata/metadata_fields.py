@@ -2,6 +2,8 @@
 Contains the description of the metadata fields in the SWIFT snapshots.
 """
 
+from ..objects import cosmo_factor, a
+
 metadata_fields_to_read = {
     "Code": "code",
     "Cosmology": "cosmology_raw",
@@ -52,6 +54,36 @@ def generate_units_header_unpack_arrays(m, l, t, I, T) -> dict:
     units = {"boxsize": l}
 
     return units
+
+
+def generate_cosmo_args_header_unpack_arrays(scale_factor) -> dict:
+    """
+    Generates arguments for `cosmo_array` so that relevant header
+    items can be initialized as `cosmo_array`s.
+
+    Parameters
+    ----------
+    scale_factor : float
+        The scale factor.
+
+    Returns
+    -------
+    out : dict
+        A dictionary containing the `cosmo_array` arguments corresponding to
+        header items, omitting any that should not be `cosmo_array`s.
+    """
+
+    # Do not include those items that do not have units (and therefore
+    # should not be cosmo_array'd).
+    cosmo_args = {
+        "boxsize": dict(
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=scale_factor),
+            comoving=True,  # if it's not, then a=1 and it doesn't matter
+            valid_transform=True,
+        )
+    }
+
+    return cosmo_args
 
 
 # These are the same as above, but they are extracted as real python strings
