@@ -332,7 +332,7 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         raise ValueError(
             f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
         )
-    return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
+    return cosmo_factor(a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
@@ -569,7 +569,7 @@ class cosmo_factor:
         return b.__truediv__(self)
 
     def __pow__(self, p):
-        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor
@@ -880,6 +880,8 @@ class cosmo_array(unyt_array):
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
     __getitem__ = _propagate_cosmo_array_attributes(unyt_array.__getitem__)
+    __copy__ = _propagate_cosmo_array_attributes(unyt_array.__copy__)
+    __deepcopy__ = _propagate_cosmo_array_attributes(unyt_array.__deepcopy__)
     astype = _propagate_cosmo_array_attributes(unyt_array.astype)
     in_units = _propagate_cosmo_array_attributes(unyt_array.in_units)
     byteswap = _propagate_cosmo_array_attributes(unyt_array.byteswap)
