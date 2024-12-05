@@ -302,8 +302,10 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_compariso
         raise ValueError(
             f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
         )
-    elif (cf is not None) and (cf2 is not None) and (cf == cf2):
-        # both have cosmo_factor, and they match:
+    elif ((cf is not None) and (cf2 is not None) and (cf == cf2)) or (
+        (cf is None) and (cf2 is None)
+    ):
+        # both have cosmo_factor, and they match, or neither has cosmo_factor:
         pass
     else:
         raise RuntimeError("Unexpected state, please report this error on github.")
@@ -332,7 +334,7 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         raise ValueError(
             f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
         )
-    return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
+    return cosmo_factor(a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
@@ -569,7 +571,7 @@ class cosmo_factor:
         return b.__truediv__(self)
 
     def __pow__(self, p):
-        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor
