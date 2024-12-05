@@ -84,3 +84,19 @@ class TestCosmoArrayCopy:
         assert arr.units == copy_arr.units
         assert arr.cosmo_factor == copy_arr.cosmo_factor
         assert arr.comoving == copy_arr.comoving
+
+    def test_to_cgs(self):
+        """
+        Check that using to_cgs properly preserves attributes.
+        """
+        units = u.Mpc
+        arr = cosmo_array(
+            u.unyt_array(np.ones(5), units=units),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
+            comoving=False,
+        )
+        cgs_arr = arr.in_cgs()
+        assert np.allclose(arr.to_value(u.cm), cgs_arr.to_value(u.cm))
+        assert cgs_arr.units == u.cm
+        assert cgs_arr.cosmo_factor == arr.cosmo_factor
+        assert cgs_arr.comoving == arr.comoving
