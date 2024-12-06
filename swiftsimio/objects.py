@@ -728,7 +728,7 @@ class cosmo_array(unyt_array):
         input_units=None,
         name=None,
         cosmo_factor=None,
-        comoving=True,
+        comoving=None,
         valid_transform=True,
         compression=None,
     ):
