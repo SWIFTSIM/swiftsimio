@@ -831,7 +831,7 @@ class cosmo_array(unyt_array):
         if obj is None:
             return
         self.cosmo_factor = getattr(obj, "cosmo_factor", None)
-        self.comoving = getattr(obj, "comoving", True)
+        self.comoving = getattr(obj, "comoving", None)
         self.compression = getattr(obj, "compression", None)
         self.valid_transform = getattr(obj, "valid_transform", True)
 
@@ -846,9 +846,10 @@ class cosmo_array(unyt_array):
     def __repr__(self):
         if self.comoving:
             comoving_str = ", comoving=True)"
+        elif self.comoving is None:
+            comoving_str = ")"
         else:
             comoving_str = ", comoving=False)"
-
         # Remove final parenthesis and append comoving flag
         return super().__repr__()[:-1] + comoving_str
 
@@ -914,7 +915,7 @@ class cosmo_array(unyt_array):
         """
         if self.comoving:
             return
-        if not self.valid_transform:
+        if not self.valid_transform or self.comoving is None:
             raise InvalidConversionError
         # Best to just modify values as otherwise we're just going to have
         # to do a convert_to_units anyway.
@@ -926,14 +927,16 @@ class cosmo_array(unyt_array):
         """
         Convert the internal data to be in physical units.
         """
-        if self.comoving:
+        if self.comoving is None:
+            raise InvalidConversionError
+        elif not self.comoving:
+            return
+        else:  # self.comoving
             # Best to just modify values as otherwise we're just going to have
             # to do a convert_to_units anyway.
             values = self.d
             values *= self.cosmo_factor.a_factor
             self.comoving = False
-        else:
-            return
 
     def to_physical(self):
         """
@@ -988,7 +991,7 @@ class cosmo_array(unyt_array):
         cls,
         arr,
         unit_registry=None,
-        comoving=True,
+        comoving=None,
         cosmo_factor=None,
         compression=None,
         valid_transform=True,
@@ -1034,7 +1037,7 @@ class cosmo_array(unyt_array):
         cls,
         arr,
         unit_registry=None,
-        comoving=True,
+        comoving=None,
         cosmo_factor=None,
         compression=None,
         valid_transform=True,
