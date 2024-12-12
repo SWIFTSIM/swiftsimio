@@ -6,8 +6,9 @@ unyt_array that we use, called cosmo_array.
 import warnings
 
 import unyt
-from unyt import unyt_array
+from unyt import unyt_array, unyt_quantity
 from unyt.array import multiple_output_operators
+from numbers import Number as numeric_type
 
 try:
     from unyt.array import POWER_MAPPING
@@ -599,8 +600,6 @@ class cosmo_array(unyt_array):
 
     This inherits from the unyt.unyt_array, and adds
     four variables: compression, cosmo_factor, comoving, and valid_transform.
-    Data is assumed to be comoving when passed to the object but you
-    can override this by setting the latter flag to be False.
 
     Parameters
     ----------
@@ -1167,4 +1166,80 @@ class cosmo_array(unyt_array):
                         o.cosmo_factor = ret_cf
                         o.compression = ret_comp
 
+        return ret
+
+
+class cosmo_quantity(cosmo_array, unyt_quantity):
+    """
+    Cosmology scalar class.
+
+    This inherits from both the cosmo_array and the unyt.unyt_array, and has the same four
+    attributes as cosmo_array: compression, cosmo_factor, comoving, and valid_transform.
+
+    Parameters
+    ----------
+
+    cosmo_array : cosmo_array
+        the inherited cosmo_array
+
+    unyt_quantity : unyt.unyt_quantity
+        the inherited unyt_quantity
+
+    Attributes
+    ----------
+
+    comoving : bool
+        if True then the array is in comoving co-ordinates, and if
+        False then it is in physical units.
+
+    cosmo_factor : float
+        Object to store conversion data between comoving and physical coordinates
+
+    compression : string
+        String describing any compression that was applied to this array in the
+        hdf5 file.
+
+    valid_transform: bool
+       if True then the array can be converted from physical to comoving units
+
+    """
+
+    def __new__(
+        cls,
+        input_scalar,
+        units=None,
+        registry=None,
+        dtype=None,
+        bypass_validation=False,
+        name=None,
+        cosmo_factor=None,
+        comoving=None,
+        valid_transform=True,
+        compression=None,
+    ):
+        input_units = units
+        if not (
+            bypass_validation
+            or isinstance(input_scalar, (numeric_type, np.number, np.ndarray))
+        ):
+            raise RuntimeError("unyt_quantity values must be numeric")
+        if input_units is None:
+            units = getattr(input_scalar, "units", None)
+        else:
+            units = input_units
+        ret = cosmo_array.__new__(
+            cls,
+            np.asarray(input_scalar),
+            units,
+            registry,
+            dtype=dtype,
+            bypass_validation=bypass_validation,
+            name=name,
+            cosmo_factor=cosmo_factor,
+            comoving=comoving,
+            valid_transform=valid_transform,
+            compression=compression,
+        )
+        if ret.size > 1:
+            raise RuntimeError("unyt_quantity instances must be scalars")
         return ret
