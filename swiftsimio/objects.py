@@ -454,7 +454,6 @@ class cosmo_factor:
 
         expr : sympy.expr
             expression used to convert between comoving and physical coordinates
-
         scale_factor : float
             the scale factor of the simulation data
         """
@@ -1101,6 +1100,15 @@ class cosmo_array(unyt_array):
         if all([cm[1] for cm in cms if cm[0]]):
             # all cosmo_array inputs are comoving
             ret_cm = True
+        elif all([cm[1] is None for cm in cms if cm[0]]):
+            # all cosmo inputs have comoving=None
+            ret_cm = None
+        elif any([cm[1] is None for cm in cms if cm[0]]):
+            # only some cosmo inputs have comoving=None
+            raise ValueError(
+                "Some arguments have comoving=None and others have comoving=True|False. "
+                "Result is undefined!"
+            )
         elif not any([cm[1] for cm in cms if cm[0]]):
             # all cosmo_array inputs are physical
             ret_cm = False
@@ -1171,6 +1179,38 @@ class cosmo_array(unyt_array):
 
         return ret
 
+    def __array_function__(self, func, types, args, kwargs):
+        # Follow NEP 18 guidelines
+        # https://numpy.org/neps/nep-0018-array-function-protocol.html
+        from ._array_functions import _HANDLED_FUNCTIONS
+        from unyt._array_functions import (
+            _HANDLED_FUNCTIONS as _UNYT_HANDLED_FUNCTIONS,
+            _UNSUPPORTED_FUNCTIONS as _UNYT_UNSUPPORTED_FUNCTIONS,
+        )
+
+        # Let's claim to support everything supported by unyt.
+        # If we can't do this in future, follow their pattern of
+        # defining out own _UNSUPPORTED_FUNCTIONS in a _array_functions.py file
+        _UNSUPPORTED_FUNCTIONS = _UNYT_UNSUPPORTED_FUNCTIONS
+
+        if func in _UNSUPPORTED_FUNCTIONS:
+            # following NEP 18, return NotImplemented as a sentinel value
+            # which will lead to raising a TypeError, while
+            # leaving other arguments a chance to take the lead
+            return NotImplemented
+
+        if func not in _HANDLED_FUNCTIONS and func in _UNYT_HANDLED_FUNCTIONS:
+            # first look for unyt's implementation
+            return _UNYT_HANDLED_FUNCTIONS[func](*args, **kwargs)
+        elif func not in _UNYT_HANDLED_FUNCTIONS:
+            # otherwise default to numpy's private implementation
+            return func._implementation(*args, **kwargs)
+        # Note: this allows subclasses that don't override
+        # __array_function__ to handle unyt_array objects
+        if not all(issubclass(t, cosmo_array) or t is np.ndarray for t in types):
+            return NotImplemented
+        return _HANDLED_FUNCTIONS[func](*args, **kwargs)
+
 
 class cosmo_quantity(cosmo_array, unyt_quantity):
     """
@@ -1220,6 +1260,43 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         valid_transform=True,
         compression=None,
     ):
+        """
+        Essentially a copy of the unyt_quantity.__new__ constructor.
+
+        Parameters
+        ----------
+        input_scalar : an integer of floating point scalar
+            A scalar to attach units and cosmological transofrmations to.
+        units : str, unyt.unit_symbols or astropy.unit, optional
+            The units of the array. Powers must be specified using python syntax
+            (cm**3, not cm^3).
+        registry : unyt.unit_registry.UnitRegistry, optional
+            The registry to create units from. If input_units is already associated with a
+            unit registry and this is specified, this will be used instead of the registry
+            associated with the unit object.
+        dtype : np.dtype or str, optional
+            The dtype of the array data. Defaults to the dtype of the input data, or, if
+            none is found, uses np.float64
+        bypass_validation : bool, optional
+            If True, all input validation is skipped. Using this option may produce
+            corrupted, invalid units or array data, but can lead to significant speedups
+            in the input validation logic adds significant overhead. If set, input_units
+            must be a valid unit object. Defaults to False.
+        name : str, optional
+            The name of the array. Defaults to None. This attribute does not propagate
+            through mathematical operations, but is preserved under indexing and unit
+            conversions.
+        cosmo_factor : cosmo_factor
+            cosmo_factor object to store conversion data between comoving and physical
+            coordinates.
+        comoving : bool
+            Flag to indicate whether using comoving coordinates.
+        valid_transform : bool
+            Flag to indicate whether this array can be converted to comoving.
+        compression : string
+            Description of the compression filters that were applied to that array in the
+            hdf5 file.
+        """
         input_units = units
         if not (
             bypass_validation
