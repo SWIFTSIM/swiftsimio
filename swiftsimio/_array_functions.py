@@ -46,21 +46,21 @@ def _return_helper(res, helper_result, ret_cf, out=None):
 
 @implements(np.array2string)
 def array2string(
-        a,
-        max_line_width=None,
-        precision=None,
-        suppress_small=None,
-        separator=" ",
-        prefix="",
-        style=np._NoValue,
-        formatter=None,
-        threshold=None,
-        edgeitems=None,
-        sign=None,
-        floatmode=None,
-        suffix="",
-        *,
-        legacy=None,
+    a,
+    max_line_width=None,
+    precision=None,
+    suppress_small=None,
+    separator=" ",
+    prefix="",
+    style=np._NoValue,
+    formatter=None,
+    threshold=None,
+    edgeitems=None,
+    sign=None,
+    floatmode=None,
+    suffix="",
+    *,
+    legacy=None,
 ):
     from unyt._array_functions import array2string as unyt_array2string
 
@@ -160,7 +160,9 @@ def histogram_bin_edges(a, bins=10, range=None, weights=None):
     else:
         # bins based on values in a
         ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-        res = unyt_histogram_bin_edges(*helper_result["args"], **helper_result["kwargs"])
+        res = unyt_histogram_bin_edges(
+            *helper_result["args"], **helper_result["kwargs"]
+        )
     return _return_helper(res, helper_result, ret_cf)
 
 
@@ -189,10 +191,7 @@ def linalg_pinv(a, rcond=None, hermitian=False, *, rtol=np._NoValue):
     from unyt._array_functions import linalg_pinv as unyt_linalg_pinv
 
     helper_result = _prepare_array_func_args(
-        a,
-        rcond=rcond,
-        hermitian=hermitian,
-        rtol=rtol
+        a, rcond=rcond, hermitian=hermitian, rtol=rtol
     )
     ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
     res = unyt_linalg_pinv(*helper_result["args"], **helper_result["kwargs"])
@@ -229,14 +228,21 @@ def linalg_pinv(a, rcond=None, hermitian=False, *, rtol=np._NoValue):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(...)
-# def ...(...):
-#     from unyt._array_functions import ... as unyt_...
+@implements(np.concatenate)
+def concatenate(tup, axis=0, out=None, dtype=None, casting="same_kind"):
+    from unyt._array_functions import concatenate as unyt_concatenate
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_...(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        tup, axis=axis, out=out, dtype=dtype, casting=casting
+    )
+    helper_result_concat_items = _prepare_array_func_args(*tup)
+    ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
+    res = unyt_concatenate(
+        helper_result_concat_items["args"],
+        *helper_result["args"][1:],
+        **helper_result["kwargs"],
+    )
+    return _return_helper(res, helper_result_concat_items, ret_cf, out=out)
 
 
 # @implements(...)
