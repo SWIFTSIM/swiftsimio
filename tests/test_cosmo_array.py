@@ -19,7 +19,7 @@ def getfunc(fname):
 
 
 def ca(x, unit=u.Mpc):
-    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a**1, 0.5))
+    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 0.5))
 
 
 def to_ua(x):
@@ -37,6 +37,8 @@ def check_result(x_c, x_u):
         assert isinstance(x_c, cosmo_array) and not isinstance(x_c, cosmo_quantity)
     else:
         assert not isinstance(x_c, cosmo_array)
+        assert np.allclose(x_c, x_u)
+        return
     assert x_c.units == x_u.units
     assert np.allclose(x_c.to_value(x_c.units), x_u.to_value(x_u.units))
     return
@@ -47,7 +49,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             np.ones(5),
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -58,7 +60,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [1, 1, 1, 1, 1],
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -68,7 +70,7 @@ class TestCosmoArrayInit:
     def test_init_from_unyt_array(self):
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=u.Mpc),
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -78,7 +80,7 @@ class TestCosmoArrayInit:
     def test_init_from_list_of_unyt_arrays(self):
         arr = cosmo_array(
             [u.unyt_array(1, units=u.Mpc) for _ in range(5)],
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
