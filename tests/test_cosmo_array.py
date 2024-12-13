@@ -6,14 +6,9 @@ import pytest
 import os
 import numpy as np
 import unyt as u
-from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 
 savetxt_file = "saved_array.txt"
-
-
-# dummy until actually implemented:
-class cosmo_quantity:
-    pass
 
 
 def getfunc(fname):
@@ -32,13 +27,19 @@ def to_ua(x):
 
 
 def check_result(x_c, x_u):
-    # careful, unyt_quantity subclass of unyt_array
+    if isinstance(x_u, str):
+        assert isinstance(x_c, str)
+        return
+    # careful, unyt_quantity is a subclass of unyt_array
     if isinstance(x_u, u.unyt_quantity):
         assert isinstance(x_c, cosmo_quantity)
     elif isinstance(x_u, u.unyt_array):
         assert isinstance(x_c, cosmo_array) and not isinstance(x_c, cosmo_quantity)
     else:
         assert not isinstance(x_c, cosmo_array)
+    assert x_c.units == x_u.units
+    assert np.allclose(x_c.to_value(x_c.units), x_u.to_value(x_u.units))
+    return
 
 
 class TestCosmoArrayInit:
@@ -94,12 +95,20 @@ class TestNumpyFunctions:
         from unyt._array_functions import _HANDLED_FUNCTIONS
 
         functions_to_check = {
+            "array2string": (ca(np.arange(3)),),
             "dot": (ca(np.arange(3)), ca(np.arange(3))),
             "vdot": (ca(np.arange(3)), ca(np.arange(3))),
             "inner": (ca(np.arange(3)), ca(np.arange(3))),
             "outer": (ca(np.arange(3)), ca(np.arange(3))),
             "kron": (ca(np.arange(3)), ca(np.arange(3))),
             "histogram_bin_edges": (ca(np.arange(3)),),
+            "linalg.inv": (ca(np.eye(3)),),
+            "linalg.tensorinv": (ca(np.eye(9).reshape((3, 3, 3, 3))),),
+            "linalg.pinv": (ca(np.eye(3)),),
+            "linalg.svd": (ca(np.eye(3)),),
+            "histogram": (ca(np.arange(3)),),
+            "histogram2d": (ca(np.arange(3)), ca(np.arange(3))),
+            "histogramdd": (ca(np.arange(3)),),
             "concatenate": (ca(np.eye(3)),),
             "cross": (ca(np.arange(3)), ca(np.arange(3))),
             "intersect1d": (ca(np.arange(3)), ca(np.arange(3))),
@@ -153,13 +162,7 @@ class TestNumpyFunctions:
             "correlate": (ca(np.arange(3)), ca(np.arange(3))),
             "tensordot": (ca(np.eye(3)), ca(np.eye(3))),
             "unwrap": (ca(np.arange(3)),),
-            "histogram": (ca(np.arange(3)),),
-            "histogram2d": (ca(np.arange(3)), ca(np.arange(3))),
-            "histogramdd": (ca(np.arange(3)),),
             "linalg.norm": (ca(np.arange(3)),),
-            "linalg.inv": (ca(np.eye(3)),),
-            "linalg.tensorinv": (ca(np.eye(9).reshape((3, 3, 3, 3))),),
-            "linalg.pinv": (ca(np.eye(3)),),
             "linalg.det": (ca(np.eye(3)),),
             "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
             "linalg.solve": (ca(np.eye(3)), ca(np.eye(3))),
@@ -169,7 +172,6 @@ class TestNumpyFunctions:
             ),
             "linalg.eigvals": (ca(np.eye(3)),),
             "linalg.eigvalsh": (ca(np.eye(3)),),
-            "linalg.svd": (ca(np.eye(3)),),
             "linalg.lstsq": (ca(np.eye(3)), ca(np.eye(3))),
             "linalg.eig": (ca(np.eye(3)),),
             "linalg.eigh": (ca(np.eye(3)),),
@@ -189,7 +191,6 @@ class TestNumpyFunctions:
             "fft.irfftn": (ca(np.arange(3)),),
             "fft.fftshift": (ca(np.arange(3)),),
             "fft.ifftshift": (ca(np.arange(3)),),
-            "array2string": (ca(np.arange(3)),),
             "copyto": (ca(np.arange(3)), ca(np.arange(3))),
             "savetxt": (savetxt_file, ca(np.arange(3))),
             "fill_diagonal": (ca(np.eye(3)), ca(np.arange(3))),
@@ -249,7 +250,11 @@ class TestNumpyFunctions:
             assert len(unchecked_functions) == 0
         except AssertionError:
             raise AssertionError(
-                "Did not check functions", [f.__name__ for f in unchecked_functions]
+                "Did not check functions",
+                [
+                    ".".join((f.__module__, f.__name__)).replace("numpy", "np")
+                    for f in unchecked_functions
+                ],
             )
 
     def test_getitem(self):

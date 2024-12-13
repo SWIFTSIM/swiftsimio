@@ -371,6 +371,69 @@ def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
     )
 
 
+def _prepare_array_func_args(*args, **kwargs):
+    cms = [(hasattr(arg, "comoving"), getattr(arg, "comoving", None)) for arg in args]
+    ca_cfs = [
+        (hasattr(arg, "cosmo_factor"), getattr(arg, "cosmo_factor", None))
+        for arg in args
+    ]
+    comps = [
+        (hasattr(arg, "compression"), getattr(arg, "compression", None)) for arg in args
+    ]
+    kw_cms = {
+        k: (hasattr(kwarg, "comoving"), getattr(kwarg, "comoving", None))
+        for k, kwarg in kwargs.items()
+    }
+    kw_ca_cfs = {
+        k: (hasattr(kwarg, "cosmo_factor"), getattr(kwarg, "cosmo_factor", None))
+        for k, kwarg in kwargs.items()
+    }
+    kw_comps = {
+        k: (hasattr(kwarg, "compression"), getattr(kwarg, "compression", None))
+        for k, kwarg in kwargs.items()
+    }
+    if all([cm[1] for cm in cms + list(kw_cms.values()) if cm[0]]):
+        # all cosmo inputs are comoving
+        ret_cm = True
+    elif all([cm[1] is None for cm in cms + list(kw_cms.values()) if cm[0]]):
+        # all cosmo inputs have comoving=None
+        ret_cm = None
+    elif any([cm[1] is None for cm in cms + list(kw_cms.values()) if cm[0]]):
+        # only some cosmo inputs have comoving=None
+        raise ValueError(
+            "Some arguments have comoving=None and others have comoving=True|False. "
+            "Result is undefined!"
+        )
+    elif all([cm[1] is False for cm in cms + list(kw_cms.values()) if cm[0]]):
+        # all cosmo_array inputs are physical
+        ret_cm = False
+    else:
+        # mix of comoving and physical inputs
+        args = [
+            arg.to_comoving() if cm[0] and not cm[1] else arg
+            for arg, cm in zip(args, cms)
+        ]
+        kwargs = {
+            k: kwarg.to_comoving() if kw_cms[k][0] and not kw_cms[k][1] else kwarg
+            for k, kwarg in kwargs.items()
+        }
+        ret_cm = True
+    if len(set(comps + list(kw_comps.values()))) == 1:
+        # all compressions identical, preserve it
+        ret_comp = comps[0]
+    else:
+        # mixed compressions, strip it off
+        ret_comp = None
+    return dict(
+        args=args,
+        kwargs=kwargs,
+        ca_cfs=ca_cfs,
+        kw_ca_cfs=kw_ca_cfs,
+        comoving=ret_cm,
+        compression=ret_comp,
+    )
+
+
 class InvalidScaleFactor(Exception):
     """
     Raised when a scale factor is invalid, such as when adding
@@ -1082,50 +1145,9 @@ class cosmo_array(unyt_array):
 
         return obj
 
-    # TODO:
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        cms = [
-            (hasattr(inp, "comoving"), getattr(inp, "comoving", None)) for inp in inputs
-        ]
-        cfs = [
-            (hasattr(inp, "cosmo_factor"), getattr(inp, "cosmo_factor", None))
-            for inp in inputs
-        ]
-        comps = [
-            (hasattr(inp, "compression"), getattr(inp, "compression", None))
-            for inp in inputs
-        ]
-
-        # if we're here at least one input must be a cosmo_array
-        if all([cm[1] for cm in cms if cm[0]]):
-            # all cosmo_array inputs are comoving
-            ret_cm = True
-        elif all([cm[1] is None for cm in cms if cm[0]]):
-            # all cosmo inputs have comoving=None
-            ret_cm = None
-        elif any([cm[1] is None for cm in cms if cm[0]]):
-            # only some cosmo inputs have comoving=None
-            raise ValueError(
-                "Some arguments have comoving=None and others have comoving=True|False. "
-                "Result is undefined!"
-            )
-        elif not any([cm[1] for cm in cms if cm[0]]):
-            # all cosmo_array inputs are physical
-            ret_cm = False
-        else:
-            # mix of comoving and physical inputs
-            inputs = [
-                inp.to_comoving() if cm[0] and not cm[1] else inp
-                for inp, cm in zip(inputs, cms)
-            ]
-            ret_cm = True
-
-        if len(set(comps)) == 1:
-            # all compressions identical, preserve it
-            ret_comp = comps[0]
-        else:
-            # mixed compressions, strip it off
-            ret_comp = None
+        helper_result = _prepare_array_func_args(*inputs, **kwargs)
+        cfs = helper_result["cfs"]
 
         # make sure we evaluate the cosmo_factor_ufunc_registry function:
         # might raise/warn even if we're not returning a cosmo_array
@@ -1154,28 +1176,28 @@ class cosmo_array(unyt_array):
             )
             for r in ret:
                 if isinstance(r, type(self)):
-                    r.comoving = ret_cm
+                    r.comoving = helper_result["comoving"]
                     r.cosmo_factor = ret_cf
-                    r.compression = ret_comp
+                    r.compression = helper_result["compression"]
         if isinstance(ret, unyt_array):
             ret = ret.view(type(self))
-            ret.comoving = ret_cm
+            ret.comoving = helper_result["comoving"]
             ret.cosmo_factor = ret_cf
-            ret.compression = ret_comp
+            ret.compression = helper_result["compression"]
         if "out" in kwargs:
             out = kwargs.pop("out")
             if ufunc not in multiple_output_operators:
                 out = out[0]
                 if isinstance(out, cosmo_array):
-                    out.comoving = ret_cm
+                    out.comoving = helper_result["comoving"]
                     out.cosmo_factor = ret_cf
-                    out.compression = ret_comp
+                    out.compression = helper_result["compression"]
             else:
                 for o in out:
                     if isinstance(o, type(self)):
-                        o.comoving = ret_cm
+                        o.comoving = helper_result["comoving"]
                         o.cosmo_factor = ret_cf
-                        o.compression = ret_comp
+                        o.compression = helper_result["compression"]
 
         return ret
 
@@ -1206,7 +1228,7 @@ class cosmo_array(unyt_array):
             # otherwise default to numpy's private implementation
             return func._implementation(*args, **kwargs)
         # Note: this allows subclasses that don't override
-        # __array_function__ to handle unyt_array objects
+        # __array_function__ to handle cosmo_array objects
         if not all(issubclass(t, cosmo_array) or t is np.ndarray for t in types):
             return NotImplemented
         return _HANDLED_FUNCTIONS[func](*args, **kwargs)
