@@ -295,44 +295,66 @@ def concatenate(tup, axis=0, out=None, dtype=None, casting="same_kind"):
     return _return_helper(res, helper_result_concat_items, ret_cf, out=out)
 
 
-# @implements(np.cross)
-# def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
-#     from unyt._array_functions import cross as unyt_cross
+@implements(np.cross)
+def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+    from unyt._array_functions import cross as unyt_cross
 
-#     helper_result = _prepare_array_func_args(a, b, axisa=axisa, axisb=axisb, axisc=axisc, axis=axis)
-#     ret_cf = ...()
-#     res = unyt_cross(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.intersect1d)
-# def intersect1d(ar1, ar2, assume_unique=False, return_indices=False):
-#     from unyt._array_functions import intersect1d as unyt_intersect1d
-
-#     helper_result = _prepare_array_func_args(ar1, ar2, assume_unique=assume_unique, return_indices=return_indices)
-#     ret_cf = ...()
-#     res = unyt_intersect1d(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.union1d)
-# def union1d(ar1, ar2):
-#     from unyt._array_functions import union1d as unyt_union1d
-
-#     helper_result = _prepare_array_func_args(ar1, ar2)
-#     ret_cf = ...()
-#     res = unyt_union1d(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        a,
+        b,
+        axisa=axisa,
+        axisb=axisb,
+        axisc=axisc,
+        axis=axis,
+    )
+    ret_cf = _multiply_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_cross(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.linalg.norm)
-# def linalg_norm(x, ord=None, axis=None, keepdims=False):
-#     from unyt._array_functions import linalg_norm as unyt_linalg_norm
+@implements(np.intersect1d)
+def intersect1d(ar1, ar2, assume_unique=False, return_indices=False):
+    from unyt._array_functions import intersect1d as unyt_intersect1d
 
-#     helper_result = _prepare_array_func_args(x, ord=ord, axis=axis, keepdims=keepdims)
-#     ret_cf = ...()
-#     res = unyt_linalg_norm(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        ar1,
+        ar2,
+        assume_unique=assume_unique,
+        return_indices=return_indices
+    )
+    ret_cf = _preserve_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_intersect1d(*helper_result["args"], **helper_result["kwargs"])
+    if return_indices:
+        return res
+    else:
+        return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.union1d)
+def union1d(ar1, ar2):
+    from unyt._array_functions import union1d as unyt_union1d
+
+    helper_result = _prepare_array_func_args(ar1, ar2)
+    ret_cf = _preserve_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_union1d(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.linalg.norm)
+def linalg_norm(x, ord=None, axis=None, keepdims=False):
+    # they didn't use linalg_norm, doesn't follow usual pattern:
+    from unyt._array_functions import norm as unyt_linalg_norm
+
+    helper_result = _prepare_array_func_args(x, ord=ord, axis=axis, keepdims=keepdims)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_linalg_norm(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 @implements(np.vstack)
@@ -649,14 +671,14 @@ def fft_ifftshift(x, axes=None):
     return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.sort_complex)
-# def sort_complex(...):
-#     from unyt._array_functions import sort_complex as unyt_sort_complex
+@implements(np.sort_complex)
+def sort_complex(a):
+    from unyt._array_functions import sort_complex as unyt_sort_complex
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_sort_complex(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_sort_complex(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.isclose)
