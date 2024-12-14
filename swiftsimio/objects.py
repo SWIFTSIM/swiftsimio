@@ -333,7 +333,7 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         raise ValueError(
             f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
         )
-    return cosmo_factor(a**0, scale_factor=cf1.scale_factor)
+    return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
@@ -646,7 +646,7 @@ class cosmo_factor:
         return b.__truediv__(self)
 
     def __pow__(self, p):
-        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor

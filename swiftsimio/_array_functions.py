@@ -406,24 +406,85 @@ def stack(arrays, axis=0, out=None, *, dtype=None, casting="same_kind"):
     return _return_helper(res, helper_result_concat_items, ret_cf, out=out)
 
 
-# @implements(np.around)
-# def around(a, decimals=0, out=None):
-#     from unyt._array_functions import around as unyt_around
+@implements(np.around)
+def around(a, decimals=0, out=None):
+    from unyt._array_functions import around as unyt_around
 
-#     helper_result = _prepare_array_func_args(a, decimals=decimals, out=out)
-#     ret_cf = ...()
-#     res = unyt_around(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, decimals=decimals, out=out)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_around(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.block)
-# def block(arrays):
-#     from unyt._array_functions import block as unyt_block
+def _recursive_to_comoving(lst):
+    ret_lst = list()
+    for item in lst:
+        if isinstance(item, list):
+            ret_lst.append(_recursive_to_comoving(item))
+        else:
+            ret_lst.append(item.to_comoving())
+    return ret_lst
 
-#     helper_result_concat_items = _prepare_array_func_args(*arrays)
-#     ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
-#     res = unyt_block(helper_result_concat_items["args"])
-#     return _return_helper(res, helper_result_concat_items, ret_cf)
+
+def _prepare_array_block_args(lst, recursing=False):
+    """
+    Block accepts only a nested list of array "blocks". We need to recurse on this.
+    """
+    helper_results = list()
+    if isinstance(lst, list):
+        for item in lst:
+            if isinstance(item, list):
+                helper_results += _prepare_array_block_args(item, recursing=True)
+            else:
+                helper_results.append(_prepare_array_func_args(item))
+    if recursing:
+        return helper_results
+    cms = [hr["comoving"] for hr in helper_results]
+    comps = [hr["compression"] for hr in helper_results]
+    ca_cfs = [hr["ca_cfs"] for hr in helper_results]
+    convert_to_cm = False
+    if all(cms):
+        ret_cm = True
+    elif all([cm is None for cm in cms]):
+        ret_cm = None
+    elif any([cm is None for cm in cms]) and not all([cm is None for cm in cms]):
+        raise ValueError("Some input has comoving=None and others have "
+                         "comoving=True|False. Result is undefined!")
+    elif all([cm is False for cm in cms]):
+        ret_cm = False
+    else:
+        # mix of True and False only
+        ret_cm = True
+        convert_to_cm = True
+    if len(set(comps)) == 1:
+        ret_comp = comps[0]
+    else:
+        ret_comp = None
+    ret_cf = ca_cfs[0]
+    for ca_cf in ca_cfs[1:]:
+        if ca_cf != ret_cf:
+            raise ValueError("Mixed cosmo_factor values in input.")
+    if convert_to_cm:
+        ret_lst = _recursive_to_comoving(lst)
+    else:
+        ret_lst = lst
+    return dict(
+        args=ret_lst,
+        kwargs=dict(),
+        comoving=ret_cm,
+        cosmo_factor=ret_cf,
+        compression=ret_comp,
+    )
+
+
+@implements(np.block)
+def block(arrays):
+    from unyt._array_functions import block as unyt_block
+
+    helper_result_block = _prepare_array_block_args(arrays)
+    ret_cf = helper_result_block["cosmo_factor"]
+    res = unyt_block(helper_result_block["args"])
+    return _return_helper(res, helper_result_block, ret_cf)
 
 
 # UNYT HAS A COPY-PASTED TYPO fft -> ftt
