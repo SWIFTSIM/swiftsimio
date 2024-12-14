@@ -296,42 +296,42 @@ def concatenate(tup, axis=0, out=None, dtype=None, casting="same_kind"):
 
 
 # @implements(np.cross)
-# def ...(...):
-#     from unyt._array_functions import ... as unyt_...
+# def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
+#     from unyt._array_functions import cross as unyt_cross
 
-#     helper_result = _prepare_array_func_args(...)
+#     helper_result = _prepare_array_func_args(a, b, axisa=axisa, axisb=axisb, axisc=axisc, axis=axis)
 #     ret_cf = ...()
-#     res = unyt_...(*helper_result["args"], **helper_result["kwargs"])
+#     res = unyt_cross(*helper_result["args"], **helper_result["kwargs"])
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.intersect1d)
-# def ...(...):
-#     from unyt._array_functions import ... as unyt_...
+# def intersect1d(ar1, ar2, assume_unique=False, return_indices=False):
+#     from unyt._array_functions import intersect1d as unyt_intersect1d
 
-#     helper_result = _prepare_array_func_args(...)
+#     helper_result = _prepare_array_func_args(ar1, ar2, assume_unique=assume_unique, return_indices=return_indices)
 #     ret_cf = ...()
-#     res = unyt_...(*helper_result["args"], **helper_result["kwargs"])
+#     res = unyt_intersect1d(*helper_result["args"], **helper_result["kwargs"])
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.union1d)
-# def ...(...):
-#     from unyt._array_functions import ... as unyt_...
+# def union1d(ar1, ar2):
+#     from unyt._array_functions import union1d as unyt_union1d
 
-#     helper_result = _prepare_array_func_args(...)
+#     helper_result = _prepare_array_func_args(ar1, ar2)
 #     ret_cf = ...()
-#     res = unyt_...(*helper_result["args"], **helper_result["kwargs"])
+#     res = unyt_union1d(*helper_result["args"], **helper_result["kwargs"])
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.linalg.norm)
-# def ...(...):
-#     from unyt._array_functions import ... as unyt_...
+# def linalg_norm(x, ord=None, axis=None, keepdims=False):
+#     from unyt._array_functions import linalg_norm as unyt_linalg_norm
 
-#     helper_result = _prepare_array_func_args(...)
+#     helper_result = _prepare_array_func_args(x, ord=ord, axis=axis, keepdims=keepdims)
 #     ret_cf = ...()
-#     res = unyt_...(*helper_result["args"], **helper_result["kwargs"])
+#     res = unyt_linalg_norm(*helper_result["args"], **helper_result["kwargs"])
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
@@ -407,185 +407,185 @@ def stack(arrays, axis=0, out=None, *, dtype=None, casting="same_kind"):
 
 
 # @implements(np.around)
-# def around(...):
+# def around(a, decimals=0, out=None):
 #     from unyt._array_functions import around as unyt_around
 
-#     helper_result = _prepare_array_func_args(...)
+#     helper_result = _prepare_array_func_args(a, decimals=decimals, out=out)
 #     ret_cf = ...()
 #     res = unyt_around(*helper_result["args"], **helper_result["kwargs"])
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.block)
-# def block(...):
+# def block(arrays):
 #     from unyt._array_functions import block as unyt_block
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_block(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+#     helper_result_concat_items = _prepare_array_func_args(*arrays)
+#     ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
+#     res = unyt_block(helper_result_concat_items["args"])
+#     return _return_helper(res, helper_result_concat_items, ret_cf)
 
 
 # UNYT HAS A COPY-PASTED TYPO fft -> ftt
 
-# @implements(np.fft.fft)
-# def ftt_fft(...):
-#     from unyt._array_functions import ftt_fft as unyt_fft_fft
+@implements(np.fft.fft)
+def ftt_fft(a, n=None, axis=-1, norm=None, out=None):
+    from unyt._array_functions import ftt_fft as unyt_fft_fft
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_fft(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fft.fft2)
-# def ftt_fft2(...):
-#     from unyt._array_functions import ftt_fft2 as unyt_fft_fft2
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_fft2(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_fft(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.fftn)
-# def ftt_fftn(...):
-#     from unyt._array_functions import ftt_fftn as unyt_fft_fftn
+@implements(np.fft.fft2)
+def ftt_fft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+    from unyt._array_functions import ftt_fft2 as unyt_fft_fft2
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_fftn(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fft.hfft)
-# def ftt_hfft(...):
-#     from unyt._array_functions import ftt_hfft as unyt_fft_hfft
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_hfft(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_fft2(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.rfft)
-# def ftt_rfft(...):
-#     from unyt._array_functions import ftt_rfft as unyt_fft_rfft
+@implements(np.fft.fftn)
+def ftt_fftn(a, s=None, axes=None, norm=None, out=None):
+    from unyt._array_functions import ftt_fftn as unyt_fft_fftn
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_rfft(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fft.rfft2)
-# def fft_rfft2(...):
-#     from unyt._array_functions import ftt_rfft2 as unyt_fft_rfft2
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_rfft2(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_fftn(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.rfftn)
-# def fft_rfftn(...):
-#     from unyt._array_functions import ftt_rfftn as unyt_fft_rfftn
+@implements(np.fft.hfft)
+def ftt_hfft(a, n=None, axis=-1, norm=None, out=None):
+    from unyt._array_functions import ftt_hfft as unyt_fft_hfft
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_rfftn(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fft.ifft)
-# def fft_ifft(...):
-#     from unyt._array_functions import ftt_ifft as unyt_fft_ifft
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_ifft(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_hfft(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.ifft2)
-# def fft_ifft2(...):
-#     from unyt._array_functions import ftt_ifft2 as unyt_fft_ifft2
+@implements(np.fft.rfft)
+def ftt_rfft(a, n=None, axis=-1, norm=None, out=None):
+    from unyt._array_functions import ftt_rfft as unyt_fft_rfft
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_ifft2(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fft.ifftn)
-# def fft_ifftn(...):
-#     from unyt._array_functions import ftt_ifftn as unyt_fft_ifftn
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_ifftn(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_rfft(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.ihfft)
-# def fft_ihfft(...):
-#     from unyt._array_functions import ftt_ihfft as unyt_fft_ihfft
+@implements(np.fft.rfft2)
+def fft_rfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+    from unyt._array_functions import ftt_rfft2 as unyt_fft_rfft2
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_ihfft(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fft.irfft)
-# def fft_irfft(...):
-#     from unyt._array_functions import ftt_irfft as unyt_fft_irfft
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_irfft(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_rfft2(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.irfft2)
-# def fft_irfft2(...):
-#     from unyt._array_functions import ftt_irfft2 as unyt_fft_irfft2
+@implements(np.fft.rfftn)
+def fft_rfftn(a, s=None, axes=None, norm=None, out=None):
+    from unyt._array_functions import ftt_rfftn as unyt_fft_rfftn
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_irfft2(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fft.irfftn)
-# def fft_irfftn(...):
-#     from unyt._array_functions import ftt_irfftn as unyt_fft_irfftn
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_irfftn(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_rfftn(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.fftshift)
-# def fft_fftshift(...):
-#     from unyt._array_functions import fft_fftshift as unyt_fft_fftshift
+@implements(np.fft.ifft)
+def fft_ifft(a, n=None, axis=-1, norm=None, out=None):
+    from unyt._array_functions import ftt_ifft as unyt_fft_ifft
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_fftshift(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_ifft(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.fft.ifftshift)
-# def fft_ifftshift(...):
-#     from unyt._array_functions import fft_ifftshift as unyt_fft_ifftshift
+@implements(np.fft.ifft2)
+def fft_ifft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+    from unyt._array_functions import ftt_ifft2 as unyt_fft_ifft2
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fft_ifftshift(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_ifft2(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.fft.ifftn)
+def fft_ifftn(a, s=None, axes=None, norm=None, out=None):
+    from unyt._array_functions import ftt_ifftn as unyt_fft_ifftn
+
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_ifftn(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.fft.ihfft)
+def fft_ihfft(a, n=None, axis=-1, norm=None, out=None):
+    from unyt._array_functions import ftt_ihfft as unyt_fft_ihfft
+
+    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_ihfft(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.fft.irfft)
+def fft_irfft(a, n=None, axis=-1, norm=None, out=None):
+    from unyt._array_functions import ftt_irfft as unyt_fft_irfft
+
+    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_irfft(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.fft.irfft2)
+def fft_irfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
+    from unyt._array_functions import ftt_irfft2 as unyt_fft_irfft2
+
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_irfft2(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.fft.irfftn)
+def fft_irfftn(a, s=None, axes=None, norm=None, out=None):
+    from unyt._array_functions import ftt_irfftn as unyt_fft_irfftn
+
+    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
+    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_irfftn(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.fft.fftshift)
+def fft_fftshift(x, axes=None):
+    from unyt._array_functions import fft_fftshift as unyt_fft_fftshift
+
+    helper_result = _prepare_array_func_args(x, axes=axes)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_fftshift(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.fft.ifftshift)
+def fft_ifftshift(x, axes=None):
+    from unyt._array_functions import fft_ifftshift as unyt_fft_ifftshift
+
+    helper_result = _prepare_array_func_args(x, axes=axes)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_fft_ifftshift(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.sort_complex)
