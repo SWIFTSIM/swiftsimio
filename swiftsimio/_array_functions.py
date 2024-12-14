@@ -8,6 +8,7 @@ from .objects import (
     _multiply_cosmo_factor,
     _preserve_cosmo_factor,
     _reciprocal_cosmo_factor,
+    _comparison_cosmo_factor,
 )
 
 _HANDLED_FUNCTIONS = dict()
@@ -681,44 +682,72 @@ def sort_complex(a):
     return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.isclose)
-# def isclose(...):
-#     from unyt._array_functions import isclose as unyt_isclose
+@implements(np.isclose)
+def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
+    from unyt._array_functions import isclose as unyt_isclose
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_isclose(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.allclose)
-# def allclose(...):
-#     from unyt._array_functions import allclose as unyt_allclose
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_allclose(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.array_equal)
-# def array_equal(...):
-#     from unyt._array_functions import array_equal as unyt_array_equal
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_array_equal(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        a,
+        b,
+        rtol=rtol,
+        atol=atol,
+        equal_nan=equal_nan,
+    )
+    ret_cf = _comparison_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        helper_result["ca_cfs"][1],
+        inputs=(a, b),
+    )
+    res = unyt_isclose(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.array_equiv)
-# def array_equiv(...):
-#     from unyt._array_functions import array_equiv as unyt_array_equiv
+@implements(np.allclose)
+def allclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
+    from unyt._array_functions import allclose as unyt_allclose
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_array_equiv(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        a,
+        b,
+        rtol=rtol,
+        atol=atol,
+        equal_nan=equal_nan
+    )
+    ret_cf = _comparison_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        helper_result["ca_cfs"][1],
+        inputs=(a, b),
+    )
+    res = unyt_allclose(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.array_equal)
+def array_equal(a1, a2, equal_nan=False):
+    from unyt._array_functions import array_equal as unyt_array_equal
+
+    helper_result = _prepare_array_func_args(a1, a2, equal_nan=equal_nan)
+    ret_cf = _comparison_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        helper_result["ca_cfs"][1],
+        inputs=(a1, a2),
+    )
+    res = unyt_array_equal(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.array_equiv)
+def array_equiv(a1, a2):
+    from unyt._array_functions import array_equiv as unyt_array_equiv
+
+    helper_result = _prepare_array_func_args(a1, a2)
+    ret_cf = _comparison_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        helper_result["ca_cfs"][1],
+        inputs=(a1, a2),
+    )
+    res = unyt_array_equiv(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.linspace)
@@ -761,11 +790,28 @@ def sort_complex(a):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
+# UNYT.PROD HAS A BUG - IF AXIS IS USED DIMENSIONS ARE WRONG
 # @implements(np.prod)
-# def prod(...):
+# def prod(
+#         a,
+#         axis=None,
+#         dtype=None,
+#         out=None,
+#         keepdims=np._NoValue,
+#         initial=np._NoValue,
+#         where=np._NoValue
+# ):
 #     from unyt._array_functions import prod as unyt_prod
 
-#     helper_result = _prepare_array_func_args(...)
+#     helper_result = _prepare_array_func_args(
+#         a,
+#         axis=axis,
+#         dtype=dtype,
+#         out=out,
+#         keepdims=keepdims,
+#         initial=initial,
+#         where=where,
+#     )
 #     ret_cf = ...()
 #     res = unyt_prod(*helper_result["args"], **helper_result["kwargs"])
 #     return _return_helper(res, helper_result, ret_cf, out=out)

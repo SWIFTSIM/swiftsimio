@@ -203,7 +203,8 @@ def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
     elif (ca1 and ca2) and (cf1 == cf2):
         return cf1  # or cf2, they're equal
     else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
+        # not dealing with cosmo_arrays at all
+        return None
 
 
 def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
@@ -307,7 +308,8 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_compariso
         # both have cosmo_factor, and they match:
         pass
     else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
+        # not dealing with cosmo_arrays at all
+        pass
     # return without cosmo_factor
     return None
 
