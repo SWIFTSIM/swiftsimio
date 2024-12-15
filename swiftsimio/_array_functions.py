@@ -233,34 +233,135 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
         weights=weights
     )
     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    ret_cf_dens = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
     counts, bins = unyt_histogram(*helper_result["args"], **helper_result["kwargs"])
+    if weights is not None:
+        ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
+        ret_cf_counts = ret_cf_w * ret_cf_dens if density else ret_cf_w
+    else:
+        ret_cf_counts = ret_cf_dens if density else None
+    if isinstance(counts, unyt_array):
+        counts = cosmo_array(
+            counts.to_value(counts.units),
+            counts.units,
+            comoving=helper_result["comoving"],
+            cosmo_factor=ret_cf_counts,
+            compression=helper_result["compression"],
+        )
     return counts, _return_helper(bins, helper_result, ret_cf)
 
 
-# ND HISTOGRAMS ARE TRICKY - EACH AXIS CAN HAVE DIFFERENT COSMO FACTORS
+@implements(np.histogram2d)
+def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
+    from unyt._array_functions import histogram2d as unyt_histogram2d
 
-# @implements(np.histogram2d)
-# def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
-#     from unyt._array_functions import histogram2d as unyt_histogram2d
+    if range is not None:
+        xrange, yrange = range
+    else:
+        xrange, yrange = None, None
 
-#     helper_result = _prepare_array_func_args(
-#         x,
-#         y,
-#         bins=bins,
-#         range=range,
-#         density=density,
-#         weights=weights
-#     )
-#     ret_cf_x = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-#     ret_cf_y = _preserve_cosmo_factor(helper_result["ca_cfs"][1])
-#     counts, xbins, ybins = unyt_histogram2d(
-#         *helper_result["args"], **helper_result["kwargs"]
-#     )
-#     return (
-#         counts,
-#         _return_helper(xbins, helper_result, ret_cf),
-#         _return_helper(ybins, helper_result, ret_cf),
-#     )
+    try:
+        N = len(bins)
+    except TypeError:
+        N = 1
+    if N != 2:
+        xbins = ybins = bins
+    elif N == 2:
+        xbins, ybins = bins
+    helper_result_x = _prepare_array_func_args(
+        x,
+        bins=xbins,
+        range=xrange,
+    )
+    helper_result_y = _prepare_array_func_args(
+        y,
+        bins=ybins,
+        range=yrange,
+    )
+    if not density:
+        helper_result_w = _prepare_array_func_args(weights=weights)
+        ret_cf_x = _preserve_cosmo_factor(helper_result_x["ca_cfs"][0])
+        ret_cf_y = _preserve_cosmo_factor(helper_result_y["ca_cfs"][0])
+        if (
+            (helper_result_x["kwargs"]["range"] is None)
+                and (helper_result_y["kwargs"]["range"] is None)
+        ):
+            safe_range = None
+        else:
+            safe_range = (
+                helper_result_x["kwargs"]["range"],
+                helper_result_y["kwargs"]["range"],
+            )
+        counts, xbins, ybins = unyt_histogram2d(
+            helper_result_x["args"][0],
+            helper_result_y["args"][0],
+            bins=(helper_result_x["kwargs"]["bins"], helper_result_y["kwargs"]["bins"]),
+            range=safe_range,
+            density=density,
+            weights=helper_result_w["kwargs"]["weights"],
+        )
+        if weights is not None:
+            ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
+            counts = cosmo_array(
+                counts.to_value(counts.units),
+                counts.units,
+                comoving=helper_result_w["comoving"],
+                cosmo_factor=ret_cf_w,
+                compression=helper_result_w["compression"],
+            )
+    else:  # density=True
+        # now x, y and weights must be compatible because they will combine
+        # we unpack input to the helper to get everything checked for compatibility
+        helper_result = _prepare_array_func_args(
+            x,
+            y,
+            xbins=xbins,
+            ybins=ybins,
+            xrange=xrange,
+            yrange=yrange,
+            weights=weights,
+        )
+        ret_cf_x = _preserve_cosmo_factor(helper_result_x["ca_cfs"][0])
+        ret_cf_y = _preserve_cosmo_factor(helper_result_y["ca_cfs"][0])
+        if (
+            (helper_result["kwargs"]["xrange"] is None)
+                and (helper_result["kwargs"]["yrange"] is None)
+        ):
+            safe_range = None
+        else:
+            safe_range = (
+                helper_result["kwargs"]["xrange"],
+                helper_result["kwargs"]["yrange"],
+            )
+        counts, xbins, ybins = unyt_histogram2d(
+            helper_result["args"][0],
+            helper_result["args"][1],
+            bins=(helper_result["kwargs"]["xbins"], helper_result["kwargs"]["ybins"]),
+            range=safe_range,
+            density=density,
+            weights=helper_result["kwargs"]["weights"],
+        )
+        ret_cf_xy = _multiply_cosmo_factor(
+            helper_result["ca_cfs"][0],
+            helper_result["ca_cfs"][1],
+        )
+        if weights is not None:
+            ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
+            ret_cf_counts = ret_cf_w / ret_cf_xy
+        else:
+            ret_cf_counts = ret_cf_xy ** -1
+        counts = cosmo_array(
+            counts.to_value(counts.units),
+            counts.units,
+            comoving=helper_result["comoving"],
+            cosmo_factor=ret_cf_counts,
+            compression=helper_result["compression"],
+        )
+    return (
+        counts,
+        _return_helper(xbins, helper_result_x, ret_cf_x),
+        _return_helper(ybins, helper_result_y, ret_cf_y),
+    )
 
 
 # @implements(np.histogramdd)

@@ -109,7 +109,7 @@ class TestNumpyFunctions:
             "linalg.pinv": (ca(np.eye(3)),),
             "linalg.svd": (ca(np.eye(3)),),
             "histogram": (ca(np.arange(3)),),
-            # "histogram2d": (ca(np.arange(3)), ca(np.arange(3))),
+            "histogram2d": (ca(np.arange(3)), ca(np.arange(3))),
             # "histogramdd": (ca(np.arange(3)),),
             "concatenate": (ca(np.eye(3)),),
             "cross": (ca(np.arange(3)), ca(np.arange(3))),

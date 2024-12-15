@@ -436,7 +436,7 @@ def _prepare_array_func_args(*args, **kwargs):
         ret_cm = True
     if len(set(comps + list(kw_comps.values()))) == 1:
         # all compressions identical, preserve it
-        ret_comp = comps[0]
+        ret_comp = (comps + list(kw_comps.values()))[0]
     else:
         # mixed compressions, strip it off
         ret_comp = None
