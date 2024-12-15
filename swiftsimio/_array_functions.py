@@ -9,6 +9,7 @@ from .objects import (
     _preserve_cosmo_factor,
     _reciprocal_cosmo_factor,
     _comparison_cosmo_factor,
+    _power_cosmo_factor,
 )
 
 _HANDLED_FUNCTIONS = dict()
@@ -891,31 +892,34 @@ def array_equiv(a1, a2):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# UNYT.PROD HAS A BUG - IF AXIS IS USED DIMENSIONS ARE WRONG
-# @implements(np.prod)
-# def prod(
-#         a,
-#         axis=None,
-#         dtype=None,
-#         out=None,
-#         keepdims=np._NoValue,
-#         initial=np._NoValue,
-#         where=np._NoValue
-# ):
-#     from unyt._array_functions import prod as unyt_prod
+@implements(np.prod)
+def prod(
+        a,
+        axis=None,
+        dtype=None,
+        out=None,
+        keepdims=np._NoValue,
+        initial=np._NoValue,
+        where=np._NoValue
+):
+    from unyt._array_functions import prod as unyt_prod
 
-#     helper_result = _prepare_array_func_args(
-#         a,
-#         axis=axis,
-#         dtype=dtype,
-#         out=out,
-#         keepdims=keepdims,
-#         initial=initial,
-#         where=where,
-#     )
-#     ret_cf = ...()
-#     res = unyt_prod(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        a,
+        axis=axis,
+        dtype=dtype,
+        out=out,
+        keepdims=keepdims,
+        initial=initial,
+        where=where,
+    )
+    res = unyt_prod(*helper_result["args"], **helper_result["kwargs"])
+    ret_cf = _power_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        (False, None),
+        power=a.size // res.size,
+    )
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.var)
@@ -928,14 +932,21 @@ def array_equiv(a1, a2):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.trace)
-# def trace(...):
-#     from unyt._array_functions import trace as unyt_trace
+@implements(np.trace)
+def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
+    from unyt._array_functions import trace as unyt_trace
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_trace(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        a,
+        offset=offset,
+        axis1=axis1,
+        axis2=axis2,
+        dtype=dtype,
+        out=out,
+    )
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_trace(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.percentile)
@@ -1110,13 +1121,7 @@ def array_equiv(a1, a2):
 
 # @implements(np.cumprod)
 # def cumprod(...):
-#     from unyt._array_functions import cumprod as unyt_cumprod
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_cumprod(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
+#    Omitted because unyt just raises if called.
 
 # @implements(np.pad)
 # def pad(...):
