@@ -19,7 +19,7 @@ def getfunc(fname):
 
 
 def ca(x, unit=u.Mpc):
-    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 0.5))
+    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a**1, 0.5))
 
 
 def to_ua(x):
@@ -49,7 +49,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             np.ones(5),
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a ** 1, 1),
+            cosmo_factor=cosmo_factor(a**1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -60,7 +60,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [1, 1, 1, 1, 1],
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a ** 1, 1),
+            cosmo_factor=cosmo_factor(a**1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -70,7 +70,7 @@ class TestCosmoArrayInit:
     def test_init_from_unyt_array(self):
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=u.Mpc),
-            cosmo_factor=cosmo_factor(a ** 1, 1),
+            cosmo_factor=cosmo_factor(a**1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -80,7 +80,7 @@ class TestCosmoArrayInit:
     def test_init_from_list_of_unyt_arrays(self):
         arr = cosmo_array(
             [u.unyt_array(1, units=u.Mpc) for _ in range(5)],
-            cosmo_factor=cosmo_factor(a ** 1, 1),
+            cosmo_factor=cosmo_factor(a**1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -110,7 +110,7 @@ class TestNumpyFunctions:
             "linalg.svd": (ca(np.eye(3)),),
             "histogram": (ca(np.arange(3)),),
             "histogram2d": (ca(np.arange(3)), ca(np.arange(3))),
-            # "histogramdd": (ca(np.arange(3)),),
+            "histogramdd": (ca(np.arange(3)).reshape((1, 3)),),
             "concatenate": (ca(np.eye(3)),),
             "cross": (ca(np.arange(3)), ca(np.arange(3))),
             "intersect1d": (ca(np.arange(3)), ca(np.arange(3))),

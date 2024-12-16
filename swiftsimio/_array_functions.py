@@ -209,10 +209,7 @@ def linalg_svd(a, full_matrices=True, compute_uv=True, hermitian=False):
     from unyt._array_functions import linalg_svd as unyt_linalg_svd
 
     helper_result = _prepare_array_func_args(
-        a,
-        full_matrices=full_matrices,
-        compute_uv=compute_uv,
-        hermitian=hermitian
+        a, full_matrices=full_matrices, compute_uv=compute_uv, hermitian=hermitian
     )
     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
     ress = unyt_linalg_svd(*helper_result["args"], **helper_result["kwargs"])
@@ -227,11 +224,7 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
     from unyt._array_functions import histogram as unyt_histogram
 
     helper_result = _prepare_array_func_args(
-        a,
-        bins=bins,
-        range=range,
-        density=density,
-        weights=weights
+        a, bins=bins, range=range, density=density, weights=weights
     )
     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
     ret_cf_dens = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
@@ -283,9 +276,8 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
         helper_result_w = _prepare_array_func_args(weights=weights)
         ret_cf_x = _preserve_cosmo_factor(helper_result_x["ca_cfs"][0])
         ret_cf_y = _preserve_cosmo_factor(helper_result_y["ca_cfs"][0])
-        if (
-            (helper_result_x["kwargs"]["range"] is None)
-                and (helper_result_y["kwargs"]["range"] is None)
+        if (helper_result_x["kwargs"]["range"] is None) and (
+            helper_result_y["kwargs"]["range"] is None
         ):
             safe_range = None
         else:
@@ -302,6 +294,9 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             weights=helper_result_w["kwargs"]["weights"],
         )
         if weights is not None:
+            raise NotImplementedError(
+                "Need to handle numpy array weights here and stress-test histogram2d."
+            )
             ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
             counts = cosmo_array(
                 counts.to_value(counts.units),
@@ -324,9 +319,8 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
         )
         ret_cf_x = _preserve_cosmo_factor(helper_result_x["ca_cfs"][0])
         ret_cf_y = _preserve_cosmo_factor(helper_result_y["ca_cfs"][0])
-        if (
-            (helper_result["kwargs"]["xrange"] is None)
-                and (helper_result["kwargs"]["yrange"] is None)
+        if (helper_result["kwargs"]["xrange"] is None) and (
+            helper_result["kwargs"]["yrange"] is None
         ):
             safe_range = None
         else:
@@ -350,7 +344,7 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
             ret_cf_counts = ret_cf_w / ret_cf_xy
         else:
-            ret_cf_counts = ret_cf_xy ** -1
+            ret_cf_counts = ret_cf_xy**-1
         counts = cosmo_array(
             counts.to_value(counts.units),
             counts.units,
@@ -365,20 +359,114 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
     )
 
 
-# @implements(np.histogramdd)
-# def histogramdd(sample, bins=10, range=None, density=None, weights=None):
-#     from unyt._array_functions import histogramdd as unyt_histogramdd
+@implements(np.histogramdd)
+def histogramdd(sample, bins=10, range=None, density=None, weights=None):
+    from unyt._array_functions import histogramdd as unyt_histogramdd
 
-#     helper_result = _prepare_array_func_args(
-#         sample,
-#         bins=bins,
-#         range=range,
-#         density=density,
-#         weights=weights
-#     )
-#     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-#     counts, bins = unyt_histogramdd(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    N, D = sample.shape
+    if range is not None:
+        ranges = range
+    else:
+        ranges = D * [None]
+
+    try:
+        len(bins)
+    except TypeError:
+        # bins is an integer
+        bins = D * [bins]
+    helper_results = [
+        _prepare_array_func_args(
+            s,
+            bins=b,
+            range=r,
+        )
+        for s, b, r in zip(sample, bins, ranges)
+    ]
+    if not density:
+        helper_result_w = _prepare_array_func_args(weights=weights)
+        ret_cfs = [
+            _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+            for helper_result in helper_results
+        ]
+        if all(
+            [
+                helper_result["kwargs"]["range"] is None
+                for helper_result in helper_results
+            ]
+        ):
+            safe_range = None
+        else:
+            safe_range = [
+                helper_result["kwargs"]["range"] for helper_result in helper_results
+            ]
+        counts, bins = unyt_histogramdd(
+            [helper_result["args"][0] for helper_result in helper_results],
+            bins=[helper_result["kwargs"]["bins"] for helper_result in helper_results],
+            range=safe_range,
+            density=density,
+            weights=helper_result_w["kwargs"]["weights"],
+        )
+        if weights is not None:
+            raise NotImplementedError(
+                "Need to handle numpy array weights here and stress-test histogramdd."
+            )
+            ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
+            counts = cosmo_array(
+                counts.to_value(counts.units),
+                counts.units,
+                comoving=helper_result_w["comoving"],
+                cosmo_factor=ret_cf_w,
+                compression=helper_result_w["compression"],
+            )
+    else:  # density=True
+        # now sample and weights must be compatible because they will combine
+        # we unpack input to the helper to get everything checked for compatibility
+        helper_result = _prepare_array_func_args(
+            sample,
+            bins=bins,
+            range=range,
+            weights=weights,
+        )
+        helper_results = D * [helper_result]
+        ret_cfs = D * [_preserve_cosmo_factor(helper_result["ca_cfs"][0])]
+        counts, bins = unyt_histogramdd(
+            helper_result["args"][0],
+            bins=helper_result["kwargs"]["bins"],
+            range=helper_result["kwargs"]["range"],
+            density=density,
+            weights=helper_result["kwargs"]["weights"],
+        )
+        if len(helper_result["ca_cfs"]) == 1:
+            ret_cf_sample = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+        else:
+            ret_cf_sample = _multiply_cosmo_factor(
+                helper_result["ca_cfs"][0],
+                helper_result["ca_cfs"][1],
+            )
+        if len(helper_result["ca_cfs"]) > 2:
+            for hr_ca_cfs_i in helper_result["ca_cfs"][2:]:
+                ret_cf_sample = _multiply_cosmo_factor(
+                    (True, ret_cf_sample), hr_ca_cfs_i
+                )
+        if weights is not None:
+            ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
+            ret_cf_counts = ret_cf_w / ret_cf_sample
+        else:
+            ret_cf_counts = ret_cf_sample**-1
+        counts = cosmo_array(
+            counts.to_value(counts.units),
+            counts.units,
+            comoving=helper_result["comoving"],
+            cosmo_factor=ret_cf_counts,
+            compression=helper_result["compression"],
+        )
+    return (
+        counts,
+        [
+            _return_helper(b, helper_result, ret_cf)
+            for b, helper_result, ret_cf in zip(bins, helper_results, ret_cfs)
+        ],
+    )
 
 
 @implements(np.concatenate)
@@ -422,10 +510,7 @@ def intersect1d(ar1, ar2, assume_unique=False, return_indices=False):
     from unyt._array_functions import intersect1d as unyt_intersect1d
 
     helper_result = _prepare_array_func_args(
-        ar1,
-        ar2,
-        assume_unique=assume_unique,
-        return_indices=return_indices
+        ar1, ar2, assume_unique=assume_unique, return_indices=return_indices
     )
     ret_cf = _preserve_cosmo_factor(
         helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
@@ -464,9 +549,7 @@ def linalg_norm(x, ord=None, axis=None, keepdims=False):
 def vstack(tup, *, dtype=None, casting="same_kind"):
     from unyt._array_functions import vstack as unyt_vstack
 
-    helper_result = _prepare_array_func_args(
-        tup, dtype=dtype, casting=casting
-    )
+    helper_result = _prepare_array_func_args(tup, dtype=dtype, casting=casting)
     helper_result_concat_items = _prepare_array_func_args(*tup)
     ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
     res = unyt_vstack(
@@ -481,9 +564,7 @@ def vstack(tup, *, dtype=None, casting="same_kind"):
 def hstack(tup, *, dtype=None, casting="same_kind"):
     from unyt._array_functions import hstack as unyt_hstack
 
-    helper_result = _prepare_array_func_args(
-        tup, dtype=dtype, casting=casting
-    )
+    helper_result = _prepare_array_func_args(tup, dtype=dtype, casting=casting)
     helper_result_concat_items = _prepare_array_func_args(*tup)
     ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
     res = unyt_hstack(
@@ -573,8 +654,10 @@ def _prepare_array_block_args(lst, recursing=False):
     elif all([cm is None for cm in cms]):
         ret_cm = None
     elif any([cm is None for cm in cms]) and not all([cm is None for cm in cms]):
-        raise ValueError("Some input has comoving=None and others have "
-                         "comoving=True|False. Result is undefined!")
+        raise ValueError(
+            "Some input has comoving=None and others have "
+            "comoving=True|False. Result is undefined!"
+        )
     elif all([cm is False for cm in cms]):
         ret_cm = False
     else:
@@ -613,6 +696,7 @@ def block(arrays):
 
 
 # UNYT HAS A COPY-PASTED TYPO fft -> ftt
+
 
 @implements(np.fft.fft)
 def ftt_fft(a, n=None, axis=-1, norm=None, out=None):
@@ -809,11 +893,7 @@ def allclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
     from unyt._array_functions import allclose as unyt_allclose
 
     helper_result = _prepare_array_func_args(
-        a,
-        b,
-        rtol=rtol,
-        atol=atol,
-        equal_nan=equal_nan
+        a, b, rtol=rtol, atol=atol, equal_nan=equal_nan
     )
     ret_cf = _comparison_cosmo_factor(
         helper_result["ca_cfs"][0],
@@ -894,13 +974,13 @@ def array_equiv(a1, a2):
 
 @implements(np.prod)
 def prod(
-        a,
-        axis=None,
-        dtype=None,
-        out=None,
-        keepdims=np._NoValue,
-        initial=np._NoValue,
-        where=np._NoValue
+    a,
+    axis=None,
+    dtype=None,
+    out=None,
+    keepdims=np._NoValue,
+    initial=np._NoValue,
+    where=np._NoValue,
 ):
     from unyt._array_functions import prod as unyt_prod
 
