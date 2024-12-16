@@ -989,14 +989,18 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.linalg.det)
-# def linalg_det(...):
-#     from unyt._array_functions import linalg_det as unyt_linalg_det
+@implements(np.linalg.det)
+def linalg_det(a):
+    from unyt._array_functions import linalg_det as unyt_linalg_det
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_linalg_det(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a)
+    ret_cf = _power_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        (False, None),
+        power=a.shape[0],
+    )
+    res = unyt_linalg_det(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.linalg.lstsq)

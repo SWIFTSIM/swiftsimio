@@ -154,6 +154,7 @@ class TestNumpyFunctions:
             # "quantile": (ca(np.arange(3)), 0.3),
             # "nanpercentile": (ca(np.arange(3)), 30),
             # "nanquantile": (ca(np.arange(3)), 0.3),
+            "linalg.det": (ca(np.eye(3)),),
             # "diff": (ca(np.arange(3)),),
             # "ediff1d": (ca(np.arange(3)),),
             # "ptp": (ca(np.arange(3)),),
@@ -181,7 +182,6 @@ class TestNumpyFunctions:
             # "correlate": (ca(np.arange(3)), ca(np.arange(3))),
             # "tensordot": (ca(np.eye(3)), ca(np.eye(3))),
             # "unwrap": (ca(np.arange(3)),),
-            # "linalg.det": (ca(np.eye(3)),),
             # "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
             # "linalg.solve": (ca(np.eye(3)), ca(np.eye(3))),
             # "linalg.tensorsolve": (
