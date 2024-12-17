@@ -443,10 +443,7 @@ def _prepare_array_func_args(*args, **kwargs):
     else:
         # mixed compressions, strip it off
         ret_comp = None
-    args = [unyt_array(arg) if isinstance(arg, cosmo_array) else arg for arg in args]
-    kwargs = {
-        k: unyt_array(v) if isinstance(v, cosmo_array) else v for k, v in kwargs.items()
-    }
+    # WE SHOULD COMPLAIN HERE IF WE HAVE DIFFERENT SCALE FACTORS IN COSMO_FACTOR'S??
     return dict(
         args=args,
         kwargs=kwargs,

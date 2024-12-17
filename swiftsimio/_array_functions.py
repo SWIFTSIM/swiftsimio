@@ -1188,24 +1188,26 @@ def linalg_det(a):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.diff)
-# def diff(...):
-#     from unyt._array_functions import diff as unyt_diff
+@implements(np.diff)
+def diff(a, n=1, axis=-1, prepend=np._NoValue, append=np._NoValue):
+    from unyt._array_functions import diff as unyt_diff
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_diff(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        a, n=n, axis=axis, prepend=prepend, append=append
+    )
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_diff(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.ediff1d)
-# def ediff1d(...):
-#     from unyt._array_functions import ediff1d as unyt_ediff1d
+@implements(np.ediff1d)
+def ediff1d(ary, to_end=None, to_begin=None):
+    from unyt._array_functions import ediff1d as unyt_ediff1d
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_ediff1d(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(ary, to_end=to_end, to_begin=to_begin)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_ediff1d(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.ptp)
