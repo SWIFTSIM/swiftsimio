@@ -335,7 +335,7 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         raise ValueError(
             f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
         )
-    return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
+    return cosmo_factor(a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
@@ -408,7 +408,10 @@ def _prepare_array_func_args(*args, **kwargs):
         k: (hasattr(kwarg, "compression"), getattr(kwarg, "compression", None))
         for k, kwarg in kwargs.items()
     }
-    if all([cm[1] for cm in cms + list(kw_cms.values()) if cm[0]]):
+    if len([cm[1] for cm in cms + list(kw_cms.values()) if cm[0]]) == 0:
+        # no cosmo inputs
+        ret_cm = None
+    elif all([cm[1] for cm in cms + list(kw_cms.values()) if cm[0]]):
         # all cosmo inputs are comoving
         ret_cm = True
     elif all([cm[1] is None for cm in cms + list(kw_cms.values()) if cm[0]]):
@@ -440,6 +443,10 @@ def _prepare_array_func_args(*args, **kwargs):
     else:
         # mixed compressions, strip it off
         ret_comp = None
+    args = [unyt_array(arg) if isinstance(arg, cosmo_array) else arg for arg in args]
+    kwargs = {
+        k: unyt_array(v) if isinstance(v, cosmo_array) else v for k, v in kwargs.items()
+    }
     return dict(
         args=args,
         kwargs=kwargs,
@@ -648,7 +655,7 @@ class cosmo_factor:
         return b.__truediv__(self)
 
     def __pow__(self, p):
-        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor
@@ -1163,7 +1170,7 @@ class cosmo_array(unyt_array):
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         helper_result = _prepare_array_func_args(*inputs, **kwargs)
-        cfs = helper_result["cfs"]
+        ca_cfs = helper_result["ca_cfs"]
 
         # make sure we evaluate the cosmo_factor_ufunc_registry function:
         # might raise/warn even if we're not returning a cosmo_array
@@ -1171,16 +1178,16 @@ class cosmo_array(unyt_array):
             power_map = POWER_MAPPING[ufunc]
             if "axis" in kwargs and kwargs["axis"] is not None:
                 ret_cf = _power_cosmo_factor(
-                    cfs[0],
+                    ca_cfs[0],
                     (False, None),
                     power=power_map(inputs[0].shape[kwargs["axis"]]),
                 )
             else:
                 ret_cf = _power_cosmo_factor(
-                    cfs[0], (False, None), power=power_map(inputs[0].size)
+                    ca_cfs[0], (False, None), power=power_map(inputs[0].size)
                 )
         else:
-            ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
+            ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*ca_cfs, inputs=inputs)
 
         ret = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
         # if we get a tuple we have multiple return values to deal with

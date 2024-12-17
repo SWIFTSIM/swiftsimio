@@ -259,6 +259,189 @@ class TestNumpyFunctions:
                 ],
             )
 
+    # the combinations of units and cosmo_factors is nonsense but it's just for testing...
+    @pytest.mark.parametrize(
+        "func_args",
+        (
+            (
+                np.histogram,
+                (
+                    cosmo_array(
+                        [1, 2, 3],
+                        u.m,
+                        comoving=False,
+                        cosmo_factor=cosmo_factor(a**1, 1.0),
+                    ),
+                ),
+            ),
+            (
+                np.histogram2d,
+                (
+                    cosmo_array(
+                        [1, 2, 3],
+                        u.m,
+                        comoving=False,
+                        cosmo_factor=cosmo_factor(a**1, 1.0),
+                    ),
+                    cosmo_array(
+                        [1, 2, 3],
+                        u.K,
+                        comoving=False,
+                        cosmo_factor=cosmo_factor(a**2, 1.0),
+                    ),
+                ),
+            ),
+            (
+                np.histogramdd,
+                (
+                    [
+                        cosmo_array(
+                            [1, 2, 3],
+                            u.m,
+                            comoving=False,
+                            cosmo_factor=cosmo_factor(a**1, 1.0),
+                        ),
+                        cosmo_array(
+                            [1, 2, 3],
+                            u.K,
+                            comoving=False,
+                            cosmo_factor=cosmo_factor(a**2, 1.0),
+                        ),
+                        cosmo_array(
+                            [1, 2, 3],
+                            u.kg,
+                            comoving=False,
+                            cosmo_factor=cosmo_factor(a**3, 1.0),
+                        ),
+                    ],
+                ),
+            ),
+        ),
+    )
+    @pytest.mark.parametrize(
+        "weights",
+        (
+            None,
+            cosmo_array(
+                [1, 2, 3], u.s, comoving=False, cosmo_factor=cosmo_factor(a**1, 1.0)
+            ),
+            np.array([1, 2, 3]),
+        ),
+    )
+    @pytest.mark.parametrize("bins", ("int", "np", "ca"))
+    @pytest.mark.parametrize("density", (None, True))
+    def test_histograms(self, func_args, weights, bins, density):
+        func, args = func_args
+        _bins = {
+            "int": 10,
+            "np": [np.linspace(0, 5, 11)] * 3,
+            "ca": [
+                cosmo_array(
+                    np.linspace(0, 5, 11),
+                    u.kpc,
+                    comoving=False,
+                    cosmo_factor=cosmo_factor(a**1, 1.0),
+                ),
+                cosmo_array(
+                    np.linspace(0, 5, 11),
+                    u.K,
+                    comoving=False,
+                    cosmo_factor=cosmo_factor(a**2, 1.0),
+                ),
+                cosmo_array(
+                    np.linspace(0, 5, 11),
+                    u.Msun,
+                    comoving=False,
+                    cosmo_factor=cosmo_factor(a**3, 1.0),
+                ),
+            ],
+        }[bins]
+        bins = (
+            _bins[
+                {
+                    np.histogram: np.s_[0],
+                    np.histogram2d: np.s_[:2],
+                    np.histogramdd: np.s_[:],
+                }[func]
+            ]
+            if bins in ("np", "ca")
+            else _bins
+        )
+        result = func(*args, bins=bins, density=density, weights=weights)
+        ua_args = tuple(
+            (
+                to_ua(arg)
+                if not isinstance(arg, tuple)
+                else tuple(to_ua(item) for item in arg)
+            )
+            for arg in args
+        )
+        ua_bins = (
+            to_ua(bins)
+            if not isinstance(bins, tuple)
+            else tuple(to_ua(item) for item in bins)
+        )
+        ua_result = func(
+            *ua_args, bins=ua_bins, density=density, weights=to_ua(weights)
+        )
+        if isinstance(ua_result, tuple):
+            assert isinstance(result, tuple)
+            assert len(result) == len(ua_result)
+            for r, ua_r in zip(result, ua_result):
+                check_result(r, ua_r)
+        else:
+            check_result(result, ua_result)
+        if density is None and not isinstance(weights, cosmo_array):
+            assert not hasattr(result[0], "comoving")
+        else:
+            assert result[0].comoving is False
+        if density and not isinstance(weights, cosmo_array):
+            assert (
+                result[0].cosmo_factor
+                == {
+                    np.histogram: cosmo_factor(a**-1, 1.0),
+                    np.histogram2d: cosmo_factor(a**-3, 1.0),
+                    np.histogramdd: cosmo_factor(a**-6, 1.0),
+                }[func]
+            )
+        elif density and isinstance(weights, cosmo_array):
+            assert result[0].comoving is False
+            assert (
+                result[0].cosmo_factor
+                == {
+                    np.histogram: cosmo_factor(a**0, 1.0),
+                    np.histogram2d: cosmo_factor(a**-2, 1.0),
+                    np.histogramdd: cosmo_factor(a**-5, 1.0),
+                }[func]
+            )
+        elif density is None and isinstance(weights, cosmo_array):
+            assert result[0].comoving is False
+            assert (
+                result[0].cosmo_factor
+                == {
+                    np.histogram: cosmo_factor(a**1, 1.0),
+                    np.histogram2d: cosmo_factor(a**1, 1.0),
+                    np.histogramdd: cosmo_factor(a**1, 1.0),
+                }[func]
+            )
+        ret_bins = {
+            np.histogram: [result[1]],
+            np.histogram2d: result[1:],
+            np.histogramdd: result[1],
+        }[func]
+        for b, expt_cf in zip(
+            ret_bins,
+            (
+                [
+                    cosmo_factor(a**1, 1.0),
+                    cosmo_factor(a**2, 1.0),
+                    cosmo_factor(a**3, 1.0),
+                ]
+            ),
+        ):
+            assert b.comoving is False
+            assert b.cosmo_factor == expt_cf
+
     def test_getitem(self):
         assert isinstance(ca(np.arange(3))[0], cosmo_quantity)
 

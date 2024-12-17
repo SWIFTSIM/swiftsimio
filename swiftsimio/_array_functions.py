@@ -231,7 +231,13 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
     counts, bins = unyt_histogram(*helper_result["args"], **helper_result["kwargs"])
     if weights is not None:
         ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
-        ret_cf_counts = ret_cf_w * ret_cf_dens if density else ret_cf_w
+        ret_cf_counts = (
+            _multiply_cosmo_factor(
+                (ret_cf_w is not None, ret_cf_w), (ret_cf_dens is not None, ret_cf_dens)
+            )
+            if density
+            else ret_cf_w
+        )
     else:
         ret_cf_counts = ret_cf_dens if density else None
     if isinstance(counts, unyt_array):
@@ -294,17 +300,15 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             weights=helper_result_w["kwargs"]["weights"],
         )
         if weights is not None:
-            raise NotImplementedError(
-                "Need to handle numpy array weights here and stress-test histogram2d."
-            )
             ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
-            counts = cosmo_array(
-                counts.to_value(counts.units),
-                counts.units,
-                comoving=helper_result_w["comoving"],
-                cosmo_factor=ret_cf_w,
-                compression=helper_result_w["compression"],
-            )
+            if isinstance(counts, unyt_array):
+                counts = cosmo_array(
+                    counts.to_value(counts.units),
+                    counts.units,
+                    comoving=helper_result_w["comoving"],
+                    cosmo_factor=ret_cf_w,
+                    compression=helper_result_w["compression"],
+                )
     else:  # density=True
         # now x, y and weights must be compatible because they will combine
         # we unpack input to the helper to get everything checked for compatibility
@@ -342,16 +346,21 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
         )
         if weights is not None:
             ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
-            ret_cf_counts = ret_cf_w / ret_cf_xy
+            inv_ret_cf_xy = _reciprocal_cosmo_factor((ret_cf_xy is not None, ret_cf_xy))
+            ret_cf_counts = _multiply_cosmo_factor(
+                (ret_cf_w is not None, ret_cf_w),
+                (inv_ret_cf_xy is not None, inv_ret_cf_xy),
+            )
         else:
-            ret_cf_counts = ret_cf_xy**-1
-        counts = cosmo_array(
-            counts.to_value(counts.units),
-            counts.units,
-            comoving=helper_result["comoving"],
-            cosmo_factor=ret_cf_counts,
-            compression=helper_result["compression"],
-        )
+            ret_cf_counts = _reciprocal_cosmo_factor((ret_cf_xy is not None, ret_cf_xy))
+        if isinstance(counts, unyt_array):
+            counts = cosmo_array(
+                counts.to_value(counts.units),
+                counts.units,
+                comoving=helper_result["comoving"],
+                cosmo_factor=ret_cf_counts,
+                compression=helper_result["compression"],
+            )
     return (
         counts,
         _return_helper(xbins, helper_result_x, ret_cf_x),
@@ -363,7 +372,7 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
 def histogramdd(sample, bins=10, range=None, density=None, weights=None):
     from unyt._array_functions import histogramdd as unyt_histogramdd
 
-    N, D = sample.shape
+    D = len(sample)
     if range is not None:
         ranges = range
     else:
@@ -407,30 +416,27 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
             weights=helper_result_w["kwargs"]["weights"],
         )
         if weights is not None:
-            raise NotImplementedError(
-                "Need to handle numpy array weights here and stress-test histogramdd."
-            )
             ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
-            counts = cosmo_array(
-                counts.to_value(counts.units),
-                counts.units,
-                comoving=helper_result_w["comoving"],
-                cosmo_factor=ret_cf_w,
-                compression=helper_result_w["compression"],
-            )
+            if isinstance(counts, unyt_array):
+                counts = cosmo_array(
+                    counts.to_value(counts.units),
+                    counts.units,
+                    comoving=helper_result_w["comoving"],
+                    cosmo_factor=ret_cf_w,
+                    compression=helper_result_w["compression"],
+                )
     else:  # density=True
         # now sample and weights must be compatible because they will combine
         # we unpack input to the helper to get everything checked for compatibility
         helper_result = _prepare_array_func_args(
-            sample,
+            *sample,
             bins=bins,
             range=range,
             weights=weights,
         )
-        helper_results = D * [helper_result]
         ret_cfs = D * [_preserve_cosmo_factor(helper_result["ca_cfs"][0])]
         counts, bins = unyt_histogramdd(
-            helper_result["args"][0],
+            helper_result["args"],
             bins=helper_result["kwargs"]["bins"],
             range=helper_result["kwargs"]["range"],
             density=density,
@@ -450,16 +456,25 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
                 )
         if weights is not None:
             ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
-            ret_cf_counts = ret_cf_w / ret_cf_sample
+            inv_ret_cf_sample = _reciprocal_cosmo_factor(
+                (ret_cf_sample is not None, ret_cf_sample)
+            )
+            ret_cf_counts = _multiply_cosmo_factor(
+                (ret_cf_w is not None, ret_cf_w),
+                (inv_ret_cf_sample is not None, inv_ret_cf_sample),
+            )
         else:
-            ret_cf_counts = ret_cf_sample**-1
-        counts = cosmo_array(
-            counts.to_value(counts.units),
-            counts.units,
-            comoving=helper_result["comoving"],
-            cosmo_factor=ret_cf_counts,
-            compression=helper_result["compression"],
-        )
+            ret_cf_counts = _reciprocal_cosmo_factor(
+                (ret_cf_sample is not None, ret_cf_sample)
+            )
+        if isinstance(counts, unyt_array):
+            counts = cosmo_array(
+                counts.to_value(counts.units),
+                counts.units,
+                comoving=helper_result["comoving"],
+                cosmo_factor=ret_cf_counts,
+                compression=helper_result["compression"],
+            )
     return (
         counts,
         [
