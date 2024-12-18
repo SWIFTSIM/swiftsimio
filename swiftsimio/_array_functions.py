@@ -6,6 +6,7 @@ from .objects import (
     cosmo_quantity,
     _prepare_array_func_args,
     _multiply_cosmo_factor,
+    _divide_cosmo_factor,
     _preserve_cosmo_factor,
     _reciprocal_cosmo_factor,
     _comparison_cosmo_factor,
@@ -999,14 +1000,20 @@ def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
     return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.copyto)
-# def copyto(...):
-#     from unyt._array_functions import copyto as unyt_copyto
+@implements(np.copyto)
+def copyto(dst, src, casting="same_kind", where=True):
+    from unyt._array_functions import copyto as unyt_copyto
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_copyto(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(dst, src, casting=casting, where=where)
+    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][1])
+    # must pass dst directly here because it's modified in-place
+    if isinstance(src, cosmo_array):
+        comoving = getattr(dst, "comoving", None)
+        if comoving:
+            src.convert_to_comoving()
+        elif comoving is False:
+            src.convert_to_physical()
+    unyt_copyto(dst, src, **helper_result["kwargs"])
 
 
 @implements(np.prod)
@@ -1297,34 +1304,35 @@ def insert(arr, obj, values, axis=None):
     return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.isin)
-# def isin(...):
-#     from unyt._array_functions import isin as unyt_isin
+@implements(np.linalg.lstsq)
+def linalg_lstsq(a, b, rcond=None):
+    from unyt._array_functions import linalg_lstsq as unyt_linalg_lstsq
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_isin(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, b, rcond=rcond)
+    ret_cf = _divide_cosmo_factor(
+        helper_result["ca_cfs"][1], helper_result["ca_cfs"][0]
+    )
+    resid_cf = _power_cosmo_factor(helper_result["ca_cfs"][1], (False, None), power=2)
+    sing_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    ress = unyt_linalg_lstsq(*helper_result["args"], **helper_result["kwargs"])
+    return (
+        _return_helper(ress[0], helper_result, ret_cf),
+        _return_helper(ress[1], helper_result, resid_cf),
+        ress[2],
+        _return_helper(ress[3], helper_result, sing_cf),
+    )
 
 
-# @implements(np.linalg.lstsq)
-# def linalg_lstsq(...):
-#     from unyt._array_functions import linalg_lstsq as unyt_linalg_lstsq
+@implements(np.linalg.solve)
+def linalg_solve(a, b):
+    from unyt._array_functions import linalg_solve as unyt_linalg_solve
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_linalg_lstsq(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.linalg.solve)
-# def linalg_solve(...):
-#     from unyt._array_functions import linalg_solve as unyt_linalg_solve
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_linalg_solve(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, b)
+    ret_cf = _divide_cosmo_factor(
+        helper_result["ca_cfs"][1], helper_result["ca_cfs"][0]
+    )
+    res = unyt_linalg_solve(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.linalg.tensorsolve)
@@ -1406,10 +1414,20 @@ def fill_diagonal(a, val, wrap=False):
     # must pass a directly here because it's modified in-place
     comoving = getattr(a, "comoving", None)
     if comoving:
-        val = val.to_comoving()
+        val.convert_to_comoving()
     elif comoving is False:
-        val = val.to_physical()
+        val.convert_to_physical()
     unyt_fill_diagonal(a, val, **helper_result["kwargs"])
+
+
+# @implements(np.isin)
+# def isin(...):
+#     from unyt._array_functions import isin as unyt_isin
+
+#     helper_result = _prepare_array_func_args(...)
+#     ret_cf = ...()
+#     res = unyt_isin(*helper_result["args"], **helper_result["kwargs"])
+#     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.place)
@@ -1602,14 +1620,16 @@ def fill_diagonal(a, val, wrap=False):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.linalg.outer)
-# def linalg_outer(...):
-#     from unyt._array_functions import linalg_outer as unyt_linalg_outer
+@implements(np.linalg.outer)
+def linalg_outer(x1, x2, /):
+    from unyt._array_functions import linalg_outer as unyt_linalg_outer
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_linalg_outer(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(x1, x2)
+    ret_cf = _multiply_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_linalg_outer(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.trapezoid)

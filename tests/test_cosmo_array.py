@@ -147,6 +147,7 @@ class TestNumpyFunctions:
             "linspace": (ca(1), ca(2)),
             "logspace": (ca(1, unit=u.dimensionless), ca(2, unit=u.dimensionless)),
             "geomspace": (ca(1), ca(1)),
+            "copyto": (ca(np.arange(3)), ca(np.arange(3))),
             "prod": (ca(np.arange(3)),),
             "var": (ca(np.arange(3)),),
             "trace": (ca(np.eye(3)),),
@@ -162,9 +163,24 @@ class TestNumpyFunctions:
             "pad": (ca(np.arange(3)), 3),
             "choose": (np.arange(3), ca(np.eye(3))),
             "insert": (ca(np.arange(3)), 1, ca(1)),
+            "linalg.lstsq": (ca(np.eye(3)), ca(np.eye(3))),
+            "linalg.solve": (ca(np.eye(3)), ca(np.eye(3))),
+            # "linalg.tensorsolve": (
+            #     ca(np.eye(24).reshape((6, 4, 2, 3, 4))),
+            #     ca(np.ones((6, 4))),
+            # ),
+            # "linalg.eig": (ca(np.eye(3)),),
+            # "linalg.eigh": (ca(np.eye(3)),),
+            # "linalg.eigvals": (ca(np.eye(3)),),
+            # "linalg.eigvalsh": (ca(np.eye(3)),),
+            # "savetxt": (savetxt_file, ca(np.arange(3))),
+            "fill_diagonal": (ca(np.eye(3)), ca(np.arange(3))),
+            # "apply_over_axes": (lambda x, axis: x, ca(np.eye(3)), (0, 1)),
             # "isin": (ca(np.arange(3)), ca(np.arange(3))),
-            # "in1d": (ca(np.arange(3)), ca(np.arange(3))),
-            # "interp": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
+            # "place": (ca(np.arange(3)), np.arange(3) > 0, ca(np.arange(3))),
+            # "put": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
+            # "put_along_axis": (ca(np.arange(3)), np.arange(3), ca(np.arange(3)), 0),
+            # "putmask": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
             # "searchsorted": (ca(np.arange(3)), ca(np.arange(3))),
             # "select": (
             #     [np.arange(3) < 1, np.arange(3) > 1],
@@ -182,27 +198,11 @@ class TestNumpyFunctions:
             # "correlate": (ca(np.arange(3)), ca(np.arange(3))),
             # "tensordot": (ca(np.eye(3)), ca(np.eye(3))),
             # "unwrap": (ca(np.arange(3)),),
-            # "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
-            # "linalg.solve": (ca(np.eye(3)), ca(np.eye(3))),
-            # "linalg.tensorsolve": (
-            #     ca(np.eye(24).reshape((6, 4, 2, 3, 4))),
-            #     ca(np.ones((6, 4))),
-            # ),
-            # "linalg.eigvals": (ca(np.eye(3)),),
-            # "linalg.eigvalsh": (ca(np.eye(3)),),
-            # "linalg.lstsq": (ca(np.eye(3)), ca(np.eye(3))),
-            # "linalg.eig": (ca(np.eye(3)),),
-            # "linalg.eigh": (ca(np.eye(3)),),
-            # "copyto": (ca(np.arange(3)), ca(np.arange(3))),
-            # "savetxt": (savetxt_file, ca(np.arange(3))),
-            "fill_diagonal": (ca(np.eye(3)), ca(np.arange(3))),
-            # "apply_over_axes": (lambda x, axis: x, ca(np.eye(3)), (0, 1)),
-            # "place": (ca(np.arange(3)), np.arange(3) > 0, ca(np.arange(3))),
-            # "put": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
-            # "put_along_axis": (ca(np.arange(3)), np.arange(3), ca(np.arange(3)), 0),
-            # "putmask": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
+            # "interp": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
             # "array_repr": (ca(np.arange(3)),),
+            "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
             # "trapezoid": (ca(np.arange(3)),),
+            # "in1d": (ca(np.arange(3)), ca(np.arange(3))),
         }
         functions_checked = list()
         bad_funcs = dict()
@@ -223,7 +223,7 @@ class TestNumpyFunctions:
                     result = func(*args)
                 continue
             result = func(*args)
-            if "fill_diagonal" in fname:
+            if ("fill_diagonal" in fname) or ("copyto" in fname):
                 # treat inplace modified values for relevant functions as result
                 result = args[0]
                 ua_result = ua_args[0]
