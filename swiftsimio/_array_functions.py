@@ -226,7 +226,7 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
     helper_result = _prepare_array_func_args(
         a, bins=bins, range=range, density=density, weights=weights
     )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    ret_cf_bins = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
     ret_cf_dens = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
     counts, bins = unyt_histogram(*helper_result["args"], **helper_result["kwargs"])
     if weights is not None:
@@ -248,7 +248,7 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
             cosmo_factor=ret_cf_counts,
             compression=helper_result["compression"],
         )
-    return counts, _return_helper(bins, helper_result, ret_cf)
+    return counts, _return_helper(bins, helper_result, ret_cf_bins)
 
 
 @implements(np.histogram2d)
@@ -445,15 +445,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
         if len(helper_result["ca_cfs"]) == 1:
             ret_cf_sample = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
         else:
-            ret_cf_sample = _multiply_cosmo_factor(
-                helper_result["ca_cfs"][0],
-                helper_result["ca_cfs"][1],
-            )
-        if len(helper_result["ca_cfs"]) > 2:
-            for hr_ca_cfs_i in helper_result["ca_cfs"][2:]:
-                ret_cf_sample = _multiply_cosmo_factor(
-                    (True, ret_cf_sample), hr_ca_cfs_i
-                )
+            ret_cf_sample = _multiply_cosmo_factor(*helper_result["ca_cfs"])
         if weights is not None:
             ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
             inv_ret_cf_sample = _reciprocal_cosmo_factor(
@@ -981,24 +973,30 @@ def linspace(
         return _return_helper(ress, helper_result, ret_cf)
 
 
-# @implements(np.logspace)
-# def logspace(...):
-#     from unyt._array_functions import logspace as unyt_logspace
+@implements(np.logspace)
+def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
+    from unyt._array_functions import logspace as unyt_logspace
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_logspace(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        start, stop, num=num, endpoint=endpoint, base=base, dtype=dtype, axis=axis
+    )
+    ret_cf = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["base"])
+    res = unyt_logspace(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.geomspace)
-# def geomspace(...):
-#     from unyt._array_functions import geomspace as unyt_geomspace
+@implements(np.geomspace)
+def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
+    from unyt._array_functions import geomspace as unyt_geomspace
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_geomspace(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        start, stop, num=num, endpoint=endpoint, dtype=dtype, axis=axis
+    )
+    ret_cf = _preserve_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_geomspace(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 # @implements(np.copyto)
@@ -1043,16 +1041,16 @@ def prod(
 
 @implements(np.var)
 def var(
-        a,
-        axis=None,
-        dtype=None,
-        out=None,
-        ddof=0,
-        keepdims=np._NoValue,
-        *,
-        where=np._NoValue,
-        mean=np._NoValue,
-        correction=np._NoValue
+    a,
+    axis=None,
+    dtype=None,
+    out=None,
+    ddof=0,
+    keepdims=np._NoValue,
+    *,
+    where=np._NoValue,
+    mean=np._NoValue,
+    correction=np._NoValue,
 ):
     from unyt._array_functions import var as unyt_var
 
@@ -1091,16 +1089,16 @@ def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
 
 @implements(np.percentile)
 def percentile(
-        a,
-        q,
-        axis=None,
-        out=None,
-        overwrite_input=False,
-        method="linear",
-        keepdims=False,
-        *,
-        weights=None,
-        interpolation=None
+    a,
+    q,
+    axis=None,
+    out=None,
+    overwrite_input=False,
+    method="linear",
+    keepdims=False,
+    *,
+    weights=None,
+    interpolation=None,
 ):
     from unyt._array_functions import percentile as unyt_percentile
 
@@ -1122,16 +1120,16 @@ def percentile(
 
 @implements(np.quantile)
 def quantile(
-        a,
-        q,
-        axis=None,
-        out=None,
-        overwrite_input=False,
-        method='linear',
-        keepdims=False,
-        *,
-        weights=None,
-        interpolation=None
+    a,
+    q,
+    axis=None,
+    out=None,
+    overwrite_input=False,
+    method="linear",
+    keepdims=False,
+    *,
+    weights=None,
+    interpolation=None,
 ):
     from unyt._array_functions import quantile as unyt_quantile
 
@@ -1152,17 +1150,17 @@ def quantile(
 
 
 @implements(np.nanpercentile)
-def percentile(
-        a,
-        q,
-        axis=None,
-        out=None,
-        overwrite_input=False,
-        method="linear",
-        keepdims=False,
-        *,
-        weights=None,
-        interpolation=None
+def nanpercentile(
+    a,
+    q,
+    axis=None,
+    out=None,
+    overwrite_input=False,
+    method="linear",
+    keepdims=False,
+    *,
+    weights=None,
+    interpolation=None,
 ):
     from unyt._array_functions import nanpercentile as unyt_nanpercentile
 
@@ -1184,16 +1182,16 @@ def percentile(
 
 @implements(np.nanquantile)
 def nanquantile(
-        a,
-        q,
-        axis=None,
-        out=None,
-        overwrite_input=False,
-        method='linear',
-        keepdims=False,
-        *,
-        weights=None,
-        interpolation=None
+    a,
+    q,
+    axis=None,
+    out=None,
+    overwrite_input=False,
+    method="linear",
+    keepdims=False,
+    *,
+    weights=None,
+    interpolation=None,
 ):
     from unyt._array_functions import nanquantile as unyt_nanquantile
 
@@ -1225,6 +1223,88 @@ def linalg_det(a):
     )
     res = unyt_linalg_det(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.diff)
+def diff(a, n=1, axis=-1, prepend=np._NoValue, append=np._NoValue):
+    from unyt._array_functions import diff as unyt_diff
+
+    helper_result = _prepare_array_func_args(
+        a, n=n, axis=axis, prepend=prepend, append=append
+    )
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_diff(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.ediff1d)
+def ediff1d(ary, to_end=None, to_begin=None):
+    from unyt._array_functions import ediff1d as unyt_ediff1d
+
+    helper_result = _prepare_array_func_args(ary, to_end=to_end, to_begin=to_begin)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_ediff1d(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.ptp)
+def ptp(a, axis=None, out=None, keepdims=np._NoValue):
+    from unyt._array_functions import ptp as unyt_ptp
+
+    helper_result = _prepare_array_func_args(a, axis=axis, out=out, keepdims=keepdims)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_ptp(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+# @implements(np.cumprod)
+# def cumprod(...):
+#    Omitted because unyt just raises if called.
+
+
+@implements(np.pad)
+def pad(array, pad_width, mode="constant", **kwargs):
+    from unyt._array_functions import pad as unyt_pad
+
+    helper_result = _prepare_array_func_args(array, pad_width, mode=mode, **kwargs)
+    # the number of options is huge, including user defined functions to handle data
+    # let's just preserve the cosmo_factor of the input `array` and trust the user...
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_pad(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.choose)
+def choose(a, choices, out=None, mode="raise"):
+    from unyt._array_functions import choose as unyt_choose
+
+    helper_result = _prepare_array_func_args(a, choices, out=out, mode=mode)
+    helper_result_choices = _prepare_array_func_args(*choices)
+    ret_cf = _preserve_cosmo_factor(*helper_result_choices["ca_cfs"])
+    res = unyt_choose(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.insert)
+def insert(arr, obj, values, axis=None):
+    from unyt._array_functions import insert as unyt_insert
+
+    helper_result = _prepare_array_func_args(arr, obj, values, axis=axis)
+    ret_cf = _preserve_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][2]
+    )
+    res = unyt_insert(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+# @implements(np.isin)
+# def isin(...):
+#     from unyt._array_functions import isin as unyt_isin
+
+#     helper_result = _prepare_array_func_args(...)
+#     ret_cf = ...()
+#     res = unyt_isin(*helper_result["args"], **helper_result["kwargs"])
+#     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
 # @implements(np.linalg.lstsq)
@@ -1317,90 +1397,19 @@ def linalg_det(a):
 #     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-@implements(np.diff)
-def diff(a, n=1, axis=-1, prepend=np._NoValue, append=np._NoValue):
-    from unyt._array_functions import diff as unyt_diff
+@implements(np.fill_diagonal)
+def fill_diagonal(a, val, wrap=False):
+    from unyt._array_functions import fill_diagonal as unyt_fill_diagonal
 
-    helper_result = _prepare_array_func_args(
-        a, n=n, axis=axis, prepend=prepend, append=append
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_diff(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.ediff1d)
-def ediff1d(ary, to_end=None, to_begin=None):
-    from unyt._array_functions import ediff1d as unyt_ediff1d
-
-    helper_result = _prepare_array_func_args(ary, to_end=to_end, to_begin=to_begin)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_ediff1d(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-# @implements(np.ptp)
-# def ptp(...):
-#     from unyt._array_functions import ptp as unyt_ptp
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_ptp(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.cumprod)
-# def cumprod(...):
-#    Omitted because unyt just raises if called.
-
-# @implements(np.pad)
-# def pad(...):
-#     from unyt._array_functions import pad as unyt_pad
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_pad(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.choose)
-# def choose(...):
-#     from unyt._array_functions import choose as unyt_choose
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_choose(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.fill_diagonal)
-# def fill_diagonal(...):
-#     from unyt._array_functions import fill_diagonal as unyt_fill_diagonal
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_fill_diagonal(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.insert)
-# def insert(...):
-#     from unyt._array_functions import insert as unyt_insert
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_insert(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.isin)
-# def isin(...):
-#     from unyt._array_functions import isin as unyt_isin
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_isin(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, val, wrap=wrap)
+    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][1])
+    # must pass a directly here because it's modified in-place
+    comoving = getattr(a, "comoving", None)
+    if comoving:
+        val = val.to_comoving()
+    elif comoving is False:
+        val = val.to_physical()
+    unyt_fill_diagonal(a, val, **helper_result["kwargs"])
 
 
 # @implements(np.place)

@@ -135,7 +135,17 @@ def _sqrt_cosmo_factor(ca_cf, **kwargs):
     )  # ufunc sqrt not supported
 
 
-def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
+def _multiply_cosmo_factor(*args, **kwargs):
+    ca_cfs = args
+    if len(ca_cfs) == 1:
+        return __multiply_cosmo_factor(ca_cfs[0])
+    retval = __multiply_cosmo_factor(ca_cfs[0], ca_cfs[1])
+    for ca_cf in ca_cfs[2:]:
+        retval = __multiply_cosmo_factor((retval is not None, retval), ca_cf)
+    return retval
+
+
+def __multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2
     if (cf1 is None) and (cf2 is None):
@@ -163,7 +173,17 @@ def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         raise RuntimeError("Unexpected state, please report this error on github.")
 
 
-def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
+def _preserve_cosmo_factor(*args, **kwargs):
+    ca_cfs = args
+    if len(ca_cfs) == 1:
+        return __preserve_cosmo_factor(ca_cfs[0])
+    retval = __preserve_cosmo_factor(ca_cfs[0], ca_cfs[1])
+    for ca_cf in ca_cfs[2:]:
+        retval = __preserve_cosmo_factor((retval is not None, retval), ca_cf)
+    return retval
+
+
+def __preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
     ca1, cf1 = ca_cf1
     ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
     if ca_cf2 is None:
@@ -335,7 +355,7 @@ def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
         raise ValueError(
             f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
         )
-    return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
+    return cosmo_factor(a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
@@ -443,14 +463,6 @@ def _prepare_array_func_args(*args, **kwargs):
     else:
         # mixed compressions, strip it off
         ret_comp = None
-    expected_scale_factor = None
-    for ca_cf in ca_cfs + list(kw_ca_cfs.values()):
-        if ca_cf[0]:
-            if expected_scale_factor is None:
-                expected_scale_factor = ca_cf[1].scale_factor
-            else:
-                if ca_cf[1].scale_factor != expected_scale_factor:
-                    raise ValueError("Mismatched scale factors in cosmo_array's.")
     return dict(
         args=args,
         kwargs=kwargs,
@@ -659,7 +671,7 @@ class cosmo_factor:
         return b.__truediv__(self)
 
     def __pow__(self, p):
-        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor
