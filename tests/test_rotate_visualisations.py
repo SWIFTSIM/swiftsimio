@@ -6,7 +6,6 @@ from swiftsimio.visualisation.volume_render import render_gas
 from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
 from numpy import array_equal
 from os import remove
-import pytest
 
 
 @requires("cosmological_volume.hdf5")
@@ -29,7 +28,6 @@ def test_project(filename):
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-    boxsize = data.metadata.boxsize
 
     unrotated = project_gas(data, resolution=1024, project="masses", parallel=True)
 
@@ -67,7 +65,6 @@ def test_slice(filename):
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-    boxsize = data.metadata.boxsize
 
     slice_z = centre[2]
 
@@ -114,7 +111,6 @@ def test_render(filename):
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-    boxsize = data.metadata.boxsize
 
     unrotated = render_gas(data, resolution=256, project="masses", parallel=True)
 
