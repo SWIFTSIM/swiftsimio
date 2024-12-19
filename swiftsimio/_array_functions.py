@@ -1515,6 +1515,7 @@ def put_along_axis(arr, indices, values, axis):
 
     helper_result = _prepare_array_func_args(arr, indices, values, axis)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
+    # must pass arr directly here because it's modified in-place
     if isinstance(values, cosmo_array):
         comoving = getattr(arr, "comoving", None)
         if comoving:
@@ -1530,6 +1531,7 @@ def putmask(a, mask, values):
 
     helper_result = _prepare_array_func_args(a, mask, values)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
+    # must pass arr directly here because it's modified in-place
     if isinstance(values, cosmo_array):
         comoving = getattr(a, "comoving", None)
         if comoving:
@@ -1551,24 +1553,32 @@ def searchsorted(a, v, side="left", sorter=None):
     return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.select)
-# def select(...):
-#     from unyt._array_functions import select as unyt_select
+@implements(np.select)
+def select(condlist, choicelist, default=0):
+    from unyt._array_functions import select as unyt_select
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_select(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(condlist, choicelist, default=default)
+    helper_result_choicelist = _prepare_array_func_args(*choicelist)
+    ret_cf = _preserve_cosmo_factor(*helper_result_choicelist["ca_cfs"])
+    res = unyt_select(
+        helper_result["args"][0],
+        helper_result_choicelist["args"],
+        **helper_result["kwargs"]
+    )
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.setdiff1d)
-# def setdiff1d(...):
-#     from unyt._array_functions import setdiff1d as unyt_setdiff1d
+@implements(np.setdiff1d)
+def setdiff1d(ar1, ar2, assume_unique=False):
+    from unyt._array_functions import setdiff1d as unyt_setdiff1d
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_setdiff1d(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(ar1, ar2, assume_unique=assume_unique)
+    ret_cf = _preserve_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        helper_result["ca_cfs"][1],
+    )
+    res = unyt_setdiff1d(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
 @implements(np.sinc)
@@ -1617,104 +1627,150 @@ def clip(
     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.where)
-# def where(...):
-#     from unyt._array_functions import where as unyt_where
+@implements(np.where)
+def where(condition, *args):
+    from unyt._array_functions import where as unyt_where
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_where(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.triu)
-# def triu(...):
-#     from unyt._array_functions import triu as unyt_triu
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_triu(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(condition, *args)
+    if len(args) == 0:  # just condition
+        ret_cf = _return_without_cosmo_factor(helper_result["ca_cfs"][0])
+        res = unyt_where(*helper_result["args"], **helper_result["kwargs"])
+    elif len(args) < 2:
+        # error message borrowed from numpy 1.24.1
+        raise ValueError("either both or neither of x and y should be given")
+    ret_cf = _preserve_cosmo_factor(
+        helper_result["ca_cfs"][1], helper_result["ca_cfs"][2]
+    )
+    res = unyt_where(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.tril)
-# def tril(...):
-#     from unyt._array_functions import tril as unyt_tril
+@implements(np.triu)
+def triu(m, k=0):
+    from unyt._array_functions import triu as unyt_triu
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_tril(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.einsum)
-# def einsum(...):
-#     from unyt._array_functions import einsum as unyt_einsum
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_einsum(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(m, k=0)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_triu(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.convolve)
-# def convolve(...):
-#     from unyt._array_functions import convolve as unyt_convolve
+@implements(np.tril)
+def tril(m, k=0):
+    from unyt._array_functions import tril as unyt_tril
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_convolve(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.correlate)
-# def correlate(...):
-#     from unyt._array_functions import correlate as unyt_correlate
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_correlate(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(m, k=0)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_tril(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.tensordot)
-# def tensordot(...):
-#     from unyt._array_functions import tensordot as unyt_tensordot
+@implements(np.einsum)
+def einsum(
+    subscripts, *operands, out=None, dtype=None, order="K", casting="safe", optimize=False
+):
+    from unyt._array_functions import einsum as unyt_einsum
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_tensordot(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.unwrap)
-# def unwrap(...):
-#     from unyt._array_functions import unwrap as unyt_unwrap
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_unwrap(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.interp)
-# def interp(...):
-#     from unyt._array_functions import interp as unyt_interp
-
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_interp(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        subscripts,
+        operands,
+        out=out,
+        dtype=dtype,
+        order=order,
+        casting=casting,
+        optimize=optimize,
+    )
+    helper_result_operands = _prepare_array_func_args(*operands)
+    ret_cf = _preserve_cosmo_factor(*helper_result_operands["ca_cfs"])
+    res = unyt_einsum(
+        helper_result["args"][0],
+        *helper_result_operands["args"],
+        **helper_result["kwargs"],
+    )
+    return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-# @implements(np.array_repr)
-# def array_repr(...):
-#     from unyt._array_functions import array_repr as unyt_array_repr
+@implements(np.convolve)
+def convolve(a, v, mode="full"):
+    from unyt._array_functions import convolve as unyt_convolve
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_array_repr(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(a, v, mode=mode)
+    ret_cf = _multiply_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_convolve(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.correlate)
+def correlate(a, v, mode="valid"):
+    from unyt._array_functions import correlate as unyt_correlate
+
+    helper_result = _prepare_array_func_args(a, v, mode=mode)
+    ret_cf = _multiply_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_correlate(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.tensordot)
+def tensordot(a, b, axes=2):
+    from unyt._array_functions import tensordot as unyt_tensordot
+
+    helper_result = _prepare_array_func_args(a, b, axes=axes)
+    ret_cf = _multiply_cosmo_factor(
+        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+    )
+    res = unyt_tensordot(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.unwrap)
+def unwrap(p, discont=None, axis=-1, *, period=6.283185307179586):
+    from unyt._array_functions import unwrap as unyt_unwrap
+
+    helper_result = _prepare_array_func_args(p, discont=discont, axis=axis, period=period)
+    ret_cf = _preserve_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        helper_result["kw_ca_cfs"]["discont"],
+        helper_result["kw_ca_cfs"]["period"],
+    )
+    res = unyt_unwrap(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.interp)
+def interp(x, xp, fp, left=None, right=None, period=None):
+    from unyt._array_functions import interp as unyt_interp
+
+    helper_result = _prepare_array_func_args(
+        x, xp, fp, left=left, right=right, period=period
+    )
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][2])
+    res = unyt_interp(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.array_repr)
+def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
+    from unyt._array_functions import array_repr as unyt_array_repr
+
+    helper_result = _prepare_array_func_args(
+        arr,
+        max_line_width=max_line_width,
+        precision=precision,
+        suppress_small=suppress_small
+    )
+    rep = unyt_array_repr(*helper_result["args"], **helper_result["kwargs"])[:-1]
+    if hasattr(arr, "comoving"):
+        rep += f", comoving='{arr.comoving}'"
+    if hasattr(arr, "cosmo_factor"):
+        rep += f", cosmo_factor='{arr.cosmo_factor}'"
+    if hasattr(arr, "valid_transform"):
+        rep += f", valid_transform='{arr.valid_transform}'"
+    rep += ")"
+    return rep
 
 
 @implements(np.linalg.outer)
@@ -1729,21 +1785,34 @@ def linalg_outer(x1, x2, /):
     return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.trapezoid)
-# def trapezoid(...):
-#     from unyt._array_functions import trapezoid as unyt_trapezoid
+@implements(np.trapezoid)
+def trapezoid(y, x=None, dx=1.0, axis=-1):
+    from unyt._array_functions import trapezoid as unyt_trapezoid
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_trapezoid(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(y, x=x, dx=dx, axis=axis)
+    if x is None:
+        ret_cf = _multiply_cosmo_factor(
+            helper_result["ca_cfs"][0], helper_result["kw_ca_cfs"]["dx"]
+        )
+    else:
+        ret_cf = _multiply_cosmo_factor(
+            helper_result["ca_cfs"][0], helper_result["kw_ca_cfs"]["x"]
+        )
+    res = unyt_trapezoid(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)
 
 
-# @implements(np.in1d)
-# def in1d(...):
-#     from unyt._array_functions import in1d as unyt_in1d
+@implements(np.in1d)
+def in1d(ar1, ar2, assume_unique=False, invert=False, *, kind=None):
+    from unyt._array_functions import isin as unyt_in1d
 
-#     helper_result = _prepare_array_func_args(...)
-#     ret_cf = ...()
-#     res = unyt_in1d(*helper_result["args"], **helper_result["kwargs"])
-#     return _return_helper(res, helper_result, ret_cf, out=out)
+    helper_result = _prepare_array_func_args(
+        ar1, ar2, assume_unique=assume_unique, invert=invert, kind=kind
+    )
+    ret_cf = _comparison_cosmo_factor(
+        helper_result["ca_cfs"][0],
+        helper_result["ca_cfs"][1],
+        inputs=(ar1, ar2),
+    )
+    res = unyt_in1d(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf)

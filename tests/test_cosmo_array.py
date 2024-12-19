@@ -4,6 +4,7 @@ Tests the initialisation of a cosmo_array.
 
 import pytest
 import os
+import warnings
 import numpy as np
 import unyt as u
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
@@ -86,6 +87,21 @@ class TestCosmoArrayInit:
         assert hasattr(arr, "cosmo_factor")
         assert hasattr(arr, "comoving")
         assert isinstance(arr, cosmo_array)
+
+    def test_init_from_list_of_cosmo_arrays(self):
+        arr = cosmo_array(
+            [
+                cosmo_array(
+                    1, units=u.Mpc, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 1)
+                )
+                for _ in range(5)
+            ]
+        )
+        assert isinstance(arr, cosmo_array)
+        assert hasattr(arr, "cosmo_factor") and arr.cosmo_factor == cosmo_factor(
+            a ** 1, 1
+        )
+        assert hasattr(arr, "comoving") and arr.comoving is False
 
 
 class TestNumpyFunctions:
@@ -182,27 +198,27 @@ class TestNumpyFunctions:
             "put_along_axis": (ca(np.arange(3)), np.arange(3), ca(np.arange(3)), 0),
             "putmask": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
             "searchsorted": (ca(np.arange(3)), ca(np.arange(3))),
-            # "select": (
-            #     [np.arange(3) < 1, np.arange(3) > 1],
-            #     [ca(np.arange(3)), ca(np.arange(3))],
-            #     ca(1),
-            # ),
-            # "setdiff1d": (ca(np.arange(3)), ca(np.arange(3, 6))),
+            "select": (
+                [np.arange(3) < 1, np.arange(3) > 1],
+                [ca(np.arange(3)), ca(np.arange(3))],
+                ca(1),
+            ),
+            "setdiff1d": (ca(np.arange(3)), ca(np.arange(3, 6))),
             "sinc": (ca(np.arange(3)),),
             "clip": (ca(np.arange(3)), ca(1), ca(2)),
-            # "where": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
-            # "triu": (ca(np.arange(3)),),
-            # "tril": (ca(np.arange(3)),),
-            # "einsum": ("ii->i", ca(np.eye(3))),
-            # "convolve": (ca(np.arange(3)), ca(np.arange(3))),
-            # "correlate": (ca(np.arange(3)), ca(np.arange(3))),
-            # "tensordot": (ca(np.eye(3)), ca(np.eye(3))),
-            # "unwrap": (ca(np.arange(3)),),
-            # "interp": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
-            # "array_repr": (ca(np.arange(3)),),
+            "where": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
+            "triu": (ca(np.ones((3, 3))),),
+            "tril": (ca(np.ones((3, 3))),),
+            "einsum": ("ii->i", ca(np.eye(3))),
+            "convolve": (ca(np.arange(3)), ca(np.arange(3))),
+            "correlate": (ca(np.arange(3)), ca(np.arange(3))),
+            "tensordot": (ca(np.eye(3)), ca(np.eye(3))),
+            "unwrap": (ca(np.arange(3)),),
+            "interp": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
+            "array_repr": (ca(np.arange(3)),),
             "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
-            # "trapezoid": (ca(np.arange(3)),),
-            # "in1d": (ca(np.arange(3)), ca(np.arange(3))),
+            "trapezoid": (ca(np.arange(3)),),
+            "in1d": (ca(np.arange(3)), ca(np.arange(3))),  # np deprecated
         }
         functions_checked = list()
         bad_funcs = dict()
@@ -210,7 +226,14 @@ class TestNumpyFunctions:
             ua_args = tuple(to_ua(arg) for arg in args)
             func = getfunc(fname)
             try:
-                ua_result = func(*ua_args)
+                with warnings.catch_warnings():
+                    if "savetxt" in fname:
+                        warnings.filterwarnings(
+                            action="ignore",
+                            category=UserWarning,
+                            message="numpy.savetxt does not preserve units or cosmo",
+                        )
+                    ua_result = func(*ua_args)
             except u.exceptions.UnytError:
                 raises_unyt_error = True
             else:
@@ -222,7 +245,14 @@ class TestNumpyFunctions:
                 with pytest.raises(u.exceptions.UnytError):
                     result = func(*args)
                 continue
-            result = func(*args)
+            with warnings.catch_warnings():
+                if "savetxt" in fname:
+                    warnings.filterwarnings(
+                        action="ignore",
+                        category=UserWarning,
+                        message="numpy.savetxt does not preserve units or cosmo",
+                    )
+                result = func(*args)
             if fname.split(".")[-1] in (
                 "fill_diagonal",
                 "copyto",
@@ -463,3 +493,48 @@ class TestNumpyFunctions:
     def test_iter(self):
         for cq in ca(np.arange(3)):
             assert isinstance(cq, cosmo_quantity)
+
+
+class TestCosmoQuantity:
+    @pytest.mark.parametrize(
+        "func, args",
+        [
+            ("astype", (float,)),
+            ("in_units", (u.m,)),
+            ("byteswap", tuple()),
+            ("compress", ([True],)),
+            ("flatten", tuple()),
+            ("ravel", tuple()),
+            ("repeat", (1,)),
+            ("reshape", (1,)),
+            ("take", ([0],)),
+            ("transpose", tuple()),
+            ("view", tuple()),
+        ],
+    )
+    def test_propagation_func(self, func, args):
+        cq = cosmo_quantity(
+            1,
+            u.m,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            valid_transform=True,
+        )
+        res = getattr(cq, func)(*args)
+        assert res.comoving is False
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
+        assert res.valid_transform is True
+
+    @pytest.mark.parametrize("prop", ["T", "ua", "unit_array"])
+    def test_propagation_props(self, prop):
+        cq = cosmo_quantity(
+            1,
+            u.m,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            valid_transform=True,
+        )
+        res = getattr(cq, prop)
+        assert res.comoving is False
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
+        assert res.valid_transform is True
