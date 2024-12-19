@@ -7,7 +7,7 @@ import warnings
 
 import unyt
 from unyt import unyt_array, unyt_quantity
-from unyt.array import multiple_output_operators
+from unyt.array import multiple_output_operators, _iterable
 from numbers import Number as numeric_type
 
 try:
@@ -116,7 +116,7 @@ class InvalidConversionError(Exception):
 def _propagate_cosmo_array_attributes(func):
     def wrapped(self, *args, **kwargs):
         ret = func(self, *args, **kwargs)
-        if not type(ret) is cosmo_array:
+        if not isinstance(ret, cosmo_array):
             return ret
         if hasattr(self, "cosmo_factor"):
             ret.cosmo_factor = self.cosmo_factor
@@ -393,7 +393,7 @@ def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
     )
 
 
-def _prepare_array_func_args(*args, **kwargs):
+def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
     # unyt allows creating a unyt_array from e.g. arrays with heterogenous units
     # (it probably shouldn't...).
     # Example:
@@ -448,15 +448,27 @@ def _prepare_array_func_args(*args, **kwargs):
         ret_cm = False
     else:
         # mix of comoving and physical inputs
-        args = [
-            arg.to_comoving() if cm[0] and not cm[1] else arg
-            for arg, cm in zip(args, cms)
-        ]
-        kwargs = {
-            k: kwarg.to_comoving() if kw_cms[k][0] and not kw_cms[k][1] else kwarg
-            for k, kwarg in kwargs.items()
-        }
-        ret_cm = True
+        # better to modify inplace (convert_to_comoving)?
+        if _default_cm:
+            args = [
+                arg.to_comoving() if cm[0] and not cm[1] else arg
+                for arg, cm in zip(args, cms)
+            ]
+            kwargs = {
+                k: kwarg.to_comoving() if kw_cms[k][0] and not kw_cms[k][1] else kwarg
+                for k, kwarg in kwargs.items()
+            }
+            ret_cm = True
+        else:
+            args = [
+                arg.to_physical() if cm[0] and not cm[1] else arg
+                for arg, cm in zip(args, cms)
+            ]
+            kwargs = {
+                k: kwarg.to_physical() if kw_cms[k][0] and not kw_cms[k][1] else kwarg
+                for k, kwarg in kwargs.items()
+            }
+            ret_cm = False
     if len(set(comps + list(kw_comps.values()))) == 1:
         # all compressions identical, preserve it
         ret_comp = (comps + list(kw_comps.values()))[0]
@@ -694,6 +706,18 @@ class cosmo_factor:
     def __ne__(self, b):
         return not self.__eq__(b)
 
+    def __repr__(self):
+        """
+        Print exponent and current scale factor
+
+        Returns
+        -------
+
+        str
+            string to print exponent and current scale factor
+        """
+        return self.__str__()
+
 
 class cosmo_array(unyt_array):
     """
@@ -874,39 +898,49 @@ class cosmo_array(unyt_array):
 
         cosmo_factor: cosmo_factor
 
-        try:
-            obj = super().__new__(
-                cls,
-                input_array,
-                units=units,
-                registry=registry,
-                dtype=dtype,
-                bypass_validation=bypass_validation,
-                name=name,
+        if isinstance(input_array, cosmo_array):
+            if comoving:
+                input_array.convert_to_comoving()
+            elif comoving is False:
+                input_array.convert_to_physical()
+            else:
+                comoving = input_array.comoving
+            cosmo_factor = _preserve_cosmo_factor(
+                (cosmo_factor is not None, cosmo_factor),
+                (input_array.cosmo_factor is not None, input_array.cosmo_factor),
             )
-        except TypeError:
-            # Older versions of unyt (before input_units was deprecated)
-            obj = super().__new__(
-                cls,
-                input_array,
-                units=units,
-                registry=registry,
-                dtype=dtype,
-                bypass_validation=bypass_validation,
-                input_units=input_units,
-                name=name,
-            )
-        except TypeError:
-            # Even older versions of unyt (before name was added)
-            obj = super().__new__(
-                cls,
-                input_array,
-                units=units,
-                registry=registry,
-                dtype=dtype,
-                bypass_validation=bypass_validation,
-                input_units=input_units,
-            )
+            if not valid_transform:
+                input_array.convert_to_physical()
+            if compression != input_array.compression:
+                compression = None  # just drop it
+        elif isinstance(input_array, np.ndarray):
+            pass  # guard np.ndarray so it doesn't get caught by _iterable in next case
+        elif _iterable(input_array) and input_array:
+            if isinstance(input_array[0], cosmo_array):
+                default_cm = comoving if comoving is not None else True
+                helper_result = _prepare_array_func_args(
+                    *input_array, _default_cm=default_cm
+                )
+                if comoving is None:
+                    comoving = helper_result["comoving"]
+                input_array = helper_result["args"]
+                cosmo_factor = _preserve_cosmo_factor(
+                    (cosmo_factor is not None, cosmo_factor), *helper_result["ca_cfs"]
+                )
+                if not valid_transform:
+                    input_array.convert_to_physical()
+                if compression != helper_result["compression"]:
+                    compression = None  # just drop it
+
+        obj = super().__new__(
+            cls,
+            input_array,
+            units=units,
+            registry=registry,
+            dtype=dtype,
+            bypass_validation=bypass_validation,
+            name=name,
+        )
 
         if isinstance(obj, unyt_array) and not isinstance(obj, cls):
             obj = obj.view(cls)
@@ -980,7 +1014,6 @@ class cosmo_array(unyt_array):
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
-    __getitem__ = _propagate_cosmo_array_attributes(unyt_array.__getitem__)
     astype = _propagate_cosmo_array_attributes(unyt_array.astype)
     in_units = _propagate_cosmo_array_attributes(unyt_array.in_units)
     byteswap = _propagate_cosmo_array_attributes(unyt_array.byteswap)
@@ -989,13 +1022,28 @@ class cosmo_array(unyt_array):
     flatten = _propagate_cosmo_array_attributes(unyt_array.flatten)
     ravel = _propagate_cosmo_array_attributes(unyt_array.ravel)
     repeat = _propagate_cosmo_array_attributes(unyt_array.repeat)
-    reshape = _propagate_cosmo_array_attributes(unyt_array.reshape)
     swapaxes = _propagate_cosmo_array_attributes(unyt_array.swapaxes)
     take = _propagate_cosmo_array_attributes(unyt_array.take)
     transpose = _propagate_cosmo_array_attributes(unyt_array.transpose)
     view = _propagate_cosmo_array_attributes(unyt_array.view)
 
-    # Also wrap some array "attributes":
+    @_propagate_cosmo_array_attributes
+    def reshape(self, shape, **kwargs):
+        reshaped = unyt_array.reshape(self, shape, **kwargs)
+        if shape == ():
+            return cosmo_quantity(reshaped)
+        else:
+            return reshaped
+
+    @_propagate_cosmo_array_attributes
+    def __getitem__(self, *args, **kwargs):
+        item = unyt_array.__getitem__(self, *args, *kwargs)
+        if item.shape == ():
+            return cosmo_quantity(item)
+        else:
+            return item
+
+    # Also wrap some array "properties":
 
     @property
     def T(self):
