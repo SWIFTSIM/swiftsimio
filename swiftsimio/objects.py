@@ -1416,7 +1416,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             units = getattr(input_scalar, "units", None)
         else:
             units = input_units
-        ret = cosmo_array.__new__(
+        ret = super().__new__(
             cls,
             np.asarray(input_scalar),
             units,
@@ -1432,3 +1432,16 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         if ret.size > 1:
             raise RuntimeError("unyt_quantity instances must be scalars")
         return ret
+
+    def reshape(self, *shape, order="C"):
+        # this is necessary to support some numpy operations
+        # natively, like numpy.meshgrid, which internally performs
+        # reshaping, e.g., arr.reshape(1, -1), which doesn't affect the size,
+        # but does change the object's internal representation to a >0D array
+        # see https://github.com/yt-project/unyt/issues/224
+        if len(shape) == 1:
+            shape = shape[0]
+        if shape == () or shape is None:
+            return super().reshape(shape, order=order)
+        else:
+            return cosmo_array(self).reshape(shape, order=order)
