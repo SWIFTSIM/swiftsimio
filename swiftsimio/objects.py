@@ -881,6 +881,9 @@ class cosmo_array(unyt_array):
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
     __getitem__ = _propagate_cosmo_array_attributes(unyt_array.__getitem__)
+    __copy__ = _propagate_cosmo_array_attributes(unyt_array.__copy__)
+    __deepcopy__ = _propagate_cosmo_array_attributes(unyt_array.__deepcopy__)
+    in_cgs = _propagate_cosmo_array_attributes(unyt_array.in_cgs)
     astype = _propagate_cosmo_array_attributes(unyt_array.astype)
     in_units = _propagate_cosmo_array_attributes(unyt_array.in_units)
     byteswap = _propagate_cosmo_array_attributes(unyt_array.byteswap)
