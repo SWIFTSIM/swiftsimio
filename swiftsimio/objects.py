@@ -302,8 +302,10 @@ def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_compariso
         raise ValueError(
             f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
         )
-    elif (cf is not None) and (cf2 is not None) and (cf == cf2):
-        # both have cosmo_factor, and they match:
+    elif ((cf is not None) and (cf2 is not None) and (cf == cf2)) or (
+        (cf is None) and (cf2 is None)
+    ):
+        # both have cosmo_factor, and they match, or neither has cosmo_factor:
         pass
     else:
         raise RuntimeError("Unexpected state, please report this error on github.")
