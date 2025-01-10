@@ -1342,7 +1342,9 @@ def linalg_tensorsolve(a, b, axes=None):
     from unyt._array_functions import linalg_tensorsolve as unyt_linalg_tensorsolve
 
     helper_result = _prepare_array_func_args(a, b, axes=axes)
-    ret_cf = _divide_cosmo_factor(helper_result["ca_cfs"][1], helper_result["ca_cfs"][0])
+    ret_cf = _divide_cosmo_factor(
+        helper_result["ca_cfs"][1], helper_result["ca_cfs"][0]
+    )
     res = unyt_linalg_tensorsolve(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1395,15 +1397,15 @@ def linalg_eigvalsh(a, UPLO="L"):
 
 @implements(np.savetxt)
 def savetxt(
-        fname,
-        X,
-        fmt="%.18e",
-        delimiter=" ",
-        newline="\n",
-        header="",
-        footer="",
-        comments="# ",
-        encoding=None
+    fname,
+    X,
+    fmt="%.18e",
+    delimiter=" ",
+    newline="\n",
+    header="",
+    footer="",
+    comments="# ",
+    encoding=None,
 ):
     from unyt._array_functions import savetxt as unyt_savetxt
 
@@ -1429,7 +1431,7 @@ def savetxt(
         warnings.filterwarnings(
             action="ignore",
             category=UserWarning,
-            message="numpy.savetxt does not preserve units"
+            message="numpy.savetxt does not preserve units",
         )
         unyt_savetxt(*helper_result["args"], **helper_result["kwargs"])
     return
@@ -1563,7 +1565,7 @@ def select(condlist, choicelist, default=0):
     res = unyt_select(
         helper_result["args"][0],
         helper_result_choicelist["args"],
-        **helper_result["kwargs"]
+        **helper_result["kwargs"],
     )
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1592,14 +1594,14 @@ def sinc(x):
 
 @implements(np.clip)
 def clip(
-        a,
-        a_min=np._NoValue,
-        a_max=np._NoValue,
-        out=None,
-        *,
-        min=np._NoValue,
-        max=np._NoValue,
-        **kwargs,
+    a,
+    a_min=np._NoValue,
+    a_max=np._NoValue,
+    out=None,
+    *,
+    min=np._NoValue,
+    max=np._NoValue,
+    **kwargs,
 ):
     from unyt._array_functions import clip as unyt_clip
 
@@ -1667,7 +1669,13 @@ def tril(m, k=0):
 
 @implements(np.einsum)
 def einsum(
-    subscripts, *operands, out=None, dtype=None, order="K", casting="safe", optimize=False
+    subscripts,
+    *operands,
+    out=None,
+    dtype=None,
+    order="K",
+    casting="safe",
+    optimize=False,
 ):
     from unyt._array_functions import einsum as unyt_einsum
 
@@ -1730,7 +1738,9 @@ def tensordot(a, b, axes=2):
 def unwrap(p, discont=None, axis=-1, *, period=6.283185307179586):
     from unyt._array_functions import unwrap as unyt_unwrap
 
-    helper_result = _prepare_array_func_args(p, discont=discont, axis=axis, period=period)
+    helper_result = _prepare_array_func_args(
+        p, discont=discont, axis=axis, period=period
+    )
     ret_cf = _preserve_cosmo_factor(
         helper_result["ca_cfs"][0],
         helper_result["kw_ca_cfs"]["discont"],
@@ -1760,7 +1770,7 @@ def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
         arr,
         max_line_width=max_line_width,
         precision=precision,
-        suppress_small=suppress_small
+        suppress_small=suppress_small,
     )
     rep = unyt_array_repr(*helper_result["args"], **helper_result["kwargs"])[:-1]
     if hasattr(arr, "comoving"):
@@ -1816,3 +1826,13 @@ def in1d(ar1, ar2, assume_unique=False, invert=False, *, kind=None):
     )
     res = unyt_in1d(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
+
+
+@implements(np.take)
+def take(a, indices, axis=None, out=None, mode="raise"):
+    from unyt._array_functions import take as unyt_take
+
+    helper_result = _prepare_array_func_args(a, indices, axis=axis, out=out, mode=mode)
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = unyt_take(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
