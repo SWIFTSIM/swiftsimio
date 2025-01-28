@@ -6,7 +6,8 @@ from tests.helper import requires
 from swiftsimio import load, mask
 import numpy as np
 
-from unyt import unyt_array as array, dimensionless
+from unyt import dimensionless
+from swiftsimio import cosmo_array as array
 
 
 @requires("cosmological_volume.hdf5")

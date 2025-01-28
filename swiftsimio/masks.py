@@ -5,17 +5,21 @@ snapshots.
 
 import warnings
 
-import unyt
 import h5py
 
 import numpy as np
 
 from swiftsimio.metadata.objects import SWIFTMetadata
 
-from swiftsimio.objects import InvalidSnapshot
+from swiftsimio.objects import (
+    InvalidSnapshot,
+    cosmo_array,
+    cosmo_quantity,
+    cosmo_factor,
+    a,
+)
 
 from swiftsimio.accelerated import ranges_from_array
-from typing import Dict
 
 
 class SWIFTMask(object):
@@ -229,11 +233,19 @@ class SWIFTMask(object):
             self.counts[key] = counts[sort]
 
         # Also need to sort centers in the same way
-        self.centers = unyt.unyt_array(centers_handle[:][sort], units=self.units.length)
+        self.centers = cosmo_array(
+            centers_handle[:][sort],
+            units=self.units.length,
+            comoving=True,
+            cosmo_factor=cosmo_factor(a**1, self.metadata.scale_factor),
+        )
 
         # Note that we cannot assume that these are cubic, unfortunately.
-        self.cell_size = unyt.unyt_array(
-            metadata_handle.attrs["size"], units=self.units.length
+        self.cell_size = cosmo_array(
+            metadata_handle.attrs["size"],
+            units=self.units.length,
+            comoving=True,
+            cosmo_factor=cosmo_factor(a**1, self.metadata.scale_factor),
         )
 
         return
@@ -242,8 +254,8 @@ class SWIFTMask(object):
         self,
         group_name: str,
         quantity: str,
-        lower: unyt.array.unyt_quantity,
-        upper: unyt.array.unyt_quantity,
+        lower: cosmo_quantity,
+        upper: cosmo_quantity,
     ):
         """
         Constrains the mask further for a given particle type, and bounds a
@@ -263,10 +275,10 @@ class SWIFTMask(object):
         quantity : str
             quantity being constrained
 
-        lower : unyt.array.unyt_quantity
+        lower : ~swiftsimio.objects.cosmo_quantity
             constraint lower bound
 
-        upper : unyt.array.unyt_quantity
+        upper : ~swiftsimio.objects.cosmo_quantity
             constraint upper bound
 
         See Also
@@ -300,13 +312,32 @@ class SWIFTMask(object):
 
         handle = handle_dict[quantity]
 
+        physical_dict = {
+            k: v
+            for k, v in zip(group_metadata.field_names, group_metadata.field_physicals)
+        }
+
+        physical = physical_dict[quantity]
+
+        cosmologies_dict = {
+            k: v
+            for k, v in zip(
+                group_metadata.field_names, group_metadata.field_cosmologies
+            )
+        }
+
+        cosmology_factor = cosmologies_dict[quantity]
+
         # Load in the relevant data.
 
         with h5py.File(self.metadata.filename, "r") as file:
             # Surprisingly this is faster than just using the boolean
             # indexing because h5py has slow indexing routines.
-            data = unyt.unyt_array(
-                np.take(file[handle], np.where(current_mask)[0], axis=0), units=unit
+            data = cosmo_array(
+                np.take(file[handle], np.where(current_mask)[0], axis=0),
+                units=unit,
+                comoving=not physical,
+                cosmo_factor=cosmology_factor,
             )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
