@@ -28,7 +28,7 @@ from swiftsimio.visualisation.slice_backends import (
     backends_parallel as slice_backends_parallel,
 )
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
-from swiftsimio.objects import cosmo_array, a
+from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 from unyt.array import unyt_array
 import unyt
 
@@ -654,12 +654,20 @@ def test_dark_matter_power_spectrum(filename, save=False):
     # Collate a bunch of raw depositions
     folds = {}
 
-    min_k = 1e-2 / unyt.Mpc
-    max_k = 1e2 / unyt.Mpc
-
-    bins = unyt.unyt_array(
-        np.logspace(np.log10(min_k.v), np.log10(max_k.v), 32), units=min_k.units
+    min_k = cosmo_quantity(
+        1e-2,
+        unyt.Mpc**-1,
+        comoving=True,
+        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor),
     )
+    max_k = cosmo_quantity(
+        1e2,
+        unyt.Mpc**-1,
+        comoving=True,
+        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor),
+    )
+
+    bins = np.geomspace(min_k, max_k, 32)
 
     output = {}
     for npix in [32, 128]:
