@@ -15,19 +15,22 @@ from .objects import (
     _return_without_cosmo_factor,
 )
 
-_HANDLED_FUNCTIONS = dict()
+_HANDLED_FUNCTIONS = {}
 
 
 def _return_helper(res, helper_result, ret_cf, out=None):
     if out is None:
-        if isinstance(res, unyt_quantity):
+        if isinstance(res, cosmo_array) and res.shape == ():
+            # happens when handling a function that unyt didn't handle explicitly
+            return cosmo_quantity(res)
+        elif isinstance(res, unyt_quantity) and not isinstance(res, cosmo_quantity):
             return cosmo_quantity(
                 res,
                 comoving=helper_result["comoving"],
                 cosmo_factor=ret_cf,
                 compression=helper_result["compression"],
             )
-        elif isinstance(res, unyt_array):
+        elif isinstance(res, unyt_array) and not isinstance(res, cosmo_array):
             return cosmo_array(
                 res,
                 comoving=helper_result["comoving"],
@@ -43,7 +46,16 @@ def _return_helper(res, helper_result, ret_cf, out=None):
         out.cosmo_factor = ret_cf
     if hasattr(out, "compression"):
         out.compression = helper_result["compression"]
-    return cosmo_array(  # confused, do we set out, or return?
+    if res.shape == ():
+        return cosmo_quantity(
+            res.to_value(res.units),
+            res.units,
+            bypass_validation=True,
+            comoving=helper_result["comoving"],
+            cosmo_factor=ret_cf,
+            compression=helper_result["compression"],
+        )
+    return cosmo_array(
         res.to_value(res.units),
         res.units,
         bypass_validation=True,
@@ -1835,4 +1847,16 @@ def take(a, indices, axis=None, out=None, mode="raise"):
     helper_result = _prepare_array_func_args(a, indices, axis=axis, out=out, mode=mode)
     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
     res = unyt_take(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.amax)
+def amax(
+    a, axis=None, out=None, keepdims=np._NoValue, initial=np._NoValue, where=np._NoValue
+):
+    helper_result = _prepare_array_func_args(
+        a, axis=axis, out=out, keepdims=keepdims, initial=initial, where=where
+    )
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = np.amax._implementation(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf, out=out)

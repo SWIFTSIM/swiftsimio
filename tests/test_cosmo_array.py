@@ -105,14 +105,16 @@ class TestCosmoArrayInit:
 
 
 class TestNumpyFunctions:
-    """
-    Functions specially handled by unyt risk silently casting to unyt_array/unyt_quantity.
-    """
 
-    def test_handled_funcs(self):
+    def test_explicitly_handled_funcs(self):
+        """
+        Make sure we at least handle everything that unyt does, and anything that
+        'just worked' for unyt but that we need to handle by hand.
+        """
         from unyt._array_functions import _HANDLED_FUNCTIONS
 
         functions_to_check = {
+            # FUNCTIONS UNYT HANDLES EXPLICITLY:
             "array2string": (ca(np.arange(3)),),
             "dot": (ca(np.arange(3)), ca(np.arange(3))),
             "vdot": (ca(np.arange(3)), ca(np.arange(3))),
@@ -220,6 +222,145 @@ class TestNumpyFunctions:
             "trapezoid": (ca(np.arange(3)),),
             "in1d": (ca(np.arange(3)), ca(np.arange(3))),  # np deprecated
             "take": (ca(np.arange(3)), np.arange(3)),
+            # FUNCTIONS THAT UNYT DOESN'T HANDLE EXPLICITLY (THEY "JUST WORK"):
+            "all": (ca(np.arange(3)),),
+            "amax": (ca(np.arange(3)),),
+            "amin": (ca(np.arange(3)),),
+            # np.angle,  # expects complex numbers
+            # np.any,  # works out of the box (tested)
+            # np.append,  # we get it for free with np.concatenate (tested)
+            # np.apply_along_axis,  # works out of the box (tested)
+            # np.argmax,  # returns pure numbers
+            # np.argmin,  # returns pure numbers
+            # np.argpartition,  # returns pure numbers
+            # np.argsort,  # returns pure numbers
+            # np.argwhere,  # returns pure numbers
+            # np.array_str,  # hooks into __str__
+            # np.atleast_1d,  # works out of the box (tested)
+            # np.atleast_2d,  # works out of the box (tested)
+            # np.atleast_3d,  # works out of the box (tested)
+            # np.average,  # works out of the box (tested)
+            # np.can_cast,  # works out of the box (tested)
+            # np.common_type,  # works out of the box (tested)
+            # np.result_type,  # works out of the box (tested)
+            # np.iscomplex,  # works out of the box (tested)
+            # np.iscomplexobj,  # works out of the box (tested)
+            # np.isreal,  # works out of the box (tested)
+            # np.isrealobj,  # works out of the box (tested)
+            # np.nan_to_num,  # works out of the box (tested)
+            # np.nanargmax,  # return pure numbers
+            # np.nanargmin,  # return pure numbers
+            # np.nanmax,  # works out of the box (tested)
+            # np.nanmean,  # works out of the box (tested)
+            # np.nanmedian,  # works out of the box (tested)
+            # np.nanmin,  # works out of the box (tested)
+            # np.trim_zeros,  # works out of the box (tested)
+            # np.max,  # works out of the box (tested)
+            # np.mean,  # works out of the box (tested)
+            # np.median,  # works out of the box (tested)
+            # np.min,  # works out of the box (tested)
+            # np.ndim,  # return pure numbers
+            # np.shape,  # returns pure numbers
+            # np.size,  # returns pure numbers
+            # np.sort,  # works out of the box (tested)
+            # np.sum,  # works out of the box (tested)
+            # np.repeat,  # works out of the box (tested)
+            # np.tile,  # works out of the box (tested)
+            # np.shares_memory,  # works out of the box (tested)
+            # np.nonzero,  # works out of the box (tested)
+            # np.count_nonzero,  # returns pure numbers
+            # np.flatnonzero,  # works out of the box (tested)
+            # np.isneginf,  # works out of the box (tested)
+            # np.isposinf,  # works out of the box (tested)
+            # np.empty_like,  # works out of the box (tested)
+            # np.full_like,  # works out of the box (tested)
+            # np.ones_like,  # works out of the box (tested)
+            # np.zeros_like,  # works out of the box (tested)
+            # np.copy,  # works out of the box (tested)
+            # np.meshgrid,  # works out of the box (tested)
+            # np.transpose,  # works out of the box (tested)
+            # np.reshape,  # works out of the box (tested)
+            # np.resize,  # works out of the box (tested)
+            # np.roll,  # works out of the box (tested)
+            # np.rollaxis,  # works out of the box (tested)
+            # np.rot90,  # works out of the box (tested)
+            # np.expand_dims,  # works out of the box (tested)
+            # np.squeeze,  # works out of the box (tested)
+            # np.flip,  # works out of the box (tested)
+            # np.fliplr,  # works out of the box (tested)
+            # np.flipud,  # works out of the box (tested)
+            # np.delete,  # works out of the box (tested)
+            # np.partition,  # works out of the box (tested)
+            # np.broadcast_to,  # works out of the box (tested)
+            # np.broadcast_arrays,  # works out of the box (tested)
+            # np.split,  # works out of the box (tested)
+            # np.array_split,  # works out of the box (tested)
+            # np.dsplit,  # works out of the box (tested)
+            # np.hsplit,  # works out of the box (tested)
+            # np.vsplit,  # works out of the box (tested)
+            # np.swapaxes,  # works out of the box (tested)
+            # np.moveaxis,  # works out of the box (tested)
+            # np.nansum,  # works out of the box (tested)
+            # np.std,  # works out of the box (tested)
+            # np.nanstd,  # works out of the box (tested)
+            # np.nanvar,  # works out of the box (tested)
+            # np.nanprod,  # works out of the box (tested)
+            # np.diag,  # works out of the box (tested)
+            # np.diag_indices_from,  # returns pure numbers
+            # np.diagflat,  # works out of the box (tested)
+            # np.diagonal,  # works out of the box (tested)
+            # np.ravel,  # returns pure numbers
+            # np.ravel_multi_index,  # returns pure numbers
+            # np.unravel_index,  # returns pure numbers
+            # np.fix,  # works out of the box (tested)
+            # np.round,  # is implemented via np.around
+            # np.may_share_memory,  # returns pure numbers (booleans)
+            # np.linalg.matrix_power,  # works out of the box (tested)
+            # np.linalg.cholesky,  # works out of the box (tested)
+            # np.linalg.multi_dot,  # works out of the box (tested)
+            # np.linalg.matrix_rank,  # returns pure numbers
+            # np.linalg.qr,  # works out of the box (tested)
+            # np.linalg.slogdet,  # undefined units
+            # np.linalg.cond,  # works out of the box (tested)
+            # np.gradient,  # works out of the box (tested)
+            # np.cumsum,  # works out of the box (tested)
+            # np.nancumsum,  # works out of the box (tested)
+            # np.nancumprod,  # we get it for free with np.cumprod (tested)
+            # np.bincount,  # works out of the box (tested)
+            # np.unique,  # works out of the box (tested)
+            # np.min_scalar_type,  # returns dtypes
+            # np.extract,  # works out of the box (tested)
+            # np.setxor1d,  # we get it for free with previously implemented functions (tested)
+            # np.lexsort,  # returns pure numbers
+            # np.digitize,  # returns pure numbers
+            # np.tril_indices_from,  # returns pure numbers
+            # np.triu_indices_from,  # returns pure numbers
+            # np.imag,  # works out of the box (tested)
+            # np.real,  # works out of the box (tested)
+            # np.real_if_close,  # works out of the box (tested)
+            # np.einsum_path,  # returns pure numbers
+            # np.cov,  # returns pure numbers
+            # np.corrcoef,  # returns pure numbers
+            # np.compress,  # works out of the box (tested)
+            # np.take_along_axis,  # works out of the box (tested)
+            # # the following all work out of the box (tested):
+            # np.linalg.cross,
+            # np.linalg.diagonal,
+            # np.linalg.matmul,
+            # np.linalg.matrix_norm,
+            # np.linalg.matrix_transpose,
+            # np.linalg.svdvals,
+            # np.linalg.tensordot,
+            # np.linalg.trace,
+            # np.linalg.vecdot,
+            # np.linalg.vector_norm,
+            # np.astype,
+            # np.matrix_transpose,
+            # np.unique_all,
+            # np.unique_counts,
+            # np.unique_inverse,
+            # np.unique_values,
+            # np.vecdot,
         }
         functions_checked = list()
         bad_funcs = dict()

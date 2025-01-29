@@ -1308,7 +1308,9 @@ class cosmo_array(unyt_array):
             # leaving other arguments a chance to take the lead
             return NotImplemented
 
-        if func not in _HANDLED_FUNCTIONS and func in _UNYT_HANDLED_FUNCTIONS:
+        if func in _HANDLED_FUNCTIONS:
+            return _HANDLED_FUNCTIONS[func](*args, **kwargs)
+        elif func not in _HANDLED_FUNCTIONS and func in _UNYT_HANDLED_FUNCTIONS:
             # first look for unyt's implementation
             return _UNYT_HANDLED_FUNCTIONS[func](*args, **kwargs)
         elif func not in _UNYT_HANDLED_FUNCTIONS:
