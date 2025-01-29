@@ -7,7 +7,6 @@ from swiftsimio.visualisation.projection import (
     project_pixel_grid,
 )
 from swiftsimio.visualisation.slice import (
-    slice_scatter,
     slice_scatter_parallel,
     slice_gas,
 )
@@ -23,13 +22,11 @@ from swiftsimio.visualisation.ray_trace import panel_gas
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 from swiftsimio.visualisation.projection_backends import (
     backends as projection_backends,
-    backends_parallel as projection_backends_parallel,
 )
 from swiftsimio.visualisation.slice_backends import (
     backends as slice_backends,
     backends_parallel as slice_backends_parallel,
 )
-from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
 from swiftsimio.objects import cosmo_array, a
 from unyt.array import unyt_array
@@ -87,7 +84,7 @@ def test_scatter_mass_conservation():
 
     for resolution in resolutions:
         image = scatter(x, y, m, h, resolution, 1.0, 1.0)
-        mass_in_image = image.sum() / (resolution ** 2)
+        mass_in_image = image.sum() / (resolution**2)
 
         # Check mass conservation to 5%
         assert np.isclose(mass_in_image, total_mass, 0.05)
@@ -364,7 +361,7 @@ def test_comoving_versus_physical(filename):
         img = func(data, resolution=256, project="masses")
         # check that we get a physical result
         assert not img.comoving
-        assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
+        assert (img.cosmo_factor.expr - a**aexp).simplify() == 0
         # densities are still compatible with physical
         img = func(data, resolution=256, project="densities")
         assert not img.comoving
@@ -426,14 +423,14 @@ def test_panel_rendering(filename):
 
     plt.imsave(
         "panels_added.png",
-        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(np.sum(panel, axis=-1))),
+        plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(np.sum(panel, axis=-1))),
     )
 
     projected = project_gas(data, res, "masses", backend="renormalised")
 
     plt.imsave(
         "projected.png",
-        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(projected)),
+        plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(projected)),
     )
 
     fullstack = np.zeros((res, res))
@@ -606,7 +603,6 @@ def test_folding_deposit():
     y = np.array([100, 200])
     z = np.array([100, 200])
     m = np.array([1, 1])
-    h = np.array([1e-10, 1e-10])
 
     res = 256
     boxsize = 1.0 * res
@@ -634,8 +630,8 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
     # Volume render the particles
     volume = render_gas(data, npix, parallel=False).to_physical()
 
-    mean_density_deposit = (np.sum(deposition) / npix ** 3).to("Msun / kpc**3").v
-    mean_density_volume = (np.sum(volume) / npix ** 3).to("Msun / kpc**3").v
+    mean_density_deposit = (np.sum(deposition) / npix**3).to("Msun / kpc**3").v
+    mean_density_volume = (np.sum(volume) / npix**3).to("Msun / kpc**3").v
     mean_density_calculated = (
         (np.sum(data.gas.masses) / (data.metadata.boxsize[0] * data.metadata.a) ** 3)
         .to("Msun / kpc**3")
@@ -697,7 +693,7 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
         folds[folding] = deposition
 
-        folding_output[2 ** folding] = (k, power_spectrum, scatter)
+        folding_output[2**folding] = (k, power_spectrum, scatter)
 
     # Now try doing them all together at once.
 
