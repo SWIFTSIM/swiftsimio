@@ -386,7 +386,7 @@ class TestNumpyFunctions:
                         warnings.filterwarnings(
                             action="ignore",
                             category=UserWarning,
-                            message="numpy.savetxt does not preserve units or cosmo",
+                            message="numpy.savetxt does not preserve units",
                         )
                     ua_result = func(*ua_args)
             except u.exceptions.UnytError:
