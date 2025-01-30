@@ -1862,8 +1862,20 @@ def take(a, indices, axis=None, out=None, mode="raise"):
     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-amax = implements(np.amax)(_propagate_cosmo_array_attributes(np.amax._implementation))
-amin = implements(np.amin)(_propagate_cosmo_array_attributes(np.amin._implementation))
+implements(np.amax)(_propagate_cosmo_array_attributes(np.amax._implementation))
+implements(np.amin)(_propagate_cosmo_array_attributes(np.amin._implementation))
+implements(np.average)(_propagate_cosmo_array_attributes(np.average._implementation))
+implements(np.nanmax)(_propagate_cosmo_array_attributes(np.nanmax._implementation))
+implements(np.nanmean)(_propagate_cosmo_array_attributes(np.nanmean._implementation))
+implements(np.nanmedian)(_propagate_cosmo_array_attributes(np.nanmedian._implementation))
+implements(np.nanmin)(_propagate_cosmo_array_attributes(np.nanmin._implementation))
+implements(np.max)(_propagate_cosmo_array_attributes(np.max._implementation))
+implements(np.min)(_propagate_cosmo_array_attributes(np.min._implementation))
+implements(np.mean)(_propagate_cosmo_array_attributes(np.mean._implementation))
+implements(np.median)(_propagate_cosmo_array_attributes(np.median._implementation))
+implements(np.sort)(_propagate_cosmo_array_attributes(np.sort._implementation))
+implements(np.sum)(_propagate_cosmo_array_attributes(np.sum._implementation))
+implements(np.partition)(_propagate_cosmo_array_attributes(np.partition._implementation))
 
 
 @implements(np.meshgrid)
@@ -1875,3 +1887,5 @@ def meshgrid(*xi, **kwargs):
     # iterate over arguments.
     res = np.meshgrid._implementation(*xi, **kwargs)
     return tuple(_copy_cosmo_array_attributes(x, r) for (x, r) in zip(xi, res))
+
+

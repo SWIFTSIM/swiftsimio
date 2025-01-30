@@ -20,7 +20,7 @@ def getfunc(fname):
 
 
 def ca(x, unit=u.Mpc):
-    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a**1, 0.5))
+    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 0.5))
 
 
 def arg_to_ua(arg):
@@ -37,6 +37,9 @@ def to_ua(x):
 def check_result(x_c, x_u):
     if isinstance(x_u, str):
         assert isinstance(x_c, str)
+        return
+    if isinstance(x_u, type) or isinstance(x_u, np.dtype):
+        assert x_u == x_c
         return
     # careful, unyt_quantity is a subclass of unyt_array
     if isinstance(x_u, u.unyt_quantity):
@@ -61,7 +64,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             np.ones(5),
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -72,7 +75,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [1, 1, 1, 1, 1],
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -82,7 +85,7 @@ class TestCosmoArrayInit:
     def test_init_from_unyt_array(self):
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=u.Mpc),
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -92,7 +95,7 @@ class TestCosmoArrayInit:
     def test_init_from_list_of_unyt_arrays(self):
         arr = cosmo_array(
             [u.unyt_array(1, units=u.Mpc) for _ in range(5)],
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -103,20 +106,19 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [
                 cosmo_array(
-                    1, units=u.Mpc, comoving=False, cosmo_factor=cosmo_factor(a**1, 1)
+                    1, units=u.Mpc, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 1)
                 )
                 for _ in range(5)
             ]
         )
         assert isinstance(arr, cosmo_array)
         assert hasattr(arr, "cosmo_factor") and arr.cosmo_factor == cosmo_factor(
-            a**1, 1
+            a ** 1, 1
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
 
 
 class TestNumpyFunctions:
-
     def test_explicitly_handled_funcs(self):
         """
         Make sure we at least handle everything that unyt does, and anything that
@@ -240,75 +242,72 @@ class TestNumpyFunctions:
             "amin": (ca(np.arange(3)),),
             # angle,  # expects complex numbers
             "any": (ca(np.arange(3)),),
-            "append": (
-                ca(np.arange(3)),
-                ca(1),
-            ),
+            "append": (ca(np.arange(3)), ca(1)),
             "apply_along_axis": (lambda x: x, 0, ca(np.eye(3))),
             "argmax": (ca(np.arange(3)),),
             "argmin": (ca(np.arange(3)),),
             # argpartition,  # returns pure numbers
-            # argsort,  # returns pure numbers
-            # argwhere,  # returns pure numbers
-            # array_str,  # hooks into __str__
-            # atleast_1d,  # works out of the box (tested)
-            # atleast_2d,  # works out of the box (tested)
-            # atleast_3d,  # works out of the box (tested)
-            # average,  # works out of the box (tested)
-            # can_cast,  # works out of the box (tested)
-            # common_type,  # works out of the box (tested)
-            # result_type,  # works out of the box (tested)
-            # iscomplex,  # works out of the box (tested)
-            # iscomplexobj,  # works out of the box (tested)
-            # isreal,  # works out of the box (tested)
-            # isrealobj,  # works out of the box (tested)
+            "argsort": (ca(np.arange(3)),),
+            "argwhere": (ca(np.arange(3)),),
+            "array_str": (ca(np.arange(3)),),
+            "atleast_1d": (ca(np.arange(3)),),
+            "atleast_2d": (ca(np.arange(3)),),
+            "atleast_3d": (ca(np.arange(3)),),
+            "average": (ca(np.arange(3)),),
+            "can_cast": (ca(np.arange(3)), np.float64),
+            "common_type": (ca(np.arange(3)), ca(np.arange(3))),
+            "result_type": (ca(np.ones(3)), ca(np.ones(3))),
+            "iscomplex": (ca(np.arange(3)),),
+            "iscomplexobj": (ca(np.arange(3)),),
+            "isreal": (ca(np.arange(3)),),
+            "isrealobj": (ca(np.arange(3)),),
             # nan_to_num,  # works out of the box (tested)
-            # nanargmax,  # return pure numbers
-            # nanargmin,  # return pure numbers
-            # nanmax,  # works out of the box (tested)
-            # nanmean,  # works out of the box (tested)
-            # nanmedian,  # works out of the box (tested)
-            # nanmin,  # works out of the box (tested)
-            # trim_zeros,  # works out of the box (tested)
-            # max,  # works out of the box (tested)
-            # mean,  # works out of the box (tested)
-            # median,  # works out of the box (tested)
-            # min,  # works out of the box (tested)
-            # ndim,  # return pure numbers
-            # shape,  # returns pure numbers
-            # size,  # returns pure numbers
-            # sort,  # works out of the box (tested)
-            # sum,  # works out of the box (tested)
-            # repeat,  # works out of the box (tested)
-            # tile,  # works out of the box (tested)
-            # shares_memory,  # works out of the box (tested)
-            # nonzero,  # works out of the box (tested)
-            # count_nonzero,  # returns pure numbers
-            # flatnonzero,  # works out of the box (tested)
-            # isneginf,  # works out of the box (tested)
-            # isposinf,  # works out of the box (tested)
-            # empty_like,  # works out of the box (tested)
-            # full_like,  # works out of the box (tested)
-            # ones_like,  # works out of the box (tested)
-            # zeros_like,  # works out of the box (tested)
-            # copy,  # works out of the box (tested)
+            "nanargmax": (ca(np.arange(3)),),
+            "nanargmin": (ca(np.arange(3)),),
+            "nanmax": (ca(np.arange(3)),),
+            "nanmean": (ca(np.arange(3)),),
+            "nanmedian": (ca(np.arange(3)),),
+            "nanmin": (ca(np.arange(3)),),
+            "trim_zeros": (ca(np.arange(3)),),
+            "max": (ca(np.arange(3)),),
+            "mean": (ca(np.arange(3)),),
+            "median": (ca(np.arange(3)),),
+            "min": (ca(np.arange(3)),),
+            "ndim": (ca(np.arange(3)),),
+            "shape": (ca(np.arange(3)),),
+            "size": (ca(np.arange(3)),),
+            "sort": (ca(np.arange(3)),),
+            "sum": (ca(np.arange(3)),),
+            "repeat": (ca(np.arange(3)), 2),
+            # "tile": (ca(np.arange(3)), 2),  # reshape broken?
+            "shares_memory": (ca(np.arange(3)), ca(np.arange(3))),
+            "nonzero": (ca(np.arange(3)),),
+            "count_nonzero": (ca(np.arange(3)),),
+            "flatnonzero": (ca(np.arange(3)),),
+            "isneginf": (ca(np.arange(3)),),
+            "isposinf": (ca(np.arange(3)),),
+            #  "empty_like": (ca(np.arange(3)),),  # unyt result wrong?
+            "full_like": (ca(np.arange(3)), ca(1)),
+            "ones_like": (ca(np.arange(3)),),
+            "zeros_like": (ca(np.arange(3)),),
+            "copy": (ca(np.arange(3)),),
             "meshgrid": (ca(np.arange(3)), ca(np.arange(3))),
-            # transpose,  # works out of the box (tested)
-            # reshape,  # works out of the box (tested)
-            # resize,  # works out of the box (tested)
-            # roll,  # works out of the box (tested)
-            # rollaxis,  # works out of the box (tested)
-            # rot90,  # works out of the box (tested)
-            # expand_dims,  # works out of the box (tested)
-            # squeeze,  # works out of the box (tested)
-            # flip,  # works out of the box (tested)
-            # fliplr,  # works out of the box (tested)
-            # flipud,  # works out of the box (tested)
-            # delete,  # works out of the box (tested)
-            # partition,  # works out of the box (tested)
-            # broadcast_to,  # works out of the box (tested)
-            # broadcast_arrays,  # works out of the box (tested)
-            # split,  # works out of the box (tested)
+            "transpose": (ca(np.eye(3)),),
+            "reshape": (ca(np.arange(3)), (3,)),
+            "resize": (ca(np.arange(3)), 6),
+            "roll": (ca(np.arange(3)), 1),
+            "rollaxis": (ca(np.arange(3)), 0),
+            "rot90": (ca(np.eye(3)),),
+            "expand_dims": (ca(np.arange(3)), 0),
+            "squeeze": (ca(np.arange(3)),),
+            "flip": (ca(np.eye(3)),),
+            "fliplr": (ca(np.eye(3)),),
+            "flipud": (ca(np.eye(3)),),
+            "delete": (ca(np.arange(3)), 0),
+            "partition": (ca(np.arange(3)), 1),
+            "broadcast_to": (ca(np.arange(3)), 3),
+            "broadcast_arrays": (ca(np.arange(3)),),
+            "split": (ca(np.arange(3)), 1),
             # array_split,  # works out of the box (tested)
             # dsplit,  # works out of the box (tested)
             # hsplit,  # works out of the box (tested)
@@ -375,7 +374,6 @@ class TestNumpyFunctions:
             # unique_counts,
             # unique_inverse,
             # unique_values,
-            # vecdot,  # actually a ufunc!
         }
         functions_checked = list()
         bad_funcs = dict()
@@ -457,11 +455,7 @@ class TestNumpyFunctions:
             raise AssertionError(
                 "Did not check functions",
                 [
-                    (
-                        ".".join((f.__module__, f.__name__)).replace("numpy", "np")
-                        if type(f) is not np.ufunc
-                        else f"{f.__name__} is a ufunc!"
-                    )
+                    (".".join((f.__module__, f.__name__)).replace("numpy", "np"))
                     for f in unchecked_functions
                 ],
             )
@@ -477,7 +471,7 @@ class TestNumpyFunctions:
                         [1, 2, 3],
                         u.m,
                         comoving=False,
-                        cosmo_factor=cosmo_factor(a**1, 1.0),
+                        cosmo_factor=cosmo_factor(a ** 1, 1.0),
                     ),
                 ),
             ),
@@ -488,13 +482,13 @@ class TestNumpyFunctions:
                         [1, 2, 3],
                         u.m,
                         comoving=False,
-                        cosmo_factor=cosmo_factor(a**1, 1.0),
+                        cosmo_factor=cosmo_factor(a ** 1, 1.0),
                     ),
                     cosmo_array(
                         [1, 2, 3],
                         u.K,
                         comoving=False,
-                        cosmo_factor=cosmo_factor(a**2, 1.0),
+                        cosmo_factor=cosmo_factor(a ** 2, 1.0),
                     ),
                 ),
             ),
@@ -506,19 +500,19 @@ class TestNumpyFunctions:
                             [1, 2, 3],
                             u.m,
                             comoving=False,
-                            cosmo_factor=cosmo_factor(a**1, 1.0),
+                            cosmo_factor=cosmo_factor(a ** 1, 1.0),
                         ),
                         cosmo_array(
                             [1, 2, 3],
                             u.K,
                             comoving=False,
-                            cosmo_factor=cosmo_factor(a**2, 1.0),
+                            cosmo_factor=cosmo_factor(a ** 2, 1.0),
                         ),
                         cosmo_array(
                             [1, 2, 3],
                             u.kg,
                             comoving=False,
-                            cosmo_factor=cosmo_factor(a**3, 1.0),
+                            cosmo_factor=cosmo_factor(a ** 3, 1.0),
                         ),
                     ],
                 ),
@@ -530,7 +524,7 @@ class TestNumpyFunctions:
         (
             None,
             cosmo_array(
-                [1, 2, 3], u.s, comoving=False, cosmo_factor=cosmo_factor(a**1, 1.0)
+                [1, 2, 3], u.s, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 1.0)
             ),
             np.array([1, 2, 3]),
         ),
@@ -547,19 +541,19 @@ class TestNumpyFunctions:
                     np.linspace(0, 5, 11),
                     u.kpc,
                     comoving=False,
-                    cosmo_factor=cosmo_factor(a**1, 1.0),
+                    cosmo_factor=cosmo_factor(a ** 1, 1.0),
                 ),
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.K,
                     comoving=False,
-                    cosmo_factor=cosmo_factor(a**2, 1.0),
+                    cosmo_factor=cosmo_factor(a ** 2, 1.0),
                 ),
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.Msun,
                     comoving=False,
-                    cosmo_factor=cosmo_factor(a**3, 1.0),
+                    cosmo_factor=cosmo_factor(a ** 3, 1.0),
                 ),
             ],
         }[bins_type]
@@ -606,9 +600,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**-1, 1.0),
-                    np.histogram2d: cosmo_factor(a**-3, 1.0),
-                    np.histogramdd: cosmo_factor(a**-6, 1.0),
+                    np.histogram: cosmo_factor(a ** -1, 1.0),
+                    np.histogram2d: cosmo_factor(a ** -3, 1.0),
+                    np.histogramdd: cosmo_factor(a ** -6, 1.0),
                 }[func]
             )
         elif density and isinstance(weights, cosmo_array):
@@ -616,9 +610,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**0, 1.0),
-                    np.histogram2d: cosmo_factor(a**-2, 1.0),
-                    np.histogramdd: cosmo_factor(a**-5, 1.0),
+                    np.histogram: cosmo_factor(a ** 0, 1.0),
+                    np.histogram2d: cosmo_factor(a ** -2, 1.0),
+                    np.histogramdd: cosmo_factor(a ** -5, 1.0),
                 }[func]
             )
         elif not density and isinstance(weights, cosmo_array):
@@ -626,9 +620,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**1, 1.0),
-                    np.histogram2d: cosmo_factor(a**1, 1.0),
-                    np.histogramdd: cosmo_factor(a**1, 1.0),
+                    np.histogram: cosmo_factor(a ** 1, 1.0),
+                    np.histogram2d: cosmo_factor(a ** 1, 1.0),
+                    np.histogramdd: cosmo_factor(a ** 1, 1.0),
                 }[func]
             )
         ret_bins = {
@@ -640,9 +634,9 @@ class TestNumpyFunctions:
             ret_bins,
             (
                 [
-                    cosmo_factor(a**1, 1.0),
-                    cosmo_factor(a**2, 1.0),
-                    cosmo_factor(a**3, 1.0),
+                    cosmo_factor(a ** 1, 1.0),
+                    cosmo_factor(a ** 2, 1.0),
+                    cosmo_factor(a ** 3, 1.0),
                 ]
             ),
         ):
@@ -682,12 +676,12 @@ class TestCosmoQuantity:
             1,
             u.m,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, 1.0),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             valid_transform=True,
         )
         res = getattr(cq, func)(*args)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True
 
     @pytest.mark.parametrize("prop", ["T", "ua", "unit_array"])
@@ -696,10 +690,10 @@ class TestCosmoQuantity:
             1,
             u.m,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, 1.0),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             valid_transform=True,
         )
         res = getattr(cq, prop)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True
