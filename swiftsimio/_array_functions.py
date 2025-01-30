@@ -1,7 +1,6 @@
 import warnings
 import numpy as np
 from unyt import unyt_quantity, unyt_array
-from unyt._array_functions import implements
 from .objects import (
     cosmo_array,
     cosmo_quantity,
@@ -16,6 +15,17 @@ from .objects import (
 )
 
 _HANDLED_FUNCTIONS = {}
+
+
+def implements(numpy_function):
+    """Register an __array_function__ implementation for unyt_array objects."""
+
+    # See NEP 18 https://numpy.org/neps/nep-0018-array-function-protocol.html
+    def decorator(func):
+        _HANDLED_FUNCTIONS[numpy_function] = func
+        return func
+
+    return decorator
 
 
 def _return_helper(res, helper_result, ret_cf, out=None):
@@ -1707,7 +1717,7 @@ def einsum(
         *helper_result_operands["args"],
         **helper_result["kwargs"],
     )
-    return _return_helper(res, helper_result, ret_cf, out=out)
+    return _return_helper(res, helper_result_operands, ret_cf, out=out)
 
 
 @implements(np.convolve)
@@ -1859,4 +1869,16 @@ def amax(
     )
     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
     res = np.amax._implementation(*helper_result["args"], **helper_result["kwargs"])
+    return _return_helper(res, helper_result, ret_cf, out=out)
+
+
+@implements(np.amin)
+def amin(
+    a, axis=None, out=None, keepdims=np._NoValue, initial=np._NoValue, where=np._NoValue
+):
+    helper_result = _prepare_array_func_args(
+        a, axis=axis, out=out, keepdims=keepdims, initial=initial, where=where
+    )
+    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    res = np.amin._implementation(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf, out=out)

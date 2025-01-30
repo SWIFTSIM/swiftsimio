@@ -1408,16 +1408,32 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             Description of the compression filters that were applied to that array in the
             hdf5 file.
         """
-        input_units = units
         if not (
             bypass_validation
             or isinstance(input_scalar, (numeric_type, np.number, np.ndarray))
         ):
             raise RuntimeError("unyt_quantity values must be numeric")
-        if input_units is None:
-            units = getattr(input_scalar, "units", None)
-        else:
-            units = input_units
+
+        units = getattr(input_scalar, "units", None) if units is None else units
+        name = getattr(input_scalar, "name", None) if name is None else name
+        cosmo_factor = (
+            getattr(input_scalar, "cosmo_factor", None)
+            if cosmo_factor is None
+            else cosmo_factor
+        )
+        comoving = (
+            getattr(input_scalar, "comoving", None) if comoving is None else comoving
+        )
+        valid_transform = (
+            getattr(input_scalar, "valid_transform", None)
+            if valid_transform is not None
+            else valid_transform
+        )
+        compression = (
+            getattr(input_scalar, "compression", None)
+            if compression is None
+            else compression
+        )
         ret = super().__new__(
             cls,
             np.asarray(input_scalar),
