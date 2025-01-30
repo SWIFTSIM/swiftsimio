@@ -12,6 +12,8 @@ from .objects import (
     _comparison_cosmo_factor,
     _power_cosmo_factor,
     _return_without_cosmo_factor,
+    _propagate_cosmo_array_attributes,
+    _copy_cosmo_array_attributes,
 )
 
 _HANDLED_FUNCTIONS = {}
@@ -1860,25 +1862,16 @@ def take(a, indices, axis=None, out=None, mode="raise"):
     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-@implements(np.amax)
-def amax(
-    a, axis=None, out=None, keepdims=np._NoValue, initial=np._NoValue, where=np._NoValue
-):
-    helper_result = _prepare_array_func_args(
-        a, axis=axis, out=out, keepdims=keepdims, initial=initial, where=where
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = np.amax._implementation(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
+amax = implements(np.amax)(_propagate_cosmo_array_attributes(np.amax._implementation))
+amin = implements(np.amin)(_propagate_cosmo_array_attributes(np.amin._implementation))
 
 
-@implements(np.amin)
-def amin(
-    a, axis=None, out=None, keepdims=np._NoValue, initial=np._NoValue, where=np._NoValue
-):
-    helper_result = _prepare_array_func_args(
-        a, axis=axis, out=out, keepdims=keepdims, initial=initial, where=where
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = np.amin._implementation(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
+@implements(np.meshgrid)
+def meshgrid(*xi, **kwargs):
+    # meshgrid is a unique case: arguments never interact with each other, so we don't
+    # want to use our _prepare_array_func_args helper (that will try to coerce to
+    # compatible comoving, cosmo_factor).
+    # However we can't just use _propagate_cosmo_array_attributes because we need to
+    # iterate over arguments.
+    res = np.meshgrid._implementation(*xi, **kwargs)
+    return tuple(_copy_cosmo_array_attributes(x, r) for (x, r) in zip(xi, res))
