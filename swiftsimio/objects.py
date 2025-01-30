@@ -113,18 +113,29 @@ class InvalidConversionError(Exception):
         self.message = message
 
 
+def _copy_cosmo_array_attributes(from_ca, to_ca):
+    if not isinstance(to_ca, cosmo_array):
+        return to_ca
+    if hasattr(from_ca, "cosmo_factor"):
+        to_ca.cosmo_factor = from_ca.cosmo_factor
+    if hasattr(from_ca, "comoving"):
+        to_ca.comoving = from_ca.comoving
+    if hasattr(from_ca, "valid_transform"):
+        to_ca.valid_transform = from_ca.valid_transform
+    return to_ca
+
+
 def _propagate_cosmo_array_attributes(func):
-    def wrapped(self, *args, **kwargs):
-        ret = func(self, *args, **kwargs)
+    # can work on methods (obj is self) and functions (obj is first argument)
+    def wrapped(obj, *args, **kwargs):
+        ret = func(obj, *args, **kwargs)
         if not isinstance(ret, cosmo_array):
             return ret
-        if hasattr(self, "cosmo_factor"):
-            ret.cosmo_factor = self.cosmo_factor
-        if hasattr(self, "comoving"):
-            ret.comoving = self.comoving
-        if hasattr(self, "valid_transform"):
-            ret.valid_transform = self.valid_transform
-        return ret
+        ret = _copy_cosmo_array_attributes(obj, ret)
+        if ret.shape == ():
+            return cosmo_quantity(ret)
+        else:
+            return ret
 
     return wrapped
 
@@ -1028,9 +1039,9 @@ class cosmo_array(unyt_array):
             return cosmo_array(taken)
 
     @_propagate_cosmo_array_attributes
-    def reshape(self, shape, **kwargs):
-        reshaped = unyt_array.reshape(self, shape, **kwargs)
-        if shape == ():
+    def reshape(self, shape, /, *, order="C"):
+        reshaped = unyt_array.reshape(self, shape, order=order)
+        if shape == () or shape is None:
             return cosmo_quantity(reshaped)
         else:
             return reshaped
@@ -1426,7 +1437,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         )
         valid_transform = (
             getattr(input_scalar, "valid_transform", None)
-            if valid_transform is not None
+            if valid_transform is None
             else valid_transform
         )
         compression = (
@@ -1448,18 +1459,13 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             compression=compression,
         )
         if ret.size > 1:
-            raise RuntimeError("unyt_quantity instances must be scalars")
+            raise RuntimeError("cosmo_quantity instances must be scalars")
         return ret
 
-    def reshape(self, *shape, order="C"):
-        # this is necessary to support some numpy operations
-        # natively, like numpy.meshgrid, which internally performs
-        # reshaping, e.g., arr.reshape(1, -1), which doesn't affect the size,
-        # but does change the object's internal representation to a >0D array
-        # see https://github.com/yt-project/unyt/issues/224
-        if len(shape) == 1:
-            shape = shape[0]
+    @_propagate_cosmo_array_attributes
+    def reshape(self, shape, /, *, order="C"):
+        reshaped = unyt_array.reshape(self, shape, order=order)
         if shape == () or shape is None:
-            return super().reshape(shape, order=order)
+            return reshaped
         else:
-            return cosmo_array(self).reshape(shape, order=order)
+            return cosmo_array(reshaped)
