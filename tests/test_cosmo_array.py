@@ -123,6 +123,7 @@ class TestNumpyFunctions:
         'just worked' for unyt but that we need to handle by hand.
         """
         from unyt._array_functions import _HANDLED_FUNCTIONS
+        from unyt.tests.test_array_functions import NOOP_FUNCTIONS
 
         functions_to_check = {
             # FUNCTIONS UNYT HANDLES EXPLICITLY:
@@ -238,11 +239,14 @@ class TestNumpyFunctions:
             "amax": (ca(np.arange(3)),),
             "amin": (ca(np.arange(3)),),
             # angle,  # expects complex numbers
-            # any,  # works out of the box (tested)
-            # append,  # we get it for free with np.concatenate (tested)
-            # apply_along_axis,  # works out of the box (tested)
-            # argmax,  # returns pure numbers
-            # argmin,  # returns pure numbers
+            "any": (ca(np.arange(3)),),
+            "append": (
+                ca(np.arange(3)),
+                ca(1),
+            ),
+            "apply_along_axis": (lambda x: x, 0, ca(np.eye(3))),
+            "argmax": (ca(np.arange(3)),),
+            "argmin": (ca(np.arange(3)),),
             # argpartition,  # returns pure numbers
             # argsort,  # returns pure numbers
             # argwhere,  # returns pure numbers
@@ -371,7 +375,7 @@ class TestNumpyFunctions:
             # unique_counts,
             # unique_inverse,
             # unique_values,
-            # vecdot,
+            # vecdot,  # actually a ufunc!
         }
         functions_checked = list()
         bad_funcs = dict()
@@ -443,7 +447,9 @@ class TestNumpyFunctions:
                 "(obtained, obtained with unyt input): " + str(bad_funcs)
             )
         unchecked_functions = [
-            f for f in _HANDLED_FUNCTIONS if f not in functions_checked
+            f
+            for f in set(_HANDLED_FUNCTIONS) | NOOP_FUNCTIONS
+            if f not in functions_checked
         ]
         try:
             assert len(unchecked_functions) == 0
@@ -451,7 +457,11 @@ class TestNumpyFunctions:
             raise AssertionError(
                 "Did not check functions",
                 [
-                    ".".join((f.__module__, f.__name__)).replace("numpy", "np")
+                    (
+                        ".".join((f.__module__, f.__name__)).replace("numpy", "np")
+                        if type(f) is not np.ufunc
+                        else f"{f.__name__} is a ufunc!"
+                    )
                     for f in unchecked_functions
                 ],
             )
