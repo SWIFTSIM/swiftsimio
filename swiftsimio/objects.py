@@ -7,13 +7,8 @@ import warnings
 
 import unyt
 from unyt import unyt_array, unyt_quantity
-from unyt.array import multiple_output_operators, _iterable
+from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
-
-try:
-    from unyt.array import POWER_MAPPING
-except ImportError:
-    raise ImportError("unyt >=2.9.0 required")
 
 import sympy
 import numpy as np
