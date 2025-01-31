@@ -15,12 +15,115 @@ from .objects import (
     _propagate_cosmo_array_attributes,
     _copy_cosmo_array_attributes,
 )
+from unyt._array_functions import (
+    dot as unyt_dot,
+    vdot as unyt_vdot,
+    inner as unyt_inner,
+    outer as unyt_outer,
+    kron as unyt_kron,
+    histogram_bin_edges as unyt_histogram_bin_edges,
+    linalg_inv as unyt_linalg_inv,
+    linalg_tensorinv as unyt_linalg_tensorinv,
+    linalg_pinv as unyt_linalg_pinv,
+    linalg_svd as unyt_linalg_svd,
+    histogram as unyt_histogram,
+    histogram2d as unyt_histogram2d,
+    histogramdd as unyt_histogramdd,
+    concatenate as unyt_concatenate,
+    intersect1d as unyt_intersect1d,
+    union1d as unyt_union1d,
+    norm as unyt_linalg_norm,  # not linalg_norm, doesn't follow usual pattern
+    vstack as unyt_vstack,
+    hstack as unyt_hstack,
+    dstack as unyt_dstack,
+    column_stack as unyt_column_stack,
+    stack as unyt_stack,
+    around as unyt_around,
+    block as unyt_block,
+    ftt_fft as unyt_fft_fft,  # unyt has a copy-pasted typo fft -> ftt
+    ftt_fft2 as unyt_fft_fft2,
+    ftt_fftn as unyt_fft_fftn,
+    ftt_hfft as unyt_fft_hfft,
+    ftt_rfft as unyt_fft_rfft,
+    ftt_rfft2 as unyt_fft_rfft2,
+    ftt_rfftn as unyt_fft_rfftn,
+    ftt_ifft as unyt_fft_ifft,
+    ftt_ifft2 as unyt_fft_ifft2,
+    ftt_ifftn as unyt_fft_ifftn,
+    ftt_ihfft as unyt_fft_ihfft,
+    ftt_irfft as unyt_fft_irfft,
+    ftt_irfft2 as unyt_fft_irfft2,
+    ftt_irfftn as unyt_fft_irfftn,
+    fft_fftshift as unyt_fft_fftshift,
+    fft_ifftshift as unyt_fft_ifftshift,
+    sort_complex as unyt_sort_complex,
+    isclose as unyt_isclose,
+    allclose as unyt_allclose,
+    array2string as unyt_array2string,
+    cross as unyt_cross,
+    array_equal as unyt_array_equal,
+    array_equiv as unyt_array_equiv,
+    linspace as unyt_linspace,
+    logspace as unyt_logspace,
+    geomspace as unyt_geomspace,
+    copyto as unyt_copyto,
+    prod as unyt_prod,
+    var as unyt_var,
+    trace as unyt_trace,
+    percentile as unyt_percentile,
+    quantile as unyt_quantile,
+    nanpercentile as unyt_nanpercentile,
+    nanquantile as unyt_nanquantile,
+    linalg_det as unyt_linalg_det,
+    diff as unyt_diff,
+    ediff1d as unyt_ediff1d,
+    ptp as unyt_ptp,
+    pad as unyt_pad,
+    choose as unyt_choose,
+    insert as unyt_insert,
+    linalg_lstsq as unyt_linalg_lstsq,
+    linalg_solve as unyt_linalg_solve,
+    linalg_tensorsolve as unyt_linalg_tensorsolve,
+    linalg_eig as unyt_linalg_eig,
+    linalg_eigh as unyt_linalg_eigh,
+    linalg_eigvals as unyt_linalg_eigvals,
+    linalg_eigvalsh as unyt_linalg_eigvalsh,
+    savetxt as unyt_savetxt,
+    fill_diagonal as unyt_fill_diagonal,
+    isin as unyt_isin,
+    place as unyt_place,
+    put as unyt_put,
+    put_along_axis as unyt_put_along_axis,
+    putmask as unyt_putmask,
+    searchsorted as unyt_searchsorted,
+    select as unyt_select,
+    setdiff1d as unyt_setdiff1d,
+    sinc as unyt_sinc,
+    clip as unyt_clip,
+    where as unyt_where,
+    triu as unyt_triu,
+    tril as unyt_tril,
+    einsum as unyt_einsum,
+    convolve as unyt_convolve,
+    correlate as unyt_correlate,
+    tensordot as unyt_tensordot,
+    unwrap as unyt_unwrap,
+    interp as unyt_interp,
+    array_repr as unyt_array_repr,
+    linalg_outer as unyt_linalg_outer,
+    trapezoid as unyt_trapezoid,
+    isin as unyt_in1d,
+    take as unyt_take,
+)
 
 _HANDLED_FUNCTIONS = {}
 
+# first we define helper functions to handle repetitive operations in wrapping unyt &
+# numpy functions (we will actually wrap the functions below):
+
 
 def implements(numpy_function):
-    """Register an __array_function__ implementation for unyt_array objects."""
+    """Register an __array_function__ implementation for cosmo_array objects."""
 
     # See NEP 18 https://numpy.org/neps/nep-0018-array-function-protocol.html
     def decorator(func):
@@ -74,6 +177,80 @@ def _return_helper(res, helper_result, ret_cf, out=None):
     )
 
 
+def _default_unary_wrapper(unyt_func, cosmo_factor_wrapper):
+
+    # assumes that we have one primary argument that will be handled
+    # by the cosmo_factor_wrapper
+    def wrapper(*args, **kwargs):
+        helper_result = _prepare_array_func_args(*args, **kwargs)
+        ret_cf = cosmo_factor_wrapper(helper_result["ca_cfs"][0])
+        res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
+        if "out" in kwargs:
+            return _return_helper(res, helper_result, ret_cf, out=kwargs["out"])
+        else:
+            return _return_helper(res, helper_result, ret_cf)
+
+    return wrapper
+
+
+def _default_binary_wrapper(unyt_func, cosmo_factor_wrapper):
+
+    # assumes we have two primary arguments that will be handled
+    # by the cosmo_factor_wrapper
+    def wrapper(*args, **kwargs):
+        helper_result = _prepare_array_func_args(*args, **kwargs)
+        ret_cf = cosmo_factor_wrapper(
+            helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
+        )
+        res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
+        if "out" in kwargs:
+            return _return_helper(res, helper_result, ret_cf, out=kwargs["out"])
+        else:
+            return _return_helper(res, helper_result, ret_cf)
+
+    return wrapper
+
+
+def _default_comparison_wrapper(unyt_func):
+
+    # assumes we have two primary arguments that will be handled with
+    # _comparison_cosmo_factor with them as the inputs
+    def wrapper(*args, **kwargs):
+        helper_result = _prepare_array_func_args(*args, **kwargs)
+        ret_cf = _comparison_cosmo_factor(
+            helper_result["ca_cfs"][0],
+            helper_result["ca_cfs"][1],
+            inputs=args[:2],
+        )
+        res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
+        return _return_helper(res, helper_result, ret_cf)
+
+    return wrapper
+
+
+def _default_oplist_wrapper(unyt_func):
+
+    # assumes first argument is a list of operands
+    # assumes that we always preserve the cosmo factor of the first
+    # element in the list of operands
+    def wrapper(*args, **kwargs):
+        helper_result = _prepare_array_func_args(*args, **kwargs)
+        helper_result_oplist = _prepare_array_func_args(*args[0])
+        ret_cf = _preserve_cosmo_factor(helper_result_oplist["ca_cfs"][0])
+        res = unyt_func(
+            helper_result_oplist["args"],
+            *helper_result["args"][1:],
+            **helper_result["kwargs"],
+        )
+        return _return_helper(res, helper_result_oplist, ret_cf)
+
+    return wrapper
+
+
+# Now we wrap functions that unyt handles explicitly (below that will be those not handled
+# explicitly):
+
+
 @implements(np.array2string)
 def array2string(
     a,
@@ -92,7 +269,6 @@ def array2string(
     *,
     legacy=None,
 ):
-    from unyt._array_functions import array2string as unyt_array2string
 
     res = unyt_array2string(
         a,
@@ -119,69 +295,15 @@ def array2string(
     return res + append
 
 
-@implements(np.dot)
-def dot(a, b, out=None):
-    from unyt._array_functions import dot as unyt_dot
-
-    helper_result = _prepare_array_func_args(a, b, out=out)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_dot(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.vdot)
-def vdot(a, b, /):
-    from unyt._array_functions import vdot as unyt_vdot
-
-    helper_result = _prepare_array_func_args(a, b)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_vdot(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.inner)
-def inner(a, b, /):
-    from unyt._array_functions import inner as unyt_inner
-
-    helper_result = _prepare_array_func_args(a, b)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_inner(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.outer)
-def outer(a, b, out=None):
-    from unyt._array_functions import outer as unyt_outer
-
-    helper_result = _prepare_array_func_args(a, b, out=out)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_outer(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.kron)
-def kron(a, b):
-    from unyt._array_functions import kron as unyt_kron
-
-    helper_result = _prepare_array_func_args(a, b)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_kron(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.dot)(_default_binary_wrapper(unyt_dot, _multiply_cosmo_factor))
+implements(np.vdot)(_default_binary_wrapper(unyt_vdot, _multiply_cosmo_factor))
+implements(np.inner)(_default_binary_wrapper(unyt_inner, _multiply_cosmo_factor))
+implements(np.outer)(_default_binary_wrapper(unyt_outer, _multiply_cosmo_factor))
+implements(np.kron)(_default_binary_wrapper(unyt_kron, _multiply_cosmo_factor))
 
 
 @implements(np.histogram_bin_edges)
 def histogram_bin_edges(a, bins=10, range=None, weights=None):
-    from unyt._array_functions import histogram_bin_edges as unyt_histogram_bin_edges
 
     helper_result = _prepare_array_func_args(a, bins=bins, range=range, weights=weights)
     if not isinstance(bins, str) and np.ndim(bins) == 1:
@@ -196,56 +318,22 @@ def histogram_bin_edges(a, bins=10, range=None, weights=None):
     return _return_helper(res, helper_result, ret_cf)
 
 
-@implements(np.linalg.inv)
-def linalg_inv(a):
-    from unyt._array_functions import linalg_inv as unyt_linalg_inv
-
-    helper_result = _prepare_array_func_args(a)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_linalg_inv(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.linalg.tensorinv)
-def linalg_tensorinv(a, ind=2):
-    from unyt._array_functions import linalg_tensorinv as unyt_linalg_tensorinv
-
-    helper_result = _prepare_array_func_args(a, ind=ind)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_linalg_tensorinv(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.linalg.pinv)
-def linalg_pinv(a, rcond=None, hermitian=False, *, rtol=np._NoValue):
-    from unyt._array_functions import linalg_pinv as unyt_linalg_pinv
-
-    helper_result = _prepare_array_func_args(
-        a, rcond=rcond, hermitian=hermitian, rtol=rtol
-    )
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_linalg_pinv(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.linalg.svd)
-def linalg_svd(a, full_matrices=True, compute_uv=True, hermitian=False):
-    from unyt._array_functions import linalg_svd as unyt_linalg_svd
-
-    helper_result = _prepare_array_func_args(
-        a, full_matrices=full_matrices, compute_uv=compute_uv, hermitian=hermitian
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    ress = unyt_linalg_svd(*helper_result["args"], **helper_result["kwargs"])
-    if compute_uv:
-        return tuple(_return_helper(res, helper_result, ret_cf) for res in ress)
-    else:
-        return _return_helper(ress, helper_result, ret_cf)
+implements(np.linalg.inv)(
+    _default_unary_wrapper(unyt_linalg_inv, _reciprocal_cosmo_factor)
+)
+implements(np.linalg.tensorinv)(
+    _default_unary_wrapper(unyt_linalg_tensorinv, _reciprocal_cosmo_factor)
+)
+implements(np.linalg.pinv)(
+    _default_unary_wrapper(unyt_linalg_pinv, _reciprocal_cosmo_factor)
+)
+implements(np.linalg.svd)(
+    _default_unary_wrapper(unyt_linalg_svd, _preserve_cosmo_factor)
+)
 
 
 @implements(np.histogram)
 def histogram(a, bins=10, range=None, density=None, weights=None):
-    from unyt._array_functions import histogram as unyt_histogram
 
     helper_result = _prepare_array_func_args(
         a, bins=bins, range=range, density=density, weights=weights
@@ -277,7 +365,6 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
 
 @implements(np.histogram2d)
 def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
-    from unyt._array_functions import histogram2d as unyt_histogram2d
 
     if range is not None:
         xrange, yrange = range
@@ -394,7 +481,6 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
 
 @implements(np.histogramdd)
 def histogramdd(sample, bins=10, range=None, density=None, weights=None):
-    from unyt._array_functions import histogramdd as unyt_histogramdd
 
     D = len(sample)
     if range is not None:
@@ -500,157 +586,21 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
     )
 
 
-@implements(np.concatenate)
-def concatenate(tup, axis=0, out=None, dtype=None, casting="same_kind"):
-    from unyt._array_functions import concatenate as unyt_concatenate
-
-    helper_result = _prepare_array_func_args(
-        tup, axis=axis, out=out, dtype=dtype, casting=casting
-    )
-    helper_result_concat_items = _prepare_array_func_args(*tup)
-    ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
-    res = unyt_concatenate(
-        helper_result_concat_items["args"],
-        *helper_result["args"][1:],
-        **helper_result["kwargs"],
-    )
-    return _return_helper(res, helper_result_concat_items, ret_cf, out=out)
-
-
-@implements(np.cross)
-def cross(a, b, axisa=-1, axisb=-1, axisc=-1, axis=None):
-    from unyt._array_functions import cross as unyt_cross
-
-    helper_result = _prepare_array_func_args(
-        a,
-        b,
-        axisa=axisa,
-        axisb=axisb,
-        axisc=axisc,
-        axis=axis,
-    )
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_cross(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.intersect1d)
-def intersect1d(ar1, ar2, assume_unique=False, return_indices=False):
-    from unyt._array_functions import intersect1d as unyt_intersect1d
-
-    helper_result = _prepare_array_func_args(
-        ar1, ar2, assume_unique=assume_unique, return_indices=return_indices
-    )
-    ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_intersect1d(*helper_result["args"], **helper_result["kwargs"])
-    if return_indices:
-        return res
-    else:
-        return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.union1d)
-def union1d(ar1, ar2):
-    from unyt._array_functions import union1d as unyt_union1d
-
-    helper_result = _prepare_array_func_args(ar1, ar2)
-    ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_union1d(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.linalg.norm)
-def linalg_norm(x, ord=None, axis=None, keepdims=False):
-    # they didn't use linalg_norm, doesn't follow usual pattern:
-    from unyt._array_functions import norm as unyt_linalg_norm
-
-    helper_result = _prepare_array_func_args(x, ord=ord, axis=axis, keepdims=keepdims)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_linalg_norm(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.vstack)
-def vstack(tup, *, dtype=None, casting="same_kind"):
-    from unyt._array_functions import vstack as unyt_vstack
-
-    helper_result = _prepare_array_func_args(tup, dtype=dtype, casting=casting)
-    helper_result_concat_items = _prepare_array_func_args(*tup)
-    ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
-    res = unyt_vstack(
-        helper_result_concat_items["args"],
-        *helper_result["args"][1:],
-        **helper_result["kwargs"],
-    )
-    return _return_helper(res, helper_result_concat_items, ret_cf)
-
-
-@implements(np.hstack)
-def hstack(tup, *, dtype=None, casting="same_kind"):
-    from unyt._array_functions import hstack as unyt_hstack
-
-    helper_result = _prepare_array_func_args(tup, dtype=dtype, casting=casting)
-    helper_result_concat_items = _prepare_array_func_args(*tup)
-    ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
-    res = unyt_hstack(
-        helper_result_concat_items["args"],
-        *helper_result["args"][1:],
-        **helper_result["kwargs"],
-    )
-    return _return_helper(res, helper_result_concat_items, ret_cf)
-
-
-@implements(np.dstack)
-def dstack(tup):
-    from unyt._array_functions import dstack as unyt_dstack
-
-    helper_result_concat_items = _prepare_array_func_args(*tup)
-    ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
-    res = unyt_dstack(helper_result_concat_items["args"])
-    return _return_helper(res, helper_result_concat_items, ret_cf)
-
-
-@implements(np.column_stack)
-def column_stack(tup):
-    from unyt._array_functions import column_stack as unyt_column_stack
-
-    helper_result_concat_items = _prepare_array_func_args(*tup)
-    ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
-    res = unyt_column_stack(helper_result_concat_items["args"])
-    return _return_helper(res, helper_result_concat_items, ret_cf)
-
-
-@implements(np.stack)
-def stack(arrays, axis=0, out=None, *, dtype=None, casting="same_kind"):
-    from unyt._array_functions import stack as unyt_stack
-
-    helper_result = _prepare_array_func_args(
-        arrays, axis=axis, out=out, dtype=dtype, casting=casting
-    )
-    helper_result_concat_items = _prepare_array_func_args(*arrays)
-    ret_cf = _preserve_cosmo_factor(helper_result_concat_items["ca_cfs"][0])
-    res = unyt_stack(
-        helper_result_concat_items["args"],
-        *helper_result["args"][1:],
-        **helper_result["kwargs"],
-    )
-    return _return_helper(res, helper_result_concat_items, ret_cf, out=out)
-
-
-@implements(np.around)
-def around(a, decimals=0, out=None):
-    from unyt._array_functions import around as unyt_around
-
-    helper_result = _prepare_array_func_args(a, decimals=decimals, out=out)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_around(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
+implements(np.concatenate)(_default_oplist_wrapper(unyt_concatenate))
+implements(np.cross)(_default_binary_wrapper(unyt_cross, _multiply_cosmo_factor))
+implements(np.intersect1d)(
+    _default_binary_wrapper(unyt_intersect1d, _preserve_cosmo_factor)
+)
+implements(np.union1d)(_default_binary_wrapper(unyt_union1d, _preserve_cosmo_factor))
+implements(np.linalg.norm)(
+    _default_unary_wrapper(unyt_linalg_norm, _preserve_cosmo_factor)
+)
+implements(np.vstack)(_default_oplist_wrapper(unyt_vstack))
+implements(np.hstack)(_default_oplist_wrapper(unyt_hstack))
+implements(np.dstack)(_default_oplist_wrapper(unyt_dstack))
+implements(np.column_stack)(_default_oplist_wrapper(unyt_column_stack))
+implements(np.stack)(_default_oplist_wrapper(unyt_stack))
+implements(np.around)(_default_unary_wrapper(unyt_around, _preserve_cosmo_factor))
 
 
 def _recursive_to_comoving(lst):
@@ -718,249 +668,58 @@ def _prepare_array_block_args(lst, recursing=False):
 
 @implements(np.block)
 def block(arrays):
-    from unyt._array_functions import block as unyt_block
-
+    # block is a special case since we need to recurse more than one level
+    # down the list of arrays.
     helper_result_block = _prepare_array_block_args(arrays)
     ret_cf = helper_result_block["cosmo_factor"]
     res = unyt_block(helper_result_block["args"])
     return _return_helper(res, helper_result_block, ret_cf)
 
 
-# UNYT HAS A COPY-PASTED TYPO fft -> ftt
+implements(np.fft.fft)(_default_unary_wrapper(unyt_fft_fft, _reciprocal_cosmo_factor))
+implements(np.fft.fft2)(_default_unary_wrapper(unyt_fft_fft2, _reciprocal_cosmo_factor))
+implements(np.fft.fftn)(_default_unary_wrapper(unyt_fft_fftn, _reciprocal_cosmo_factor))
+implements(np.fft.hfft)(_default_unary_wrapper(unyt_fft_hfft, _reciprocal_cosmo_factor))
+implements(np.fft.rfft)(_default_unary_wrapper(unyt_fft_rfft, _reciprocal_cosmo_factor))
+implements(np.fft.rfft2)(
+    _default_unary_wrapper(unyt_fft_rfft2, _reciprocal_cosmo_factor)
+)
+implements(np.fft.rfftn)(
+    _default_unary_wrapper(unyt_fft_rfftn, _reciprocal_cosmo_factor)
+)
+implements(np.fft.ifft)(_default_unary_wrapper(unyt_fft_ifft, _reciprocal_cosmo_factor))
+implements(np.fft.ifft2)(
+    _default_unary_wrapper(unyt_fft_ifft2, _reciprocal_cosmo_factor)
+)
+implements(np.fft.ifftn)(
+    _default_unary_wrapper(unyt_fft_ifftn, _reciprocal_cosmo_factor)
+)
+implements(np.fft.ihfft)(
+    _default_unary_wrapper(unyt_fft_ihfft, _reciprocal_cosmo_factor)
+)
+implements(np.fft.irfft)(
+    _default_unary_wrapper(unyt_fft_irfft, _reciprocal_cosmo_factor)
+)
+implements(np.fft.irfft2)(
+    _default_unary_wrapper(unyt_fft_irfft2, _reciprocal_cosmo_factor)
+)
+implements(np.fft.irfftn)(
+    _default_unary_wrapper(unyt_fft_irfftn, _reciprocal_cosmo_factor)
+)
+implements(np.fft.fftshift)(
+    _default_unary_wrapper(unyt_fft_fftshift, _preserve_cosmo_factor)
+)
+implements(np.fft.ifftshift)(
+    _default_unary_wrapper(unyt_fft_ifftshift, _preserve_cosmo_factor)
+)
 
-
-@implements(np.fft.fft)
-def ftt_fft(a, n=None, axis=-1, norm=None, out=None):
-    from unyt._array_functions import ftt_fft as unyt_fft_fft
-
-    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_fft(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.fft2)
-def ftt_fft2(a, s=None, axes=(-2, -1), norm=None, out=None):
-    from unyt._array_functions import ftt_fft2 as unyt_fft_fft2
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_fft2(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.fftn)
-def ftt_fftn(a, s=None, axes=None, norm=None, out=None):
-    from unyt._array_functions import ftt_fftn as unyt_fft_fftn
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_fftn(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.hfft)
-def ftt_hfft(a, n=None, axis=-1, norm=None, out=None):
-    from unyt._array_functions import ftt_hfft as unyt_fft_hfft
-
-    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_hfft(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.rfft)
-def ftt_rfft(a, n=None, axis=-1, norm=None, out=None):
-    from unyt._array_functions import ftt_rfft as unyt_fft_rfft
-
-    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_rfft(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.rfft2)
-def fft_rfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
-    from unyt._array_functions import ftt_rfft2 as unyt_fft_rfft2
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_rfft2(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.rfftn)
-def fft_rfftn(a, s=None, axes=None, norm=None, out=None):
-    from unyt._array_functions import ftt_rfftn as unyt_fft_rfftn
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_rfftn(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.ifft)
-def fft_ifft(a, n=None, axis=-1, norm=None, out=None):
-    from unyt._array_functions import ftt_ifft as unyt_fft_ifft
-
-    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_ifft(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.ifft2)
-def fft_ifft2(a, s=None, axes=(-2, -1), norm=None, out=None):
-    from unyt._array_functions import ftt_ifft2 as unyt_fft_ifft2
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_ifft2(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.ifftn)
-def fft_ifftn(a, s=None, axes=None, norm=None, out=None):
-    from unyt._array_functions import ftt_ifftn as unyt_fft_ifftn
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_ifftn(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.ihfft)
-def fft_ihfft(a, n=None, axis=-1, norm=None, out=None):
-    from unyt._array_functions import ftt_ihfft as unyt_fft_ihfft
-
-    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_ihfft(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.irfft)
-def fft_irfft(a, n=None, axis=-1, norm=None, out=None):
-    from unyt._array_functions import ftt_irfft as unyt_fft_irfft
-
-    helper_result = _prepare_array_func_args(a, n=n, axis=axis, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_irfft(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.irfft2)
-def fft_irfft2(a, s=None, axes=(-2, -1), norm=None, out=None):
-    from unyt._array_functions import ftt_irfft2 as unyt_fft_irfft2
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_irfft2(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.irfftn)
-def fft_irfftn(a, s=None, axes=None, norm=None, out=None):
-    from unyt._array_functions import ftt_irfftn as unyt_fft_irfftn
-
-    helper_result = _prepare_array_func_args(a, s=s, axes=axes, norm=norm, out=out)
-    ret_cf = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_irfftn(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.fft.fftshift)
-def fft_fftshift(x, axes=None):
-    from unyt._array_functions import fft_fftshift as unyt_fft_fftshift
-
-    helper_result = _prepare_array_func_args(x, axes=axes)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_fftshift(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.fft.ifftshift)
-def fft_ifftshift(x, axes=None):
-    from unyt._array_functions import fft_ifftshift as unyt_fft_ifftshift
-
-    helper_result = _prepare_array_func_args(x, axes=axes)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_fft_ifftshift(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.sort_complex)
-def sort_complex(a):
-    from unyt._array_functions import sort_complex as unyt_sort_complex
-
-    helper_result = _prepare_array_func_args(a)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_sort_complex(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.isclose)
-def isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
-    from unyt._array_functions import isclose as unyt_isclose
-
-    helper_result = _prepare_array_func_args(
-        a,
-        b,
-        rtol=rtol,
-        atol=atol,
-        equal_nan=equal_nan,
-    )
-    ret_cf = _comparison_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["ca_cfs"][1],
-        inputs=(a, b),
-    )
-    res = unyt_isclose(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.allclose)
-def allclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False):
-    from unyt._array_functions import allclose as unyt_allclose
-
-    helper_result = _prepare_array_func_args(
-        a, b, rtol=rtol, atol=atol, equal_nan=equal_nan
-    )
-    ret_cf = _comparison_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["ca_cfs"][1],
-        inputs=(a, b),
-    )
-    res = unyt_allclose(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.array_equal)
-def array_equal(a1, a2, equal_nan=False):
-    from unyt._array_functions import array_equal as unyt_array_equal
-
-    helper_result = _prepare_array_func_args(a1, a2, equal_nan=equal_nan)
-    ret_cf = _comparison_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["ca_cfs"][1],
-        inputs=(a1, a2),
-    )
-    res = unyt_array_equal(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.array_equiv)
-def array_equiv(a1, a2):
-    from unyt._array_functions import array_equiv as unyt_array_equiv
-
-    helper_result = _prepare_array_func_args(a1, a2)
-    ret_cf = _comparison_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["ca_cfs"][1],
-        inputs=(a1, a2),
-    )
-    res = unyt_array_equiv(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.sort_complex)(
+    _default_unary_wrapper(unyt_sort_complex, _preserve_cosmo_factor)
+)
+implements(np.isclose)(_default_comparison_wrapper(unyt_isclose))
+implements(np.allclose)(_default_comparison_wrapper(unyt_allclose))
+implements(np.array_equal)(_default_comparison_wrapper(unyt_array_equal))
+implements(np.array_equiv)(_default_comparison_wrapper(unyt_array_equiv))
 
 
 @implements(np.linspace)
@@ -975,7 +734,6 @@ def linspace(
     *,
     device=None,
 ):
-    from unyt._array_functions import linspace as unyt_linspace
 
     helper_result = _prepare_array_func_args(
         start,
@@ -999,7 +757,6 @@ def linspace(
 
 @implements(np.logspace)
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
-    from unyt._array_functions import logspace as unyt_logspace
 
     helper_result = _prepare_array_func_args(
         start, stop, num=num, endpoint=endpoint, base=base, dtype=dtype, axis=axis
@@ -1009,23 +766,13 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
     return _return_helper(res, helper_result, ret_cf)
 
 
-@implements(np.geomspace)
-def geomspace(start, stop, num=50, endpoint=True, dtype=None, axis=0):
-    from unyt._array_functions import geomspace as unyt_geomspace
-
-    helper_result = _prepare_array_func_args(
-        start, stop, num=num, endpoint=endpoint, dtype=dtype, axis=axis
-    )
-    ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_geomspace(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.geomspace)(
+    _default_binary_wrapper(unyt_geomspace, _preserve_cosmo_factor)
+)
 
 
 @implements(np.copyto)
 def copyto(dst, src, casting="same_kind", where=True):
-    from unyt._array_functions import copyto as unyt_copyto
 
     helper_result = _prepare_array_func_args(dst, src, casting=casting, where=where)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][1])
@@ -1049,7 +796,6 @@ def prod(
     initial=np._NoValue,
     where=np._NoValue,
 ):
-    from unyt._array_functions import prod as unyt_prod
 
     helper_result = _prepare_array_func_args(
         a,
@@ -1069,181 +815,22 @@ def prod(
     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-@implements(np.var)
-def var(
-    a,
-    axis=None,
-    dtype=None,
-    out=None,
-    ddof=0,
-    keepdims=np._NoValue,
-    *,
-    where=np._NoValue,
-    mean=np._NoValue,
-    correction=np._NoValue,
-):
-    from unyt._array_functions import var as unyt_var
-
-    helper_result = _prepare_array_func_args(
-        a,
-        axis=axis,
-        dtype=dtype,
-        out=out,
-        ddof=ddof,
-        keepdims=keepdims,
-        where=where,
-        mean=mean,
-        correction=correction,
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_var(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.trace)
-def trace(a, offset=0, axis1=0, axis2=1, dtype=None, out=None):
-    from unyt._array_functions import trace as unyt_trace
-
-    helper_result = _prepare_array_func_args(
-        a,
-        offset=offset,
-        axis1=axis1,
-        axis2=axis2,
-        dtype=dtype,
-        out=out,
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_trace(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.percentile)
-def percentile(
-    a,
-    q,
-    axis=None,
-    out=None,
-    overwrite_input=False,
-    method="linear",
-    keepdims=False,
-    *,
-    weights=None,
-    interpolation=None,
-):
-    from unyt._array_functions import percentile as unyt_percentile
-
-    helper_result = _prepare_array_func_args(
-        a,
-        q,
-        axis=axis,
-        out=out,
-        overwrite_input=overwrite_input,
-        method=method,
-        keepdims=keepdims,
-        weights=weights,
-        interpolation=interpolation,
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_percentile(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.quantile)
-def quantile(
-    a,
-    q,
-    axis=None,
-    out=None,
-    overwrite_input=False,
-    method="linear",
-    keepdims=False,
-    *,
-    weights=None,
-    interpolation=None,
-):
-    from unyt._array_functions import quantile as unyt_quantile
-
-    helper_result = _prepare_array_func_args(
-        a,
-        q,
-        axis=axis,
-        out=out,
-        overwrite_input=overwrite_input,
-        method=method,
-        keepdims=keepdims,
-        weights=weights,
-        interpolation=interpolation,
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_quantile(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.nanpercentile)
-def nanpercentile(
-    a,
-    q,
-    axis=None,
-    out=None,
-    overwrite_input=False,
-    method="linear",
-    keepdims=False,
-    *,
-    weights=None,
-    interpolation=None,
-):
-    from unyt._array_functions import nanpercentile as unyt_nanpercentile
-
-    helper_result = _prepare_array_func_args(
-        a,
-        q,
-        axis=axis,
-        out=out,
-        overwrite_input=overwrite_input,
-        method=method,
-        keepdims=keepdims,
-        weights=weights,
-        interpolation=interpolation,
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_nanpercentile(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-@implements(np.nanquantile)
-def nanquantile(
-    a,
-    q,
-    axis=None,
-    out=None,
-    overwrite_input=False,
-    method="linear",
-    keepdims=False,
-    *,
-    weights=None,
-    interpolation=None,
-):
-    from unyt._array_functions import nanquantile as unyt_nanquantile
-
-    helper_result = _prepare_array_func_args(
-        a,
-        q,
-        axis=axis,
-        out=out,
-        overwrite_input=overwrite_input,
-        method=method,
-        keepdims=keepdims,
-        weights=weights,
-        interpolation=interpolation,
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_nanquantile(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
+implements(np.var)(_default_unary_wrapper(unyt_var, _preserve_cosmo_factor))
+implements(np.trace)(_default_unary_wrapper(unyt_trace, _preserve_cosmo_factor))
+implements(np.percentile)(
+    _default_unary_wrapper(unyt_percentile, _preserve_cosmo_factor)
+)
+implements(np.quantile)(_default_unary_wrapper(unyt_quantile, _preserve_cosmo_factor))
+implements(np.nanpercentile)(
+    _default_unary_wrapper(unyt_nanpercentile, _preserve_cosmo_factor)
+)
+implements(np.nanquantile)(
+    _default_unary_wrapper(unyt_nanquantile, _preserve_cosmo_factor)
+)
 
 
 @implements(np.linalg.det)
 def linalg_det(a):
-    from unyt._array_functions import linalg_det as unyt_linalg_det
 
     helper_result = _prepare_array_func_args(a)
     ret_cf = _power_cosmo_factor(
@@ -1255,46 +842,14 @@ def linalg_det(a):
     return _return_helper(res, helper_result, ret_cf)
 
 
-@implements(np.diff)
-def diff(a, n=1, axis=-1, prepend=np._NoValue, append=np._NoValue):
-    from unyt._array_functions import diff as unyt_diff
-
-    helper_result = _prepare_array_func_args(
-        a, n=n, axis=axis, prepend=prepend, append=append
-    )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_diff(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.ediff1d)
-def ediff1d(ary, to_end=None, to_begin=None):
-    from unyt._array_functions import ediff1d as unyt_ediff1d
-
-    helper_result = _prepare_array_func_args(ary, to_end=to_end, to_begin=to_begin)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_ediff1d(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.ptp)
-def ptp(a, axis=None, out=None, keepdims=np._NoValue):
-    from unyt._array_functions import ptp as unyt_ptp
-
-    helper_result = _prepare_array_func_args(a, axis=axis, out=out, keepdims=keepdims)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_ptp(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
-
-# @implements(np.cumprod)
-# def cumprod(...):
-#    Omitted because unyt just raises if called.
+implements(np.diff)(_default_unary_wrapper(unyt_diff, _preserve_cosmo_factor))
+implements(np.ediff1d)(_default_unary_wrapper(unyt_ediff1d, _preserve_cosmo_factor))
+implements(np.ptp)(_default_unary_wrapper(unyt_ptp, _preserve_cosmo_factor))
+# implements(np.cumprod)(...) Omitted because unyt just raises if called.
 
 
 @implements(np.pad)
 def pad(array, pad_width, mode="constant", **kwargs):
-    from unyt._array_functions import pad as unyt_pad
 
     helper_result = _prepare_array_func_args(array, pad_width, mode=mode, **kwargs)
     # the number of options is huge, including user defined functions to handle data
@@ -1306,7 +861,6 @@ def pad(array, pad_width, mode="constant", **kwargs):
 
 @implements(np.choose)
 def choose(a, choices, out=None, mode="raise"):
-    from unyt._array_functions import choose as unyt_choose
 
     helper_result = _prepare_array_func_args(a, choices, out=out, mode=mode)
     helper_result_choices = _prepare_array_func_args(*choices)
@@ -1317,7 +871,6 @@ def choose(a, choices, out=None, mode="raise"):
 
 @implements(np.insert)
 def insert(arr, obj, values, axis=None):
-    from unyt._array_functions import insert as unyt_insert
 
     helper_result = _prepare_array_func_args(arr, obj, values, axis=axis)
     ret_cf = _preserve_cosmo_factor(
@@ -1329,7 +882,6 @@ def insert(arr, obj, values, axis=None):
 
 @implements(np.linalg.lstsq)
 def linalg_lstsq(a, b, rcond=None):
-    from unyt._array_functions import linalg_lstsq as unyt_linalg_lstsq
 
     helper_result = _prepare_array_func_args(a, b, rcond=rcond)
     ret_cf = _divide_cosmo_factor(
@@ -1348,7 +900,6 @@ def linalg_lstsq(a, b, rcond=None):
 
 @implements(np.linalg.solve)
 def linalg_solve(a, b):
-    from unyt._array_functions import linalg_solve as unyt_linalg_solve
 
     helper_result = _prepare_array_func_args(a, b)
     ret_cf = _divide_cosmo_factor(
@@ -1360,7 +911,6 @@ def linalg_solve(a, b):
 
 @implements(np.linalg.tensorsolve)
 def linalg_tensorsolve(a, b, axes=None):
-    from unyt._array_functions import linalg_tensorsolve as unyt_linalg_tensorsolve
 
     helper_result = _prepare_array_func_args(a, b, axes=axes)
     ret_cf = _divide_cosmo_factor(
@@ -1372,7 +922,6 @@ def linalg_tensorsolve(a, b, axes=None):
 
 @implements(np.linalg.eig)
 def linalg_eig(a):
-    from unyt._array_functions import linalg_eig as unyt_linalg_eig
 
     helper_result = _prepare_array_func_args(a)
     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
@@ -1385,7 +934,6 @@ def linalg_eig(a):
 
 @implements(np.linalg.eigh)
 def linalg_eigh(a, UPLO="L"):
-    from unyt._array_functions import linalg_eigh as unyt_linalg_eigh
 
     helper_result = _prepare_array_func_args(a, UPLO=UPLO)
     ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
@@ -1396,24 +944,12 @@ def linalg_eigh(a, UPLO="L"):
     )
 
 
-@implements(np.linalg.eigvals)
-def linalg_eigvals(a):
-    from unyt._array_functions import linalg_eigvals as unyt_linalg_eigvals
-
-    helper_result = _prepare_array_func_args(a)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_linalg_eigvals(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.linalg.eigvalsh)
-def linalg_eigvalsh(a, UPLO="L"):
-    from unyt._array_functions import linalg_eigvalsh as unyt_linalg_eigvalsh
-
-    helper_result = _prepare_array_func_args(a, UPLO=UPLO)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_linalg_eigvalsh(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.linalg.eigvals)(
+    _default_unary_wrapper(unyt_linalg_eigvals, _preserve_cosmo_factor)
+)
+implements(np.linalg.eigvalsh)(
+    _default_unary_wrapper(unyt_linalg_eigvalsh, _preserve_cosmo_factor)
+)
 
 
 @implements(np.savetxt)
@@ -1428,7 +964,6 @@ def savetxt(
     comments="# ",
     encoding=None,
 ):
-    from unyt._array_functions import savetxt as unyt_savetxt
 
     warnings.warn(
         "numpy.savetxt does not preserve units or cosmo_array information, "
@@ -1471,7 +1006,6 @@ def apply_over_axes(func, a, axes):
 
 @implements(np.fill_diagonal)
 def fill_diagonal(a, val, wrap=False):
-    from unyt._array_functions import fill_diagonal as unyt_fill_diagonal
 
     helper_result = _prepare_array_func_args(a, val, wrap=wrap)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][1])
@@ -1484,25 +1018,11 @@ def fill_diagonal(a, val, wrap=False):
     unyt_fill_diagonal(a, val, **helper_result["kwargs"])
 
 
-@implements(np.isin)
-def isin(element, test_elements, assume_unique=False, invert=False, *, kind=None):
-    from unyt._array_functions import isin as unyt_isin
-
-    helper_result = _prepare_array_func_args(
-        element, test_elements, assume_unique=assume_unique, invert=invert, kind=kind
-    )
-    ret_cf = _comparison_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["ca_cfs"][1],
-        inputs=(element, test_elements),
-    )
-    res = unyt_isin(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.isin)(_default_comparison_wrapper(unyt_isin))
 
 
 @implements(np.place)
 def place(arr, mask, vals):
-    from unyt._array_functions import place as unyt_place
 
     helper_result = _prepare_array_func_args(arr, mask, vals)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
@@ -1518,7 +1038,6 @@ def place(arr, mask, vals):
 
 @implements(np.put)
 def put(a, ind, v, mode="raise"):
-    from unyt._array_functions import put as unyt_put
 
     helper_result = _prepare_array_func_args(a, ind, v, mode=mode)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
@@ -1534,7 +1053,6 @@ def put(a, ind, v, mode="raise"):
 
 @implements(np.put_along_axis)
 def put_along_axis(arr, indices, values, axis):
-    from unyt._array_functions import put_along_axis as unyt_put_along_axis
 
     helper_result = _prepare_array_func_args(arr, indices, values, axis)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
@@ -1550,7 +1068,6 @@ def put_along_axis(arr, indices, values, axis):
 
 @implements(np.putmask)
 def putmask(a, mask, values):
-    from unyt._array_functions import putmask as unyt_putmask
 
     helper_result = _prepare_array_func_args(a, mask, values)
     _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
@@ -1564,21 +1081,13 @@ def putmask(a, mask, values):
     unyt_putmask(a, mask, values)
 
 
-@implements(np.searchsorted)
-def searchsorted(a, v, side="left", sorter=None):
-    from unyt._array_functions import searchsorted as unyt_searchsorted
-
-    helper_result = _prepare_array_func_args(a, v, side=side, sorter=sorter)
-    ret_cf = _return_without_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_searchsorted(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.searchsorted)(
+    _default_binary_wrapper(unyt_searchsorted, _return_without_cosmo_factor)
+)
 
 
 @implements(np.select)
 def select(condlist, choicelist, default=0):
-    from unyt._array_functions import select as unyt_select
 
     helper_result = _prepare_array_func_args(condlist, choicelist, default=default)
     helper_result_choicelist = _prepare_array_func_args(*choicelist)
@@ -1591,22 +1100,13 @@ def select(condlist, choicelist, default=0):
     return _return_helper(res, helper_result, ret_cf)
 
 
-@implements(np.setdiff1d)
-def setdiff1d(ar1, ar2, assume_unique=False):
-    from unyt._array_functions import setdiff1d as unyt_setdiff1d
-
-    helper_result = _prepare_array_func_args(ar1, ar2, assume_unique=assume_unique)
-    ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["ca_cfs"][1],
-    )
-    res = unyt_setdiff1d(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.setdiff1d)(
+    _default_binary_wrapper(unyt_setdiff1d, _preserve_cosmo_factor)
+)
 
 
 @implements(np.sinc)
 def sinc(x):
-    from unyt._array_functions import sinc as unyt_sinc
 
     # unyt just casts to array and calls the numpy implementation
     # so let's just hand off to them
@@ -1624,7 +1124,6 @@ def clip(
     max=np._NoValue,
     **kwargs,
 ):
-    from unyt._array_functions import clip as unyt_clip
 
     # can't work out how to properly handle min and max,
     # just leave them in kwargs I guess (might be a numpy version conflict?)
@@ -1652,7 +1151,6 @@ def clip(
 
 @implements(np.where)
 def where(condition, *args):
-    from unyt._array_functions import where as unyt_where
 
     helper_result = _prepare_array_func_args(condition, *args)
     if len(args) == 0:  # just condition
@@ -1668,24 +1166,8 @@ def where(condition, *args):
     return _return_helper(res, helper_result, ret_cf)
 
 
-@implements(np.triu)
-def triu(m, k=0):
-    from unyt._array_functions import triu as unyt_triu
-
-    helper_result = _prepare_array_func_args(m, k=0)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_triu(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.tril)
-def tril(m, k=0):
-    from unyt._array_functions import tril as unyt_tril
-
-    helper_result = _prepare_array_func_args(m, k=0)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_tril(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.triu)(_default_unary_wrapper(unyt_triu, _preserve_cosmo_factor))
+implements(np.tril)(_default_unary_wrapper(unyt_tril, _preserve_cosmo_factor))
 
 
 @implements(np.einsum)
@@ -1698,7 +1180,6 @@ def einsum(
     casting="safe",
     optimize=False,
 ):
-    from unyt._array_functions import einsum as unyt_einsum
 
     helper_result = _prepare_array_func_args(
         subscripts,
@@ -1719,45 +1200,17 @@ def einsum(
     return _return_helper(res, helper_result_operands, ret_cf, out=out)
 
 
-@implements(np.convolve)
-def convolve(a, v, mode="full"):
-    from unyt._array_functions import convolve as unyt_convolve
-
-    helper_result = _prepare_array_func_args(a, v, mode=mode)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_convolve(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.correlate)
-def correlate(a, v, mode="valid"):
-    from unyt._array_functions import correlate as unyt_correlate
-
-    helper_result = _prepare_array_func_args(a, v, mode=mode)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_correlate(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.tensordot)
-def tensordot(a, b, axes=2):
-    from unyt._array_functions import tensordot as unyt_tensordot
-
-    helper_result = _prepare_array_func_args(a, b, axes=axes)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_tensordot(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.convolve)(_default_binary_wrapper(unyt_convolve, _multiply_cosmo_factor))
+implements(np.correlate)(
+    _default_binary_wrapper(unyt_correlate, _multiply_cosmo_factor)
+)
+implements(np.tensordot)(
+    _default_binary_wrapper(unyt_tensordot, _multiply_cosmo_factor)
+)
 
 
 @implements(np.unwrap)
 def unwrap(p, discont=None, axis=-1, *, period=6.283185307179586):
-    from unyt._array_functions import unwrap as unyt_unwrap
 
     helper_result = _prepare_array_func_args(
         p, discont=discont, axis=axis, period=period
@@ -1773,7 +1226,6 @@ def unwrap(p, discont=None, axis=-1, *, period=6.283185307179586):
 
 @implements(np.interp)
 def interp(x, xp, fp, left=None, right=None, period=None):
-    from unyt._array_functions import interp as unyt_interp
 
     helper_result = _prepare_array_func_args(
         x, xp, fp, left=left, right=right, period=period
@@ -1785,7 +1237,6 @@ def interp(x, xp, fp, left=None, right=None, period=None):
 
 @implements(np.array_repr)
 def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
-    from unyt._array_functions import array_repr as unyt_array_repr
 
     helper_result = _prepare_array_func_args(
         arr,
@@ -1804,21 +1255,13 @@ def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
     return rep
 
 
-@implements(np.linalg.outer)
-def linalg_outer(x1, x2, /):
-    from unyt._array_functions import linalg_outer as unyt_linalg_outer
-
-    helper_result = _prepare_array_func_args(x1, x2)
-    ret_cf = _multiply_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
-    res = unyt_linalg_outer(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
+implements(np.linalg.outer)(
+    _default_binary_wrapper(unyt_linalg_outer, _multiply_cosmo_factor)
+)
 
 
 @implements(np.trapezoid)
 def trapezoid(y, x=None, dx=1.0, axis=-1):
-    from unyt._array_functions import trapezoid as unyt_trapezoid
 
     helper_result = _prepare_array_func_args(y, x=x, dx=dx, axis=axis)
     if x is None:
@@ -1833,31 +1276,10 @@ def trapezoid(y, x=None, dx=1.0, axis=-1):
     return _return_helper(res, helper_result, ret_cf)
 
 
-@implements(np.in1d)
-def in1d(ar1, ar2, assume_unique=False, invert=False, *, kind=None):
-    from unyt._array_functions import isin as unyt_in1d
+implements(np.in1d)(_default_comparison_wrapper(unyt_in1d))
+implements(np.take)(_default_unary_wrapper(unyt_take, _preserve_cosmo_factor))
 
-    helper_result = _prepare_array_func_args(
-        ar1, ar2, assume_unique=assume_unique, invert=invert, kind=kind
-    )
-    ret_cf = _comparison_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["ca_cfs"][1],
-        inputs=(ar1, ar2),
-    )
-    res = unyt_in1d(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf)
-
-
-@implements(np.take)
-def take(a, indices, axis=None, out=None, mode="raise"):
-    from unyt._array_functions import take as unyt_take
-
-    helper_result = _prepare_array_func_args(a, indices, axis=axis, out=out, mode=mode)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    res = unyt_take(*helper_result["args"], **helper_result["kwargs"])
-    return _return_helper(res, helper_result, ret_cf, out=out)
-
+# Now we wrap functions that unyt does not handle explicitly:
 
 implements(np.average)(_propagate_cosmo_array_attributes(np.average._implementation))
 implements(np.max)(_propagate_cosmo_array_attributes(np.max._implementation))
