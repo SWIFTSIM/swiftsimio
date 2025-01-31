@@ -1859,15 +1859,7 @@ def take(a, indices, axis=None, out=None, mode="raise"):
     return _return_helper(res, helper_result, ret_cf, out=out)
 
 
-implements(np.amax)(_propagate_cosmo_array_attributes(np.amax._implementation))
-implements(np.amin)(_propagate_cosmo_array_attributes(np.amin._implementation))
 implements(np.average)(_propagate_cosmo_array_attributes(np.average._implementation))
-implements(np.nanmax)(_propagate_cosmo_array_attributes(np.nanmax._implementation))
-implements(np.nanmean)(_propagate_cosmo_array_attributes(np.nanmean._implementation))
-implements(np.nanmedian)(
-    _propagate_cosmo_array_attributes(np.nanmedian._implementation)
-)
-implements(np.nanmin)(_propagate_cosmo_array_attributes(np.nanmin._implementation))
 implements(np.max)(_propagate_cosmo_array_attributes(np.max._implementation))
 implements(np.min)(_propagate_cosmo_array_attributes(np.min._implementation))
 implements(np.mean)(_propagate_cosmo_array_attributes(np.mean._implementation))
