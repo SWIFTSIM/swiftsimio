@@ -96,6 +96,7 @@ from numpy import (
     isnat,
     heaviside,
     matmul,
+    vecdot,
 )
 from numpy._core.umath import _ones_like
 
@@ -132,10 +133,27 @@ def _propagate_cosmo_array_attributes(func):
         if not isinstance(ret, cosmo_array):
             return ret
         ret = _copy_cosmo_array_attributes(obj, ret)
-        # if ret.shape == ():
-        #     return cosmo_quantity(ret)
-        # else:
-        #     return ret
+        return ret
+
+    return wrapped
+
+
+def _ensure_cosmo_array_or_quantity(func):
+    # can work on methods (obj is self) and functions (obj is first argument)
+    def wrapped(obj, *args, **kwargs):
+        ret = func(obj, *args, **kwargs)
+        if isinstance(ret, unyt_quantity) and not isinstance(ret, cosmo_quantity):
+            ret = cosmo_quantity(ret)
+        elif isinstance(ret, unyt_array) and not isinstance(ret, cosmo_array):
+            ret = cosmo_array(ret)
+        if (
+            isinstance(ret, cosmo_array)
+            and not isinstance(ret, cosmo_quantity)
+            and ret.shape == ()
+        ):
+            ret = cosmo_quantity(ret)
+        elif isinstance(ret, cosmo_quantity) and ret.shape != ():
+            ret = cosmo_array(ret)
         return ret
 
     return wrapped
@@ -852,6 +870,7 @@ class cosmo_array(unyt_array):
         _ones_like: _preserve_cosmo_factor,
         matmul: _multiply_cosmo_factor,
         clip: _passthrough_cosmo_factor,
+        vecdot: _multiply_cosmo_factor,
     }
 
     def __new__(
@@ -1031,43 +1050,20 @@ class cosmo_array(unyt_array):
     transpose = _propagate_cosmo_array_attributes(unyt_array.transpose)
     view = _propagate_cosmo_array_attributes(unyt_array.view)
 
-    @_propagate_cosmo_array_attributes
-    def take(self, indices, **kwargs):
-        taken = unyt_array.take(self, indices, **kwargs)
-        if np.ndim(indices) == 0:
-            return cosmo_quantity(taken)
-        else:
-            return cosmo_array(taken)
-
-    @_propagate_cosmo_array_attributes
-    def reshape(self, shape, /, *, order="C"):
-        reshaped = unyt_array.reshape(self, shape, order=order)
-        if shape == () or shape is None:
-            return cosmo_quantity(reshaped)
-        else:
-            return reshaped
-
-    @_propagate_cosmo_array_attributes
-    def __getitem__(self, *args, **kwargs):
-        item = unyt_array.__getitem__(self, *args, *kwargs)
-        if item.shape == ():
-            return cosmo_quantity(item)
-        else:
-            return item
+    take = _propagate_cosmo_array_attributes(
+        _ensure_cosmo_array_or_quantity(unyt_array.take)
+    )
+    reshape = _propagate_cosmo_array_attributes(
+        _ensure_cosmo_array_or_quantity(unyt_array.reshape)
+    )
+    __getitem__ = _propagate_cosmo_array_attributes(
+        _ensure_cosmo_array_or_quantity(unyt_array.__getitem__)
+    )
 
     # Also wrap some array "properties":
-
-    @property
-    def T(self):
-        return self.transpose()  # transpose is wrapped above.
-
-    @property
-    def ua(self):
-        return _propagate_cosmo_array_attributes(np.ones_like)(self)
-
-    @property
-    def unit_array(self):
-        return _propagate_cosmo_array_attributes(np.ones_like)(self)
+    T = property(_propagate_cosmo_array_attributes(unyt_array.transpose))
+    ua = property(_propagate_cosmo_array_attributes(np.ones_like))
+    unit_array = property(_propagate_cosmo_array_attributes(np.ones_like))
 
     def convert_to_comoving(self) -> None:
         """
