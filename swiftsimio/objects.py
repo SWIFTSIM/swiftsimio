@@ -3,9 +3,6 @@ Contains global objects, e.g. the superclass version of the
 unyt_array that we use, called cosmo_array.
 """
 
-import warnings
-
-import unyt
 from unyt import unyt_array, unyt_quantity
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
@@ -94,6 +91,23 @@ from numpy import (
     vecdot,
 )
 from numpy._core.umath import _ones_like, clip
+from ._array_functions import (
+    _propagate_cosmo_array_attributes,
+    _ensure_cosmo_array_or_quantity,
+    _sqrt_cosmo_factor,
+    _multiply_cosmo_factor,
+    _preserve_cosmo_factor,
+    _power_cosmo_factor,
+    _square_cosmo_factor,
+    _cbrt_cosmo_factor,
+    _divide_cosmo_factor,
+    _reciprocal_cosmo_factor,
+    _passthrough_cosmo_factor,
+    _return_without_cosmo_factor,
+    _arctan2_cosmo_factor,
+    _comparison_cosmo_factor,
+    _prepare_array_func_args,
+)
 
 # The scale factor!
 a = sympy.symbols("a")
@@ -102,407 +116,6 @@ a = sympy.symbols("a")
 class InvalidConversionError(Exception):
     def __init__(self, message="Could not convert to comoving coordinates"):
         self.message = message
-
-
-def _copy_cosmo_array_attributes(from_ca, to_ca):
-    if not isinstance(to_ca, cosmo_array):
-        return to_ca
-    if hasattr(from_ca, "cosmo_factor"):
-        to_ca.cosmo_factor = from_ca.cosmo_factor
-    if hasattr(from_ca, "comoving"):
-        to_ca.comoving = from_ca.comoving
-    if hasattr(from_ca, "valid_transform"):
-        to_ca.valid_transform = from_ca.valid_transform
-    return to_ca
-
-
-def _propagate_cosmo_array_attributes(func):
-    # can work on methods (obj is self) and functions (obj is first argument)
-    def wrapped(obj, *args, **kwargs):
-        ret = func(obj, *args, **kwargs)
-        if not isinstance(ret, cosmo_array):
-            return ret
-        ret = _copy_cosmo_array_attributes(obj, ret)
-        return ret
-
-    return wrapped
-
-
-def _ensure_cosmo_array_or_quantity(func):
-    # can work on methods (obj is self) and functions (obj is first argument)
-    def wrapped(obj, *args, **kwargs):
-        ret = func(obj, *args, **kwargs)
-        if isinstance(ret, unyt_quantity) and not isinstance(ret, cosmo_quantity):
-            ret = cosmo_quantity(ret)
-        elif isinstance(ret, unyt_array) and not isinstance(ret, cosmo_array):
-            ret = cosmo_array(ret)
-        if (
-            isinstance(ret, cosmo_array)
-            and not isinstance(ret, cosmo_quantity)
-            and ret.shape == ()
-        ):
-            ret = cosmo_quantity(ret)
-        elif isinstance(ret, cosmo_quantity) and ret.shape != ():
-            ret = cosmo_array(ret)
-        return ret
-
-    return wrapped
-
-
-def _sqrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(
-        ca_cf, (False, None), power=0.5
-    )  # ufunc sqrt not supported
-
-
-def _multiply_cosmo_factor(*args, **kwargs):
-    ca_cfs = args
-    if len(ca_cfs) == 1:
-        return __multiply_cosmo_factor(ca_cfs[0])
-    retval = __multiply_cosmo_factor(ca_cfs[0], ca_cfs[1])
-    for ca_cf in ca_cfs[2:]:
-        retval = __multiply_cosmo_factor((retval is not None, retval), ca_cf)
-    return retval
-
-
-def __multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    if (cf1 is None) and (cf2 is None):
-        # neither has cosmo_factor information:
-        return None
-    elif not ca1 and ca2:
-        # one is not a cosmo_array, allow e.g. multiplication by constants:
-        return cf2
-    elif ca1 and not ca2:
-        # two is not a cosmo_array, allow e.g. multiplication by constants:
-        return cf1
-    elif (ca1 and ca2) and ((cf1 is None) or (cf2 is None)):
-        # both cosmo_array but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors ({cf1} and {cf2}),"
-            f" discarding cosmo_factor in return value.",
-            RuntimeWarning,
-        )
-        return None
-    elif (ca1 and ca2) and ((cf1 is not None) and (cf2 is not None)):
-        # both cosmo_array and both with cosmo_factor:
-        return cf1 * cf2  # cosmo_factor.__mul__ raises if scale factors differ
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
-
-
-def _preserve_cosmo_factor(*args, **kwargs):
-    ca_cfs = args
-    if len(ca_cfs) == 1:
-        return __preserve_cosmo_factor(ca_cfs[0])
-    retval = __preserve_cosmo_factor(ca_cfs[0], ca_cfs[1])
-    for ca_cf in ca_cfs[2:]:
-        retval = __preserve_cosmo_factor((retval is not None, retval), ca_cf)
-    return retval
-
-
-def __preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # single argument, return promptly
-        return cf1
-    elif (cf1 is None) and (cf2 is None):
-        # neither has cosmo_factor information:
-        return None
-    elif ca1 and not ca2:
-        # only one is cosmo_array
-        return cf1
-    elif ca2 and not ca1:
-        # only one is cosmo_array
-        return cf2
-    elif (ca1 and ca2) and (cf1 is None and cf2 is not None):
-        # both cosmo_array, but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
-        return cf2
-    elif (ca1 and ca2) and (cf1 is not None and cf2 is None):
-        # both cosmo_array, but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf1}) for all arguments.",
-            RuntimeWarning,
-        )
-        return cf1
-    elif (ca1 and ca2) and (cf1 != cf2):
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
-        )
-    elif (ca1 and ca2) and (cf1 == cf2):
-        return cf1  # or cf2, they're equal
-    else:
-        # not dealing with cosmo_arrays at all
-        return None
-
-
-def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
-    if inputs is not None and power is not None:
-        raise ValueError
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    power = inputs[1] if inputs else power
-    if hasattr(power, "units"):
-        if not power.units.is_dimensionless:
-            raise ValueError("Exponent must be dimensionless.")
-        elif power.units is not unyt.dimensionless:
-            power = power.to_value(unyt.dimensionless)
-        # else power.units is unyt.dimensionless, do nothing
-    if ca2 and cf2.a_factor != 1.0:
-        raise ValueError("Exponent has scaling with scale factor != 1.")
-    if cf1 is None:
-        return None
-    return np.power(cf1, power)
-
-
-def _square_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=2)
-
-
-def _cbrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=1.0 / 3.0)
-
-
-def _divide_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    return _multiply_cosmo_factor(
-        (ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2)))
-    )
-
-
-def _reciprocal_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=-1)
-
-
-def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
-    ca, cf = ca_cf
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # no second argument, return promptly
-        return cf
-    elif (cf2 is not None) and cf != cf2:
-        # if both have cosmo_factor information and it differs this is an error
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
-        )
-    else:
-        # passthrough is for e.g. ufuncs with a second dimensionless argument,
-        # so ok if cf2 is None and cf1 is not
-        return cf
-
-
-def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_comparison=None):
-    ca, cf = ca_cf
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # no second argument
-        pass
-    elif ca and not ca2:
-        # one is not a cosmo_array, warn on e.g. comparison to constants:
-        if not zero_comparison:
-            warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
-                f" assuming provided cosmo_factor ({cf}) for all arguments.",
-                RuntimeWarning,
-            )
-    elif not ca and ca2:
-        # two is not a cosmo_array, warn on e.g. comparison to constants:
-        if not zero_comparison:
-            warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
-                f" assuming provided cosmo_factor ({cf2}) for all arguments.",
-                RuntimeWarning,
-            )
-    elif (ca and ca2) and (cf is not None and cf2 is None):
-        # one has no cosmo_factor information, warn:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf}) for all arguments.",
-            RuntimeWarning,
-        )
-    elif (ca and ca2) and (cf is None and cf2 is not None):
-        # two has no cosmo_factor information, warn:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
-    elif (cf is not None) and (cf2 is not None) and (cf != cf2):
-        # both have cosmo_factor, don't match:
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
-        )
-    elif (cf is not None) and (cf2 is not None) and (cf == cf2):
-        # both have cosmo_factor, and they match:
-        pass
-    else:
-        # not dealing with cosmo_arrays at all
-        pass
-    # return without cosmo_factor
-    return None
-
-
-def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    if (cf1 is None) and (cf2 is None):
-        return None
-    if cf1 is None and cf2 is not None:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
-    if cf1 is not None and cf2 is None:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf1}) for all arguments.",
-            RuntimeWarning,
-        )
-    if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
-        )
-    return cosmo_factor(a**0, scale_factor=cf1.scale_factor)
-
-
-def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    try:
-        iter(inputs[0])
-    except TypeError:
-        if ca1:
-            input1_iszero = not inputs[0].value and inputs[0] is not False
-        else:
-            input1_iszero = not inputs[0] and inputs[0] is not False
-    else:
-        if ca1:
-            input1_iszero = not inputs[0].value.any()
-        else:
-            input1_iszero = not inputs[0].any()
-    try:
-        iter(inputs[1])
-    except IndexError:
-        input2_iszero = None
-    except TypeError:
-        if ca2:
-            input2_iszero = not inputs[1].value and inputs[1] is not False
-        else:
-            input2_iszero = not inputs[1] and inputs[1] is not False
-    else:
-        if ca2:
-            input2_iszero = not inputs[1].value.any()
-        else:
-            input2_iszero = not inputs[1].any()
-    zero_comparison = input1_iszero or input2_iszero
-    return _return_without_cosmo_factor(
-        ca_cf1, ca_cf2=ca_cf2, inputs=inputs, zero_comparison=zero_comparison
-    )
-
-
-def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
-    # unyt allows creating a unyt_array from e.g. arrays with heterogenous units
-    # (it probably shouldn't...).
-    # Example:
-    # >>> u.unyt_array([np.arange(3), np.arange(3) * u.m])
-    # unyt_array([[0, 1, 2],
-    #             [0, 1, 2]], '(dimensionless)')
-    # It's impractical for cosmo_array to try to cover
-    # all possible invalid user input without unyt being stricter.
-    # This function checks for consistency for all args and kwargs, but is not recursive
-    # so mixed cosmo attributes could be passed in the first argument to np.concatenate,
-    # for instance. This function can be used "recursively" in a limited way manually:
-    # in functions like np.concatenate where a list of arrays is expected, it makes sense
-    # to pass the first argument (of np.concatenate - an iterable) to this function
-    # to check consistency and attempt to coerce to comoving if needed.
-    cms = [(hasattr(arg, "comoving"), getattr(arg, "comoving", None)) for arg in args]
-    ca_cfs = [
-        (hasattr(arg, "cosmo_factor"), getattr(arg, "cosmo_factor", None))
-        for arg in args
-    ]
-    comps = [
-        (hasattr(arg, "compression"), getattr(arg, "compression", None)) for arg in args
-    ]
-    kw_cms = {
-        k: (hasattr(kwarg, "comoving"), getattr(kwarg, "comoving", None))
-        for k, kwarg in kwargs.items()
-    }
-    kw_ca_cfs = {
-        k: (hasattr(kwarg, "cosmo_factor"), getattr(kwarg, "cosmo_factor", None))
-        for k, kwarg in kwargs.items()
-    }
-    kw_comps = {
-        k: (hasattr(kwarg, "compression"), getattr(kwarg, "compression", None))
-        for k, kwarg in kwargs.items()
-    }
-    if len([cm[1] for cm in cms + list(kw_cms.values()) if cm[0]]) == 0:
-        # no cosmo inputs
-        ret_cm = None
-    elif all([cm[1] for cm in cms + list(kw_cms.values()) if cm[0]]):
-        # all cosmo inputs are comoving
-        ret_cm = True
-    elif all([cm[1] is None for cm in cms + list(kw_cms.values()) if cm[0]]):
-        # all cosmo inputs have comoving=None
-        ret_cm = None
-    elif any([cm[1] is None for cm in cms + list(kw_cms.values()) if cm[0]]):
-        # only some cosmo inputs have comoving=None
-        raise ValueError(
-            "Some arguments have comoving=None and others have comoving=True|False. "
-            "Result is undefined!"
-        )
-    elif all([cm[1] is False for cm in cms + list(kw_cms.values()) if cm[0]]):
-        # all cosmo_array inputs are physical
-        ret_cm = False
-    else:
-        # mix of comoving and physical inputs
-        # better to modify inplace (convert_to_comoving)?
-        if _default_cm:
-            args = [
-                arg.to_comoving() if cm[0] and not cm[1] else arg
-                for arg, cm in zip(args, cms)
-            ]
-            kwargs = {
-                k: kwarg.to_comoving() if kw_cms[k][0] and not kw_cms[k][1] else kwarg
-                for k, kwarg in kwargs.items()
-            }
-            ret_cm = True
-        else:
-            args = [
-                arg.to_physical() if cm[0] and not cm[1] else arg
-                for arg, cm in zip(args, cms)
-            ]
-            kwargs = {
-                k: kwarg.to_physical() if kw_cms[k][0] and not kw_cms[k][1] else kwarg
-                for k, kwarg in kwargs.items()
-            }
-            ret_cm = False
-    if len(set(comps + list(kw_comps.values()))) == 1:
-        # all compressions identical, preserve it
-        ret_comp = (comps + list(kw_comps.values()))[0]
-    else:
-        # mixed compressions, strip it off
-        ret_comp = None
-    return dict(
-        args=args,
-        kwargs=kwargs,
-        ca_cfs=ca_cfs,
-        kw_ca_cfs=kw_ca_cfs,
-        comoving=ret_cm,
-        compression=ret_comp,
-    )
 
 
 class InvalidScaleFactor(Exception):
@@ -771,7 +384,6 @@ class cosmo_array(unyt_array):
 
     """
 
-    # TODO:
     _cosmo_factor_ufunc_registry = {
         add: _preserve_cosmo_factor,
         subtract: _preserve_cosmo_factor,
