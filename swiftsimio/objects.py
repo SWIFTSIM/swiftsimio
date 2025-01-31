@@ -93,12 +93,7 @@ from numpy import (
     matmul,
     vecdot,
 )
-from numpy._core.umath import _ones_like
-
-try:
-    from numpy._core.umath import clip
-except ImportError:
-    clip = None
+from numpy._core.umath import _ones_like, clip
 
 # The scale factor!
 a = sympy.symbols("a")
