@@ -32,10 +32,7 @@ def implements(numpy_function):
 
 def _return_helper(res, helper_result, ret_cf, out=None):
     if out is None:
-        if isinstance(res, cosmo_array) and res.shape == ():
-            # happens when handling a function that unyt didn't handle explicitly
-            return cosmo_quantity(res)
-        elif isinstance(res, unyt_quantity) and not isinstance(res, cosmo_quantity):
+        if isinstance(res, unyt_quantity) and not isinstance(res, cosmo_quantity):
             return cosmo_quantity(
                 res,
                 comoving=helper_result["comoving"],
@@ -1867,7 +1864,9 @@ implements(np.amin)(_propagate_cosmo_array_attributes(np.amin._implementation))
 implements(np.average)(_propagate_cosmo_array_attributes(np.average._implementation))
 implements(np.nanmax)(_propagate_cosmo_array_attributes(np.nanmax._implementation))
 implements(np.nanmean)(_propagate_cosmo_array_attributes(np.nanmean._implementation))
-implements(np.nanmedian)(_propagate_cosmo_array_attributes(np.nanmedian._implementation))
+implements(np.nanmedian)(
+    _propagate_cosmo_array_attributes(np.nanmedian._implementation)
+)
 implements(np.nanmin)(_propagate_cosmo_array_attributes(np.nanmin._implementation))
 implements(np.max)(_propagate_cosmo_array_attributes(np.max._implementation))
 implements(np.min)(_propagate_cosmo_array_attributes(np.min._implementation))
@@ -1875,7 +1874,9 @@ implements(np.mean)(_propagate_cosmo_array_attributes(np.mean._implementation))
 implements(np.median)(_propagate_cosmo_array_attributes(np.median._implementation))
 implements(np.sort)(_propagate_cosmo_array_attributes(np.sort._implementation))
 implements(np.sum)(_propagate_cosmo_array_attributes(np.sum._implementation))
-implements(np.partition)(_propagate_cosmo_array_attributes(np.partition._implementation))
+implements(np.partition)(
+    _propagate_cosmo_array_attributes(np.partition._implementation)
+)
 
 
 @implements(np.meshgrid)
@@ -1887,5 +1888,3 @@ def meshgrid(*xi, **kwargs):
     # iterate over arguments.
     res = np.meshgrid._implementation(*xi, **kwargs)
     return tuple(_copy_cosmo_array_attributes(x, r) for (x, r) in zip(xi, res))
-
-

@@ -132,10 +132,11 @@ def _propagate_cosmo_array_attributes(func):
         if not isinstance(ret, cosmo_array):
             return ret
         ret = _copy_cosmo_array_attributes(obj, ret)
-        if ret.shape == ():
-            return cosmo_quantity(ret)
-        else:
-            return ret
+        # if ret.shape == ():
+        #     return cosmo_quantity(ret)
+        # else:
+        #     return ret
+        return ret
 
     return wrapped
 
@@ -1319,19 +1320,28 @@ class cosmo_array(unyt_array):
             # leaving other arguments a chance to take the lead
             return NotImplemented
 
-        if func in _HANDLED_FUNCTIONS:
-            return _HANDLED_FUNCTIONS[func](*args, **kwargs)
-        elif func not in _HANDLED_FUNCTIONS and func in _UNYT_HANDLED_FUNCTIONS:
-            # first look for unyt's implementation
-            return _UNYT_HANDLED_FUNCTIONS[func](*args, **kwargs)
-        elif func not in _UNYT_HANDLED_FUNCTIONS:
-            # otherwise default to numpy's private implementation
-            return func._implementation(*args, **kwargs)
-        # Note: this allows subclasses that don't override
-        # __array_function__ to handle cosmo_array objects
         if not all(issubclass(t, cosmo_array) or t is np.ndarray for t in types):
+            # Note: this allows subclasses that don't override
+            # __array_function__ to handle cosmo_array objects
             return NotImplemented
-        return _HANDLED_FUNCTIONS[func](*args, **kwargs)
+
+        if func in _HANDLED_FUNCTIONS:
+            ret = _HANDLED_FUNCTIONS[func](*args, **kwargs)
+        elif func in _UNYT_HANDLED_FUNCTIONS:
+            ret = _UNYT_HANDLED_FUNCTIONS[func](*args, **kwargs)
+        else:
+            # default to numpy's private implementation
+            ret = func._implementation(*args, **kwargs)
+        if (
+            isinstance(ret, cosmo_array)
+            and ret.shape == ()
+            and not isinstance(ret, cosmo_quantity)
+        ):
+            return cosmo_quantity(ret)
+        elif isinstance(ret, cosmo_quantity) and ret.shape != ():
+            return cosmo_array(ret)
+        else:
+            return ret
 
 
 class cosmo_quantity(cosmo_array, unyt_quantity):
