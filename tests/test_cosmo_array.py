@@ -31,27 +31,38 @@ def arg_to_ua(arg):
 
 
 def to_ua(x):
-    return u.unyt_array(x.to_value(x.units), x.units) if hasattr(x, "comoving") else x
+    return u.unyt_array(x) if hasattr(x, "comoving") else x
 
 
-def check_result(x_c, x_u):
+def check_result(x_c, x_u, ignore_values=False):
+    if x_u is None:
+        assert x_c is None
+        return
     if isinstance(x_u, str):
         assert isinstance(x_c, str)
         return
     if isinstance(x_u, type) or isinstance(x_u, np.dtype):
         assert x_u == x_c
         return
-    # careful, unyt_quantity is a subclass of unyt_array
+    if type(x_u) in (list, tuple):
+        assert type(x_u) is type(x_c)
+        assert len(x_u) == len(x_c)
+        for x_c_i, x_u_i in zip(x_c, x_u):
+            check_result(x_c_i, x_u_i)
+            return
+    # careful, unyt_quantity is a subclass of unyt_array:
     if isinstance(x_u, u.unyt_quantity):
         assert isinstance(x_c, cosmo_quantity)
     elif isinstance(x_u, u.unyt_array):
         assert isinstance(x_c, cosmo_array) and not isinstance(x_c, cosmo_quantity)
     else:
         assert not isinstance(x_c, cosmo_array)
-        assert np.allclose(x_c, x_u)
+        if not ignore_values:
+            assert np.allclose(x_c, x_u)
         return
     assert x_c.units == x_u.units
-    assert np.allclose(x_c.to_value(x_c.units), x_u.to_value(x_u.units))
+    if not ignore_values:
+        assert np.allclose(x_c.to_value(x_c.units), x_u.to_value(x_u.units))
     if isinstance(x_c, cosmo_array):  # includes cosmo_quantity
         assert x_c.comoving is False
         if x_c.units != u.dimensionless:
@@ -238,16 +249,16 @@ class TestNumpyFunctions:
             "take": (ca(np.arange(3)), np.arange(3)),
             # FUNCTIONS THAT UNYT DOESN'T HANDLE EXPLICITLY (THEY "JUST WORK"):
             "all": (ca(np.arange(3)),),
-            "amax": (ca(np.arange(3)),),
-            "amin": (ca(np.arange(3)),),
+            "amax": (ca(np.arange(3)),),  # implemented via max
+            "amin": (ca(np.arange(3)),),  # implemented via min
             "angle": (ca(complex(1, 1)),),
             "any": (ca(np.arange(3)),),
             "append": (ca(np.arange(3)), ca(1)),
             "apply_along_axis": (lambda x: x, 0, ca(np.eye(3))),
-            "argmax": (ca(np.arange(3)),),
-            "argmin": (ca(np.arange(3)),),
-            # argpartition,  # returns pure numbers
-            "argsort": (ca(np.arange(3)),),
+            "argmax": (ca(np.arange(3)),),  # implemented via max
+            "argmin": (ca(np.arange(3)),),  # implemented via min
+            "argpartition": (ca(np.arange(3)), 1),  # implemented via partition
+            "argsort": (ca(np.arange(3)),),  # implemented via sort
             "argwhere": (ca(np.arange(3)),),
             "array_str": (ca(np.arange(3)),),
             "atleast_1d": (ca(np.arange(3)),),
@@ -261,13 +272,13 @@ class TestNumpyFunctions:
             "iscomplexobj": (ca(np.arange(3)),),
             "isreal": (ca(np.arange(3)),),
             "isrealobj": (ca(np.arange(3)),),
-            # nan_to_num,  # works out of the box (tested)
-            "nanargmax": (ca(np.arange(3)),),
-            "nanargmin": (ca(np.arange(3)),),
-            "nanmax": (ca(np.arange(3)),),
-            "nanmean": (ca(np.arange(3)),),
-            "nanmedian": (ca(np.arange(3)),),
-            "nanmin": (ca(np.arange(3)),),
+            "nan_to_num": (ca(np.arange(3)),),
+            "nanargmax": (ca(np.arange(3)),),  # implemented via max
+            "nanargmin": (ca(np.arange(3)),),  # implemented via min
+            "nanmax": (ca(np.arange(3)),),  # implemented via max
+            "nanmean": (ca(np.arange(3)),),  # implemented via mean
+            "nanmedian": (ca(np.arange(3)),),  # implemented via median
+            "nanmin": (ca(np.arange(3)),),  # implemented via min
             "trim_zeros": (ca(np.arange(3)),),
             "max": (ca(np.arange(3)),),
             "mean": (ca(np.arange(3)),),
@@ -279,14 +290,14 @@ class TestNumpyFunctions:
             "sort": (ca(np.arange(3)),),
             "sum": (ca(np.arange(3)),),
             "repeat": (ca(np.arange(3)), 2),
-            # "tile": (ca(np.arange(3)), 2),  # reshape broken?
+            "tile": (ca(np.arange(3)), 2),
             "shares_memory": (ca(np.arange(3)), ca(np.arange(3))),
             "nonzero": (ca(np.arange(3)),),
             "count_nonzero": (ca(np.arange(3)),),
             "flatnonzero": (ca(np.arange(3)),),
             "isneginf": (ca(np.arange(3)),),
             "isposinf": (ca(np.arange(3)),),
-            #  "empty_like": (ca(np.arange(3)),),  # unyt result wrong?
+            "empty_like": (ca(np.arange(3)),),
             "full_like": (ca(np.arange(3)), ca(1)),
             "ones_like": (ca(np.arange(3)),),
             "zeros_like": (ca(np.arange(3)),),
@@ -308,72 +319,74 @@ class TestNumpyFunctions:
             "broadcast_to": (ca(np.arange(3)), 3),
             "broadcast_arrays": (ca(np.arange(3)),),
             "split": (ca(np.arange(3)), 1),
-            # array_split,  # works out of the box (tested)
-            # dsplit,  # works out of the box (tested)
-            # hsplit,  # works out of the box (tested)
-            # vsplit,  # works out of the box (tested)
-            # swapaxes,  # works out of the box (tested)
-            # moveaxis,  # works out of the box (tested)
-            # nansum,  # works out of the box (tested)
-            # std,  # works out of the box (tested)
-            # nanstd,  # works out of the box (tested)
-            # nanvar,  # works out of the box (tested)
-            # nanprod,  # works out of the box (tested)
-            # diag,  # works out of the box (tested)
-            # diag_indices_from,  # returns pure numbers
-            # diagflat,  # works out of the box (tested)
-            # diagonal,  # works out of the box (tested)
-            # ravel,  # returns pure numbers
-            # ravel_multi_index,  # returns pure numbers
-            # unravel_index,  # returns pure numbers
-            # fix,  # works out of the box (tested)
-            # round,  # is implemented via np.around
-            # may_share_memory,  # returns pure numbers (booleans)
-            # linalg.matrix_power,  # works out of the box (tested)
-            # linalg.cholesky,  # works out of the box (tested)
-            # linalg.multi_dot,  # works out of the box (tested)
-            # linalg.matrix_rank,  # returns pure numbers
-            # linalg.qr,  # works out of the box (tested)
-            # linalg.slogdet,  # undefined units
-            # linalg.cond,  # works out of the box (tested)
-            # gradient,  # works out of the box (tested)
-            # cumsum,  # works out of the box (tested)
-            # nancumsum,  # works out of the box (tested)
-            # nancumprod,  # we get it for free with np.cumprod (tested)
-            # bincount,  # works out of the box (tested)
-            # unique,  # works out of the box (tested)
-            # min_scalar_type,  # returns dtypes
-            # extract,  # works out of the box (tested)
-            # setxor1d,  # we get it for free with previously implemented functions (tested)
-            # lexsort,  # returns pure numbers
-            # digitize,  # returns pure numbers
-            # tril_indices_from,  # returns pure numbers
-            # triu_indices_from,  # returns pure numbers
-            # imag,  # works out of the box (tested)
-            # real,  # works out of the box (tested)
-            # real_if_close,  # works out of the box (tested)
-            # einsum_path,  # returns pure numbers
-            # cov,  # returns pure numbers
-            # corrcoef,  # returns pure numbers
-            # compress,  # works out of the box (tested)
-            # take_along_axis,  # works out of the box (tested)
-            # he following all work out of the box (tested):
-            # linalg.cross,
-            # linalg.diagonal,
-            # linalg.matmul,
-            # linalg.matrix_norm,
-            # linalg.matrix_transpose,
-            # linalg.svdvals,
-            # linalg.tensordot,
-            # linalg.trace,
-            # linalg.vecdot,
-            # linalg.vector_norm,
-            # astype,
-            # matrix_transpose,
-            # unique_all,
-            # unique_counts,
-            # unique_inverse,
-            # unique_values,
+            "array_split": (ca(np.arange(3)), 1),
+            "dsplit": (ca(np.arange(27)).reshape(3, 3, 3), 1),
+            "hsplit": (ca(np.arange(3)), 1),
+            "vsplit": (ca(np.eye(3)), 1),
+            "swapaxes": (ca(np.eye(3)), 0, 1),
+            "moveaxis": (ca(np.eye(3)), 0, 1),
+            "nansum": (ca(np.arange(3)),),  # implemented via sum
+            "std": (ca(np.arange(3)),),
+            "nanstd": (ca(np.arange(3)),),
+            "nanvar": (ca(np.arange(3)),),
+            "nanprod": (ca(np.arange(3)),),
+            "diag": (ca(np.eye(3)),),
+            "diag_indices_from": (ca(np.eye(3)),),
+            "diagflat": (ca(np.eye(3)),),
+            "diagonal": (ca(np.eye(3)),),
+            "ravel": (ca(np.arange(3)),),
+            "ravel_multi_index": (np.eye(2, dtype=int), (2, 2)),
+            "unravel_index": (np.arange(3), (3,)),
+            "fix": (ca(np.arange(3)),),
+            "round": (ca(np.arange(3)),),  # implemented via around
+            "may_share_memory": (ca(np.arange(3)), ca(np.arange(3))),
+            "linalg.matrix_power": (ca(np.eye(3)), 2),
+            "linalg.cholesky": (ca(np.eye(3)),),
+            "linalg.multi_dot": ((ca(np.eye(3)), ca(np.eye(3))),),
+            "linalg.matrix_rank": (ca(np.eye(3)),),
+            "linalg.qr": (ca(np.eye(3)),),
+            "linalg.slogdet": (ca(np.eye(3)),),
+            "linalg.cond": (ca(np.eye(3)),),
+            "gradient": (ca(np.arange(3)),),
+            "cumsum": (ca(np.arange(3)),),
+            "nancumsum": (ca(np.arange(3)),),
+            "nancumprod": (ca(np.arange(3)),),
+            "bincount": (ca(np.arange(3)),),
+            "unique": (ca(np.arange(3)),),
+            "min_scalar_type": (ca(np.arange(3)),),
+            "extract": (0, ca(np.arange(3))),
+            "setxor1d": (ca(np.arange(3)), ca(np.arange(3))),
+            "lexsort": (ca(np.arange(3)),),
+            "digitize": (ca(np.arange(3)), ca(np.arange(3))),
+            "tril_indices_from": (ca(np.eye(3)),),
+            "triu_indices_from": (ca(np.eye(3)),),
+            "imag": (ca(np.arange(3)),),
+            "real": (ca(np.arange(3)),),
+            "real_if_close": (ca(np.arange(3)),),
+            "einsum_path": ("ij,jk->ik", ca(np.eye(3)), ca(np.eye(3))),
+            "cov": (ca(np.arange(3)),),
+            "corrcoef": (ca(np.arange(3)),),
+            "compress": (np.zeros(3), ca(np.arange(3))),
+            "take_along_axis": (ca(np.arange(3)), np.ones(3, dtype=int), 0),
+            "linalg.cross": (ca(np.arange(3)), ca(np.arange(3))),
+            "linalg.diagonal": (ca(np.eye(3)),),
+            "linalg.matmul": (ca(np.eye(3)), ca(np.eye(3))),
+            "linalg.matrix_norm": (ca(np.eye(3)),),
+            "linalg.matrix_transpose": (ca(np.eye(3)),),
+            "linalg.svdvals": (ca(np.eye(3)),),
+            "linalg.tensordot": (ca(np.eye(3)), ca(np.eye(3))),
+            "linalg.trace": (ca(np.eye(3)),),
+            "linalg.vecdot": (ca(np.arange(3)), ca(np.arange(3))),
+            "linalg.vector_norm": (ca(np.arange(3)),),
+            "astype": (ca(np.arange(3)), float),
+            "matrix_transpose": (ca(np.eye(3)),),
+            "unique_all": (ca(np.arange(3)),),
+            "unique_counts": (ca(np.arange(3)),),
+            "unique_inverse": (ca(np.arange(3)),),
+            "unique_values": (ca(np.arange(3)),),
+            "cumulative_sum": (ca(np.arange(3)),),
+            "cumulative_prod": (ca(np.arange(3)),),
+            "unstack": (ca(np.arange(3)),),
         }
         functions_checked = list()
         bad_funcs = dict()
@@ -423,22 +436,11 @@ class TestNumpyFunctions:
                 ua_result = ua_args[0]
             if "savetxt" in fname and os.path.isfile(savetxt_file):
                 os.remove(savetxt_file)
-            if ua_result is None:
-                try:
-                    assert result is None
-                except AssertionError:
-                    bad_funcs["np." + fname] = result, ua_result
-            else:
-                try:
-                    if isinstance(ua_result, tuple):
-                        assert isinstance(result, tuple)
-                        assert len(result) == len(ua_result)
-                        for r, ua_r in zip(result, ua_result):
-                            check_result(r, ua_r)
-                    else:
-                        check_result(result, ua_result)
-                except AssertionError:
-                    bad_funcs["np." + fname] = result, ua_result
+            ignore_values = fname in {"empty_like"}  # empty_like has arbitrary data
+            try:
+                check_result(result, ua_result, ignore_values=ignore_values)
+            except AssertionError:
+                bad_funcs["np." + fname] = result, ua_result
         if len(bad_funcs) > 0:
             raise AssertionError(
                 "Some functions did not return expected types "
