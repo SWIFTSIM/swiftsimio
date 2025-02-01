@@ -605,6 +605,8 @@ class cosmo_array(unyt_array):
     def __str__(self):
         if self.comoving:
             comoving_str = "(Comoving)"
+        elif self.comoving is None:
+            comoving_str = "(Physical/comoving not set)"
         else:
             comoving_str = "(Physical)"
 
