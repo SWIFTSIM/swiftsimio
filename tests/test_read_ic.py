@@ -1,6 +1,7 @@
 from swiftsimio import load
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
+from swiftsimio import cosmo_array
 
 import unyt
 import numpy as np
@@ -33,7 +34,7 @@ def simple_snapshot_data():
     x = Writer(cosmo_units, boxsize)
 
     # 32^3 particles.
-    n_p = 32 ** 3
+    n_p = 32**3
 
     # Randomly spaced coordinates from 0, 100 Mpc in each direction
     x.gas.coordinates = np.random.rand(n_p, 3) * (100 * unyt.Mpc)
@@ -70,7 +71,9 @@ def test_reading_ic_units(simple_snapshot_data, field):
 
     data = load(test_filename)
 
-    assert unyt.array.allclose_units(
+    assert isinstance(getattr(data.gas, field), cosmo_array)
+    # np.allclose checks unit consistency
+    assert np.allclose(
         getattr(data.gas, field), getattr(simple_snapshot_data.gas, field), rtol=1.0e-4
     )
     return

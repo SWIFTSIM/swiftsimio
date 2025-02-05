@@ -64,7 +64,6 @@ parser.add_argument(
 def swiftsnap():
     import swiftsimio as sw
     from swiftsimio.metadata.objects import metadata_discriminator
-    import unyt
 
     from swiftsimio.metadata.particle import particle_name_underscores
     from textwrap import wrap
