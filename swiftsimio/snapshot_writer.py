@@ -14,6 +14,7 @@ from typing import Union, List, Callable
 from functools import reduce
 
 from swiftsimio import metadata
+from swiftsimio.objects import cosmo_array
 from swiftsimio.metadata.cosmology.cosmology_fields import a_exponents
 
 
@@ -51,7 +52,7 @@ class __SWIFTWriterParticleDataset(object):
         checks if all required datasets are empty.
     check_consistent(self)
         performs consistency checks on dataset
-    generate_smoothing_lengths(self, boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity], dimension: int)
+    generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int)
         automatically generates the smoothing lengths
     write_particle_group(self, file_handle: h5py.File, compress: bool)
         writes the particle group's required properties to file.
@@ -164,7 +165,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def generate_smoothing_lengths(
         self,
-        boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity],
+        boxsize: cosmo_array,
         dimension: int,
     ):
         """
@@ -175,7 +176,7 @@ class __SWIFTWriterParticleDataset(object):
 
         Parameters
         ----------
-        boxsize : unyt.unyt_quantity or list of unyt.unyt_quantity
+        boxsize : cosmo_array or cosmo_quantity
             size of SWIFT computational box
         dimension : int
             number of box dimensions
@@ -271,7 +272,7 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the scale factor associated quantities
             a_exp = a_exponents.get(name, 0)
-            a_factor = scale_factor ** a_exp
+            a_factor = scale_factor**a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
@@ -506,7 +507,7 @@ class SWIFTSnapshotWriter(object):
     def __init__(
         self,
         unit_system: Union[unyt.UnitSystem, str],
-        box_size: Union[list, unyt.unyt_quantity],
+        box_size: cosmo_array,
         dimension=3,
         compress=True,
         extra_header: Union[None, dict] = None,
@@ -522,7 +523,7 @@ class SWIFTSnapshotWriter(object):
         ----------
         unit_system : unyt.UnitSystem or str
             unit system for dataset
-        boxsize : list or unyt.unyt_quantity
+        boxsize : cosmo_array
             size of simulation box and associated units
         dimension : int, optional
             dimensions of simulation

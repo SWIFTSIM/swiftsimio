@@ -3,18 +3,17 @@ Routines for generating (approximate) smoothing lengths for particles
 that do not usually carry a smoothing length field (e.g. dark matter).
 """
 
-from typing import Union
-from unyt import unyt_array
 from numpy import empty, float32
 
-from swiftsimio import SWIFTDataset, cosmo_array
-from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
+from swiftsimio import cosmo_array
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
+from swiftsimio._array_functions import _propagate_cosmo_array_attributes
 
 
+@_propagate_cosmo_array_attributes  # copies attrs of first arg to result, if present
 def generate_smoothing_lengths(
-    coordinates: Union[unyt_array, cosmo_array],
-    boxsize: Union[unyt_array, cosmo_array],
+    coordinates: cosmo_array,
+    boxsize: cosmo_array,
     kernel_gamma: float32,
     neighbours=32,
     speedup_fac=2,
@@ -25,9 +24,9 @@ def generate_smoothing_lengths(
 
     Parameters
     ----------
-    coordinates : unyt_array or cosmo_array
+    coordinates : cosmo_array
         a cosmo_array that gives the co-ordinates of all particles
-    boxsize : unyt_array or cosmo_array
+    boxsize : cosmo_array
         the size of the box (3D)
     kernel_gamma : float32
         the kernel gamma of the kernel being used
@@ -46,8 +45,8 @@ def generate_smoothing_lengths(
 
     Returns
     -------
-    smoothing lengths : unyt_array
-        an unyt array of smoothing lengths.
+    smoothing lengths : cosmo_array
+        a cosmo_array of smoothing lengths.
     """
 
     if not TREE_AVAILABLE:
@@ -103,15 +102,8 @@ def generate_smoothing_lengths(
 
         smoothing_lengths[starting_index:ending_index] = d[:, -1]
 
-    if isinstance(coordinates, cosmo_array):
-        return cosmo_array(
-            smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
-            units=coordinates.units,
-            comoving=coordinates.comoving,
-            cosmo_factor=coordinates.cosmo_factor,
-        )
-    else:
-        return unyt_array(
-            smoothing_lengths * (hsml_correction_fac_speedup / kernel_gamma),
-            units=coordinates.units,
-        )
+    return type(coordinates)(
+        smoothing_lengths
+        * (hsml_correction_fac_speedup / kernel_gamma)
+        * coordinates.units
+    )

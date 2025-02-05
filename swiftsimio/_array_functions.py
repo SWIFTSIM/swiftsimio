@@ -111,7 +111,9 @@ _HANDLED_FUNCTIONS = {}
 
 
 def _copy_cosmo_array_attributes(from_ca, to_ca):
-    if not isinstance(to_ca, objects.cosmo_array):
+    if not isinstance(to_ca, objects.cosmo_array) and isinstance(
+        from_ca, objects.cosmo_array
+    ):
         return to_ca
     if hasattr(from_ca, "cosmo_factor"):
         to_ca.cosmo_factor = from_ca.cosmo_factor

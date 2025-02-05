@@ -18,13 +18,12 @@ from numpy import (
     matmul,
     max as np_max,
 )
-from unyt import unyt_array
 from swiftsimio import SWIFTDataset, cosmo_array
 
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.optional_packages import plt
 
-from .slice import kernel, kernel_gamma
+from swiftsimio.visualisation.slice_backends.sph import kernel, kernel_gamma
 
 
 @jit(nopython=True, fastmath=True)
@@ -588,8 +587,8 @@ def render_gas_voxel_grid(
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
-    rotation_center: Union[None, unyt_array] = None,
-    region: Union[None, unyt_array] = None,
+    rotation_center: Union[None, cosmo_array] = None,
+    region: Union[None, cosmo_array] = None,
     periodic: bool = True,
 ):
     """
@@ -618,11 +617,11 @@ def render_gas_voxel_grid(
         ``rotation_center``. In the default case, this provides a volume render
         viewed along the z axis.
 
-    rotation_center: np.array, optional
+    rotation_center: cosmo_array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
-    region : unyt_array, optional
+    region : cosmo_array, optional
         determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom
         edges, and front and back edges) if it is not None. It should have a
@@ -712,12 +711,12 @@ def render_gas_voxel_grid(
     if data.gas.coordinates.comoving:
         if not hsml.compatible_with_comoving():
             raise AttributeError(
-                f"Physical smoothing length is not compatible with comoving coordinates!"
+                "Physical smoothing length is not compatible with comoving coordinates!"
             )
     else:
         if not hsml.compatible_with_physical():
             raise AttributeError(
-                f"Comoving smoothing length is not compatible with physical coordinates!"
+                "Comoving smoothing length is not compatible with physical coordinates!"
             )
 
     if periodic:
@@ -755,8 +754,8 @@ def render_gas(
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
-    rotation_center: Union[None, unyt_array] = None,
-    region: Union[None, unyt_array] = None,
+    rotation_center: Union[None, cosmo_array] = None,
+    region: Union[None, cosmo_array] = None,
     periodic: bool = True,
 ):
     """
@@ -785,11 +784,11 @@ def render_gas(
         ``rotation_center``. In the default case, this provides a volume render
         viewed along the z axis.
 
-    rotation_center: np.array, optional
+    rotation_center: cosmo_array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
-    region : unyt_array, optional
+    region : cosmo_array, optional
         determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom
         edges, and front and back edges) if it is not None. It should have a
@@ -845,14 +844,14 @@ def render_gas(
             * data.metadata.boxsize[1]
             * data.metadata.boxsize[2]
         )
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 
@@ -896,8 +895,8 @@ def visualise_render(
     render : np.array
         The render to visualise. You should scale this appropriately
         before using this function (e.g. use a logarithmic transform!)
-        and pass in the 'value' array, not the original cosmo array or
-        unyt array.
+        and pass in the 'value' array, not the original cosmo_array or
+        unyt_array.
 
     centers : list[float]
         The centers of your rendering functions
@@ -907,8 +906,8 @@ def visualise_render(
         will have the same width.
 
     cmap : str
-        The colormap to use for the rendering functions. 
-    
+        The colormap to use for the rendering functions.
+
     return_type : Literal["all", "lighten", "add"]
         The type of return. If "all", all images are returned. If "lighten",
         the maximum of all images is returned. If "add", the sum of all images
@@ -974,11 +973,11 @@ def visualise_render_options(
 
     centers : list[float]
         The centers of your rendering functions
-    
+
     widths : list[float] | float
         The widths of your rendering functions. If a single float, all functions
         will have the same width.
-    
+
     cmap : str
         The colormap to use for the rendering functions.
 

@@ -217,15 +217,15 @@ def core_panels_parallel(
 
 def panel_pixel_grid(
     data: __SWIFTGroupDataset,
-    boxsize: unyt.unyt_array,
+    boxsize: cosmo_array,
     resolution: int,
     panels: int,
     project: Union[str, None] = "masses",
-    region: Union[None, unyt.unyt_array] = None,
+    region: Union[None, cosmo_array] = None,
     mask: Union[None, np.array] = None,
     rotation_matrix: Union[None, np.array] = None,
-    rotation_center: Union[None, unyt.unyt_array] = None,
-) -> unyt.unyt_array:
+    rotation_center: Union[None, cosmo_array] = None,
+) -> cosmo_array:
     if rotation_center is not None:
         try:
             if rotation_center.units == data.coordinates.units:
@@ -332,10 +332,10 @@ def panel_gas(
     resolution: int,
     panels: int,
     project: Union[str, None] = "masses",
-    region: Union[None, unyt.unyt_array] = None,
+    region: Union[None, cosmo_array] = None,
     mask: Union[None, np.array] = None,
     rotation_matrix: Union[None, np.array] = None,
-    rotation_center: Union[None, unyt.unyt_array] = None,
+    rotation_center: Union[None, cosmo_array] = None,
 ) -> cosmo_array:
     image = panel_pixel_grid(
         data=data.gas,
@@ -353,23 +353,23 @@ def panel_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range ** 2)
+        units = 1.0 / (max_range**2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / (x_range.units * y_range.units))
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range ** 2)
+        units = 1.0 / (max_range**2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 2
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**2
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-2)
 

@@ -4,16 +4,9 @@ Sub-module for slice plots in SWFITSIMio.
 
 from typing import Union, Optional
 from numpy import float32, array, ones, matmul
-from unyt import unyt_array, unyt_quantity
-from swiftsimio import SWIFTDataset, cosmo_array
+from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
-
-from swiftsimio.visualisation.slice_backends.sph import (
-    kernel,
-    kernel_constant,
-    kernel_gamma,
-)
 
 slice_scatter = backends["sph"]
 slice_scatter_parallel = backends_parallel["sph"]
@@ -22,12 +15,12 @@ slice_scatter_parallel = backends_parallel["sph"]
 def slice_gas_pixel_grid(
     data: SWIFTDataset,
     resolution: int,
-    z_slice: Optional[unyt_quantity] = None,
+    z_slice: Optional[cosmo_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
-    rotation_center: Union[None, unyt_array] = None,
-    region: Union[None, unyt_array] = None,
+    rotation_center: Union[None, cosmo_array] = None,
+    region: Union[None, cosmo_array] = None,
     backend: str = "sph",
     periodic: bool = True,
 ):
@@ -43,7 +36,7 @@ def slice_gas_pixel_grid(
     resolution : int
         Specifies size of return array
 
-    z_slice : unyt_quantity
+    z_slice : cosmo_quantity
         Specifies the location along the z-axis where the slice is to be
         extracted, relative to the rotation center or the origin of the box
         if no rotation center is provided. If the perspective is rotated
@@ -67,7 +60,7 @@ def slice_gas_pixel_grid(
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
-    region : unyt_array, optional
+    region : cosmo_array, optional
         determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom edges)
         if it is not None. It should have a length of four, and take the form:
@@ -205,12 +198,12 @@ def slice_gas_pixel_grid(
 def slice_gas(
     data: SWIFTDataset,
     resolution: int,
-    z_slice: Optional[unyt_quantity] = None,
+    z_slice: Optional[cosmo_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
     rotation_matrix: Union[None, array] = None,
-    rotation_center: Union[None, unyt_array] = None,
-    region: Union[None, unyt_array] = None,
+    rotation_center: Union[None, cosmo_array] = None,
+    region: Union[None, cosmo_array] = None,
     backend: str = "sph",
     periodic: bool = True,
 ):
@@ -225,7 +218,7 @@ def slice_gas(
     resolution : int
         Specifies size of return array
 
-    z_slice : unyt_quantity
+    z_slice : cosmo_quantity
         Specifies the location along the z-axis where the slice is to be
         extracted, relative to the rotation center or the origin of the box
         if no rotation center is provided. If the perspective is rotated
@@ -304,7 +297,7 @@ def slice_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range ** 3)
+        units = 1.0 / (max_range**3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(
@@ -312,17 +305,17 @@ def slice_gas(
         )
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range ** 3)
+        units = 1.0 / (max_range**3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 
