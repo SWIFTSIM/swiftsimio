@@ -686,6 +686,21 @@ class TestCosmoQuantity:
         assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
         assert res.valid_transform is True
 
+    def test_scalar_return_func(self):
+        """
+        Make sure that default-wrapped functions that take a cosmo_array and return a
+        scalar convert to a cosmo_quantity.
+        """
+        ca = cosmo_array(
+            np.arange(3),
+            u.m,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a**1, 1.0),
+            valid_transform=True,
+        )
+        res = np.min(ca)
+        assert isinstance(res, cosmo_quantity)
+
     @pytest.mark.parametrize("prop", ["T", "ua", "unit_array"])
     def test_propagation_props(self, prop):
         cq = cosmo_quantity(
