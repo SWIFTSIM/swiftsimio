@@ -134,24 +134,46 @@ def _propagate_cosmo_array_attributes(func):
     return wrapped
 
 
+def _promote_unyt_to_cosmo(input_object):
+    # converts a unyt_quantity to a cosmo_quantity, or a unyt_array to a cosmo_array
+    if isinstance(input_object, unyt_quantity) and not isinstance(
+        input_object, objects.cosmo_quantity
+    ):
+        ret = objects.cosmo_quantity(input_object)
+    elif isinstance(input_object, unyt_array) and not isinstance(
+        input_object, objects.cosmo_array
+    ):
+        ret = objects.cosmo_array(input_object)
+    else:
+        ret = input_object
+    return ret
+
+
+def _ensure_array_or_quantity_matches_shape(input_object):
+    if (
+        isinstance(input_object, objects.cosmo_array)
+        and not isinstance(input_object, objects.cosmo_quantity)
+        and input_object.shape == ()
+    ):
+        ret = objects.cosmo_quantity(input_object)
+    elif isinstance(input_object, objects.cosmo_quantity) and input_object.shape != ():
+        ret = objects.cosmo_array(input_object)
+    else:
+        ret = input_object
+    return ret
+
+
 def _ensure_cosmo_array_or_quantity(func):
     # can work on methods (obj is self) and functions (obj is first argument)
     def wrapped(obj, *args, **kwargs):
         ret = func(obj, *args, **kwargs)
-        if isinstance(ret, unyt_quantity) and not isinstance(
-            ret, objects.cosmo_quantity
-        ):
-            ret = objects.cosmo_quantity(ret)
-        elif isinstance(ret, unyt_array) and not isinstance(ret, objects.cosmo_array):
-            ret = objects.cosmo_array(ret)
-        if (
-            isinstance(ret, objects.cosmo_array)
-            and not isinstance(ret, objects.cosmo_quantity)
-            and ret.shape == ()
-        ):
-            ret = objects.cosmo_quantity(ret)
-        elif isinstance(ret, objects.cosmo_quantity) and ret.shape != ():
-            ret = objects.cosmo_array(ret)
+        if isinstance(ret, tuple):
+            ret = tuple(
+                _ensure_array_or_quantity_matches_shape(_promote_unyt_to_cosmo(item))
+                for item in ret
+            )
+        else:
+            ret = _ensure_array_or_quantity_matches_shape(_promote_unyt_to_cosmo(ret))
         return ret
 
     return wrapped
@@ -525,49 +547,16 @@ def implements(numpy_function):
 
 
 def _return_helper(res, helper_result, ret_cf, out=None):
-    if out is None:
-        if isinstance(res, unyt_quantity) and not isinstance(
-            res, objects.cosmo_quantity
-        ):
-            return objects.cosmo_quantity(
-                res,
-                comoving=helper_result["comoving"],
-                cosmo_factor=ret_cf,
-                compression=helper_result["compression"],
-            )
-        elif isinstance(res, unyt_array) and not isinstance(res, objects.cosmo_array):
-            return objects.cosmo_array(
-                res,
-                comoving=helper_result["comoving"],
-                cosmo_factor=ret_cf,
-                compression=helper_result["compression"],
-            )
-        else:
-            # unyt returned a bare array
-            return res
-    if hasattr(out, "comoving"):
+    res = _promote_unyt_to_cosmo(res)
+    if isinstance(res, objects.cosmo_array):  # also recognizes cosmo_quantity
+        res.comoving = helper_result["comoving"]
+        res.cosmo_factor = ret_cf
+        res.compression = helper_result["compression"]
+    if isinstance(out, objects.cosmo_array):  # also recognizes cosmo_quantity
         out.comoving = helper_result["comoving"]
-    if hasattr(out, "cosmo_factor"):
         out.cosmo_factor = ret_cf
-    if hasattr(out, "compression"):
         out.compression = helper_result["compression"]
-    if res.shape == ():
-        return objects.cosmo_quantity(
-            res.to_value(res.units),
-            res.units,
-            bypass_validation=True,
-            comoving=helper_result["comoving"],
-            cosmo_factor=ret_cf,
-            compression=helper_result["compression"],
-        )
-    return objects.cosmo_array(
-        res.to_value(res.units),
-        res.units,
-        bypass_validation=True,
-        comoving=helper_result["comoving"],
-        cosmo_factor=ret_cf,
-        compression=helper_result["compression"],
-    )
+    return res
 
 
 def _default_unary_wrapper(unyt_func, cosmo_factor_wrapper):
@@ -745,14 +734,11 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
         )
     else:
         ret_cf_counts = ret_cf_dens if density else None
-    if isinstance(counts, unyt_array):
-        counts = objects.cosmo_array(
-            counts.to_value(counts.units),
-            counts.units,
-            comoving=helper_result["comoving"],
-            cosmo_factor=ret_cf_counts,
-            compression=helper_result["compression"],
-        )
+    counts = _promote_unyt_to_cosmo(counts)
+    if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
+        counts.comoving = helper_result["comoving"]
+        counts.cosmo_factor = ret_cf_counts
+        counts.compression = helper_result["compression"]
     return counts, _return_helper(bins, helper_result, ret_cf_bins)
 
 
@@ -805,14 +791,13 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
         )
         if weights is not None:
             ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
-            if isinstance(counts, unyt_array):
-                counts = objects.cosmo_array(
-                    counts.to_value(counts.units),
-                    counts.units,
-                    comoving=helper_result_w["comoving"],
-                    cosmo_factor=ret_cf_w,
-                    compression=helper_result_w["compression"],
-                )
+            counts = _promote_unyt_to_cosmo(counts)
+            if isinstance(
+                counts, objects.cosmo_array
+            ):  # also recognizes cosmo_quantity
+                counts.comoving = helper_result_w["comoving"]
+                counts.cosmo_factor = ret_cf_w
+                counts.compression = helper_result_w["compression"]
     else:  # density=True
         # now x, y and weights must be compatible because they will combine
         # we unpack input to the helper to get everything checked for compatibility
@@ -857,14 +842,11 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             )
         else:
             ret_cf_counts = _reciprocal_cosmo_factor((ret_cf_xy is not None, ret_cf_xy))
-        if isinstance(counts, unyt_array):
-            counts = objects.cosmo_array(
-                counts.to_value(counts.units),
-                counts.units,
-                comoving=helper_result["comoving"],
-                cosmo_factor=ret_cf_counts,
-                compression=helper_result["compression"],
-            )
+        counts = _promote_unyt_to_cosmo(counts)
+        if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
+            counts.comoving = helper_result["comoving"]
+            counts.cosmo_factor = ret_cf_counts
+            counts.compression = helper_result["compression"]
     return (
         counts,
         _return_helper(xbins, helper_result_x, ret_cf_x),
@@ -920,14 +902,11 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
         )
         if weights is not None:
             ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
-            if isinstance(counts, unyt_array):
-                counts = objects.cosmo_array(
-                    counts.to_value(counts.units),
-                    counts.units,
-                    comoving=helper_result_w["comoving"],
-                    cosmo_factor=ret_cf_w,
-                    compression=helper_result_w["compression"],
-                )
+            counts = _promote_unyt_to_cosmo(counts)
+            if isinstance(counts, objects.cosmo_array):
+                counts.comoving = helper_result_w["comoving"]
+                counts.cosmo_factor = ret_cf_w
+                counts.compression = helper_result_w["compression"]
     else:  # density=True
         # now sample and weights must be compatible because they will combine
         # we unpack input to the helper to get everything checked for compatibility
@@ -962,14 +941,11 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
             ret_cf_counts = _reciprocal_cosmo_factor(
                 (ret_cf_sample is not None, ret_cf_sample)
             )
-        if isinstance(counts, unyt_array):
-            counts = objects.cosmo_array(
-                counts.to_value(counts.units),
-                counts.units,
-                comoving=helper_result["comoving"],
-                cosmo_factor=ret_cf_counts,
-                compression=helper_result["compression"],
-            )
+        counts = _promote_unyt_to_cosmo(counts)
+        if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
+            counts.comoving = helper_result["comoving"]
+            counts.cosmo_factor = ret_cf_counts
+            counts.compression = helper_result["compression"]
     return (
         counts,
         tuple(

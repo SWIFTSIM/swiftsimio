@@ -865,21 +865,17 @@ class cosmo_array(unyt_array):
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*ca_cfs, inputs=inputs)
 
-        ret = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
+        ret = _ensure_cosmo_array_or_quantity(super().__array_ufunc__)(
+            ufunc, method, *inputs, **kwargs
+        )
         # if we get a tuple we have multiple return values to deal with
-        # if unyt returns a bare ndarray, do the same
-        # otherwise we create a view and attach our attributes
         if isinstance(ret, tuple):
-            ret = tuple(
-                r.view(type(self)) if isinstance(r, unyt_array) else r for r in ret
-            )
             for r in ret:
-                if isinstance(r, type(self)):
+                if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
                     r.comoving = helper_result["comoving"]
                     r.cosmo_factor = ret_cf
                     r.compression = helper_result["compression"]
-        if isinstance(ret, unyt_array):
-            ret = ret.view(type(self))
+        elif isinstance(ret, cosmo_array):  # also recognizes cosmo_quantity
             ret.comoving = helper_result["comoving"]
             ret.cosmo_factor = ret_cf
             ret.compression = helper_result["compression"]
@@ -887,13 +883,13 @@ class cosmo_array(unyt_array):
             out = kwargs.pop("out")
             if ufunc not in multiple_output_operators:
                 out = out[0]
-                if isinstance(out, cosmo_array):
+                if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
                     out.comoving = helper_result["comoving"]
                     out.cosmo_factor = ret_cf
                     out.compression = helper_result["compression"]
             else:
                 for o in out:
-                    if isinstance(o, type(self)):
+                    if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
                         o.comoving = helper_result["comoving"]
                         o.cosmo_factor = ret_cf
                         o.compression = helper_result["compression"]
@@ -926,22 +922,13 @@ class cosmo_array(unyt_array):
             return NotImplemented
 
         if func in _HANDLED_FUNCTIONS:
-            ret = _HANDLED_FUNCTIONS[func](*args, **kwargs)
+            function_to_invoke = _HANDLED_FUNCTIONS[func]
         elif func in _UNYT_HANDLED_FUNCTIONS:
-            ret = _UNYT_HANDLED_FUNCTIONS[func](*args, **kwargs)
+            function_to_invoke = _UNYT_HANDLED_FUNCTIONS[func]
         else:
             # default to numpy's private implementation
-            ret = func._implementation(*args, **kwargs)
-        if (
-            isinstance(ret, cosmo_array)
-            and ret.shape == ()
-            and not isinstance(ret, cosmo_quantity)
-        ):
-            return cosmo_quantity(ret)
-        elif isinstance(ret, cosmo_quantity) and ret.shape != ():
-            return cosmo_array(ret)
-        else:
-            return ret
+            function_to_invoke = func._implementation
+        return function_to_invoke(*args, **kwargs)
 
 
 class cosmo_quantity(cosmo_array, unyt_quantity):
@@ -1033,7 +1020,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             bypass_validation
             or isinstance(input_scalar, (numeric_type, np.number, np.ndarray))
         ):
-            raise RuntimeError("unyt_quantity values must be numeric")
+            raise RuntimeError("cosmo_quantity values must be numeric")
 
         units = getattr(input_scalar, "units", None) if units is None else units
         name = getattr(input_scalar, "name", None) if name is None else name
@@ -1071,11 +1058,3 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         if ret.size > 1:
             raise RuntimeError("cosmo_quantity instances must be scalars")
         return ret
-
-    @_propagate_cosmo_array_attributes
-    def reshape(self, shape, /, *, order="C"):
-        reshaped = unyt_array.reshape(self, shape, order=order)
-        if shape == () or shape is None:
-            return reshaped
-        else:
-            return cosmo_array(reshaped)
