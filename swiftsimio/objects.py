@@ -233,6 +233,8 @@ class cosmo_factor:
         float
             the a-factor for given unit
         """
+        if (self.expr is None) or (self.scale_factor is None):
+            return None
         return float(self.expr.subs(a, self.scale_factor))
 
     @property
@@ -253,6 +255,8 @@ class cosmo_factor:
         ..math:: z = \\frac{1}{a} - 1,
         where :math: `a` is the scale factor
         """
+        if self.scale_factor is None:
+            return None
         return (1.0 / self.scale_factor) - 1.0
 
     def __add__(self, b):
@@ -292,6 +296,17 @@ class cosmo_factor:
                 f"{self.scale_factor} and {b.scale_factor}"
             )
 
+        if ((self.expr is None) and (b.expr is not None)) or (
+            (self.expr is not None) and (b.expr is None)
+        ):
+            raise InvalidScaleFactor(
+                "Attempting to multiply an initialized cosmo_factor with an "
+                f"uninitialized cosmo_factor {self} and {b}."
+            )
+        if (self.expr is None) and (b.expr is None):
+            # let's be permissive and allow two uninitialized cosmo_factors through
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
+
         return cosmo_factor(expr=self.expr * b.expr, scale_factor=self.scale_factor)
 
     def __truediv__(self, b):
@@ -300,6 +315,17 @@ class cosmo_factor:
                 "Attempting to divide two cosmo_factors with different scale factors "
                 f"{self.scale_factor} and {b.scale_factor}"
             )
+
+        if ((self.expr is None) and (b.expr is not None)) or (
+            (self.expr is not None) and (b.expr is None)
+        ):
+            raise InvalidScaleFactor(
+                "Attempting to divide an initialized cosmo_factor with an "
+                f"uninitialized cosmo_factor {self} and {b}."
+            )
+        if (self.expr is None) and (b.expr is None):
+            # let's be permissive and allow two uninitialized cosmo_factors through
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
 
         return cosmo_factor(expr=self.expr / b.expr, scale_factor=self.scale_factor)
 
@@ -316,6 +342,8 @@ class cosmo_factor:
         return b.__truediv__(self)
 
     def __pow__(self, p):
+        if self.expr is None:
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
         return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
@@ -349,7 +377,10 @@ class cosmo_factor:
         str
             string to print exponent and current scale factor
         """
-        return self.__str__()
+        return f"cosmo_factor(expr={self.expr}, scale_factor={self.scale_factor})"
+
+
+NULL_CF = cosmo_factor(None, None)
 
 
 class cosmo_array(unyt_array):
@@ -484,7 +515,7 @@ class cosmo_array(unyt_array):
         bypass_validation=False,
         input_units=None,
         name=None,
-        cosmo_factor=None,
+        cosmo_factor=cosmo_factor(None, None),
         comoving=None,
         valid_transform=True,
         compression=None,
@@ -539,8 +570,8 @@ class cosmo_array(unyt_array):
             else:
                 comoving = input_array.comoving
             cosmo_factor = _preserve_cosmo_factor(
-                (cosmo_factor is not None, cosmo_factor),
-                (input_array.cosmo_factor is not None, input_array.cosmo_factor),
+                cosmo_factor,
+                getattr(input_array, "cosmo_factor", NULL_CF),
             )
             if not valid_transform:
                 input_array.convert_to_physical()
@@ -558,7 +589,7 @@ class cosmo_array(unyt_array):
                     comoving = helper_result["comoving"]
                 input_array = helper_result["args"]
                 cosmo_factor = _preserve_cosmo_factor(
-                    (cosmo_factor is not None, cosmo_factor), *helper_result["ca_cfs"]
+                    cosmo_factor, *helper_result["cfs"]
                 )
                 if not valid_transform:
                     input_array.convert_to_physical()
@@ -597,7 +628,7 @@ class cosmo_array(unyt_array):
         super().__array_finalize__(obj)
         if obj is None:
             return
-        self.cosmo_factor = getattr(obj, "cosmo_factor", None)
+        self.cosmo_factor = getattr(obj, "cosmo_factor", NULL_CF)
         self.comoving = getattr(obj, "comoving", None)
         self.compression = getattr(obj, "compression", None)
         self.valid_transform = getattr(obj, "valid_transform", True)
@@ -752,7 +783,7 @@ class cosmo_array(unyt_array):
         arr,
         unit_registry=None,
         comoving=None,
-        cosmo_factor=None,
+        cosmo_factor=cosmo_factor(None, None),
         compression=None,
         valid_transform=True,
     ):
@@ -798,7 +829,7 @@ class cosmo_array(unyt_array):
         arr,
         unit_registry=None,
         comoving=None,
-        cosmo_factor=None,
+        cosmo_factor=cosmo_factor(None, None),
         compression=None,
         valid_transform=True,
     ):
@@ -846,7 +877,7 @@ class cosmo_array(unyt_array):
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         helper_result = _prepare_array_func_args(*inputs, **kwargs)
-        ca_cfs = helper_result["ca_cfs"]
+        cfs = helper_result["cfs"]
 
         # make sure we evaluate the cosmo_factor_ufunc_registry function:
         # might raise/warn even if we're not returning a cosmo_array
@@ -854,16 +885,16 @@ class cosmo_array(unyt_array):
             power_map = POWER_MAPPING[ufunc]
             if "axis" in kwargs and kwargs["axis"] is not None:
                 ret_cf = _power_cosmo_factor(
-                    ca_cfs[0],
-                    (False, None),
+                    cfs[0],
+                    None,
                     power=power_map(inputs[0].shape[kwargs["axis"]]),
                 )
             else:
                 ret_cf = _power_cosmo_factor(
-                    ca_cfs[0], (False, None), power=power_map(inputs[0].size)
+                    cfs[0], None, power=power_map(inputs[0].size)
                 )
         else:
-            ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*ca_cfs, inputs=inputs)
+            ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
         ret = _ensure_cosmo_array_or_quantity(super().__array_ufunc__)(
             ufunc, method, *inputs, **kwargs
@@ -974,7 +1005,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         dtype=None,
         bypass_validation=False,
         name=None,
-        cosmo_factor=None,
+        cosmo_factor=cosmo_factor(None, None),
         comoving=None,
         valid_transform=True,
         compression=None,
@@ -1025,8 +1056,8 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         units = getattr(input_scalar, "units", None) if units is None else units
         name = getattr(input_scalar, "name", None) if name is None else name
         cosmo_factor = (
-            getattr(input_scalar, "cosmo_factor", None)
-            if cosmo_factor is None
+            getattr(input_scalar, "cosmo_factor", NULL_CF)
+            if cosmo_factor == NULL_CF
             else cosmo_factor
         )
         comoving = (

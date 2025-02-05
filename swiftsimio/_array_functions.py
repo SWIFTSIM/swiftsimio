@@ -181,44 +181,31 @@ def _ensure_cosmo_array_or_quantity(func):
     return wrapped
 
 
-def _sqrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(
-        ca_cf, (False, None), power=0.5
-    )  # ufunc sqrt not supported
+def _sqrt_cosmo_factor(cf, **kwargs):
+    return _power_cosmo_factor(cf, None, power=0.5)  # ufunc sqrt not supported
 
 
 def _multiply_cosmo_factor(*args, **kwargs):
-    ca_cfs = args
-    if len(ca_cfs) == 1:
-        return __multiply_cosmo_factor(ca_cfs[0])
-    retval = __multiply_cosmo_factor(ca_cfs[0], ca_cfs[1])
-    for ca_cf in ca_cfs[2:]:
-        retval = __multiply_cosmo_factor((retval is not None, retval), ca_cf)
+    cfs = args
+    if len(cfs) == 1:
+        return __multiply_cosmo_factor(cfs[0])
+    retval = __multiply_cosmo_factor(cfs[0], cfs[1])
+    for cf in cfs[2:]:
+        retval = __multiply_cosmo_factor(retval, cf)
     return retval
 
 
-def __multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
+def __multiply_cosmo_factor(cf1, cf2, **kwargs):
     if (cf1 is None) and (cf2 is None):
         # neither has cosmo_factor information:
         return None
-    elif not ca1 and ca2:
-        # one is not a cosmo_array, allow e.g. multiplication by constants:
+    elif (cf1 is None) and (cf2 is not None):
+        # first has no cosmo information, allow e.g. multiplication by constants:
         return cf2
-    elif ca1 and not ca2:
-        # two is not a cosmo_array, allow e.g. multiplication by constants:
+    elif (cf1 is not None) and (cf2 is None):
+        # second has no cosmo information, allow e.g. multiplication by constants:
         return cf1
-    elif (ca1 and ca2) and ((cf1 is None) or (cf2 is None)):
-        # both cosmo_array but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors ({cf1} and {cf2}),"
-            f" discarding cosmo_factor in return value.",
-            RuntimeWarning,
-        )
-        return None
-    elif (ca1 and ca2) and ((cf1 is not None) and (cf2 is not None)):
+    elif (cf1 is not None) and (cf2 is not None):
         # both cosmo_array and both with cosmo_factor:
         return cf1 * cf2  # cosmo_factor.__mul__ raises if scale factors differ
     else:
@@ -226,64 +213,46 @@ def __multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
 
 
 def _preserve_cosmo_factor(*args, **kwargs):
-    ca_cfs = args
-    if len(ca_cfs) == 1:
-        return __preserve_cosmo_factor(ca_cfs[0])
-    retval = __preserve_cosmo_factor(ca_cfs[0], ca_cfs[1])
-    for ca_cf in ca_cfs[2:]:
-        retval = __preserve_cosmo_factor((retval is not None, retval), ca_cf)
+    cfs = args
+    if len(cfs) == 1:
+        return cfs[0]
+    retval = __preserve_cosmo_factor(cfs[0], cfs[1])
+    for cf in cfs[2:]:
+        retval = __preserve_cosmo_factor(retval, cf)
     return retval
 
 
-def __preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # single argument, return promptly
-        return cf1
-    elif (cf1 is None) and (cf2 is None):
+def __preserve_cosmo_factor(cf1, cf2, **kwargs):
+    if (cf1 is None) and (cf2 is None):
         # neither has cosmo_factor information:
         return None
-    elif ca1 and not ca2:
+    elif (cf1 is not None) and (cf2 is None):
         # only one is cosmo_array
-        return cf1
-    elif ca2 and not ca1:
-        # only one is cosmo_array
-        return cf2
-    elif (ca1 and ca2) and (cf1 is None and cf2 is not None):
-        # both cosmo_array, but not both with cosmo_factor
-        # (both without shortcircuited above already):
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
-        return cf2
-    elif (ca1 and ca2) and (cf1 is not None and cf2 is None):
-        # both cosmo_array, but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
         return cf1
-    elif (ca1 and ca2) and (cf1 != cf2):
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
+    elif (cf1 is None) and (cf2 is not None):
+        # only one is cosmo_array
+        warnings.warn(
+            f"Mixing arguments with and without cosmo_factors, continuing assuming"
+            f" provided cosmo_factor ({cf2}) for all arguments.",
+            RuntimeWarning,
         )
-    elif (ca1 and ca2) and (cf1 == cf2):
+        return cf2
+    elif cf1 != cf2:
+        raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
+    elif cf1 == cf2:
         return cf1  # or cf2, they're equal
     else:
-        # not dealing with cosmo_arrays at all
-        return None
+        raise RuntimeError("Unexpected state, please report this error on github.")
 
 
-def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
+def _power_cosmo_factor(cf1, cf2, inputs=None, power=None):
     if inputs is not None and power is not None:
         raise ValueError
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
     power = inputs[1] if inputs else power
     if hasattr(power, "units"):
         if not power.units.is_dimensionless:
@@ -291,158 +260,121 @@ def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
         elif power.units is not unyt.dimensionless:
             power = power.to_value(unyt.dimensionless)
         # else power.units is unyt.dimensionless, do nothing
-    if ca2 and cf2.a_factor != 1.0:
+    exp_afactor = getattr(cf2, "a_factor", None)
+    if (exp_afactor is not None) and (exp_afactor != 1.0):
         raise ValueError("Exponent has scaling with scale factor != 1.")
     if cf1 is None:
         return None
     return np.power(cf1, power)
 
 
-def _square_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=2)
+def _square_cosmo_factor(cf, **kwargs):
+    return _power_cosmo_factor(cf, None, power=2)
 
 
-def _cbrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=1.0 / 3.0)
+def _cbrt_cosmo_factor(cf, **kwargs):
+    return _power_cosmo_factor(cf, None, power=1.0 / 3.0)
 
 
-def _divide_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    return _multiply_cosmo_factor(
-        (ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2)))
-    )
+def _divide_cosmo_factor(cf1, cf2, **kwargs):
+    return _multiply_cosmo_factor(cf1, _reciprocal_cosmo_factor(cf2))
 
 
-def _reciprocal_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=-1)
+def _reciprocal_cosmo_factor(cf, **kwargs):
+    return _power_cosmo_factor(cf, None, power=-1)
 
 
-def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
-    ca, cf = ca_cf
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # no second argument, return promptly
+def _passthrough_cosmo_factor(cf, cf2="__not_provided__", **kwargs):
+    if isinstance(cf2, str) and cf2 == "__not_provided__":
         return cf
-    elif (cf2 is not None) and cf != cf2:
+    if (cf2 is not None) and cf != cf2:
         # if both have cosmo_factor information and it differs this is an error
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
-        )
+        raise ValueError(f"Arguments have cosmo_factors that differ: {cf} and {cf2}.")
     else:
         # passthrough is for e.g. ufuncs with a second dimensionless argument,
         # so ok if cf2 is None and cf1 is not
         return cf
 
 
-def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_comparison=None):
-    ca, cf = ca_cf
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # no second argument
-        pass
-    elif ca and not ca2:
+def _return_without_cosmo_factor(
+    cf, cf2="__not_provided__", zero_comparison=None, **kwargs
+):
+    if isinstance(cf2, str) and cf2 == "__not_provided__":
+        return None
+    if (cf is not None) and (cf2 is None):
         # one is not a cosmo_array, warn on e.g. comparison to constants:
         if not zero_comparison:
             warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
+                f"Mixing arguments with and without cosmo_factors, continuing"
                 f" assuming provided cosmo_factor ({cf}) for all arguments.",
                 RuntimeWarning,
             )
-    elif not ca and ca2:
+    elif (cf is None) and (cf2 is not None):
         # two is not a cosmo_array, warn on e.g. comparison to constants:
         if not zero_comparison:
             warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
+                f"Mixing arguments with and without cosmo_factors, continuing"
                 f" assuming provided cosmo_factor ({cf2}) for all arguments.",
                 RuntimeWarning,
             )
-    elif (ca and ca2) and (cf is not None and cf2 is None):
-        # one has no cosmo_factor information, warn:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf}) for all arguments.",
-            RuntimeWarning,
-        )
-    elif (ca and ca2) and (cf is None and cf2 is not None):
-        # two has no cosmo_factor information, warn:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
     elif (cf is not None) and (cf2 is not None) and (cf != cf2):
         # both have cosmo_factor, don't match:
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
-        )
+        raise ValueError(f"Arguments have cosmo_factors that differ: {cf} and {cf2}.")
     elif (cf is not None) and (cf2 is not None) and (cf == cf2):
         # both have cosmo_factor, and they match:
         pass
     else:
-        # not dealing with cosmo_arrays at all
-        pass
+        raise RuntimeError("Unexpected state, please report this error on github.")
     # return without cosmo_factor
     return None
 
 
-def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
+def _arctan2_cosmo_factor(cf1, cf2, **kwargs):
     if (cf1 is None) and (cf2 is None):
         return None
-    if cf1 is None and cf2 is not None:
+    elif (cf1 is None) and (cf2 is not None):
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-    if cf1 is not None and cf2 is None:
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
+    elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
+            f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-    if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
-        )
-    return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
+    elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
+        raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
+    elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
+    else:
+        raise RuntimeError("Unexpected state, please report this error on github.")
 
 
-def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
+def _comparison_cosmo_factor(cf1, cf2, inputs=None):
     try:
         iter(inputs[0])
     except TypeError:
-        if ca1:
-            input1_iszero = not inputs[0].value and inputs[0] is not False
-        else:
-            input1_iszero = not inputs[0] and inputs[0] is not False
+        input1_iszero = (
+            not getattr(inputs[0], "value", inputs[0]) and inputs[0] is not False
+        )
     else:
-        if ca1:
-            input1_iszero = not inputs[0].value.any()
-        else:
-            input1_iszero = not inputs[0].any()
+        input1_iszero = not getattr(inputs[0], "value", inputs[0]).any()
     try:
         iter(inputs[1])
     except IndexError:
         input2_iszero = None
     except TypeError:
-        if ca2:
-            input2_iszero = not inputs[1].value and inputs[1] is not False
-        else:
-            input2_iszero = not inputs[1] and inputs[1] is not False
+        input2_iszero = (
+            not getattr(inputs[1], "value", inputs[1]) and inputs[1] is not False
+        )
     else:
-        if ca2:
-            input2_iszero = not inputs[1].value.any()
-        else:
-            input2_iszero = not inputs[1].any()
+        input2_iszero = not getattr(inputs[1], "value", inputs[1]).any()
     zero_comparison = input1_iszero or input2_iszero
-    return _return_without_cosmo_factor(
-        ca_cf1, ca_cf2=ca_cf2, inputs=inputs, zero_comparison=zero_comparison
-    )
+    return _return_without_cosmo_factor(cf1, cf2=cf2, zero_comparison=zero_comparison)
 
 
 def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
@@ -461,10 +393,7 @@ def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
     # to pass the first argument (of np.concatenate - an iterable) to this function
     # to check consistency and attempt to coerce to comoving if needed.
     cms = [(hasattr(arg, "comoving"), getattr(arg, "comoving", None)) for arg in args]
-    ca_cfs = [
-        (hasattr(arg, "cosmo_factor"), getattr(arg, "cosmo_factor", None))
-        for arg in args
-    ]
+    cfs = [getattr(arg, "cosmo_factor", None) for arg in args]
     comps = [
         (hasattr(arg, "compression"), getattr(arg, "compression", None)) for arg in args
     ]
@@ -472,10 +401,7 @@ def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
         k: (hasattr(kwarg, "comoving"), getattr(kwarg, "comoving", None))
         for k, kwarg in kwargs.items()
     }
-    kw_ca_cfs = {
-        k: (hasattr(kwarg, "cosmo_factor"), getattr(kwarg, "cosmo_factor", None))
-        for k, kwarg in kwargs.items()
-    }
+    kw_cfs = {k: getattr(kwarg, "cosmo_factor", None) for k, kwarg in kwargs.items()}
     kw_comps = {
         k: (hasattr(kwarg, "compression"), getattr(kwarg, "compression", None))
         for k, kwarg in kwargs.items()
@@ -530,8 +456,8 @@ def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
     return dict(
         args=args,
         kwargs=kwargs,
-        ca_cfs=ca_cfs,
-        kw_ca_cfs=kw_ca_cfs,
+        cfs=cfs,
+        kw_cfs=kw_cfs,
         comoving=ret_cm,
         compression=ret_comp,
     )
@@ -567,7 +493,7 @@ def _default_unary_wrapper(unyt_func, cosmo_factor_wrapper):
     # by the cosmo_factor_wrapper
     def wrapper(*args, **kwargs):
         helper_result = _prepare_array_func_args(*args, **kwargs)
-        ret_cf = cosmo_factor_wrapper(helper_result["ca_cfs"][0])
+        ret_cf = cosmo_factor_wrapper(helper_result["cfs"][0])
         res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
         if "out" in kwargs:
             return _return_helper(res, helper_result, ret_cf, out=kwargs["out"])
@@ -583,9 +509,7 @@ def _default_binary_wrapper(unyt_func, cosmo_factor_wrapper):
     # by the cosmo_factor_wrapper
     def wrapper(*args, **kwargs):
         helper_result = _prepare_array_func_args(*args, **kwargs)
-        ret_cf = cosmo_factor_wrapper(
-            helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-        )
+        ret_cf = cosmo_factor_wrapper(helper_result["cfs"][0], helper_result["cfs"][1])
         res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
         if "out" in kwargs:
             return _return_helper(res, helper_result, ret_cf, out=kwargs["out"])
@@ -602,8 +526,8 @@ def _default_comparison_wrapper(unyt_func):
     def wrapper(*args, **kwargs):
         helper_result = _prepare_array_func_args(*args, **kwargs)
         ret_cf = _comparison_cosmo_factor(
-            helper_result["ca_cfs"][0],
-            helper_result["ca_cfs"][1],
+            helper_result["cfs"][0],
+            helper_result["cfs"][1],
             inputs=args[:2],
         )
         res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
@@ -620,7 +544,7 @@ def _default_oplist_wrapper(unyt_func):
     def wrapper(*args, **kwargs):
         helper_result = _prepare_array_func_args(*args, **kwargs)
         helper_result_oplist = _prepare_array_func_args(*args[0])
-        ret_cf = _preserve_cosmo_factor(helper_result_oplist["ca_cfs"][0])
+        ret_cf = _preserve_cosmo_factor(helper_result_oplist["cfs"][0])
         res = unyt_func(
             helper_result_oplist["args"],
             *helper_result["args"][1:],
@@ -692,10 +616,10 @@ def histogram_bin_edges(a, bins=10, range=None, weights=None):
     helper_result = _prepare_array_func_args(a, bins=bins, range=range, weights=weights)
     if not isinstance(bins, str) and np.ndim(bins) == 1:
         # we got bin edges as input
-        ret_cf = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["bins"])
+        ret_cf = _preserve_cosmo_factor(helper_result["kw_cfs"]["bins"])
     else:
         # bins based on values in a
-        ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+        ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
         res = unyt_histogram_bin_edges(
             *helper_result["args"], **helper_result["kwargs"]
         )
@@ -722,17 +646,13 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
     helper_result = _prepare_array_func_args(
         a, bins=bins, range=range, density=density, weights=weights
     )
-    ret_cf_bins = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
-    ret_cf_dens = _reciprocal_cosmo_factor(helper_result["ca_cfs"][0])
+    ret_cf_bins = _preserve_cosmo_factor(helper_result["cfs"][0])
+    ret_cf_dens = _reciprocal_cosmo_factor(helper_result["cfs"][0])
     counts, bins = unyt_histogram(*helper_result["args"], **helper_result["kwargs"])
     if weights is not None:
-        ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
+        ret_cf_w = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
         ret_cf_counts = (
-            _multiply_cosmo_factor(
-                (ret_cf_w is not None, ret_cf_w), (ret_cf_dens is not None, ret_cf_dens)
-            )
-            if density
-            else ret_cf_w
+            _multiply_cosmo_factor(ret_cf_w, ret_cf_dens) if density else ret_cf_w
         )
     else:
         ret_cf_counts = ret_cf_dens if density else None
@@ -772,8 +692,8 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
     )
     if not density:
         helper_result_w = _prepare_array_func_args(weights=weights)
-        ret_cf_x = _preserve_cosmo_factor(helper_result_x["ca_cfs"][0])
-        ret_cf_y = _preserve_cosmo_factor(helper_result_y["ca_cfs"][0])
+        ret_cf_x = _preserve_cosmo_factor(helper_result_x["cfs"][0])
+        ret_cf_y = _preserve_cosmo_factor(helper_result_y["cfs"][0])
         if (helper_result_x["kwargs"]["range"] is None) and (
             helper_result_y["kwargs"]["range"] is None
         ):
@@ -792,7 +712,7 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             weights=helper_result_w["kwargs"]["weights"],
         )
         if weights is not None:
-            ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
+            ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_cfs"]["weights"])
             counts = _promote_unyt_to_cosmo(counts)
             if isinstance(
                 counts, objects.cosmo_array
@@ -812,8 +732,8 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             yrange=yrange,
             weights=weights,
         )
-        ret_cf_x = _preserve_cosmo_factor(helper_result_x["ca_cfs"][0])
-        ret_cf_y = _preserve_cosmo_factor(helper_result_y["ca_cfs"][0])
+        ret_cf_x = _preserve_cosmo_factor(helper_result_x["cfs"][0])
+        ret_cf_y = _preserve_cosmo_factor(helper_result_y["cfs"][0])
         if (helper_result["kwargs"]["xrange"] is None) and (
             helper_result["kwargs"]["yrange"] is None
         ):
@@ -832,18 +752,18 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             weights=helper_result["kwargs"]["weights"],
         )
         ret_cf_xy = _multiply_cosmo_factor(
-            helper_result["ca_cfs"][0],
-            helper_result["ca_cfs"][1],
+            helper_result["cfs"][0],
+            helper_result["cfs"][1],
         )
         if weights is not None:
-            ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
-            inv_ret_cf_xy = _reciprocal_cosmo_factor((ret_cf_xy is not None, ret_cf_xy))
+            ret_cf_w = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
+            inv_ret_cf_xy = _reciprocal_cosmo_factor(ret_cf_xy)
             ret_cf_counts = _multiply_cosmo_factor(
-                (ret_cf_w is not None, ret_cf_w),
-                (inv_ret_cf_xy is not None, inv_ret_cf_xy),
+                ret_cf_w,
+                inv_ret_cf_xy,
             )
         else:
-            ret_cf_counts = _reciprocal_cosmo_factor((ret_cf_xy is not None, ret_cf_xy))
+            ret_cf_counts = _reciprocal_cosmo_factor(ret_cf_xy)
         counts = _promote_unyt_to_cosmo(counts)
         if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
             counts.comoving = helper_result["comoving"]
@@ -881,7 +801,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
     if not density:
         helper_result_w = _prepare_array_func_args(weights=weights)
         ret_cfs = [
-            _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+            _preserve_cosmo_factor(helper_result["cfs"][0])
             for helper_result in helper_results
         ]
         if all(
@@ -903,7 +823,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
             weights=helper_result_w["kwargs"]["weights"],
         )
         if weights is not None:
-            ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_ca_cfs"]["weights"])
+            ret_cf_w = _preserve_cosmo_factor(helper_result_w["kw_cfs"]["weights"])
             counts = _promote_unyt_to_cosmo(counts)
             if isinstance(counts, objects.cosmo_array):
                 counts.comoving = helper_result_w["comoving"]
@@ -918,7 +838,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
             range=range,
             weights=weights,
         )
-        ret_cfs = D * [_preserve_cosmo_factor(helper_result["ca_cfs"][0])]
+        ret_cfs = D * [_preserve_cosmo_factor(helper_result["cfs"][0])]
         counts, bins = unyt_histogramdd(
             helper_result["args"],
             bins=helper_result["kwargs"]["bins"],
@@ -926,23 +846,19 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
             density=density,
             weights=helper_result["kwargs"]["weights"],
         )
-        if len(helper_result["ca_cfs"]) == 1:
-            ret_cf_sample = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+        if len(helper_result["cfs"]) == 1:
+            ret_cf_sample = _preserve_cosmo_factor(helper_result["cfs"][0])
         else:
-            ret_cf_sample = _multiply_cosmo_factor(*helper_result["ca_cfs"])
+            ret_cf_sample = _multiply_cosmo_factor(*helper_result["cfs"])
         if weights is not None:
-            ret_cf_w = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["weights"])
-            inv_ret_cf_sample = _reciprocal_cosmo_factor(
-                (ret_cf_sample is not None, ret_cf_sample)
-            )
+            ret_cf_w = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
+            inv_ret_cf_sample = _reciprocal_cosmo_factor(ret_cf_sample)
             ret_cf_counts = _multiply_cosmo_factor(
-                (ret_cf_w is not None, ret_cf_w),
-                (inv_ret_cf_sample is not None, inv_ret_cf_sample),
+                ret_cf_w,
+                inv_ret_cf_sample,
             )
         else:
-            ret_cf_counts = _reciprocal_cosmo_factor(
-                (ret_cf_sample is not None, ret_cf_sample)
-            )
+            ret_cf_counts = _reciprocal_cosmo_factor(ret_cf_sample)
         counts = _promote_unyt_to_cosmo(counts)
         if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
             counts.comoving = helper_result["comoving"]
@@ -999,7 +915,7 @@ def _prepare_array_block_args(lst, recursing=False):
         return helper_results
     cms = [hr["comoving"] for hr in helper_results]
     comps = [hr["compression"] for hr in helper_results]
-    ca_cfs = [hr["ca_cfs"] for hr in helper_results]
+    cfs = [hr["cfs"] for hr in helper_results]
     convert_to_cm = False
     if all(cms):
         ret_cm = True
@@ -1020,9 +936,9 @@ def _prepare_array_block_args(lst, recursing=False):
         ret_comp = comps[0]
     else:
         ret_comp = None
-    ret_cf = ca_cfs[0]
-    for ca_cf in ca_cfs[1:]:
-        if ca_cf != ret_cf:
+    ret_cf = cfs[0]
+    for cf in cfs[1:]:
+        if cf != ret_cf:
             raise ValueError("Mixed cosmo_factor values in input.")
     if convert_to_cm:
         ret_lst = _recursive_to_comoving(lst)
@@ -1116,9 +1032,7 @@ def linspace(
         axis=axis,
         device=device,
     )
-    ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][1]
-    )
+    ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][1])
     ress = unyt_linspace(*helper_result["args"], **helper_result["kwargs"])
     if retstep:
         return tuple(_return_helper(res, helper_result, ret_cf) for res in ress)
@@ -1132,7 +1046,7 @@ def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
     helper_result = _prepare_array_func_args(
         start, stop, num=num, endpoint=endpoint, base=base, dtype=dtype, axis=axis
     )
-    ret_cf = _preserve_cosmo_factor(helper_result["kw_ca_cfs"]["base"])
+    ret_cf = _preserve_cosmo_factor(helper_result["kw_cfs"]["base"])
     res = unyt_logspace(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1146,7 +1060,9 @@ implements(np.geomspace)(
 def copyto(dst, src, casting="same_kind", where=True):
 
     helper_result = _prepare_array_func_args(dst, src, casting=casting, where=where)
-    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][1])
+    if isinstance(src, objects.cosmo_array) and isinstance(dst, objects.cosmo_array):
+        # if we're copyting across two
+        _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][1])
     # must pass dst directly here because it's modified in-place
     if isinstance(src, objects.cosmo_array):
         comoving = getattr(dst, "comoving", None)
@@ -1179,8 +1095,8 @@ def prod(
     )
     res = unyt_prod(*helper_result["args"], **helper_result["kwargs"])
     ret_cf = _power_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        (False, None),
+        helper_result["cfs"][0],
+        None,
         power=a.size // res.size,
     )
     return _return_helper(res, helper_result, ret_cf, out=out)
@@ -1205,8 +1121,8 @@ def linalg_det(a):
 
     helper_result = _prepare_array_func_args(a)
     ret_cf = _power_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        (False, None),
+        helper_result["cfs"][0],
+        None,
         power=a.shape[0],
     )
     res = unyt_linalg_det(*helper_result["args"], **helper_result["kwargs"])
@@ -1225,7 +1141,7 @@ def pad(array, pad_width, mode="constant", **kwargs):
     helper_result = _prepare_array_func_args(array, pad_width, mode=mode, **kwargs)
     # the number of options is huge, including user defined functions to handle data
     # let's just preserve the cosmo_factor of the input `array` and trust the user...
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     res = unyt_pad(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1235,7 +1151,7 @@ def choose(a, choices, out=None, mode="raise"):
 
     helper_result = _prepare_array_func_args(a, choices, out=out, mode=mode)
     helper_result_choices = _prepare_array_func_args(*choices)
-    ret_cf = _preserve_cosmo_factor(*helper_result_choices["ca_cfs"])
+    ret_cf = _preserve_cosmo_factor(*helper_result_choices["cfs"])
     res = unyt_choose(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf, out=out)
 
@@ -1244,9 +1160,7 @@ def choose(a, choices, out=None, mode="raise"):
 def insert(arr, obj, values, axis=None):
 
     helper_result = _prepare_array_func_args(arr, obj, values, axis=axis)
-    ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0], helper_result["ca_cfs"][2]
-    )
+    ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     res = unyt_insert(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1255,11 +1169,9 @@ def insert(arr, obj, values, axis=None):
 def linalg_lstsq(a, b, rcond=None):
 
     helper_result = _prepare_array_func_args(a, b, rcond=rcond)
-    ret_cf = _divide_cosmo_factor(
-        helper_result["ca_cfs"][1], helper_result["ca_cfs"][0]
-    )
-    resid_cf = _power_cosmo_factor(helper_result["ca_cfs"][1], (False, None), power=2)
-    sing_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
+    resid_cf = _power_cosmo_factor(helper_result["cfs"][1], None, power=2)
+    sing_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_lstsq(*helper_result["args"], **helper_result["kwargs"])
     return (
         _return_helper(ress[0], helper_result, ret_cf),
@@ -1273,9 +1185,7 @@ def linalg_lstsq(a, b, rcond=None):
 def linalg_solve(a, b):
 
     helper_result = _prepare_array_func_args(a, b)
-    ret_cf = _divide_cosmo_factor(
-        helper_result["ca_cfs"][1], helper_result["ca_cfs"][0]
-    )
+    ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     res = unyt_linalg_solve(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1284,9 +1194,7 @@ def linalg_solve(a, b):
 def linalg_tensorsolve(a, b, axes=None):
 
     helper_result = _prepare_array_func_args(a, b, axes=axes)
-    ret_cf = _divide_cosmo_factor(
-        helper_result["ca_cfs"][1], helper_result["ca_cfs"][0]
-    )
+    ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     res = unyt_linalg_tensorsolve(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1295,7 +1203,7 @@ def linalg_tensorsolve(a, b, axes=None):
 def linalg_eig(a):
 
     helper_result = _prepare_array_func_args(a)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eig(*helper_result["args"], **helper_result["kwargs"])
     return (
         _return_helper(ress[0], helper_result, ret_cf),
@@ -1307,7 +1215,7 @@ def linalg_eig(a):
 def linalg_eigh(a, UPLO="L"):
 
     helper_result = _prepare_array_func_args(a, UPLO=UPLO)
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][0])
+    ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eigh(*helper_result["args"], **helper_result["kwargs"])
     return (
         _return_helper(ress[0], helper_result, ret_cf),
@@ -1379,7 +1287,7 @@ def apply_over_axes(func, a, axes):
 def fill_diagonal(a, val, wrap=False):
 
     helper_result = _prepare_array_func_args(a, val, wrap=wrap)
-    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][1])
+    _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][1])
     # must pass a directly here because it's modified in-place
     comoving = getattr(a, "comoving", None)
     if comoving:
@@ -1396,7 +1304,7 @@ implements(np.isin)(_default_comparison_wrapper(unyt_isin))
 def place(arr, mask, vals):
 
     helper_result = _prepare_array_func_args(arr, mask, vals)
-    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
+    _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
     if isinstance(vals, objects.cosmo_array):
         comoving = getattr(arr, "comoving", None)
@@ -1411,7 +1319,7 @@ def place(arr, mask, vals):
 def put(a, ind, v, mode="raise"):
 
     helper_result = _prepare_array_func_args(a, ind, v, mode=mode)
-    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
+    _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
     if isinstance(v, objects.cosmo_array):
         comoving = getattr(a, "comoving", None)
@@ -1426,7 +1334,7 @@ def put(a, ind, v, mode="raise"):
 def put_along_axis(arr, indices, values, axis):
 
     helper_result = _prepare_array_func_args(arr, indices, values, axis)
-    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
+    _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
     if isinstance(values, objects.cosmo_array):
         comoving = getattr(arr, "comoving", None)
@@ -1441,7 +1349,7 @@ def put_along_axis(arr, indices, values, axis):
 def putmask(a, mask, values):
 
     helper_result = _prepare_array_func_args(a, mask, values)
-    _preserve_cosmo_factor(helper_result["ca_cfs"][0], helper_result["ca_cfs"][2])
+    _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
     if isinstance(values, objects.cosmo_array):
         comoving = getattr(a, "comoving", None)
@@ -1462,7 +1370,7 @@ def select(condlist, choicelist, default=0):
 
     helper_result = _prepare_array_func_args(condlist, choicelist, default=default)
     helper_result_choicelist = _prepare_array_func_args(*choicelist)
-    ret_cf = _preserve_cosmo_factor(*helper_result_choicelist["ca_cfs"])
+    ret_cf = _preserve_cosmo_factor(*helper_result_choicelist["cfs"])
     res = unyt_select(
         helper_result["args"][0],
         helper_result_choicelist["args"],
@@ -1506,9 +1414,9 @@ def clip(
         **kwargs,
     )
     ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["kw_ca_cfs"]["a_min"],
-        helper_result["kw_ca_cfs"]["a_max"],
+        helper_result["cfs"][0],
+        helper_result["kw_cfs"]["a_min"],
+        helper_result["kw_cfs"]["a_max"],
     )
     res = unyt_clip(
         helper_result["args"][0],
@@ -1525,14 +1433,12 @@ def where(condition, *args):
 
     helper_result = _prepare_array_func_args(condition, *args)
     if len(args) == 0:  # just condition
-        ret_cf = _return_without_cosmo_factor(helper_result["ca_cfs"][0])
+        ret_cf = _return_without_cosmo_factor(helper_result["cfs"][0])
         res = unyt_where(*helper_result["args"], **helper_result["kwargs"])
     elif len(args) < 2:
         # error message borrowed from numpy 1.24.1
         raise ValueError("either both or neither of x and y should be given")
-    ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][1], helper_result["ca_cfs"][2]
-    )
+    ret_cf = _preserve_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][2])
     res = unyt_where(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1562,7 +1468,7 @@ def einsum(
         optimize=optimize,
     )
     helper_result_operands = _prepare_array_func_args(*operands)
-    ret_cf = _preserve_cosmo_factor(*helper_result_operands["ca_cfs"])
+    ret_cf = _preserve_cosmo_factor(*helper_result_operands["cfs"])
     res = unyt_einsum(
         helper_result["args"][0],
         *helper_result_operands["args"],
@@ -1587,9 +1493,9 @@ def unwrap(p, discont=None, axis=-1, *, period=6.283185307179586):
         p, discont=discont, axis=axis, period=period
     )
     ret_cf = _preserve_cosmo_factor(
-        helper_result["ca_cfs"][0],
-        helper_result["kw_ca_cfs"]["discont"],
-        helper_result["kw_ca_cfs"]["period"],
+        helper_result["cfs"][0],
+        helper_result["kw_cfs"]["discont"],
+        helper_result["kw_cfs"]["period"],
     )
     res = unyt_unwrap(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
@@ -1601,7 +1507,7 @@ def interp(x, xp, fp, left=None, right=None, period=None):
     helper_result = _prepare_array_func_args(
         x, xp, fp, left=left, right=right, period=period
     )
-    ret_cf = _preserve_cosmo_factor(helper_result["ca_cfs"][2])
+    ret_cf = _preserve_cosmo_factor(helper_result["cfs"][2])
     res = unyt_interp(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1637,11 +1543,11 @@ def trapezoid(y, x=None, dx=1.0, axis=-1):
     helper_result = _prepare_array_func_args(y, x=x, dx=dx, axis=axis)
     if x is None:
         ret_cf = _multiply_cosmo_factor(
-            helper_result["ca_cfs"][0], helper_result["kw_ca_cfs"]["dx"]
+            helper_result["cfs"][0], helper_result["kw_cfs"]["dx"]
         )
     else:
         ret_cf = _multiply_cosmo_factor(
-            helper_result["ca_cfs"][0], helper_result["kw_ca_cfs"]["x"]
+            helper_result["cfs"][0], helper_result["kw_cfs"]["x"]
         )
     res = unyt_trapezoid(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
