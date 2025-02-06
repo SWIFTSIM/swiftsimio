@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 import unyt
 from unyt import unyt_quantity, unyt_array
+from unyt.array import _iterable
 from swiftsimio import objects
 from unyt._array_functions import (
     dot as unyt_dot,
@@ -284,9 +285,7 @@ def _reciprocal_cosmo_factor(cf, **kwargs):
     return _power_cosmo_factor(cf, None, power=-1)
 
 
-def _passthrough_cosmo_factor(cf, cf2="__not_provided__", **kwargs):
-    if isinstance(cf2, str) and cf2 == "__not_provided__":
-        return cf
+def _passthrough_cosmo_factor(cf, cf2=None, **kwargs):
     if (cf2 is not None) and cf != cf2:
         # if both have cosmo_factor information and it differs this is an error
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf} and {cf2}.")
@@ -296,10 +295,8 @@ def _passthrough_cosmo_factor(cf, cf2="__not_provided__", **kwargs):
         return cf
 
 
-def _return_without_cosmo_factor(
-    cf, cf2="__not_provided__", zero_comparison=None, **kwargs
-):
-    if isinstance(cf2, str) and cf2 == "__not_provided__":
+def _return_without_cosmo_factor(cf, cf2=np._NoValue, zero_comparison=None, **kwargs):
+    if cf2 is np._NoValue:
         return None
     if (cf is not None) and (cf2 is None):
         # one is not a cosmo_array, warn on e.g. comparison to constants:
@@ -338,18 +335,18 @@ def _arctan2_cosmo_factor(cf1, cf2, **kwargs):
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
+        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf2.scale_factor)
     elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
             f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
     elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
-        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
     else:
         raise RuntimeError("Unexpected state, please report this error on github.")
 
@@ -390,7 +387,7 @@ def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
     # so mixed cosmo attributes could be passed in the first argument to np.concatenate,
     # for instance. This function can be used "recursively" in a limited way manually:
     # in functions like np.concatenate where a list of arrays is expected, it makes sense
-    # to pass the first argument (of np.concatenate - an iterable) to this function
+    # to pass the first argument (of np.concatenate - an inp) to this function
     # to check consistency and attempt to coerce to comoving if needed.
     cms = [(hasattr(arg, "comoving"), getattr(arg, "comoving", None)) for arg in args]
     cfs = [getattr(arg, "cosmo_factor", None) for arg in args]
@@ -526,9 +523,7 @@ def _default_comparison_wrapper(unyt_func):
     def wrapper(*args, **kwargs):
         helper_result = _prepare_array_func_args(*args, **kwargs)
         ret_cf = _comparison_cosmo_factor(
-            helper_result["cfs"][0],
-            helper_result["cfs"][1],
-            inputs=args[:2],
+            helper_result["cfs"][0], helper_result["cfs"][1], inputs=args[:2]
         )
         res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
         return _return_helper(res, helper_result, ret_cf)
@@ -680,16 +675,8 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
         xbins = ybins = bins
     elif N == 2:
         xbins, ybins = bins
-    helper_result_x = _prepare_array_func_args(
-        x,
-        bins=xbins,
-        range=xrange,
-    )
-    helper_result_y = _prepare_array_func_args(
-        y,
-        bins=ybins,
-        range=yrange,
-    )
+    helper_result_x = _prepare_array_func_args(x, bins=xbins, range=xrange)
+    helper_result_y = _prepare_array_func_args(y, bins=ybins, range=yrange)
     if not density:
         helper_result_w = _prepare_array_func_args(weights=weights)
         ret_cf_x = _preserve_cosmo_factor(helper_result_x["cfs"][0])
@@ -752,16 +739,12 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
             weights=helper_result["kwargs"]["weights"],
         )
         ret_cf_xy = _multiply_cosmo_factor(
-            helper_result["cfs"][0],
-            helper_result["cfs"][1],
+            helper_result["cfs"][0], helper_result["cfs"][1]
         )
         if weights is not None:
             ret_cf_w = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
             inv_ret_cf_xy = _reciprocal_cosmo_factor(ret_cf_xy)
-            ret_cf_counts = _multiply_cosmo_factor(
-                ret_cf_w,
-                inv_ret_cf_xy,
-            )
+            ret_cf_counts = _multiply_cosmo_factor(ret_cf_w, inv_ret_cf_xy)
         else:
             ret_cf_counts = _reciprocal_cosmo_factor(ret_cf_xy)
         counts = _promote_unyt_to_cosmo(counts)
@@ -791,11 +774,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
         # bins is an integer
         bins = D * [bins]
     helper_results = [
-        _prepare_array_func_args(
-            s,
-            bins=b,
-            range=r,
-        )
+        _prepare_array_func_args(s, bins=b, range=r)
         for s, b, r in zip(sample, bins, ranges)
     ]
     if not density:
@@ -833,10 +812,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
         # now sample and weights must be compatible because they will combine
         # we unpack input to the helper to get everything checked for compatibility
         helper_result = _prepare_array_func_args(
-            *sample,
-            bins=bins,
-            range=range,
-            weights=weights,
+            *sample, bins=bins, range=range, weights=weights
         )
         ret_cfs = D * [_preserve_cosmo_factor(helper_result["cfs"][0])]
         counts, bins = unyt_histogramdd(
@@ -853,10 +829,7 @@ def histogramdd(sample, bins=10, range=None, density=None, weights=None):
         if weights is not None:
             ret_cf_w = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
             inv_ret_cf_sample = _reciprocal_cosmo_factor(ret_cf_sample)
-            ret_cf_counts = _multiply_cosmo_factor(
-                ret_cf_w,
-                inv_ret_cf_sample,
-            )
+            ret_cf_counts = _multiply_cosmo_factor(ret_cf_w, inv_ret_cf_sample)
         else:
             ret_cf_counts = _reciprocal_cosmo_factor(ret_cf_sample)
         counts = _promote_unyt_to_cosmo(counts)
@@ -1095,9 +1068,7 @@ def prod(
     )
     res = unyt_prod(*helper_result["args"], **helper_result["kwargs"])
     ret_cf = _power_cosmo_factor(
-        helper_result["cfs"][0],
-        None,
-        power=a.size // res.size,
+        helper_result["cfs"][0], None, power=a.size // res.size
     )
     return _return_helper(res, helper_result, ret_cf, out=out)
 
@@ -1120,11 +1091,7 @@ implements(np.nanquantile)(
 def linalg_det(a):
 
     helper_result = _prepare_array_func_args(a)
-    ret_cf = _power_cosmo_factor(
-        helper_result["cfs"][0],
-        None,
-        power=a.shape[0],
-    )
+    ret_cf = _power_cosmo_factor(helper_result["cfs"][0], None, power=a.shape[0])
     res = unyt_linalg_det(*helper_result["args"], **helper_result["kwargs"])
     return _return_helper(res, helper_result, ret_cf)
 
@@ -1205,10 +1172,7 @@ def linalg_eig(a):
     helper_result = _prepare_array_func_args(a)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eig(*helper_result["args"], **helper_result["kwargs"])
-    return (
-        _return_helper(ress[0], helper_result, ret_cf),
-        ress[1],
-    )
+    return (_return_helper(ress[0], helper_result, ret_cf), ress[1])
 
 
 @implements(np.linalg.eigh)
@@ -1217,10 +1181,7 @@ def linalg_eigh(a, UPLO="L"):
     helper_result = _prepare_array_func_args(a, UPLO=UPLO)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eigh(*helper_result["args"], **helper_result["kwargs"])
-    return (
-        _return_helper(ress[0], helper_result, ret_cf),
-        ress[1],
-    )
+    return (_return_helper(ress[0], helper_result, ret_cf), ress[1])
 
 
 implements(np.linalg.eigvals)(
@@ -1407,11 +1368,7 @@ def clip(
     # can't work out how to properly handle min and max,
     # just leave them in kwargs I guess (might be a numpy version conflict?)
     helper_result = _prepare_array_func_args(
-        a,
-        a_min=a_min,
-        a_max=a_max,
-        out=out,
-        **kwargs,
+        a, a_min=a_min, a_max=a_max, out=out, **kwargs
     )
     ret_cf = _preserve_cosmo_factor(
         helper_result["cfs"][0],

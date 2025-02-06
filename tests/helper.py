@@ -6,8 +6,8 @@ import subprocess
 import os
 import h5py
 from swiftsimio.subset_writer import find_links, write_metadata
-from swiftsimio import mask, cosmo_array, load
-from numpy import mean
+from swiftsimio import mask, cosmo_array
+from numpy import mean, zeros_like
 
 webstorage_location = "http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/"
 test_data_location = "test_data/"
@@ -82,7 +82,7 @@ def create_single_particle_dataset(filename: str, output_name: str):
     # Create a dummy mask in order to write metadata
     data_mask = mask(filename)
     boxsize = data_mask.metadata.boxsize
-    region = [[0, b] for b in boxsize]
+    region = [[zeros_like(b), b] for b in boxsize]
     data_mask.constrain_spatial(region)
 
     # Write the metadata

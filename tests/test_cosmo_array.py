@@ -20,7 +20,13 @@ def getfunc(fname):
 
 
 def ca(x, unit=u.Mpc):
-    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a**1, 0.5))
+    return cosmo_array(x, unit, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 0.5))
+
+
+def cq(x, unit=u.Mpc):
+    return cosmo_quantity(
+        x, unit, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 0.5)
+    )
 
 
 def arg_to_ua(arg):
@@ -75,7 +81,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             np.ones(5),
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -86,7 +92,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [1, 1, 1, 1, 1],
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -96,7 +102,7 @@ class TestCosmoArrayInit:
     def test_init_from_unyt_array(self):
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=u.Mpc),
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -106,7 +112,7 @@ class TestCosmoArrayInit:
     def test_init_from_list_of_unyt_arrays(self):
         arr = cosmo_array(
             [u.unyt_array(1, units=u.Mpc) for _ in range(5)],
-            cosmo_factor=cosmo_factor(a**1, 1),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -117,14 +123,17 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [
                 cosmo_array(
-                    1, units=u.Mpc, comoving=False, cosmo_factor=cosmo_factor(a**1, 1)
+                    [1],
+                    units=u.Mpc,
+                    comoving=False,
+                    cosmo_factor=cosmo_factor(a ** 1, 1),
                 )
                 for _ in range(5)
             ]
         )
         assert isinstance(arr, cosmo_array)
         assert hasattr(arr, "cosmo_factor") and arr.cosmo_factor == cosmo_factor(
-            a**1, 1
+            a ** 1, 1
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
 
@@ -187,9 +196,9 @@ class TestNumpyFunctions:
             "allclose": (ca(np.arange(3)), ca(np.arange(3))),
             "array_equal": (ca(np.arange(3)), ca(np.arange(3))),
             "array_equiv": (ca(np.arange(3)), ca(np.arange(3))),
-            "linspace": (ca(1), ca(2)),
-            "logspace": (ca(1, unit=u.dimensionless), ca(2, unit=u.dimensionless)),
-            "geomspace": (ca(1), ca(1)),
+            "linspace": (cq(1), cq(2)),
+            "logspace": (cq(1, unit=u.dimensionless), cq(2, unit=u.dimensionless)),
+            "geomspace": (cq(1), cq(1)),
             "copyto": (ca(np.arange(3)), ca(np.arange(3))),
             "prod": (ca(np.arange(3)),),
             "var": (ca(np.arange(3)),),
@@ -205,7 +214,7 @@ class TestNumpyFunctions:
             "cumprod": (ca(np.arange(3)),),
             "pad": (ca(np.arange(3)), 3),
             "choose": (np.arange(3), ca(np.eye(3))),
-            "insert": (ca(np.arange(3)), 1, ca(1)),
+            "insert": (ca(np.arange(3)), 1, cq(1)),
             "linalg.lstsq": (ca(np.eye(3)), ca(np.eye(3))),
             "linalg.solve": (ca(np.eye(3)), ca(np.eye(3))),
             "linalg.tensorsolve": (
@@ -228,11 +237,11 @@ class TestNumpyFunctions:
             "select": (
                 [np.arange(3) < 1, np.arange(3) > 1],
                 [ca(np.arange(3)), ca(np.arange(3))],
-                ca(1),
+                cq(1),
             ),
             "setdiff1d": (ca(np.arange(3)), ca(np.arange(3, 6))),
             "sinc": (ca(np.arange(3)),),
-            "clip": (ca(np.arange(3)), ca(1), ca(2)),
+            "clip": (ca(np.arange(3)), cq(1), cq(2)),
             "where": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
             "triu": (ca(np.ones((3, 3))),),
             "tril": (ca(np.ones((3, 3))),),
@@ -251,9 +260,9 @@ class TestNumpyFunctions:
             "all": (ca(np.arange(3)),),
             "amax": (ca(np.arange(3)),),  # implemented via max
             "amin": (ca(np.arange(3)),),  # implemented via min
-            "angle": (ca(complex(1, 1)),),
+            "angle": (cq(complex(1, 1)),),
             "any": (ca(np.arange(3)),),
-            "append": (ca(np.arange(3)), ca(1)),
+            "append": (ca(np.arange(3)), cq(1)),
             "apply_along_axis": (lambda x: x, 0, ca(np.eye(3))),
             "argmax": (ca(np.arange(3)),),  # implemented via max
             "argmin": (ca(np.arange(3)),),  # implemented via min
@@ -298,7 +307,7 @@ class TestNumpyFunctions:
             "isneginf": (ca(np.arange(3)),),
             "isposinf": (ca(np.arange(3)),),
             "empty_like": (ca(np.arange(3)),),
-            "full_like": (ca(np.arange(3)), ca(1)),
+            "full_like": (ca(np.arange(3)), cq(1)),
             "ones_like": (ca(np.arange(3)),),
             "zeros_like": (ca(np.arange(3)),),
             "copy": (ca(np.arange(3)),),
@@ -422,6 +431,13 @@ class TestNumpyFunctions:
                         category=UserWarning,
                         message="numpy.savetxt does not preserve units or cosmo",
                     )
+                if "unwrap" in fname:
+                    # haven't bothered to pass a cosmo_quantity for period
+                    warnings.filterwarnings(
+                        action="ignore",
+                        category=RuntimeWarning,
+                        message="Mixing arguments with and without cosmo_factors",
+                    )
                 result = func(*args)
             if fname.split(".")[-1] in (
                 "fill_diagonal",
@@ -473,7 +489,7 @@ class TestNumpyFunctions:
                         [1, 2, 3],
                         u.m,
                         comoving=False,
-                        cosmo_factor=cosmo_factor(a**1, 1.0),
+                        cosmo_factor=cosmo_factor(a ** 1, 1.0),
                     ),
                 ),
             ),
@@ -484,13 +500,13 @@ class TestNumpyFunctions:
                         [1, 2, 3],
                         u.m,
                         comoving=False,
-                        cosmo_factor=cosmo_factor(a**1, 1.0),
+                        cosmo_factor=cosmo_factor(a ** 1, 1.0),
                     ),
                     cosmo_array(
                         [1, 2, 3],
                         u.K,
                         comoving=False,
-                        cosmo_factor=cosmo_factor(a**2, 1.0),
+                        cosmo_factor=cosmo_factor(a ** 2, 1.0),
                     ),
                 ),
             ),
@@ -502,19 +518,19 @@ class TestNumpyFunctions:
                             [1, 2, 3],
                             u.m,
                             comoving=False,
-                            cosmo_factor=cosmo_factor(a**1, 1.0),
+                            cosmo_factor=cosmo_factor(a ** 1, 1.0),
                         ),
                         cosmo_array(
                             [1, 2, 3],
                             u.K,
                             comoving=False,
-                            cosmo_factor=cosmo_factor(a**2, 1.0),
+                            cosmo_factor=cosmo_factor(a ** 2, 1.0),
                         ),
                         cosmo_array(
                             [1, 2, 3],
                             u.kg,
                             comoving=False,
-                            cosmo_factor=cosmo_factor(a**3, 1.0),
+                            cosmo_factor=cosmo_factor(a ** 3, 1.0),
                         ),
                     ],
                 ),
@@ -526,7 +542,7 @@ class TestNumpyFunctions:
         (
             None,
             cosmo_array(
-                [1, 2, 3], u.s, comoving=False, cosmo_factor=cosmo_factor(a**1, 1.0)
+                [1, 2, 3], u.s, comoving=False, cosmo_factor=cosmo_factor(a ** 1, 1.0)
             ),
             np.array([1, 2, 3]),
         ),
@@ -543,19 +559,19 @@ class TestNumpyFunctions:
                     np.linspace(0, 5, 11),
                     u.kpc,
                     comoving=False,
-                    cosmo_factor=cosmo_factor(a**1, 1.0),
+                    cosmo_factor=cosmo_factor(a ** 1, 1.0),
                 ),
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.K,
                     comoving=False,
-                    cosmo_factor=cosmo_factor(a**2, 1.0),
+                    cosmo_factor=cosmo_factor(a ** 2, 1.0),
                 ),
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.Msun,
                     comoving=False,
-                    cosmo_factor=cosmo_factor(a**3, 1.0),
+                    cosmo_factor=cosmo_factor(a ** 3, 1.0),
                 ),
             ],
         }[bins_type]
@@ -602,9 +618,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**-1, 1.0),
-                    np.histogram2d: cosmo_factor(a**-3, 1.0),
-                    np.histogramdd: cosmo_factor(a**-6, 1.0),
+                    np.histogram: cosmo_factor(a ** -1, 1.0),
+                    np.histogram2d: cosmo_factor(a ** -3, 1.0),
+                    np.histogramdd: cosmo_factor(a ** -6, 1.0),
                 }[func]
             )
         elif density and isinstance(weights, cosmo_array):
@@ -612,9 +628,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**0, 1.0),
-                    np.histogram2d: cosmo_factor(a**-2, 1.0),
-                    np.histogramdd: cosmo_factor(a**-5, 1.0),
+                    np.histogram: cosmo_factor(a ** 0, 1.0),
+                    np.histogram2d: cosmo_factor(a ** -2, 1.0),
+                    np.histogramdd: cosmo_factor(a ** -5, 1.0),
                 }[func]
             )
         elif not density and isinstance(weights, cosmo_array):
@@ -622,9 +638,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**1, 1.0),
-                    np.histogram2d: cosmo_factor(a**1, 1.0),
-                    np.histogramdd: cosmo_factor(a**1, 1.0),
+                    np.histogram: cosmo_factor(a ** 1, 1.0),
+                    np.histogram2d: cosmo_factor(a ** 1, 1.0),
+                    np.histogramdd: cosmo_factor(a ** 1, 1.0),
                 }[func]
             )
         ret_bins = {
@@ -636,9 +652,9 @@ class TestNumpyFunctions:
             ret_bins,
             (
                 [
-                    cosmo_factor(a**1, 1.0),
-                    cosmo_factor(a**2, 1.0),
-                    cosmo_factor(a**3, 1.0),
+                    cosmo_factor(a ** 1, 1.0),
+                    cosmo_factor(a ** 2, 1.0),
+                    cosmo_factor(a ** 3, 1.0),
                 ]
             ),
         ):
@@ -678,12 +694,12 @@ class TestCosmoQuantity:
             1,
             u.m,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, 1.0),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             valid_transform=True,
         )
         res = getattr(cq, func)(*args)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True
 
     def test_scalar_return_func(self):
@@ -695,7 +711,7 @@ class TestCosmoQuantity:
             np.arange(3),
             u.m,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, 1.0),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             valid_transform=True,
         )
         res = np.min(ca)
@@ -707,10 +723,10 @@ class TestCosmoQuantity:
             1,
             u.m,
             comoving=False,
-            cosmo_factor=cosmo_factor(a**1, 1.0),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             valid_transform=True,
         )
         res = getattr(cq, prop)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True

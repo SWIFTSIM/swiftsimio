@@ -344,7 +344,7 @@ class cosmo_factor:
     def __pow__(self, p):
         if self.expr is None:
             return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor
@@ -515,7 +515,7 @@ class cosmo_array(unyt_array):
         bypass_validation=False,
         input_units=None,
         name=None,
-        cosmo_factor=cosmo_factor(None, None),
+        cosmo_factor=None,
         comoving=None,
         valid_transform=True,
         compression=None,
@@ -569,32 +569,43 @@ class cosmo_array(unyt_array):
                 input_array.convert_to_physical()
             else:
                 comoving = input_array.comoving
-            cosmo_factor = _preserve_cosmo_factor(
-                cosmo_factor,
-                getattr(input_array, "cosmo_factor", NULL_CF),
+            cosmo_factor = (
+                getattr(input_array, "cosmo_factor")
+                if cosmo_factor is None
+                else _preserve_cosmo_factor(
+                    cosmo_factor, getattr(input_array, "cosmo_factor")
+                )
             )
             if not valid_transform:
                 input_array.convert_to_physical()
             if compression != input_array.compression:
                 compression = None  # just drop it
-        elif isinstance(input_array, np.ndarray):
-            pass  # guard np.ndarray so it doesn't get caught by _iterable in next case
-        elif _iterable(input_array) and input_array:
-            if isinstance(input_array[0], cosmo_array):
-                default_cm = comoving if comoving is not None else True
-                helper_result = _prepare_array_func_args(
-                    *input_array, _default_cm=default_cm
-                )
-                if comoving is None:
-                    comoving = helper_result["comoving"]
-                input_array = helper_result["args"]
+        elif isinstance(input_array, np.ndarray) and input_array.dtype != object:
+            # guard np.ndarray so it doesn't get caught by _iterable in next case
+            if cosmo_factor is None:
+                cosmo_factor = NULL_CF
+        elif _iterable(input_array):
+            default_cm = comoving if comoving is not None else True
+            helper_result = _prepare_array_func_args(
+                *input_array, _default_cm=default_cm
+            )
+            if comoving is None:
+                comoving = helper_result["comoving"]
+            input_array = helper_result["args"]
+            if cosmo_factor is None:
+                cosmo_factor = _preserve_cosmo_factor(*helper_result["cfs"])
+                if cosmo_factor is None:
+                    cosmo_factor = NULL_CF
+            elif all([cf is None for cf in helper_result["cfs"]]):
+                cosmo_factor = cosmo_factor
+            else:
                 cosmo_factor = _preserve_cosmo_factor(
                     cosmo_factor, *helper_result["cfs"]
                 )
-                if not valid_transform:
-                    input_array.convert_to_physical()
-                if compression != helper_result["compression"]:
-                    compression = None  # just drop it
+            if not valid_transform:
+                input_array.convert_to_physical()
+            if compression != helper_result["compression"]:
+                compression = None  # just drop it
 
         obj = super().__new__(
             cls,
@@ -609,7 +620,10 @@ class cosmo_array(unyt_array):
         if isinstance(obj, unyt_array) and not isinstance(obj, cls):
             obj = obj.view(cls)
 
-        obj.cosmo_factor = cosmo_factor
+        # unyt allows creating a unyt_array from e.g. arrays with heterogenous units
+        # (it probably shouldn't...), so we don't bother recursing deeply and therefore
+        # can't guarantee that cosmo_factor isn't None at this point, guard with default
+        obj.cosmo_factor = cosmo_factor if cosmo_factor is not None else NULL_CF
         obj.comoving = comoving
         obj.compression = compression
         obj.valid_transform = valid_transform
@@ -620,7 +634,7 @@ class cosmo_array(unyt_array):
         if obj.comoving:
             assert (
                 obj.valid_transform
-            ), "Comoving Cosmo arrays must be able to be transformed to physical"
+            ), "Comoving cosmo_arrays must be able to be transformed to physical"
 
         return obj
 
@@ -885,14 +899,17 @@ class cosmo_array(unyt_array):
             power_map = POWER_MAPPING[ufunc]
             if "axis" in kwargs and kwargs["axis"] is not None:
                 ret_cf = _power_cosmo_factor(
-                    cfs[0],
-                    None,
-                    power=power_map(inputs[0].shape[kwargs["axis"]]),
+                    cfs[0], None, power=power_map(inputs[0].shape[kwargs["axis"]])
                 )
             else:
                 ret_cf = _power_cosmo_factor(
                     cfs[0], None, power=power_map(inputs[0].size)
                 )
+        elif (
+            ufunc in (logical_and, logical_or, logical_xor, logical_not)
+            and method == "reduce"
+        ):
+            ret_cf = _return_without_cosmo_factor(cfs[0])
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
@@ -1005,7 +1022,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         dtype=None,
         bypass_validation=False,
         name=None,
-        cosmo_factor=cosmo_factor(None, None),
+        cosmo_factor=None,
         comoving=None,
         valid_transform=True,
         compression=None,
@@ -1055,11 +1072,16 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
 
         units = getattr(input_scalar, "units", None) if units is None else units
         name = getattr(input_scalar, "name", None) if name is None else name
-        cosmo_factor = (
-            getattr(input_scalar, "cosmo_factor", NULL_CF)
-            if cosmo_factor == NULL_CF
-            else cosmo_factor
-        )
+        if hasattr(input_scalar, "cosmo_factor") and (cosmo_factor is not None):
+            cosmo_factor = _preserve_cosmo_factor(
+                cosmo_factor, getattr(input_scalar, "cosmo_factor")
+            )
+        elif cosmo_factor is None and hasattr(input_scalar, "cosmo_factor"):
+            cosmo_factor = getattr(input_scalar, "cosmo_factor")
+        elif cosmo_factor is not None and not hasattr(input_scalar, "cosmo_factor"):
+            pass
+        else:
+            cosmo_factor = NULL_CF
         comoving = (
             getattr(input_scalar, "comoving", None) if comoving is None else comoving
         )
