@@ -3,7 +3,7 @@ Sub-module for slice plots in SWFITSIMio.
 """
 
 from typing import Union, Optional
-from numpy import float32, array, ones, matmul
+from numpy import float32, array, ones, matmul, zeros_like
 from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
@@ -91,7 +91,7 @@ def slice_gas_pixel_grid(
     """
 
     if z_slice is None:
-        z_slice = 0.0 * data.gas.coordinates.units
+        z_slice = zeros_like(data.metadata.boxsize[0])
 
     number_of_gas_particles = data.gas.coordinates.shape[0]
 
@@ -113,16 +113,16 @@ def slice_gas_pixel_grid(
 
     box_x, box_y, box_z = data.metadata.boxsize
 
-    if z_slice > box_z or z_slice < (0 * box_z):
+    if z_slice > box_z or z_slice < zeros_like(box_z):
         raise ValueError("Please enter a slice value inside the box.")
 
     # Set the limits of the image.
     if region is not None:
         x_min, x_max, y_min, y_max = region
     else:
-        x_min = (0 * box_x).to(box_x.units)
+        x_min = zeros_like(box_x)
         x_max = box_x
-        y_min = (0 * box_y).to(box_y.units)
+        y_min = zeros_like(box_y)
         y_max = box_y
 
     x_range = x_max - x_min
@@ -146,7 +146,7 @@ def slice_gas_pixel_grid(
     else:
         x, y, z = data.gas.coordinates.T
 
-        z_center = 0 * box_z
+        z_center = zeros_like(box_z)
 
     hsml = backends_get_hsml[backend](data)
     if data.gas.coordinates.comoving:
@@ -278,7 +278,7 @@ def slice_gas(
     """
 
     if z_slice is None:
-        z_slice = 0.0 * data.gas.coordinates.units
+        z_slice = zeros_like(data.metadata.boxsize[0])
 
     image = slice_gas_pixel_grid(
         data,
@@ -297,7 +297,7 @@ def slice_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range**3)
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(
@@ -305,17 +305,17 @@ def slice_gas(
         )
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range**3)
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 

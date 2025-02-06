@@ -2,7 +2,7 @@
 Tools for creating power spectra from SWIFT data.
 """
 
-from numpy import float32, float64, int32, zeros, ndarray
+from numpy import float32, float64, int32, zeros, ndarray, zeros_like
 import numpy as np
 import scipy.fft
 
@@ -596,9 +596,10 @@ def deposition_to_power_spectrum(
     wavenumbers.name = "Wavenumber $k$"
 
     shot_noise = (
-        (box_size[0] ** 3 / shot_noise_norm) if shot_noise_norm is not None else 0.0
+        (box_size[0] ** 3 / shot_noise_norm)
+        if shot_noise_norm is not None
+        else zeros_like(box_size[0] ** 3)  # copy cosmo properties
     )
-
     power_spectrum = (binned_amplitudes / divisor) - shot_noise
 
     power_spectrum.name = "Power Spectrum $P(k)$"
