@@ -1,8 +1,19 @@
+"""
+Overloaded implementations of unyt and numpy functions to correctly handle
+:class:`~swiftsimio.objects.cosmo_array` input.
+
+This module also defines wrappers and helper functions to facilitate overloading
+functions and handling the processing of our custom array attributes.
+
+Nothing in this module is intended to be user-facing, but the helpers and wrappers
+are documented to assist in maintenance and development of swiftsimio.
+"""
+
 import warnings
 import numpy as np
+from typing import Callable, Tuple
 import unyt
 from unyt import unyt_quantity, unyt_array
-from unyt.array import _iterable
 from swiftsimio import objects
 from unyt._array_functions import (
     dot as unyt_dot,
@@ -111,92 +122,239 @@ _HANDLED_FUNCTIONS = {}
 # numpy functions (we will actually wrap the functions below):
 
 
-def _copy_cosmo_array_attributes(from_ca, to_ca):
-    if not isinstance(to_ca, objects.cosmo_array) and isinstance(
-        from_ca, objects.cosmo_array
+def _copy_cosmo_array_attributes(from_ca: object, to_ca: object) -> object:
+    """
+    Copy :class:`~swiftsimio.objects.cosmo_array` attributes across two objects.
+
+    Copies the ``cosmo_factor``, ``comoving``, ``valid_transform`` and ``compression``
+    attributes across if both the source and destination objects are
+    :class:`~swiftsimio.objects.cosmo_array` instances (else returns input).
+
+    Parameters
+    ----------
+    from_ca : :obj:`object`
+        The source object.
+
+    to_ca : :obj:`object`
+        The destination object.
+
+    Returns
+    -------
+    out : :obj:`object`
+        The destination object (with attributes copied if copy occurred).
+    """
+    if not (
+        isinstance(to_ca, objects.cosmo_array)
+        and isinstance(from_ca, objects.cosmo_array)
     ):
         return to_ca
-    if hasattr(from_ca, "cosmo_factor"):
-        to_ca.cosmo_factor = from_ca.cosmo_factor
-    if hasattr(from_ca, "comoving"):
-        to_ca.comoving = from_ca.comoving
-    if hasattr(from_ca, "valid_transform"):
-        to_ca.valid_transform = from_ca.valid_transform
+    to_ca.cosmo_factor = from_ca.cosmo_factor
+    to_ca.comoving = from_ca.comoving
+    to_ca.valid_transform = from_ca.valid_transform
+    to_ca.compression = from_ca.compression
     return to_ca
 
 
-def _propagate_cosmo_array_attributes(func):
-    # can work on methods (obj is self) and functions (obj is first argument)
+def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
+    """
+    Wrapper that copies :class:`~swiftsimio.objects.cosmo_array` attributes from first
+    input argument to first output.
+
+    Many functions take one input (or have a first input that has a close correspondance
+    to the output) and one output. This helper copies the ``cosmo_factor``, ``comoving``,
+    ``valid_transform`` and ``compression`` attributes from the first input argument to
+    the output. Can be used as a decorator on functions (the first argument is then the
+    first argument of the function) or methods (the first argument is then ``self``).
+    If the output is not a :class:`~swiftsimio.objects.cosmo_array` it is not promoted
+    (and then no attributes are copied).
+
+    Parameters
+    ----------
+    func : callable
+        The function whose argument attributes will be copied to its result.
+
+    Returns
+    -------
+    out : callable
+        The wrapped function.
+    """
+
     def wrapped(obj, *args, **kwargs):
-        ret = func(obj, *args, **kwargs)
-        if not isinstance(ret, objects.cosmo_array):
-            return ret
-        ret = _copy_cosmo_array_attributes(obj, ret)
-        return ret
+        """
+        Call the function and copy the attributes.
+        """
+        return _copy_cosmo_array_attributes(obj, func(obj, *args, **kwargs))
 
     return wrapped
 
 
-def _promote_unyt_to_cosmo(input_object):
-    # converts a unyt_quantity to a cosmo_quantity, or a unyt_array to a cosmo_array
+def _promote_unyt_to_cosmo(input_object: object) -> object:
+    """
+    Upgrades the input unyt instance to its cosmo equivalent.
+
+    In many cases we can obtain a unyt class instance and want to promote it to its cosmo
+    equivalent to attach our cosmo attributes. This helper promotes an input
+    :class:`~unyt.array.unyt_array` to a :class:`~swiftsimio.objects.cosmo_array` or an
+    input :class:`~unyt.array.unyt_quantity` to a
+    :class:`~swiftsimio.objects.cosmo_quantity`. If the input is neither type, it is just
+    returned.
+
+    Parameters
+    ----------
+    input_object : :obj:`object`
+        Object to consider for promotion from unyt instance to cosmo instance.
+    """
     if isinstance(input_object, unyt_quantity) and not isinstance(
         input_object, objects.cosmo_quantity
     ):
-        ret = objects.cosmo_quantity(input_object)
+        return input_object.view(objects.cosmo_quantity)
     elif isinstance(input_object, unyt_array) and not isinstance(
         input_object, objects.cosmo_array
     ):
-        ret = objects.cosmo_array(input_object)
+        return input_object.view(objects.cosmo_array)
     else:
-        ret = input_object
-    return ret
+        return input_object
 
 
-def _ensure_array_or_quantity_matches_shape(input_object):
+def _ensure_array_or_quantity_matches_shape(input_object: object) -> object:
+    """
+    Convert scalars to :class:`~swiftsimio.objects.cosmo_quantity` and arrays to
+    :class:`~swiftsimio.objects.cosmo_array`.
+
+    Scalar quantities are meant to be contained in
+    :class:`~swiftsimio.objects.cosmo_quantity` and arrays in
+    :class:`~swiftsimio.objects.cosmo_array`. Many functions (e.g. from numpy) can change
+    the data contents without changing the containing class. This helper checks the input
+    to make sure the data match the container type and converts if not.
+
+    Parameters
+    ----------
+    input_object : :obj:`object`
+        The object whose data is to be checked against its type.
+
+    Returns
+    -------
+    out : :obj:`object`
+        A version of the input with container type matching data contents.
+    """
     if (
         isinstance(input_object, objects.cosmo_array)
         and not isinstance(input_object, objects.cosmo_quantity)
         and input_object.shape == ()
     ):
-        ret = objects.cosmo_quantity(input_object)
+        return input_object.view(objects.cosmo_quantity)
     elif isinstance(input_object, objects.cosmo_quantity) and input_object.shape != ():
-        ret = objects.cosmo_array(input_object)
+        return input_object.view(objects.cosmo_array)
     else:
-        ret = input_object
-    return ret
+        return input_object
 
 
-def _ensure_cosmo_array_or_quantity(func):
-    # can work on methods (obj is self) and functions (obj is first argument)
-    def wrapped(obj, *args, **kwargs):
-        ret = func(obj, *args, **kwargs)
-        if isinstance(ret, tuple):
-            ret = tuple(
+def _ensure_result_is_cosmo_array_or_quantity(func: Callable) -> Callable:
+    """
+    Wrapper that converts any :class:`~unyt.array.unyt_array` or
+    :class:`~unyt.array.unyt_quantity` instances in function output to cosmo equivalents.
+
+    If the wrapped function returns a :obj:`tuple` (as many numpy functions do) it is
+    iterated over (but not recursively) and each element with a unyt class type is
+    upgraded to its cosmo equivalent. If anything but a :obj:`tuple` is returned, that
+    object is promoted to the cosmo equivalent if it is of a unyt class type.
+
+    Parameters
+    ----------
+    func : Callable
+        The function whose result(s) will be upgraded to
+        :class:`~swiftsimio.objects.cosmo_array` or
+        :class:`~swifsimio.objects.cosmo_quantity`.
+    Returns
+    -------
+    out : Callable
+        The wrapped function.
+    """
+
+    def wrapped(*args, **kwargs) -> object:
+        """
+        Promote unyt types in function output to cosmo types.
+        """
+        result = func(*args, **kwargs)
+        if isinstance(result, tuple):
+            return tuple(
                 _ensure_array_or_quantity_matches_shape(_promote_unyt_to_cosmo(item))
-                for item in ret
+                for item in result
             )
         else:
-            ret = _ensure_array_or_quantity_matches_shape(_promote_unyt_to_cosmo(ret))
-        return ret
+            return _ensure_array_or_quantity_matches_shape(
+                _promote_unyt_to_cosmo(result)
+            )
 
     return wrapped
 
 
-def _sqrt_cosmo_factor(cf, **kwargs):
-    return _power_cosmo_factor(cf, None, power=0.5)  # ufunc sqrt not supported
+def _sqrt_cosmo_factor(cf: "objects.cosmo_factor", **kwargs) -> "objects.cosmo_factor":
+    """
+    Take the square root of a :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Parameters
+    ----------
+    cf : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` whose square root should be taken.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The square root of the input :class:`~swiftsimio.objects.cosmo_factor`.
+    """
+    return _power_cosmo_factor(cf, None, power=0.5)
 
 
-def _multiply_cosmo_factor(*args, **kwargs):
-    cfs = args
+def _multiply_cosmo_factor(
+    *cfs: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Recursively multiply :class:`~swiftsimio.objects.cosmo_factor`s.
+
+    All arguments are expected to be of type :class:`~swiftsimio.objects.cosmo_factor`.
+    They are cumumatively multipled together and the result returned.
+
+    Parameters
+    ----------
+    cfs : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor`s to be multiplied.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The product of the input :class:`~swiftsimio.objects.cosmo_factor`s.
+    """
     if len(cfs) == 1:
-        return __multiply_cosmo_factor(cfs[0])
-    retval = __multiply_cosmo_factor(cfs[0], cfs[1])
+        return __binary_multiply_cosmo_factor(cfs[0])
+    retval = __binary_multiply_cosmo_factor(cfs[0], cfs[1])
     for cf in cfs[2:]:
-        retval = __multiply_cosmo_factor(retval, cf)
+        retval = __binary_multiply_cosmo_factor(retval, cf)
     return retval
 
 
-def __multiply_cosmo_factor(cf1, cf2, **kwargs):
+def __binary_multiply_cosmo_factor(
+    cf1: "objects.cosmo_factor", cf2: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Multiply two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+    Not intended for direct use but only as a helper for
+    :func:`~swiftsimio._array_functions._multiply_cosmo_factor`.
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        The first :class:`~swiftsimio.objects.cosmo_factor`.
+
+    cf2 : swiftsimio.objects.cosmo_factor
+        The second :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The product of the :class:`~swiftsimio.objects.cosmo_factor`s.
+    """
     if (cf1 is None) and (cf2 is None):
         # neither has cosmo_factor information:
         return None
@@ -209,21 +367,67 @@ def __multiply_cosmo_factor(cf1, cf2, **kwargs):
     elif (cf1 is not None) and (cf2 is not None):
         # both cosmo_array and both with cosmo_factor:
         return cf1 * cf2  # cosmo_factor.__mul__ raises if scale factors differ
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
 
 
-def _preserve_cosmo_factor(*args, **kwargs):
-    cfs = args
+def _preserve_cosmo_factor(
+    *cfs: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Helper to preserve the :class:`~swiftsimio.objects.cosmo_factor` of input.
+
+    If there is a single argument, return its ``cosmo_factor``. If there are multiple
+    arguments, check that they all have matching ``cosmo_factor``. Any arguments that
+    are not :class:`~swiftsimio.objects.cosmo_array`s are ignored for this purpose.
+
+    Parameters
+    ----------
+    cfs : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor`s to be preserved.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The preserved :class:`~swiftsimio.objects.cosmo_factor`.
+    """
     if len(cfs) == 1:
         return cfs[0]
-    retval = __preserve_cosmo_factor(cfs[0], cfs[1])
+    retval = __binary_preserve_cosmo_factor(cfs[0], cfs[1])
     for cf in cfs[2:]:
-        retval = __preserve_cosmo_factor(retval, cf)
+        retval = __binary_preserve_cosmo_factor(retval, cf)
     return retval
 
 
-def __preserve_cosmo_factor(cf1, cf2, **kwargs):
+def __binary_preserve_cosmo_factor(
+    cf1: "objects.cosmo_factor", cf2: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Given two :class:`~swiftsimio.objects.cosmo_factor`s, get it if they match.
+
+    Not intended for direct use but only as a helper for
+    :func:`~swiftsimio._array_functions._preserve_cosmo_factor`. If the two inputs
+    are compatible, return the compatible :class:`~swiftsimio.objects.cosmo_factor`.
+    If one of them is ``None``, produce a warning. If they are incompatible, raise.
+
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        The first :class:`~swiftsimio.objects.cosmo_factor`.
+
+    cf2 : swiftsimio.objects.cosmo_factor
+        The second :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The preserved :class:`~swiftsimio.objects.cosmo_factor`s.
+
+    Raises
+    ------
+    ValueError
+        Raised if the two arguments are :class:`~swiftsimio.objects.cosmo_factor`s
+        that do not have matching attributes.
+    """
     if (cf1 is None) and (cf2 is None):
         # neither has cosmo_factor information:
         return None
@@ -247,11 +451,44 @@ def __preserve_cosmo_factor(cf1, cf2, **kwargs):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif cf1 == cf2:
         return cf1  # or cf2, they're equal
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
 
 
-def _power_cosmo_factor(cf1, cf2, inputs=None, power=None):
+def _power_cosmo_factor(
+    cf1: "objects.cosmo_factor",
+    cf2: "objects.cosmo_factor",
+    inputs: "Tuple[objects.cosmo_array]" = None,
+    power: float = None,
+) -> "objects.cosmo_factor":
+    """
+    Raise a :class:`~swiftsimio.objects.cosmo_factor` to a power of another
+    :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` that is the base.
+
+    cf2 : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` that is the exponent.
+
+    inputs : :obj:`tuple`
+        The objects that ``cf1`` and ``cf2`` are attached to. Give ``inputs`` or
+        ``power``, not both.
+
+    power : float
+        The power to raise ``cf1`` to. Give ``inputs`` or ``power``, not both.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The exponentiated :class:`~swiftsimio.objects.cosmo_factor`s.
+
+    Raises
+    ------
+    ValueError
+        If the exponent is not a dimensionless quantity, or the exponent has a
+        ``cosmo_factor`` whose scaling with scale factor is not ``1.0``.
+    """
     if inputs is not None and power is not None:
         raise ValueError
     power = inputs[1] if inputs else power
@@ -269,34 +506,164 @@ def _power_cosmo_factor(cf1, cf2, inputs=None, power=None):
     return np.power(cf1, power)
 
 
-def _square_cosmo_factor(cf, **kwargs):
+def _square_cosmo_factor(
+    cf: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Square a :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Parameters
+    ----------
+    cf : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` to square.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The squared :class:`~swiftsimio.objects.cosmo_factor`.
+    """
     return _power_cosmo_factor(cf, None, power=2)
 
 
-def _cbrt_cosmo_factor(cf, **kwargs):
+def _cbrt_cosmo_factor(cf: "objects.cosmo_factor", **kwargs) -> "objects.cosmo_factor":
+    """
+    Take the cube root of a :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Parameters
+    ----------
+    cf : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` whose cube root should be taken.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The cube root of the input :class:`~swiftsimio.objects.cosmo_factor`.
+    """
     return _power_cosmo_factor(cf, None, power=1.0 / 3.0)
 
 
-def _divide_cosmo_factor(cf1, cf2, **kwargs):
+def _divide_cosmo_factor(
+    cf1: "objects.cosmo_factor", cf2: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Divide two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        Numerator :class:`~swiftsimio.objects.cosmo_factor`.
+
+    cf1 : swiftsimio.objects.cosmo_factor
+        Denominator :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The ratio of the input :class:`~swiftsimio.objects.cosmo_factor`s.
+    """
     return _multiply_cosmo_factor(cf1, _reciprocal_cosmo_factor(cf2))
 
 
-def _reciprocal_cosmo_factor(cf, **kwargs):
+def _reciprocal_cosmo_factor(
+    cf: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Take the inverse of a :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Parameters
+    ----------
+    cf : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` to be inverted.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The inverted :class:`~swiftsimio.objects.cosmo_factor`.
+    """
     return _power_cosmo_factor(cf, None, power=-1)
 
 
-def _passthrough_cosmo_factor(cf, cf2=None, **kwargs):
+def _passthrough_cosmo_factor(
+    cf: "objects.cosmo_factor", cf2: "objects.cosmo_factor" = None, **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Preserve a :class:`~swiftsimio.objects.cosmo_factor`, optionally checking that it
+    matches a second :class:`~swiftsimio.objects.cosmo_factor`.
+
+    This helper is intended for e.g. numpy ufuncs with a second dimensionless argument
+    so it's ok if ``cf2`` is ``None`` and ``cf1`` is not.
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` to pass through.
+
+    cf2 : swiftsimio.objects.cosmo_factor
+        Optional second :class:`~swiftsimio.objects.cosmo_factor` to check matches.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The input :class:`~swiftsimio.objects.cosmo_factor`.
+
+    Raises
+    ------
+    ValueError
+        If ``cf2`` is provided, is not ``None`` and does not match ``cf1``.
+    """
     if (cf2 is not None) and cf != cf2:
         # if both have cosmo_factor information and it differs this is an error
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf} and {cf2}.")
     else:
-        # passthrough is for e.g. ufuncs with a second dimensionless argument,
-        # so ok if cf2 is None and cf1 is not
         return cf
 
 
-def _return_without_cosmo_factor(cf, cf2=np._NoValue, zero_comparison=None, **kwargs):
+def _return_without_cosmo_factor(
+    cf: "objects.cosmo_factor",
+    cf2: "objects.cosmo_factor" = np._NoValue,
+    zero_comparison: bool = None,
+    **kwargs,
+) -> None:
+    """
+    Return ``None``, but first check that argument
+    :class:`~swiftsimio.objects.cosmo_factor`s match, raising or warning if not.
+
+    Comparisons are a special case that wraps around this wrapper, see
+    :func:`~swiftsimio._array_functions._comparison_cosmo_factor`.
+
+    We borrow ``np._NoValue`` as a default for ``cf2`` because ``None`` here
+    represents the absence of a :class:`~swiftsimio.objects.cosmo_factor`, and
+    we need to handle that case.
+
+    Warnings are produced when one argument has no cosmo factor, relevant e.g.
+    when comparing to constants. We handle comparison with zero, that is unambiguous,
+    as a special case.
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        The :class:`~swiftsimio.objects.cosmo_factor` to discard.
+
+    cf2 : swiftsimio.objects.cosmo_factor
+        Optional second :class:`~swiftsimio.objects.cosmo_factor` to check for a
+        match with ``cf1``.
+
+    zero_comparison : bool
+        If ``True``, silences warnings when exactly one of ``cf1`` and ``cf2`` is
+        ``None``. Enables comparing with zero without warning.
+
+    Returns
+    -------
+    out : None
+        The :class:`~swiftsimio.objects.cosmo_factor` is discarded.
+
+    Raises
+    ------
+    ValueError
+        If ``cf2`` is provided, is not ``None`` and does not match ``cf1``.
+    """
     if cf2 is np._NoValue:
+        # there was no second argument, return promptly
         return None
     if (cf is not None) and (cf2 is None):
         # one is not a cosmo_array, warn on e.g. comparison to constants:
@@ -320,13 +687,37 @@ def _return_without_cosmo_factor(cf, cf2=np._NoValue, zero_comparison=None, **kw
     elif (cf is not None) and (cf2 is not None) and (cf == cf2):
         # both have cosmo_factor, and they match:
         pass
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
     # return without cosmo_factor
     return None
 
 
-def _arctan2_cosmo_factor(cf1, cf2, **kwargs):
+def _arctan2_cosmo_factor(
+    cf1: "objects.cosmo_factor", cf2: "objects.cosmo_factor", **kwargs
+) -> "objects.cosmo_factor":
+    """
+    Helper specifically to handle the :class:`~swiftsimio.objects.cosmo_factor`s for the
+    ``arctan2`` ufunc from numpy.
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` for the first ``arctan2`` argument.
+
+    cf2 : swiftsimio.objects.cosmo_factor
+        :class:`~swiftsimio.objects.cosmo_factor` for the second ``arctan2`` argument.
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_factor
+        The :class:`~swiftsimio.objects.cosmo_factor` for the ``arctan2`` result.
+
+    Raises
+    ------
+    ValueError
+        If the input :class:`~swiftsimio.objects.cosmo_factor`s differ, they will
+        not cancel out and this is an error.
+
+    """
     if (cf1 is None) and (cf2 is None):
         return None
     elif (cf1 is None) and (cf2 is not None):
@@ -335,23 +726,51 @@ def _arctan2_cosmo_factor(cf1, cf2, **kwargs):
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf2.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
     elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
             f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
     elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
 
 
-def _comparison_cosmo_factor(cf1, cf2, inputs=None):
+def _comparison_cosmo_factor(
+    cf1: "objects.cosmo_factor",
+    cf2: "objects.cosmo_factor",
+    inputs: "Tuple[objects.cosmo_array]" = None,
+) -> None:
+    """
+    Helper to enable comparisons involving :class:`~swiftsimio.objects.cosmo_factor`s.
+
+    Warnings are emitted when the comparison is ambiguous, for instance if comparing to a
+    bare :obj:`float` or similar. Comparison to zero is a special case where we suppress
+    warnings.
+
+    See also :func:`~swiftsimio._array_functions._return_without_cosmo_factor` that is
+    used in implementing this function.
+
+    Parameters
+    ----------
+    cf1 : swiftsimio.objects.cosmo_factor
+        First :class:`~swiftsimio.objects.cosmo_factor` to compare.
+
+    cf2 : swiftsimio.objects.cosmo_factor
+        Second :class:`~swiftsimio.objects.cosmo_factor` to compare.
+
+    inputs : :obj:`tuple`
+        The objects that ``cf1`` and ``cf2`` are attached to.
+
+    Returns
+    -------
+    out : None
+        The :class:`~swiftsimio.objects.cosmo_factor` is discarded.
+    """
     try:
         iter(inputs[0])
     except TypeError:
@@ -374,21 +793,52 @@ def _comparison_cosmo_factor(cf1, cf2, inputs=None):
     return _return_without_cosmo_factor(cf1, cf2=cf2, zero_comparison=zero_comparison)
 
 
-def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
-    # unyt allows creating a unyt_array from e.g. arrays with heterogenous units
-    # (it probably shouldn't...).
-    # Example:
-    # >>> u.unyt_array([np.arange(3), np.arange(3) * u.m])
-    # unyt_array([[0, 1, 2],
-    #             [0, 1, 2]], '(dimensionless)')
-    # It's impractical for cosmo_array to try to cover
-    # all possible invalid user input without unyt being stricter.
-    # This function checks for consistency for all args and kwargs, but is not recursive
-    # so mixed cosmo attributes could be passed in the first argument to np.concatenate,
-    # for instance. This function can be used "recursively" in a limited way manually:
-    # in functions like np.concatenate where a list of arrays is expected, it makes sense
-    # to pass the first argument (of np.concatenate - an inp) to this function
-    # to check consistency and attempt to coerce to comoving if needed.
+def _prepare_array_func_args(*args, _default_cm: bool = True, **kwargs) -> dict:
+    """
+    Coerce args and kwargs to a common ``comoving`` and collect ``cosmo_factor``s.
+
+    This helper function is mostly intended for writing wrappers for unyt and numpy
+    functions. It checks for consistency for all args and kwargs, but is not recursive
+    so mixed cosmo attributes could be passed in the first argument to
+    :func:`numpy.concatenate`, for instance. This function can be used "recursively" in a
+    limited way manually: in functions like :func:`numpy.concatenate` where a list of
+    arrays is expected, it makes sense to pass the first argument to this function
+    to check consistency and attempt to coerce to comoving if needed.
+
+    Note that unyt allows creating a :class:`~unyt.array.unyt_array` from e.g. arrays with
+    heterogenous units (it probably shouldn't...). Example:
+
+    ::
+
+        >>> u.unyt_array([np.arange(3), np.arange(3) * u.m])
+        unyt_array([[0, 1, 2],
+                    [0, 1, 2]], '(dimensionless)')
+
+    It's impractical for us to try to cover all possible invalid user input without
+    unyt being stricter.
+
+    The best way to understand the usage of this helper function is to look at the many
+    wrapped unyt and numpy functions in :mod:`~swiftsimio._array_functions`.
+
+    Parameters
+    ----------
+    _default_cm: bool
+        If mixed ``comoving`` attributes are found, their data are converted such that
+        their ``comoving`` has the value of this argument. (Default: ``True``)
+
+    Returns
+    -------
+    out : dict
+        A dictionary containing the input `args`` and ``kwargs`` coerced to a common
+        state, and lists of their ``cosmo_factor`` attributes, and ``comoving`` and
+        ``compression`` values that can be used in return values for wrapped functions,
+        when relevant.
+
+    Raises
+    ------
+    ValueError
+        If the input arrays cannot be coerced to a consistent state of ``comoving``.
+    """
     cms = [(hasattr(arg, "comoving"), getattr(arg, "comoving", None)) for arg in args]
     cfs = [getattr(arg, "cosmo_factor", None) for arg in args]
     comps = [
@@ -460,18 +910,75 @@ def _prepare_array_func_args(*args, _default_cm=True, **kwargs):
     )
 
 
-def implements(numpy_function):
-    """Register an __array_function__ implementation for cosmo_array objects."""
+def implements(numpy_function: Callable) -> Callable:
+    """
+    Register an __array_function__ implementation for cosmo_array objects.
+
+    Intended for use as a decorator.
+
+    Parameters
+    ----------
+    numpy_function : Callable
+        A function handle from numpy (not ufuncs).
+
+    Returns
+    -------
+    out : Callable
+        The wrapped function.
+    """
 
     # See NEP 18 https://numpy.org/neps/nep-0018-array-function-protocol.html
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
+        """
+        Actually register the specified function.
+
+        Parameters
+        ----------
+        func: Callable
+            The function wrapping the numpy equivalent.
+
+        Returns
+        -------
+        out : Callable
+            The input ``func``.
+        """
         _HANDLED_FUNCTIONS[numpy_function] = func
         return func
 
     return decorator
 
 
-def _return_helper(res, helper_result, ret_cf, out=None):
+def _return_helper(
+    res: np.ndarray,
+    helper_result: dict,
+    ret_cf: "objects.cosmo_factor",
+    out: np.ndarray = None,
+) -> "objects.cosmo_array":
+    """
+    Helper function to attach our cosmo attributes to return values of wrapped functions.
+
+    The return value is first promoted to be a :class:`~swiftsimio.objects.cosmo_array`
+    (or quantity) if necessary. If the return value is still not one of our cosmo
+    types, we don't attach attributes.
+
+    Parameters
+    ----------
+    res : numpy.ndarray
+        The output array of a function to attach our attributes to.
+    helper_result : dict
+        A helper :obj:`dict` returned by
+        :func:`~swiftsimio._array_functions._prepare_array_func_args`.
+    ret_cf : swiftsimio.objects.cosmo_factor
+        The :class:`~swiftsimio.objects.cosmo_factor` to attach to the result.
+    out : numpy.ndarray
+        For functions that can place output in an ``out`` argument, a reference to
+        the output array (optional).
+
+    Returns
+    -------
+    out : swiftsimio.objects.cosmo_array
+        The input return value of a wrapped function with our cosmo attributes applied.
+    """
     res = _promote_unyt_to_cosmo(res)
     if isinstance(res, objects.cosmo_array):  # also recognizes cosmo_quantity
         res.comoving = helper_result["comoving"]
@@ -484,13 +991,44 @@ def _return_helper(res, helper_result, ret_cf, out=None):
     return res
 
 
-def _default_unary_wrapper(unyt_func, cosmo_factor_wrapper):
+def _default_unary_wrapper(
+    unyt_func: Callable, cosmo_factor_handler: Callable
+) -> Callable:
+    """
+    Wrapper helper for unary functions with typical behaviour.
 
-    # assumes that we have one primary argument that will be handled
-    # by the cosmo_factor_wrapper
+    For many numpy and unyt functions with one (main) input argument, the wrapping
+    code that we need to apply is repetitive. Just prepare the arguments, apply
+    the chosen processing to the ``cosmo_factor``, and attach our cosmo attributes
+    to the return value. This function facilitates writing these wrappers.
+
+    Can be used as a decorator.
+
+    Parameters
+    ----------
+    unyt_func : Callable
+        The unyt (or numpy) function to be wrapped.
+    cosmo_factor_handler : Callable
+        The function that handles the ``cosmo_factor``s, chosen from those defined
+        in :mod:`~swiftsimio._array_functions`.
+
+    Returns
+    -------
+    out : Callable
+        The wrapped function.
+    """
+
     def wrapper(*args, **kwargs):
+        """
+        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+
+        Returns
+        -------
+        out : Callable
+            The wrapped function.
+        """
         helper_result = _prepare_array_func_args(*args, **kwargs)
-        ret_cf = cosmo_factor_wrapper(helper_result["cfs"][0])
+        ret_cf = cosmo_factor_handler(helper_result["cfs"][0])
         res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
         if "out" in kwargs:
             return _return_helper(res, helper_result, ret_cf, out=kwargs["out"])
@@ -500,13 +1038,44 @@ def _default_unary_wrapper(unyt_func, cosmo_factor_wrapper):
     return wrapper
 
 
-def _default_binary_wrapper(unyt_func, cosmo_factor_wrapper):
+def _default_binary_wrapper(
+    unyt_func: Callable, cosmo_factor_handler: Callable
+) -> Callable:
+    """
+    Wrapper helper for binary functions with typical behaviour.
 
-    # assumes we have two primary arguments that will be handled
-    # by the cosmo_factor_wrapper
+    For many numpy and unyt functions with two (main) input arguments, the wrapping
+    code that we need to apply is repetitive. Just prepare the arguments, apply
+    the chosen processing to the cosmo_factors, and attach our cosmo attributes
+    to the return value. This function facilitates writing these wrappers.
+
+    Can be used as a decorator.
+
+    Parameters
+    ----------
+    unyt_func : Callable
+        The unyt (or numpy) function to be wrapped.
+    cosmo_factor_handler : Callable
+        The function that handles the ``cosmo_factor``s, chosen from those defined
+        in :mod:`~swiftsimio._array_functions`.
+
+    Returns
+    -------
+    out : Callable
+        The wrapped function.
+    """
+
     def wrapper(*args, **kwargs):
+        """
+        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+
+        Returns
+        -------
+        out : Callable
+            The wrapped function.
+        """
         helper_result = _prepare_array_func_args(*args, **kwargs)
-        ret_cf = cosmo_factor_wrapper(helper_result["cfs"][0], helper_result["cfs"][1])
+        ret_cf = cosmo_factor_handler(helper_result["cfs"][0], helper_result["cfs"][1])
         res = unyt_func(*helper_result["args"], **helper_result["kwargs"])
         if "out" in kwargs:
             return _return_helper(res, helper_result, ret_cf, out=kwargs["out"])
@@ -516,11 +1085,39 @@ def _default_binary_wrapper(unyt_func, cosmo_factor_wrapper):
     return wrapper
 
 
-def _default_comparison_wrapper(unyt_func):
+def _default_comparison_wrapper(unyt_func: Callable) -> Callable:
+    """
+    Wrapper helper for binary comparison functions with typical behaviour.
+
+    For many numpy and unyt comparison functions with two (main) input arguments, the
+    wrapping code that we need to apply is repetitive. Just prepare the arguments,
+    process the ``cosmo_factors``, and attach our cosmo attributes
+    to the return value. This function facilitates writing these wrappers.
+
+    Can be used as a decorator.
+
+    Parameters
+    ----------
+    unyt_func : Callable
+        The unyt (or numpy) comparison function to be wrapped.
+
+    Returns
+    -------
+    out : Callable
+        The wrapped function.
+    """
 
     # assumes we have two primary arguments that will be handled with
     # _comparison_cosmo_factor with them as the inputs
     def wrapper(*args, **kwargs):
+        """
+        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+
+        Returns
+        -------
+        out : Callable
+            The wrapped function.
+        """
         helper_result = _prepare_array_func_args(*args, **kwargs)
         ret_cf = _comparison_cosmo_factor(
             helper_result["cfs"][0], helper_result["cfs"][1], inputs=args[:2]
@@ -531,12 +1128,38 @@ def _default_comparison_wrapper(unyt_func):
     return wrapper
 
 
-def _default_oplist_wrapper(unyt_func):
+def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
+    """
+    Wrapper helper for functions accepting a list of operands with typical behaviour.
 
-    # assumes first argument is a list of operands
-    # assumes that we always preserve the cosmo factor of the first
-    # element in the list of operands
+    For many numpy and unyt functions taking a list of operands as an argument, the
+    wrapping code that we need to apply is repetitive. Just prepare the arguments,
+    preserve the ``cosmo_factor`` (after checking that it's common across the list), and
+    attach our cosmo attributes to the return value. This function facilitates writing
+    these wrappers.
+
+    Can be used as a decorator.
+
+    Parameters
+    ----------
+    unyt_func : Callable
+        The unyt (or numpy) function to be wrapped.
+
+    Returns
+    -------
+    out : Callable
+        The wrapped function.
+    """
+
     def wrapper(*args, **kwargs):
+        """
+        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+
+        Returns
+        -------
+        out : Callable
+            The wrapped function.
+        """
         helper_result = _prepare_array_func_args(*args, **kwargs)
         helper_result_oplist = _prepare_array_func_args(*args[0])
         ret_cf = _preserve_cosmo_factor(helper_result_oplist["cfs"][0])
@@ -549,6 +1172,9 @@ def _default_oplist_wrapper(unyt_func):
 
     return wrapper
 
+
+# Next we wrap functions from unyt and numpy. There's not much point in writing docstrings
+# or type hints for all of these.
 
 # Now we wrap functions that unyt handles explicitly (below that will be those not handled
 # explicitly):
@@ -1515,15 +2141,23 @@ implements(np.take)(_default_unary_wrapper(unyt_take, _preserve_cosmo_factor))
 
 # Now we wrap functions that unyt does not handle explicitly:
 
-implements(np.average)(_propagate_cosmo_array_attributes(np.average._implementation))
-implements(np.max)(_propagate_cosmo_array_attributes(np.max._implementation))
-implements(np.min)(_propagate_cosmo_array_attributes(np.min._implementation))
-implements(np.mean)(_propagate_cosmo_array_attributes(np.mean._implementation))
-implements(np.median)(_propagate_cosmo_array_attributes(np.median._implementation))
-implements(np.sort)(_propagate_cosmo_array_attributes(np.sort._implementation))
-implements(np.sum)(_propagate_cosmo_array_attributes(np.sum._implementation))
+implements(np.average)(
+    _propagate_cosmo_array_attributes_to_result(np.average._implementation)
+)
+implements(np.max)(_propagate_cosmo_array_attributes_to_result(np.max._implementation))
+implements(np.min)(_propagate_cosmo_array_attributes_to_result(np.min._implementation))
+implements(np.mean)(
+    _propagate_cosmo_array_attributes_to_result(np.mean._implementation)
+)
+implements(np.median)(
+    _propagate_cosmo_array_attributes_to_result(np.median._implementation)
+)
+implements(np.sort)(
+    _propagate_cosmo_array_attributes_to_result(np.sort._implementation)
+)
+implements(np.sum)(_propagate_cosmo_array_attributes_to_result(np.sum._implementation))
 implements(np.partition)(
-    _propagate_cosmo_array_attributes(np.partition._implementation)
+    _propagate_cosmo_array_attributes_to_result(np.partition._implementation)
 )
 
 
@@ -1532,7 +2166,7 @@ def meshgrid(*xi, **kwargs):
     # meshgrid is a unique case: arguments never interact with each other, so we don't
     # want to use our _prepare_array_func_args helper (that will try to coerce to
     # compatible comoving, cosmo_factor).
-    # However we can't just use _propagate_cosmo_array_attributes because we need to
-    # iterate over arguments.
+    # However we can't just use _propagate_cosmo_array_attributes_to_result because we
+    # need to iterate over arguments.
     res = np.meshgrid._implementation(*xi, **kwargs)
     return tuple(_copy_cosmo_array_attributes(x, r) for (x, r) in zip(xi, res))

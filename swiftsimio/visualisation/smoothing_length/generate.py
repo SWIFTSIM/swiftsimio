@@ -7,10 +7,10 @@ from numpy import empty, float32
 
 from swiftsimio import cosmo_array
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
-from swiftsimio._array_functions import _propagate_cosmo_array_attributes
+from swiftsimio._array_functions import _propagate_cosmo_array_attributes_to_result
 
 
-@_propagate_cosmo_array_attributes  # copies attrs of first arg to result, if present
+@_propagate_cosmo_array_attributes_to_result  # copies attrs of first arg to result
 def generate_smoothing_lengths(
     coordinates: cosmo_array,
     boxsize: cosmo_array,

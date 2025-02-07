@@ -92,8 +92,8 @@ from numpy import (
 )
 from numpy._core.umath import _ones_like, clip
 from ._array_functions import (
-    _propagate_cosmo_array_attributes,
-    _ensure_cosmo_array_or_quantity,
+    _propagate_cosmo_array_attributes_to_result,
+    _ensure_result_is_cosmo_array_or_quantity,
     _sqrt_cosmo_factor,
     _multiply_cosmo_factor,
     _preserve_cosmo_factor,
@@ -111,6 +111,17 @@ from ._array_functions import (
 
 # The scale factor!
 a = sympy.symbols("a")
+
+
+def _verify_valid_transform_validity(obj):
+    if not obj.valid_transform:
+        assert (
+            not obj.comoving
+        ), "Cosmo arrays without a valid transform to comoving units must be physical"
+    if obj.comoving:
+        assert (
+            obj.valid_transform
+        ), "Comoving cosmo_arrays must be able to be transformed to physical"
 
 
 class InvalidConversionError(Exception):
@@ -563,6 +574,7 @@ class cosmo_array(unyt_array):
         cosmo_factor: cosmo_factor
 
         if bypass_validation is True:
+
             obj = super().__new__(
                 cls,
                 input_array,
@@ -572,54 +584,74 @@ class cosmo_array(unyt_array):
                 bypass_validation=bypass_validation,
                 name=name,
             )
-            # dtype, units, registry & name handled by unyt
+
+            # dtype, units, registry & name are handled by unyt
             obj.comoving = comoving
             obj.cosmo_factor = cosmo_factor if cosmo_factor is not None else NULL_CF
             obj.valid_transform = valid_transform
             obj.compression = compression
+
             return obj
+
         if isinstance(input_array, cosmo_array):
-            if comoving:
-                input_array.convert_to_comoving()
+
+            obj = input_array.view(cls)
+
+            # do cosmo_factor first since it can be used in comoving/physical conversion:
+            if cosmo_factor is not None:
+                obj.cosmo_factor = cosmo_factor
+            # else is already copied from input_array
+
+            if comoving is True:
+                obj.convert_to_comoving()
             elif comoving is False:
-                input_array.convert_to_physical()
-            else:
-                comoving = input_array.comoving
-            cosmo_factor = (
-                getattr(input_array, "cosmo_factor")
-                if cosmo_factor is None
-                else _preserve_cosmo_factor(
-                    cosmo_factor, getattr(input_array, "cosmo_factor")
-                )
+                obj.convert_to_physical()
+            # else is already copied from input_array
+
+            # only overwrite valid_transform after transforming so that invalid
+            # transformations raise:
+            obj.valid_transform = valid_transform
+            _verify_valid_transform_validity(obj)
+
+            obj.compression = (
+                compression if compression is not None else obj.compression
             )
-            if not valid_transform:
-                input_array.convert_to_physical()
-            if compression != input_array.compression:
-                compression = None  # just drop it
+
+            return obj
+
         elif isinstance(input_array, np.ndarray) and input_array.dtype != object:
+
             # guard np.ndarray so it doesn't get caught by _iterable in next case
-            if cosmo_factor is None:
-                cosmo_factor = NULL_CF
-        elif _iterable(input_array):
+
+            # ndarray with object dtype goes to next case to properly handle e.g.
+            # ndarrays containing cosmo_quantities
+
+            pass
+
+        elif _iterable(input_array) and input_array:
+
+            # if _prepare_array_func_args finds cosmo_array input it will convert to:
             default_cm = comoving if comoving is not None else True
+
+            # coerce any cosmo_array inputs to consistency:
             helper_result = _prepare_array_func_args(
                 *input_array, _default_cm=default_cm
             )
-            if comoving is None:
-                comoving = helper_result["comoving"]
+
             input_array = helper_result["args"]
-            if cosmo_factor is None:
-                cosmo_factor = _preserve_cosmo_factor(*helper_result["cfs"])
-            elif all([cf is None for cf in helper_result["cfs"]]):
-                cosmo_factor = cosmo_factor
-            else:
-                cosmo_factor = _preserve_cosmo_factor(
-                    cosmo_factor, *helper_result["cfs"]
-                )
-            if not valid_transform:
-                input_array.convert_to_physical()
-            if compression != helper_result["compression"]:
-                compression = None  # just drop it
+
+            # default to comoving, cosmo_factor and compression given as kwargs
+            comoving = helper_result["comoving"] if comoving is None else comoving
+            cosmo_factor = (
+                _preserve_cosmo_factor(*helper_result["cfs"])
+                if cosmo_factor is None
+                else cosmo_factor
+            )
+            compression = (
+                helper_result["compression"] if compression is None else compression
+            )
+            # valid_transform has a non-None default, so we have to decide to always
+            # respect it
 
         obj = super().__new__(
             cls,
@@ -634,21 +666,15 @@ class cosmo_array(unyt_array):
         if isinstance(obj, unyt_array) and not isinstance(obj, cls):
             obj = obj.view(cls)
 
+        # attach our attributes:
+        obj.comoving = comoving
         # unyt allows creating a unyt_array from e.g. arrays with heterogenous units
-        # (it probably shouldn't...), so we don't bother recursing deeply and therefore
+        # (it probably shouldn't...), so we don't recurse deeply and therefore
         # can't guarantee that cosmo_factor isn't None at this point, guard with default
         obj.cosmo_factor = cosmo_factor if cosmo_factor is not None else NULL_CF
-        obj.comoving = comoving
         obj.compression = compression
         obj.valid_transform = valid_transform
-        if not obj.valid_transform:
-            assert (
-                not obj.comoving
-            ), "Cosmo arrays without a valid transform to comoving units must be physical"
-        if obj.comoving:
-            assert (
-                obj.valid_transform
-            ), "Comoving cosmo_arrays must be able to be transformed to physical"
+        _verify_valid_transform_validity(obj)
 
         return obj
 
@@ -701,32 +727,32 @@ class cosmo_array(unyt_array):
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
-    astype = _propagate_cosmo_array_attributes(unyt_array.astype)
-    in_units = _propagate_cosmo_array_attributes(unyt_array.in_units)
-    byteswap = _propagate_cosmo_array_attributes(unyt_array.byteswap)
-    compress = _propagate_cosmo_array_attributes(unyt_array.compress)
-    diagonal = _propagate_cosmo_array_attributes(unyt_array.diagonal)
-    flatten = _propagate_cosmo_array_attributes(unyt_array.flatten)
-    ravel = _propagate_cosmo_array_attributes(unyt_array.ravel)
-    repeat = _propagate_cosmo_array_attributes(unyt_array.repeat)
-    swapaxes = _propagate_cosmo_array_attributes(unyt_array.swapaxes)
-    transpose = _propagate_cosmo_array_attributes(unyt_array.transpose)
-    view = _propagate_cosmo_array_attributes(unyt_array.view)
+    astype = _propagate_cosmo_array_attributes_to_result(unyt_array.astype)
+    in_units = _propagate_cosmo_array_attributes_to_result(unyt_array.in_units)
+    byteswap = _propagate_cosmo_array_attributes_to_result(unyt_array.byteswap)
+    compress = _propagate_cosmo_array_attributes_to_result(unyt_array.compress)
+    diagonal = _propagate_cosmo_array_attributes_to_result(unyt_array.diagonal)
+    flatten = _propagate_cosmo_array_attributes_to_result(unyt_array.flatten)
+    ravel = _propagate_cosmo_array_attributes_to_result(unyt_array.ravel)
+    repeat = _propagate_cosmo_array_attributes_to_result(unyt_array.repeat)
+    swapaxes = _propagate_cosmo_array_attributes_to_result(unyt_array.swapaxes)
+    transpose = _propagate_cosmo_array_attributes_to_result(unyt_array.transpose)
+    view = _propagate_cosmo_array_attributes_to_result(unyt_array.view)
 
-    take = _propagate_cosmo_array_attributes(
-        _ensure_cosmo_array_or_quantity(unyt_array.take)
+    take = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_array.take)
     )
-    reshape = _propagate_cosmo_array_attributes(
-        _ensure_cosmo_array_or_quantity(unyt_array.reshape)
+    reshape = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_array.reshape)
     )
-    __getitem__ = _propagate_cosmo_array_attributes(
-        _ensure_cosmo_array_or_quantity(unyt_array.__getitem__)
+    __getitem__ = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_array.__getitem__)
     )
 
     # Also wrap some array "properties":
-    T = property(_propagate_cosmo_array_attributes(unyt_array.transpose))
-    ua = property(_propagate_cosmo_array_attributes(np.ones_like))
-    unit_array = property(_propagate_cosmo_array_attributes(np.ones_like))
+    T = property(_propagate_cosmo_array_attributes_to_result(unyt_array.transpose))
+    ua = property(_propagate_cosmo_array_attributes_to_result(np.ones_like))
+    unit_array = property(_propagate_cosmo_array_attributes_to_result(np.ones_like))
 
     def convert_to_comoving(self) -> None:
         """
@@ -927,7 +953,7 @@ class cosmo_array(unyt_array):
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
-        ret = _ensure_cosmo_array_or_quantity(super().__array_ufunc__)(
+        ret = _ensure_result_is_cosmo_array_or_quantity(super().__array_ufunc__)(
             ufunc, method, *inputs, **kwargs
         )
         # if we get a tuple we have multiple return values to deal with
