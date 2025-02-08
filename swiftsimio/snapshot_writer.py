@@ -163,11 +163,7 @@ class __SWIFTWriterParticleDataset(object):
 
         return True
 
-    def generate_smoothing_lengths(
-        self,
-        boxsize: cosmo_array,
-        dimension: int,
-    ):
+    def generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int):
         """
         Automatically generates the smoothing lengths as 2 * the mean interparticle separation.
 
@@ -272,7 +268,7 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the scale factor associated quantities
             a_exp = a_exponents.get(name, 0)
-            a_factor = scale_factor**a_exp
+            a_factor = scale_factor ** a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
