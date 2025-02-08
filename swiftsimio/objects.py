@@ -1,6 +1,12 @@
 """
-Contains global objects, e.g. the superclass version of the
-unyt_array that we use, called cosmo_array.
+Contains classes for our custom :class:`~swiftsimio.objects.cosmo_array`,
+:class:`~swiftsimio.objects.cosmo_quantity` and
+:class:`~swiftsimio.objects.cosmo_factor` objects for cosmology-aware
+arrays, extending the functionality of the :class:`~unyt.array.unyt_array`.
+
+For developers, see also :mod:`~swiftsimio._array_functions` containing
+helpers, wrappers and implementations that enable most :mod:`numpy` and
+:mod:`unyt` functions to work with our cosmology-aware arrays. 
 """
 
 from unyt import unyt_array, unyt_quantity
@@ -113,7 +119,23 @@ from ._array_functions import (
 a = sympy.symbols("a")
 
 
-def _verify_valid_transform_validity(obj):
+def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
+    """
+    Checks that ``comoving`` and ``valid_transform`` attributes are compatible.
+
+    Comoving arrays must be able to transform, while arrays that don't transform must
+    be physical. This function raises if this is not the case.
+
+    Parameters
+    ----------
+    obj : swiftsimio.objects.cosmo_array
+        The array whose validity is to be checked.
+
+    Raises
+    ------
+    AssertionError
+        When an invalid combination of ``comoving`` and ``valid_transform`` is found.
+    """
     if not obj.valid_transform:
         assert (
             not obj.comoving
@@ -125,7 +147,7 @@ def _verify_valid_transform_validity(obj):
 
 
 class InvalidConversionError(Exception):
-    def __init__(self, message="Could not convert to comoving coordinates"):
+    def __init__(self, message="Could not convert to comoving coordinates."):
         self.message = message
 
 
