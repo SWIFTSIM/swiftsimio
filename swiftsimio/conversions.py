@@ -45,12 +45,15 @@ if ASTROPY_AVAILABLE:
             raise AttributeError(
                 "SWIFTsimIO uses astropy, which cannot handle this cosmological model."
             )
-        if not int(N_eff) == deg_nu.astype(int).sum() + int(N_ur):
+        print(N_eff, deg_nu, N_ur)
+        if not int(N_eff) == deg_nu.astype(int).sum() + int(N_ur.squeeze()):
             raise AttributeError(
-                "SWIFTsimIO uses astropy, which cannot handle this cosmological model."
+                "SWIFTSimIO uses astropy, which cannot handle this cosmological model."
             )
         ap_m_nu = [[m] * int(d) for m, d in zip(M_nu_eV, deg_nu)]  # replicate
-        ap_m_nu = sum(ap_m_nu, []) + [0.0] * int(N_ur)  # flatten + add massless
+        ap_m_nu = sum(ap_m_nu, []) + [0.0] * int(
+            N_ur.squeeze()
+        )  # flatten + add massless
         ap_m_nu = np.array(ap_m_nu) * astropy_units.eV
         return ap_m_nu
 
