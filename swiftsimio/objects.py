@@ -147,7 +147,26 @@ def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
 
 
 class InvalidConversionError(Exception):
-    def __init__(self, message="Could not convert to comoving coordinates."):
+    """
+    Raised when converting from comoving from physical to comoving is not allowed.
+
+    Parameters
+    ----------
+    message : str, optional
+        Message to print in case of invalid conversion.
+    """
+
+    def __init__(
+        self, message: str = "Could not convert to comoving coordinates."
+    ) -> None:
+        """
+        Constructor for warning of invalid conversion.
+        
+        Parameters
+        ----------
+        message : str, optional
+            Message to print in case of invalid conversion.
+        """
         self.message = message
 
 
@@ -155,23 +174,32 @@ class InvalidScaleFactor(Exception):
     """
     Raised when a scale factor is invalid, such as when adding
     two cosmo_factors with inconsistent scale factors.
+
+    Parameters
+    ----------
+    message : str, optional
+        Message to print in case of invalid scale factor.
     """
 
-    def __init__(self, message=None, *args):
+    def __init__(self, message: str = None, *args) -> None:
         """
-        Constructor for warning of invalid scale factor
+        Constructor for warning of invalid scale factor.
 
         Parameters
         ----------
-
         message : str, optional
-            Message to print in case of invalid scale factor
+            Message to print in case of invalid scale factor.
         """
         self.message = message
 
     def __str__(self):
         """
-        Print warning message of invalid scale factor
+        Print warning message for invalid scale factor.
+
+        Returns
+        -------
+        out : str
+            The error message.
         """
         return f"InvalidScaleFactor: {self.message}"
 
@@ -180,6 +208,11 @@ class InvalidSnapshot(Exception):
     """
     Generated when a snapshot is invalid (e.g. you are trying to partially load a
     sub-snapshot).
+
+    Parameters
+    ----------
+    message : str, optional
+        Message to print in case of invalid snapshot.
     """
 
     def __init__(self, message=None, *args):
@@ -188,7 +221,6 @@ class InvalidSnapshot(Exception):
 
         Parameters
         ----------
-
         message : str, optional
             Message to print in case of invalid snapshot
         """
@@ -207,7 +239,7 @@ class cosmo_factor:
     comoving and physical coordinates.
 
     This takes the expected exponent of the array that can be parsed
-    by sympy, and the current value of the cosmological scale factor a.
+    by sympy, and the current value of the cosmological scale factor ``a``.
 
     This should be given as the conversion from comoving to physical, i.e.
 
@@ -215,7 +247,6 @@ class cosmo_factor:
 
     Examples
     --------
-
     Typically this would make cosmo_factor = a for the conversion between
     comoving positions r' and physical co-ordinates r.
 
@@ -227,11 +258,10 @@ class cosmo_factor:
 
     def __init__(self, expr, scale_factor):
         """
-        Constructor for cosmology factor class
+        Constructor for cosmology factor class.
 
         Parameters
         ----------
-
         expr : sympy.expr
             expression used to convert between comoving and physical coordinates
         scale_factor : float
@@ -247,7 +277,6 @@ class cosmo_factor:
 
         Returns
         -------
-
         str
             string to print exponent and current scale factor
         """
