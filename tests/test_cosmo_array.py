@@ -7,6 +7,7 @@ import os
 import warnings
 import numpy as np
 import unyt as u
+from copy import copy, deepcopy
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 
 savetxt_file = "saved_array.txt"
@@ -730,3 +731,53 @@ class TestCosmoQuantity:
         assert res.comoving is False
         assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True
+
+
+class TestCosmoArrayCopy:
+    def test_copy(self):
+        """
+        Check that when we copy a cosmo_array it preserves its values and attributes.
+        """
+        units = u.Mpc
+        arr = cosmo_array(
+            u.unyt_array(np.ones(5), units=units),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
+            comoving=False,
+        )
+        copy_arr = copy(arr)
+        assert np.allclose(arr.to_value(units), copy_arr.to_value(units))
+        assert arr.units == copy_arr.units
+        assert arr.cosmo_factor == copy_arr.cosmo_factor
+        assert arr.comoving == copy_arr.comoving
+
+    def test_deepcopy(self):
+        """
+        Check that when we deepcopy a cosmo_array it preserves its values and attributes
+        """
+        units = u.Mpc
+        arr = cosmo_array(
+            u.unyt_array(np.ones(5), units=units),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
+            comoving=False,
+        )
+        copy_arr = deepcopy(arr)
+        assert np.allclose(arr.to_value(units), copy_arr.to_value(units))
+        assert arr.units == copy_arr.units
+        assert arr.cosmo_factor == copy_arr.cosmo_factor
+        assert arr.comoving == copy_arr.comoving
+
+    def test_to_cgs(self):
+        """
+        Check that using to_cgs properly preserves attributes.
+        """
+        units = u.Mpc
+        arr = cosmo_array(
+            u.unyt_array(np.ones(5), units=units),
+            cosmo_factor=cosmo_factor(a ** 1, 1),
+            comoving=False,
+        )
+        cgs_arr = arr.in_cgs()
+        assert np.allclose(arr.to_value(u.cm), cgs_arr.to_value(u.cm))
+        assert cgs_arr.units == u.cm
+        assert cgs_arr.cosmo_factor == arr.cosmo_factor
+        assert cgs_arr.comoving == arr.comoving

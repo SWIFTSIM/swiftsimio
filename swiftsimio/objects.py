@@ -377,7 +377,7 @@ class cosmo_factor:
     def __pow__(self, p):
         if self.expr is None:
             return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
 
     def __lt__(self, b):
         return self.a_factor < b.a_factor
@@ -760,7 +760,9 @@ class cosmo_array(unyt_array):
     swapaxes = _propagate_cosmo_array_attributes_to_result(unyt_array.swapaxes)
     transpose = _propagate_cosmo_array_attributes_to_result(unyt_array.transpose)
     view = _propagate_cosmo_array_attributes_to_result(unyt_array.view)
-
+    __copy__ = _propagate_cosmo_array_attributes_to_result(unyt_array.__copy__)
+    __deepcopy__ = _propagate_cosmo_array_attributes_to_result(unyt_array.__deepcopy__)
+    in_cgs = _propagate_cosmo_array_attributes_to_result(unyt_array.in_cgs)
     take = _propagate_cosmo_array_attributes_to_result(
         _ensure_result_is_cosmo_array_or_quantity(unyt_array.take)
     )
