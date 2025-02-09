@@ -4,7 +4,7 @@ Contains classes for our custom :class:`~swiftsimio.objects.cosmo_array`,
 :class:`~swiftsimio.objects.cosmo_factor` objects for cosmology-aware
 arrays, extending the functionality of the :class:`~unyt.array.unyt_array`.
 
-For developers, see also :mod:`~swiftsimio._array_functions` containing
+For developers, see also :mod:`swiftsimio._array_functions` containing
 helpers, wrappers and implementations that enable most :mod:`numpy` and
 :mod:`unyt` functions to work with our cosmology-aware arrays.
 """
@@ -267,8 +267,9 @@ class cosmo_factor(object):
 
     Attributes
     ----------
-    expr : sympy.expr
+    expr : sympy.Expr
         Expression used to convert between comoving and physical coordinates.
+
     scale_factor : float
         The scale factor (a).
 
@@ -283,16 +284,14 @@ class cosmo_factor(object):
         from swiftsimio.objects import a  # the scale factor (a sympy symbol object)
         density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
 
-    :class:`~swiftsimio.objects.cosmo_factor` support arithmetic, for example:
+    :class:`~swiftsimio.objects.cosmo_factor` supports arithmetic, for example:
 
     ::
 
         >>> cosmo_factor(a**2, scale_factor=0.5) * cosmo_factor(a**-1, scale_factor=0.5)
         cosmo_factor(expr=a, scale_factor=0.5)
-    """
 
-    expr: sympy.Expr
-    scale_factor: float
+    """
 
     def __init__(self, expr: sympy.Expr, scale_factor: float) -> None:
         """
@@ -302,6 +301,7 @@ class cosmo_factor(object):
         ----------
         expr : sympy.expr
             Expression used to convert between comoving and physical coordinates.
+
         scale_factor : float
             The scale factor (a).
         """
@@ -341,7 +341,7 @@ class cosmo_factor(object):
         """
         The redshift computed from the scale factor.
 
-        Returns the redshift :math:`z = \frac{1}{a} - 1`, where :math:`a` is the scale
+        Returns the redshift :math:`z = \\frac{1}{a} - 1`, where :math:`a` is the scale
         factor.
 
         Returns
@@ -1072,8 +1072,6 @@ class cosmo_array(unyt_array):
             Description of the compression filters that were applied to that array in the
             hdf5 file.
         """
-
-        cosmo_factor: cosmo_factor
 
         if bypass_validation is True:
 

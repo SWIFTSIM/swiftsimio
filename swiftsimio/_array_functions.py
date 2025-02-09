@@ -180,9 +180,7 @@ def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
     """
 
     def wrapped(obj, *args, **kwargs):
-        """
-        Call the function and copy the attributes.
-        """
+        # omit docstring so that sphinx picks up docstring of wrapped function
         return _copy_cosmo_array_attributes(obj, func(obj, *args, **kwargs))
 
     return wrapped
@@ -272,9 +270,7 @@ def _ensure_result_is_cosmo_array_or_quantity(func: Callable) -> Callable:
     """
 
     def wrapped(*args, **kwargs) -> object:
-        """
-        Promote unyt types in function output to cosmo types.
-        """
+        # omit docstring so that sphinx picks up docstring of wrapped function
         result = func(*args, **kwargs)
         if isinstance(result, tuple):
             return tuple(
