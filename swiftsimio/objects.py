@@ -6,7 +6,7 @@ arrays, extending the functionality of the :class:`~unyt.array.unyt_array`.
 
 For developers, see also :mod:`~swiftsimio._array_functions` containing
 helpers, wrappers and implementations that enable most :mod:`numpy` and
-:mod:`unyt` functions to work with our cosmology-aware arrays. 
+:mod:`unyt` functions to work with our cosmology-aware arrays.
 """
 
 from unyt import unyt_array, unyt_quantity
@@ -161,7 +161,7 @@ class InvalidConversionError(Exception):
     ) -> None:
         """
         Constructor for warning of invalid conversion.
-        
+
         Parameters
         ----------
         message : str, optional
@@ -239,22 +239,47 @@ class cosmo_factor:
     comoving and physical coordinates.
 
     This takes the expected exponent of the array that can be parsed
-    by sympy, and the current value of the cosmological scale factor ``a``.
+    by :mod:`sympy`, and the current value of the cosmological scale factor ``a``.
 
     This should be given as the conversion from comoving to physical, i.e.
+    :math:`r = a^f \times r` where :math:`a` is the scale factor,
+    :math:`r` is a physical quantity and :math`r'` a comoving quantity.
 
-    r = cosmo_factor * r' with r in physical and r' comoving
+    Parameters
+    ----------
+    expr : sympy.expr
+        Expression used to convert between comoving and physical coordinates.
+    scale_factor : float
+        The scale factor (a).
 
+    Attributes
+    ----------
+    expr : sympy.expr
+        Expression used to convert between comoving and physical coordinates.
+    scale_factor : float
+        The scale factor (a).
+    
     Examples
     --------
-    Typically this would make cosmo_factor = a for the conversion between
-    comoving positions r' and physical co-ordinates r.
+    Mass density transforms as :math:`a^3`. To set up a ``cosmo_factor``, supposing
+    a current ``scale_factor=0.97``, we import the scale factor ``a`` and initialize
+    as:
 
-    To do this, use the a imported from objects multiplied as you'd like:
+    ::
 
-    ``density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)``
+        from swiftsimio.objects import a  # the scale factor (a sympy symbol object)
+        density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
 
+    :class:`~swiftsimio.objects.cosmo_factor` support arithmetic, for example:
+
+    ::
+
+        >>> cosmo_factor(a**2, scale_factor=0.5) * cosmo_factor(a**-1, scale_factor=0.5)
+        cosmo_factor(expr=a, scale_factor=0.5)
     """
+
+    expr: sympy.expr
+    scale_factor: float
 
     def __init__(self, expr, scale_factor):
         """
@@ -263,9 +288,9 @@ class cosmo_factor:
         Parameters
         ----------
         expr : sympy.expr
-            expression used to convert between comoving and physical coordinates
+            Expression used to convert between comoving and physical coordinates.
         scale_factor : float
-            the scale factor of the simulation data
+            The scale factor (a).
         """
         self.expr = expr
         self.scale_factor = scale_factor
@@ -273,27 +298,26 @@ class cosmo_factor:
 
     def __str__(self):
         """
-        Print exponent and current scale factor
+        Print exponent and current scale factor.
 
         Returns
         -------
-        str
-            string to print exponent and current scale factor
+        out : str
+            String with exponent and current scale factor.
         """
         return str(self.expr) + f" at a={self.scale_factor}"
 
     @property
     def a_factor(self):
         """
-        The a-factor for the unit.
+        The multiplicative factor for conversion from comoving to physical.
 
-        e.g. for density this is 1 / a**3.
+        For example, for density this is :math:`a^{-3}`.
 
         Returns
         -------
-
-        float
-            the a-factor for given unit
+        out : float
+            The multiplicative factor for conversion from comoving to physical.
         """
         if (self.expr is None) or (self.scale_factor is None):
             return None
@@ -302,20 +326,15 @@ class cosmo_factor:
     @property
     def redshift(self):
         """
-        Compute the redshift from the scale factor.
+        The redshift computed from the scale factor.
+
+        Returns the redshift :math:`z = \frac{1}{a} - 1`, where :math:`a` is the scale
+        factor.
 
         Returns
         -------
-
-        float
-            redshift from the given scale factor
-
-        Notes
-        -----
-
-        Returns the redshift
-        ..math:: z = \\frac{1}{a} - 1,
-        where :math: `a` is the scale factor
+        out : float
+            The redshift.
         """
         if self.scale_factor is None:
             return None
