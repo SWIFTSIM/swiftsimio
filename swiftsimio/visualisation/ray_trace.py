@@ -217,7 +217,6 @@ def core_panels_parallel(
 
 def panel_pixel_grid(
     data: __SWIFTGroupDataset,
-    boxsize: cosmo_array,
     resolution: int,
     panels: int,
     project: Union[str, None] = "masses",
@@ -249,7 +248,7 @@ def panel_pixel_grid(
     if mask is None:
         mask = np.s_[:]
 
-    box_x, box_y, box_z = boxsize
+    box_x, box_y, box_z = data.metadata.boxsize
 
     # Set the limits of the image.
     if region is not None:
@@ -327,7 +326,6 @@ def panel_gas(
 ) -> cosmo_array:
     image = panel_pixel_grid(
         data=data.gas,
-        boxsize=data.metadata.boxsize,
         resolution=resolution,
         panels=panels,
         project=project,

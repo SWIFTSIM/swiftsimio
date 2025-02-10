@@ -16,7 +16,6 @@ scatter_parallel = backends_parallel["fast"]
 
 def project_pixel_grid(
     data: __SWIFTGroupDataset,
-    boxsize: cosmo_array,
     resolution: int,
     project: Union[str, None] = "masses",
     region: Union[None, cosmo_array] = None,
@@ -40,9 +39,6 @@ def project_pixel_grid(
 
     data: __SWIFTGroupDataset
         The SWIFT dataset that you wish to visualise (get this from ``load``)
-
-    boxsize: cosmo_array
-        The box-size of the simulation.
 
     resolution: int
         The resolution of the image. All images returned are square, ``res``
@@ -125,7 +121,7 @@ def project_pixel_grid(
     if mask is None:
         mask = np.s_[:]
 
-    box_x, box_y, box_z = boxsize
+    box_x, box_y, box_z = data.metadata.boxsize
 
     # Set the limits of the image.
     z_slice_included = False
@@ -310,7 +306,6 @@ def project_gas_pixel_grid(
 
     image = project_pixel_grid(
         data=data.gas,
-        boxsize=data.metadata.boxsize,
         resolution=resolution,
         project=project,
         mask=mask,
