@@ -276,9 +276,11 @@ def panel_pixel_grid(
     # empty pixels in the resulting square image are trimmed afterwards
     max_range = max(x_range, y_range)
 
-    hsml = getattr(
-        data, "smoothing_lengths", data.smoothing_length
-    )  # backwards compatible
+    hsml = (
+        data.smoothing_lengths
+        if hasattr(data, "smoothing_lengths")
+        else data.smoothing_length  # backwards compatibility
+    )
     if data.coordinates.comoving:
         if not hsml.compatible_with_comoving():
             raise AttributeError(

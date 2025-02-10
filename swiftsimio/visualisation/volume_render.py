@@ -647,14 +647,15 @@ def render_gas_voxel_grid(
     slice_gas_pixel_grid : Creates a 2D slice of a SWIFT dataset
 
     """
+    data = data.gas  # coerce rest of this function to share with other vis functions
 
-    number_of_gas_particles = data.gas.particle_ids.size
+    number_of_gas_particles = data.particle_ids.size
 
     if project is None:
         m = ones(number_of_gas_particles, dtype=float32)
     else:
-        m = getattr(data.gas, project)
-        if data.gas.coordinates.comoving:
+        m = getattr(data, project)
+        if data.coordinates.comoving:
             if not m.compatible_with_comoving():
                 raise AttributeError(
                     f'Physical quantity "{project}" is not compatible with comoving coordinates!'
@@ -694,19 +695,21 @@ def render_gas_voxel_grid(
     # Let's just hope that the box is square otherwise we're probably SOL
     if rotation_center is not None:
         # Rotate co-ordinates as required
-        x, y, z = matmul(rotation_matrix, (data.gas.coordinates - rotation_center).T)
+        x, y, z = matmul(rotation_matrix, (data.coordinates - rotation_center).T)
 
         x += rotation_center[0]
         y += rotation_center[1]
         z += rotation_center[2]
 
     else:
-        x, y, z = data.gas.coordinates.T
+        x, y, z = data.coordinates.T
 
-    hsml = getattr(
-        data, "smoothing_lengths", data.smoothing_length
-    )  # backwards compatible
-    if data.gas.coordinates.comoving:
+    hsml = (
+        data.smoothing_lengths
+        if hasattr(data, "smoothing_lengths")
+        else data.smoothing_length  # backwards compatibility
+    )
+    if data.coordinates.comoving:
         if not hsml.compatible_with_comoving():
             raise AttributeError(
                 "Physical smoothing length is not compatible with comoving coordinates!"

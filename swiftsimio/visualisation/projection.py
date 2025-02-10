@@ -153,27 +153,24 @@ def project_pixel_grid(
     # empty pixels in the resulting square image are trimmed afterwards
     max_range = max(x_range, y_range)
 
-    try:
-        hsml = getattr(
-            data, "smoothing_lengths", data.smoothing_length
-        )  # backwards compatible
-        if data.coordinates.comoving:
-            if not hsml.compatible_with_comoving():
-                raise AttributeError(
-                    "Physical smoothing length is not compatible with comoving coordinates!"
-                )
-        else:
-            if not hsml.compatible_with_physical():
-                raise AttributeError(
-                    "Comoving smoothing length is not compatible with physical coordinates!"
-                )
-    except AttributeError:
-        # No hsml present. If they are using the 'histogram' backend, we
-        # should just mock them to be anything as it doesn't matter.
-        if backend == "histogram":
-            hsml = np.empty_like(m)
-        else:
-            raise AttributeError
+    if backend == "histogram":
+        hsml = np.empty_like(m)  # not used anyway for this backend
+    else:
+        hsml = (
+            data.smoothing_lengths
+            if hasattr(data, "smoothing_lengths")
+            else data.smoothing_length  # backwards compatibility
+        )
+    if data.coordinates.comoving:
+        if not hsml.compatible_with_comoving():
+            raise AttributeError(
+                "Physical smoothing length is not compatible with comoving coordinates!"
+            )
+    else:
+        if not hsml.compatible_with_physical():
+            raise AttributeError(
+                "Comoving smoothing length is not compatible with physical coordinates!"
+            )
 
     if rotation_center is not None:
         # Rotate co-ordinates as required
