@@ -3,18 +3,7 @@ Calls functions from `projection_backends`.
 """
 
 from typing import Union
-from numpy import (
-    float32,
-    array,
-    ones,
-    matmul,
-    empty_like,
-    logical_and,
-    s_,
-    ceil,
-    zeros_like,
-)
-from unyt import exceptions
+import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 
 from swiftsimio.reader import __SWIFTGroupDataset
@@ -31,8 +20,8 @@ def project_pixel_grid(
     resolution: int,
     project: Union[str, None] = "masses",
     region: Union[None, cosmo_array] = None,
-    mask: Union[None, array] = None,
-    rotation_matrix: Union[None, array] = None,
+    mask: Union[None, np.array] = None,
+    rotation_matrix: Union[None, np.array] = None,
     rotation_center: Union[None, cosmo_array] = None,
     parallel: bool = False,
     backend: str = "fast",
@@ -117,7 +106,7 @@ def project_pixel_grid(
     number_of_particles = data.coordinates.shape[0]
 
     if project is None:
-        m = ones(number_of_particles, dtype=float32)
+        m = np.ones(number_of_particles, dtype=np.float32)
     else:
         m = getattr(data, project)
         if data.coordinates.comoving:
@@ -134,7 +123,7 @@ def project_pixel_grid(
 
     # This provides a default 'slice it all' mask.
     if mask is None:
-        mask = s_[:]
+        mask = np.s_[:]
 
     box_x, box_y, box_z = boxsize
 
@@ -148,12 +137,12 @@ def project_pixel_grid(
             z_slice_included = True
             z_min, z_max = region[4:]
         else:
-            z_min = zeros_like(box_z)
+            z_min = np.zeros_like(box_z)
             z_max = box_z
     else:
-        x_min = zeros_like(box_x)
+        x_min = np.zeros_like(box_x)
         x_max = box_x
-        y_min = zeros_like(box_y)
+        y_min = np.zeros_like(box_y)
         y_max = box_y
 
     x_range = x_max - x_min
@@ -184,13 +173,13 @@ def project_pixel_grid(
         # No hsml present. If they are using the 'histogram' backend, we
         # should just mock them to be anything as it doesn't matter.
         if backend == "histogram":
-            hsml = empty_like(m)
+            hsml = np.empty_like(m)
         else:
             raise AttributeError
 
     if rotation_center is not None:
         # Rotate co-ordinates as required
-        x, y, z = matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
 
         x += rotation_center[0]
         y += rotation_center[1]
@@ -200,9 +189,9 @@ def project_pixel_grid(
         x, y, z = data.coordinates.T
 
     if z_slice_included:
-        combined_mask = logical_and(mask, logical_and(z <= z_max, z >= z_min)).astype(
-            bool
-        )
+        combined_mask = np.logical_and(
+            mask, np.logical_and(z <= z_max, z >= z_min)
+        ).astype(bool)
     else:
         combined_mask = mask
 
@@ -229,8 +218,8 @@ def project_pixel_grid(
         image = backends[backend](**common_arguments)
 
     # determine the effective number of pixels for each dimension
-    xres = int(ceil(resolution * (x_range / max_range)))
-    yres = int(ceil(resolution * (y_range / max_range)))
+    xres = int(np.ceil(resolution * (x_range / max_range)))
+    yres = int(np.ceil(resolution * (y_range / max_range)))
 
     # trim the image to remove empty pixels
     return image[:xres, :yres]
@@ -241,8 +230,8 @@ def project_gas_pixel_grid(
     resolution: int,
     project: Union[str, None] = "masses",
     region: Union[None, cosmo_array] = None,
-    mask: Union[None, array] = None,
-    rotation_matrix: Union[None, array] = None,
+    mask: Union[None, np.array] = None,
+    rotation_matrix: Union[None, np.array] = None,
     rotation_center: Union[None, cosmo_array] = None,
     parallel: bool = False,
     backend: str = "fast",
@@ -346,9 +335,9 @@ def project_gas(
     resolution: int,
     project: Union[str, None] = "masses",
     region: Union[None, cosmo_array] = None,
-    mask: Union[None, array] = None,
+    mask: Union[None, np.array] = None,
     rotation_center: Union[None, cosmo_array] = None,
-    rotation_matrix: Union[None, array] = None,
+    rotation_matrix: Union[None, np.array] = None,
     parallel: bool = False,
     backend: str = "fast",
     periodic: bool = True,
