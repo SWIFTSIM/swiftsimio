@@ -154,11 +154,9 @@ def project_pixel_grid(
     max_range = max(x_range, y_range)
 
     try:
-        try:
-            hsml = data.smoothing_lengths
-        except AttributeError:
-            # Backwards compatibility
-            hsml = data.smoothing_length
+        hsml = getattr(
+            data, "smoothing_lengths", data.smoothing_length
+        )  # backwards compatible
         if data.coordinates.comoving:
             if not hsml.compatible_with_comoving():
                 raise AttributeError(

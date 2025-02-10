@@ -703,11 +703,9 @@ def render_gas_voxel_grid(
     else:
         x, y, z = data.gas.coordinates.T
 
-    try:
-        hsml = data.gas.smoothing_lengths
-    except AttributeError:
-        # Backwards compatibility
-        hsml = data.gas.smoothing_length
+    hsml = getattr(
+        data, "smoothing_lengths", data.smoothing_length
+    )  # backwards compatible
     if data.gas.coordinates.comoving:
         if not hsml.compatible_with_comoving():
             raise AttributeError(
@@ -844,14 +842,14 @@ def render_gas(
             * data.metadata.boxsize[1]
             * data.metadata.boxsize[2]
         )
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 
