@@ -12,6 +12,12 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.optional_packages import plt
 
 from swiftsimio.visualisation.slice_backends.sph import kernel, kernel_gamma
+from swiftsimio.visualisation.smoothing_length import backends_get_hsml
+from swiftsimio.visualisation._vistools import (
+    _get_projection_field,
+    _get_region_limits,
+    _get_rotated_coordinates,
+)
 
 
 @jit(nopython=True, fastmath=True)
@@ -635,104 +641,24 @@ def render_gas_voxel_grid(
     slice_gas_pixel_grid : Creates a 2D slice of a SWIFT dataset
 
     """
-    data = data.gas  # coerce rest of this function to share with other vis functions
+    data = data.gas
 
-    number_of_particles = data.particle_ids.size
+    m = _get_projection_field(data, project)
 
-    if project is None:
-        m = np.ones(number_of_particles, dtype=np.float32)
-    else:
-        m = getattr(data, project)
-        if data.coordinates.comoving:
-            if not m.compatible_with_comoving():
-                raise AttributeError(
-                    f'Physical quantity "{project}" is not compatible with comoving coordinates!'
-                )
-        else:
-            if not m.compatible_with_physical():
-                raise AttributeError(
-                    f'Comoving quantity "{project}" is not compatible with physical coordinates!'
-                )
-        m = m.value
-
-    #
-    #
-    #
-    #
-    box_x, box_y, box_z = data.metadata.boxsize
-
-    #
-    #
-    #
-    # Set the limits of the image.
-    #
-    #
-    if region is not None:
-        x_min, x_max, y_min, y_max, z_min, z_max = region
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-    else:
-        x_min = np.zeros_like(box_x)
-        x_max = box_x
-        y_min = np.zeros_like(box_y)
-        y_max = box_y
-        z_min = np.zeros_like(box_z)
-        z_max = box_z
-
-    x_range = x_max - x_min
-    y_range = y_max - y_min
-    z_range = z_max - z_min
-
-    # Test that we've got a cubic box
-    if not (
-        np.isclose(x_range.value, y_range.value)
-        and np.isclose(x_range.value, z_range.value)
-    ):
-        raise AttributeError(
-            "Projection code is currently not able to handle non-cubic images"
-        )
-
-    hsml = (
-        data.smoothing_lengths
-        if hasattr(data, "smoothing_lengths")
-        else data.smoothing_length  # backwards compatibility
+    x_min, x_max, y_min, y_max, z_min, z_max, x_range, y_range, z_range, _ = _get_region_limits(
+        data, region, require_cubic=True
     )
-    if data.coordinates.comoving:
-        if not hsml.compatible_with_comoving():
-            raise AttributeError(
-                "Physical smoothing length is not compatible with comoving coordinates!"
-            )
-    else:
-        if not hsml.compatible_with_physical():
-            raise AttributeError(
-                "Comoving smoothing length is not compatible with physical coordinates!"
-            )
 
-    if rotation_center is not None:
-        # Rotate co-ordinates as required
-        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+    hsml = backends_get_hsml["sph"](data)
 
-        x += rotation_center[0]
-        y += rotation_center[1]
-        z += rotation_center[2]
-    else:
-        x, y, z = data.coordinates.T
-
-    # ------------------------------
+    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
 
     if periodic:
-        periodic_box_x = box_x / x_range
-        periodic_box_y = box_y / y_range
-        periodic_box_z = box_z / z_range
+        periodic_box_x, periodic_box_y, periodic_box_z = (
+            data.metadata.boxsize / cosmo_array([x_range, y_range, z_range])
+        )
     else:
-        periodic_box_x = 0.0
-        periodic_box_y = 0.0
-        periodic_box_z = 0.0
+        periodic_box_x, periodic_box_y, periodic_box_z = 0.0, 0.0, 0.0
 
     arguments = dict(
         x=(x - x_min) / x_range,
@@ -850,14 +776,14 @@ def render_gas(
             * data.metadata.boxsize[1]
             * data.metadata.boxsize[2]
         )
-        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 

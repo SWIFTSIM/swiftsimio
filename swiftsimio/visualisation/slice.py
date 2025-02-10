@@ -7,6 +7,11 @@ import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
+from swiftsimio.visualisation._vistools import (
+    _get_projection_field,
+    _get_region_limits,
+    _get_rotated_coordinates,
+)
 
 slice_scatter = backends["sph"]
 slice_scatter_parallel = backends_parallel["sph"]
@@ -91,110 +96,27 @@ def slice_gas_pixel_grid(
     """
     data = data.gas
 
-    if z_slice is None:
-        z_slice = np.zeros_like(data.metadata.boxsize[0])
+    m = _get_projection_field(data, project)
 
-    number_of_particles = data.coordinates.shape[0]
+    x_min, x_max, y_min, y_max, _, _, x_range, y_range, _, max_range = _get_region_limits(
+        data, region, z_slice=z_slice
+    )
 
-    if project is None:
-        m = np.ones(number_of_particles, dtype=np.float32)
-    else:
-        m = getattr(data, project)
-        if data.coordinates.comoving:
-            if not m.compatible_with_comoving():
-                raise AttributeError(
-                    f'Physical quantity "{project}" is not compatible with comoving coordinates!'
-                )
-        else:
-            if not m.compatible_with_physical():
-                raise AttributeError(
-                    f'Comoving quantity "{project}" is not compatible with physical coordinates!'
-                )
-        m = m.value
-
-    #
-    #
-    #
-    #
-    box_x, box_y, box_z = data.metadata.boxsize
-
-    if z_slice > box_z or z_slice < np.zeros_like(box_z):
-        raise ValueError("Please enter a slice value inside the box.")
-
-    # Set the limits of the image.
-    #
-    #
-    if region is not None:
-        x_min, x_max, y_min, y_max = region
-        #
-        #
-        #
-        #
-        #
-        #
-        #
-    else:
-        x_min = np.zeros_like(box_x)
-        x_max = box_x
-        y_min = np.zeros_like(box_y)
-        y_max = box_y
-        #
-        #
-
-    x_range = x_max - x_min
-    y_range = y_max - y_min
-    #
-
-    # Deal with non-cubic boxes:
-    # we always use the maximum of x_range and y_range to normalise the coordinates
-    # empty pixels in the resulting square image are trimmed afterwards
-    max_range = max(x_range, y_range)
-
-    #
-    #
-    #
-    #
     hsml = backends_get_hsml[backend](data)
-    #
-    #
-    #
-    #
-    if data.coordinates.comoving:
-        if not hsml.compatible_with_comoving():
-            raise AttributeError(
-                "Physical smoothing length is not compatible with comoving coordinates!"
-            )
-    else:
-        if not hsml.compatible_with_physical():
-            raise AttributeError(
-                "Comoving smoothing length is not compatible with physical coordinates!"
-            )
 
-    if rotation_center is not None:
-        # Rotate co-ordinates as required
-        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
-
-        x += rotation_center[0]
-        y += rotation_center[1]
-        z += rotation_center[2]
-    else:
-        x, y, z = data.coordinates.T
-
-    # ------------------------------
+    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
 
     if rotation_center is not None:
         z_center = rotation_center[2]
     else:
-        z_center = np.zeros_like(box_z)
+        z_center = np.zeros_like(data.metadata.boxsize[2])
 
     if periodic:
-        periodic_box_x = box_x / max_range
-        periodic_box_y = box_y / max_range
-        periodic_box_z = box_z / max_range
+        periodic_box_x, periodic_box_y, periodic_box_z = (
+            data.metadata.boxsize / max_range
+        )
     else:
-        periodic_box_x = 0.0
-        periodic_box_y = 0.0
-        periodic_box_z = 0.0
+        periodic_box_x, periodic_box_y, periodic_box_z = 0.0, 0.0, 0.0
 
     # determine the effective number of pixels for each dimension
     xres = int(resolution * x_range / max_range)
@@ -324,7 +246,7 @@ def slice_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range**3)
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(
@@ -332,17 +254,17 @@ def slice_gas(
         )
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range**3)
+        units = 1.0 / (max_range ** 3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 

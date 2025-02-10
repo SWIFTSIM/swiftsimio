@@ -9,6 +9,12 @@ from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.reader import __SWIFTGroupDataset
 
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
+from swiftsimio.visualisation.smoothing_length import backends_get_hsml
+from swiftsimio.visualisation._vistools import (
+    _get_projection_field,
+    _get_region_limits,
+    _get_rotated_coordinates,
+)
 
 scatter = backends["fast"]
 scatter_parallel = backends_parallel["fast"]
@@ -99,92 +105,28 @@ def project_pixel_grid(
       array if you want it to be visualised the 'right way up'.
     """
 
-    number_of_particles = data.coordinates.shape[0]
-
-    if project is None:
-        m = np.ones(number_of_particles, dtype=np.float32)
-    else:
-        m = getattr(data, project)
-        if data.coordinates.comoving:
-            if not m.compatible_with_comoving():
-                raise AttributeError(
-                    f'Physical quantity "{project}" is not compatible with comoving coordinates!'
-                )
-        else:
-            if not m.compatible_with_physical():
-                raise AttributeError(
-                    f'Comoving quantity "{project}" is not compatible with physical coordinates!'
-                )
-        m = m.value
+    m = _get_projection_field(data, project)
 
     # This provides a default 'slice it all' mask.
     if mask is None:
         mask = np.s_[:]
 
-    box_x, box_y, box_z = data.metadata.boxsize
+    x_min, x_max, y_min, y_max, z_min, z_max, x_range, y_range, _, max_range = _get_region_limits(
+        data, region
+    )
 
-    # Set the limits of the image.
-    z_slice_included = False
-
-    if region is not None:
-        x_min, x_max, y_min, y_max = region[:4]
-
-        if len(region) == 6:
-            z_slice_included = True
-            z_min, z_max = region[4:]
-        else:
-            z_min = np.zeros_like(box_z)
-            z_max = box_z
-    else:
-        x_min = np.zeros_like(box_x)
-        x_max = box_x
-        y_min = np.zeros_like(box_y)
-        y_max = box_y
-        #
-        #
-
-    x_range = x_max - x_min
-    y_range = y_max - y_min
-    #
-
-    # Deal with non-cubic boxes:
-    # we always use the maximum of x_range and y_range to normalise the coordinates
-    # empty pixels in the resulting square image are trimmed afterwards
-    max_range = max(x_range, y_range)
-
-    #
     if backend == "histogram":
         hsml = np.empty_like(m)  # not used anyway for this backend
     else:
-        hsml = (
-            data.smoothing_lengths
-            if hasattr(data, "smoothing_lengths")
-            else data.smoothing_length  # backwards compatibility
-        )
-    if data.coordinates.comoving:
-        if not hsml.compatible_with_comoving():
-            raise AttributeError(
-                "Physical smoothing length is not compatible with comoving coordinates!"
-            )
-    else:
-        if not hsml.compatible_with_physical():
-            raise AttributeError(
-                "Comoving smoothing length is not compatible with physical coordinates!"
-            )
+        hsml = backends_get_hsml["sph"](data)
 
-    if rotation_center is not None:
-        # Rotate co-ordinates as required
-        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
-
-        x += rotation_center[0]
-        y += rotation_center[1]
-        z += rotation_center[2]
-    else:
-        x, y, z = data.coordinates.T
+    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
 
     # ------------------------------
 
-    if z_slice_included:
+    if (region is not None) and len(
+        region
+    ) != 6:  # if not z_slice_included: ...should refactor
         combined_mask = np.logical_and(
             mask, np.logical_and(z <= z_max, z >= z_min)
         ).astype(bool)
@@ -192,11 +134,9 @@ def project_pixel_grid(
         combined_mask = mask
 
     if periodic:
-        periodic_box_x = box_x / max_range
-        periodic_box_y = box_y / max_range
+        periodic_box_x, periodic_box_y, _ = data.metadata.boxsize / max_range
     else:
-        periodic_box_x = 0.0
-        periodic_box_y = 0.0
+        periodic_box_x, periodic_box_y = 0.0, 0.0
 
     common_arguments = dict(
         x=(x[combined_mask] - x_min) / max_range,
@@ -429,23 +369,23 @@ def project_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range**2)
+        units = 1.0 / (max_range ** 2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / (x_range.units * y_range.units))
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range**2)
+        units = 1.0 / (max_range ** 2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**2
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 2
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-2)
 
