@@ -5,19 +5,7 @@ of the particles and projects them onto a grid.
 
 from typing import List, Literal, Tuple, Union
 from math import sqrt, exp, pi
-from numpy import (
-    float64,
-    float32,
-    int32,
-    zeros,
-    array,
-    ndarray,
-    ones,
-    isclose,
-    linspace,
-    matmul,
-    max as np_max,
-)
+import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
@@ -28,16 +16,16 @@ from swiftsimio.visualisation.slice_backends.sph import kernel, kernel_gamma
 
 @jit(nopython=True, fastmath=True)
 def scatter(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    h: np.float32,
     res: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
-) -> ndarray:
+    box_x: np.float64 = 0.0,
+    box_y: np.float64 = 0.0,
+    box_z: np.float64 = 0.0,
+) -> np.ndarray:
     """
     Creates a weighted voxel grid
 
@@ -48,41 +36,41 @@ def scatter(
     Parameters
     ----------
 
-    x : np.array[float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.np.array[np.float64]
+        np.array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.np.array[np.float64]
+        np.array of y-positions of the particles. Must be bounded by [0, 1].
 
-    z : np.array[float64]
-        array of z-positions of the particles. Must be bounded by [0, 1].
+    z : np.np.array[np.float64]
+        np.array of z-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.array[float32]
-        array of masses (or otherwise weights) of the particles
+    m : np.np.array[np.float32]
+        np.array of masses (or otherwise weights) of the particles
 
-    h : np.array[float32]
-        array of smoothing lengths of the particles
+    h : np.np.array[np.float32]
+        np.array of smoothing lengths of the particles
 
     res : int
         the number of voxels along one axis, i.e. this returns a cube
         of res * res * res.
 
-    box_x: float64
+    box_x: np.float64
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_y: float64
+    box_y: np.float64
         box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_z: float64
+    box_z: np.float64
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping
 
     Returns
     -------
 
-    np.array[float32, float32, float32]
+    np.np.array[np.float32, np.float32, np.float32]
         voxel grid of quantity
 
     See Also
@@ -97,19 +85,19 @@ def scatter(
 
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba ones.
+    floats and integers is also an improvement over using the numba np.ones.
     """
-    # Output array for our image
-    image = zeros((res, res, res), dtype=float32)
-    maximal_array_index = int32(res) - 1
+    # Output np.array for our image
+    image = np.zeros((res, res, res), dtype=np.float32)
+    maximal_array_index = np.int32(res) - 1
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
-    float_res = float32(res)
+    float_res = np.float32(res)
     pixel_width = 1.0 / float_res
 
     # We need this for combining with the x_pos and y_pos variables.
-    float_res_64 = float64(res)
+    float_res_64 = np.float64(res)
 
     # If the kernel width is smaller than this, we drop to just PIC method
     drop_to_single_cell = pixel_width * 0.5
@@ -149,15 +137,15 @@ def scatter(
 
                     # Calculate the cell that this particle; use the 64 bit version of the
                     # resolution as this is the same type as the positions
-                    particle_cell_x = int32(float_res_64 * x_pos)
-                    particle_cell_y = int32(float_res_64 * y_pos)
-                    particle_cell_z = int32(float_res_64 * z_pos)
+                    particle_cell_x = np.int32(float_res_64 * x_pos)
+                    particle_cell_y = np.int32(float_res_64 * y_pos)
+                    particle_cell_z = np.int32(float_res_64 * z_pos)
 
                     # SWIFT stores hsml as the FWHM.
                     kernel_width = kernel_gamma * hsml
 
                     # The number of cells that this kernel spans
-                    cells_spanned = int32(1.0 + kernel_width * float_res)
+                    cells_spanned = np.int32(1.0 + kernel_width * float_res)
 
                     if (
                         particle_cell_x + cells_spanned < 0
@@ -188,7 +176,7 @@ def scatter(
                         for cell_x in range(
                             # Ensure that the lowest x value is 0, otherwise we'll segfault
                             max(0, particle_cell_x - cells_spanned),
-                            # Ensure that the highest x value lies within the array bounds,
+                            # Ensure that the highest x value lies within the np.array bounds,
                             # otherwise we'll segfault (oops).
                             min(
                                 particle_cell_x + cells_spanned, maximal_array_index + 1
@@ -197,8 +185,8 @@ def scatter(
                             # The distance in x to our new favourite cell -- remember that our x, y
                             # are all in a box of [0, 1]; calculate the distance to the cell centre
                             distance_x = (
-                                float32(cell_x) + 0.5
-                            ) * pixel_width - float32(x_pos)
+                                np.float32(cell_x) + 0.5
+                            ) * pixel_width - np.float32(x_pos)
                             distance_x_2 = distance_x * distance_x
                             for cell_y in range(
                                 max(0, particle_cell_y - cells_spanned),
@@ -208,8 +196,8 @@ def scatter(
                                 ),
                             ):
                                 distance_y = (
-                                    float32(cell_y) + 0.5
-                                ) * pixel_width - float32(y_pos)
+                                    np.float32(cell_y) + 0.5
+                                ) * pixel_width - np.float32(y_pos)
                                 distance_y_2 = distance_y * distance_y
                                 for cell_z in range(
                                     max(0, particle_cell_z - cells_spanned),
@@ -219,8 +207,8 @@ def scatter(
                                     ),
                                 ):
                                     distance_z = (
-                                        float32(cell_z) + 0.5
-                                    ) * pixel_width - float32(z_pos)
+                                        np.float32(cell_z) + 0.5
+                                    ) * pixel_width - np.float32(z_pos)
                                     distance_z_2 = distance_z * distance_z
 
                                     r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
@@ -234,17 +222,17 @@ def scatter(
 
 @jit(nopython=True, fastmath=True)
 def scatter_limited_z(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    h: np.float32,
     res: int,
     res_ratio_z: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
-) -> ndarray:
+    box_x: np.float64 = 0.0,
+    box_y: np.float64 = 0.0,
+    box_z: np.float64 = 0.0,
+) -> np.ndarray:
     """
     Creates a weighted voxel grid
 
@@ -255,20 +243,20 @@ def scatter_limited_z(
     Parameters
     ----------
 
-    x : np.array[float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.np.array[np.float64]
+        np.array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.np.array[np.float64]
+        np.array of y-positions of the particles. Must be bounded by [0, 1].
 
-    z : np.array[float64]
-        array of z-positions of the particles. Must be bounded by [0, 1].
+    z : np.np.array[np.float64]
+        np.array of z-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.array[float32]
-        array of masses (or otherwise weights) of the particles
+    m : np.np.array[np.float32]
+        np.array of masses (or otherwise weights) of the particles
 
-    h : np.array[float32]
-        array of smoothing lengths of the particles
+    h : np.np.array[np.float32]
+        np.array of smoothing lengths of the particles
 
     res : int
         the number of voxels along one axis, i.e. this returns a cube
@@ -277,24 +265,24 @@ def scatter_limited_z(
     res_ratio_z: int
         the number of voxels along the x and y axes relative to the z
         axis. If this is, for instance, 8, and the res is 128, then the
-        output array will be 128 x 128 x 16.
+        output np.array will be 128 x 128 x 16.
 
-    box_x: float64
+    box_x: np.float64
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_y: float64
+    box_y: np.float64
         box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_z: float64
+    box_z: np.float64
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping
 
     Returns
     -------
 
-    np.array[float32, float32, float32]
+    np.np.array[np.float32, np.float32, np.float32]
         voxel grid of quantity
 
     See Also
@@ -309,24 +297,24 @@ def scatter_limited_z(
 
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba ones.
+    floats and integers is also an improvement over using the numba np.ones.
     """
-    # Output array for our image
+    # Output np.array for our image
     res_z = res // res_ratio_z
-    image = zeros((res, res, res_z), dtype=float32)
-    maximal_array_index = int32(res) - 1
-    maximal_array_index_z = int32(res_z) - 1
+    image = np.zeros((res, res, res_z), dtype=np.float32)
+    maximal_array_index = np.int32(res) - 1
+    maximal_array_index_z = np.int32(res_z) - 1
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
-    float_res = float32(res)
-    float_res_z = float32(res_z)
+    float_res = np.float32(res)
+    float_res_z = np.float32(res_z)
     pixel_width = 1.0 / float_res
     pixel_width_z = 1.0 / float_res_z
 
     # We need this for combining with the x_pos and y_pos variables.
-    float_res_64 = float64(res)
-    float_res_z_64 = float64(res_z)
+    float_res_64 = np.float64(res)
+    float_res_z_64 = np.float64(res_z)
 
     # If the kernel width is smaller than this, we drop to just PIC method
     drop_to_single_cell = pixel_width * 0.5
@@ -367,16 +355,16 @@ def scatter_limited_z(
 
                     # Calculate the cell that this particle; use the 64 bit version of the
                     # resolution as this is the same type as the positions
-                    particle_cell_x = int32(float_res_64 * x_pos)
-                    particle_cell_y = int32(float_res_64 * y_pos)
-                    particle_cell_z = int32(float_res_z_64 * z_pos)
+                    particle_cell_x = np.int32(float_res_64 * x_pos)
+                    particle_cell_y = np.int32(float_res_64 * y_pos)
+                    particle_cell_z = np.int32(float_res_z_64 * z_pos)
 
                     # SWIFT stores hsml as the FWHM.
                     kernel_width = kernel_gamma * hsml
 
                     # The number of cells that this kernel spans
-                    cells_spanned = int32(1.0 + kernel_width * float_res)
-                    cells_spanned_z = int32(1.0 + kernel_width * float_res_z)
+                    cells_spanned = np.int32(1.0 + kernel_width * float_res)
+                    cells_spanned_z = np.int32(1.0 + kernel_width * float_res_z)
 
                     if (
                         particle_cell_x + cells_spanned < 0
@@ -410,7 +398,7 @@ def scatter_limited_z(
                         for cell_x in range(
                             # Ensure that the lowest x value is 0, otherwise we'll segfault
                             max(0, particle_cell_x - cells_spanned),
-                            # Ensure that the highest x value lies within the array bounds,
+                            # Ensure that the highest x value lies within the np.array bounds,
                             # otherwise we'll segfault (oops).
                             min(
                                 particle_cell_x + cells_spanned, maximal_array_index + 1
@@ -419,8 +407,8 @@ def scatter_limited_z(
                             # The distance in x to our new favourite cell -- remember that our x, y
                             # are all in a box of [0, 1]; calculate the distance to the cell centre
                             distance_x = (
-                                float32(cell_x) + 0.5
-                            ) * pixel_width - float32(x_pos)
+                                np.float32(cell_x) + 0.5
+                            ) * pixel_width - np.float32(x_pos)
                             distance_x_2 = distance_x * distance_x
                             for cell_y in range(
                                 max(0, particle_cell_y - cells_spanned),
@@ -430,8 +418,8 @@ def scatter_limited_z(
                                 ),
                             ):
                                 distance_y = (
-                                    float32(cell_y) + 0.5
-                                ) * pixel_width - float32(y_pos)
+                                    np.float32(cell_y) + 0.5
+                                ) * pixel_width - np.float32(y_pos)
                                 distance_y_2 = distance_y * distance_y
                                 for cell_z in range(
                                     max(0, particle_cell_z - cells_spanned_z),
@@ -441,8 +429,8 @@ def scatter_limited_z(
                                     ),
                                 ):
                                     distance_z = (
-                                        float32(cell_z) + 0.5
-                                    ) * pixel_width_z - float32(z_pos)
+                                        np.float32(cell_z) + 0.5
+                                    ) * pixel_width_z - np.float32(z_pos)
                                     distance_z_2 = distance_z * distance_z
 
                                     r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
@@ -456,17 +444,17 @@ def scatter_limited_z(
 
 @jit(nopython=True, fastmath=True, parallel=True)
 def scatter_parallel(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    h: np.float32,
     res: int,
     res_ratio_z: int = 1,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
-) -> ndarray:
+    box_x: np.float64 = 0.0,
+    box_y: np.float64 = 0.0,
+    box_z: np.float64 = 0.0,
+) -> np.ndarray:
     """
     Parallel implementation of scatter
 
@@ -476,20 +464,20 @@ def scatter_parallel(
 
     Parameters
     ----------
-    x : array of float64
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.array of np.float64
+        np.array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : array of float64
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.array of np.float64
+        np.array of y-positions of the particles. Must be bounded by [0, 1].
 
-    z : array of float64
-        array of z-positions of the particles. Must be bounded by [0, 1].
+    z : np.array of np.float64
+        np.array of z-positions of the particles. Must be bounded by [0, 1].
 
-    m : array of float32
-        array of masses (or otherwise weights) of the particles
+    m : np.array of np.float32
+        np.array of masses (or otherwise weights) of the particles
 
-    h : array of float32
-        array of smoothing lengths of the particles
+    h : np.array of np.float32
+        np.array of smoothing lengths of the particles
 
     res : int
         the number of voxels along one axis, i.e. this returns a cube
@@ -498,22 +486,22 @@ def scatter_parallel(
     res_ratio_z: int
         the number of voxels along the x and y axes relative to the z
 
-    box_x: float64
+    box_x: np.float64
         box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_y: float64
+    box_y: np.float64
         box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_z: float64
+    box_z: np.float64
         box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping
 
     Returns
     -------
 
-    ndarray of float32
+    np.ndarray of np.float32
         voxel grid of quantity
 
     See Also
@@ -528,7 +516,7 @@ def scatter_parallel(
 
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba ones.
+    floats and integers is also an improvement over using the numba np.ones.
 
     """
     # Same as scatter, but executes in parallel! This is actually trivial,
@@ -537,7 +525,7 @@ def scatter_parallel(
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
 
-    output = zeros((res, res, res), dtype=float32)
+    output = np.zeros((res, res, res), dtype=np.float32)
 
     for thread in prange(NUM_THREADS):
         # Left edge is easy, just start at 0 and go to 'final'
@@ -586,7 +574,7 @@ def render_gas_voxel_grid(
     resolution: int,
     project: Union[str, None] = "masses",
     parallel: bool = False,
-    rotation_matrix: Union[None, array] = None,
+    rotation_matrix: Union[None, np.array] = None,
     rotation_center: Union[None, cosmo_array] = None,
     region: Union[None, cosmo_array] = None,
     periodic: bool = True,
@@ -601,7 +589,7 @@ def render_gas_voxel_grid(
         Dataset from which slice is extracted
 
     resolution : int
-        Specifies size of return array
+        Specifies size of return np.array
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -612,7 +600,7 @@ def render_gas_voxel_grid(
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix: np.array, optional
+    rotation_matrix: np.np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a volume render
         viewed along the z axis.
@@ -638,8 +626,8 @@ def render_gas_voxel_grid(
 
     Returns
     -------
-    ndarray of float32
-        Creates a `resolution` x `resolution` x `resolution` array and
+    np.ndarray of np.float32
+        Creates a `resolution` x `resolution` x `resolution` np.array and
         returns it, without appropriate units.
 
     See Also
@@ -652,7 +640,7 @@ def render_gas_voxel_grid(
     number_of_gas_particles = data.particle_ids.size
 
     if project is None:
-        m = ones(number_of_gas_particles, dtype=float32)
+        m = np.ones(number_of_gas_particles, dtype=np.float32)
     else:
         m = getattr(data, project)
         if data.coordinates.comoving:
@@ -686,7 +674,8 @@ def render_gas_voxel_grid(
 
     # Test that we've got a cubic box
     if not (
-        isclose(x_range.value, y_range.value) and isclose(x_range.value, z_range.value)
+        np.isclose(x_range.value, y_range.value)
+        and np.isclose(x_range.value, z_range.value)
     ):
         raise AttributeError(
             "Projection code is currently not able to handle non-cubic images"
@@ -695,7 +684,7 @@ def render_gas_voxel_grid(
     # Let's just hope that the box is square otherwise we're probably SOL
     if rotation_center is not None:
         # Rotate co-ordinates as required
-        x, y, z = matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
 
         x += rotation_center[0]
         y += rotation_center[1]
@@ -754,7 +743,7 @@ def render_gas(
     resolution: int,
     project: Union[str, None] = "masses",
     parallel: bool = False,
-    rotation_matrix: Union[None, array] = None,
+    rotation_matrix: Union[None, np.array] = None,
     rotation_center: Union[None, cosmo_array] = None,
     region: Union[None, cosmo_array] = None,
     periodic: bool = True,
@@ -769,7 +758,7 @@ def render_gas(
         Dataset from which slice is extracted
 
     resolution : int
-        Specifies size of return array
+        Specifies size of return np.array
 
     project : str, optional
         Data field to be projected. Default is mass. If None then simply
@@ -780,7 +769,7 @@ def render_gas(
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix: np.array, optional
+    rotation_matrix: np.np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a volume render
         viewed along the z axis.
@@ -805,8 +794,8 @@ def render_gas(
     Returns
     -------
 
-    ndarray of float32
-        a `resolution` x `resolution` x `resolution` array of the contribution
+    np.ndarray of np.float32
+        a `resolution` x `resolution` x `resolution` np.array of the contribution
         of the projected data field to the voxel grid from all of the particles
 
     See Also
@@ -863,7 +852,7 @@ def render_gas(
 
 @jit(nopython=True, fastmath=True)
 def render_voxel_to_array(data, center, width):
-    output = zeros((data.shape[0], data.shape[1]))
+    output = np.zeros((data.shape[0], data.shape[1]))
 
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
@@ -880,23 +869,23 @@ def render_voxel_to_array(data, center, width):
 
 
 def visualise_render(
-    render: ndarray,
+    render: np.ndarray,
     centers: List[float],
     widths: Union[List[float], float],
     cmap: str = "viridis",
     return_type: Literal["all", "lighten", "add"] = "lighten",
     norm: Union[List["plt.Normalize"], "plt.Normalize", None] = None,
-) -> Tuple[Union[List[ndarray], ndarray], List["plt.Normalize"]]:
+) -> Tuple[Union[List[np.ndarray], np.ndarray], List["plt.Normalize"]]:
     """
     Visualises a render with multiple centers and widths.
 
     Parameters
     ----------
 
-    render : np.array
+    render : np.np.array
         The render to visualise. You should scale this appropriately
         before using this function (e.g. use a logarithmic transform!)
-        and pass in the 'value' array, not the original cosmo_array or
+        and pass in the 'value' np.array, not the original cosmo_array or
         unyt_array.
 
     centers : list[float]
@@ -921,7 +910,7 @@ def visualise_render(
     Returns
     -------
 
-    list[np.array] | np.array
+    list[np.np.array] | np.np.array
         The images of the rendering functions. If return_type is "all", this
         will be a list of images. If return_type is "lighten" or "add", this
         will be a single image.
@@ -938,7 +927,7 @@ def visualise_render(
     elif not isinstance(norm, list):
         norm = [norm] * len(centers)
 
-    colors = plt.get_cmap(cmap)(linspace(0, 1, len(centers)))[:, :3]
+    colors = plt.get_cmap(cmap)(np.linspace(0, 1, len(centers)))[:, :3]
 
     images = [
         n(render_voxel_to_array(render, center, width))
@@ -946,7 +935,7 @@ def visualise_render(
     ]
 
     images = [
-        array([color[0] * x, color[1] * x, color[2] * x]).T
+        np.array([color[0] * x, color[1] * x, color[2] * x]).T
         for color, x in zip(colors, images)
     ]
 
@@ -954,7 +943,7 @@ def visualise_render(
         return images, norm
 
     if return_type == "lighten":
-        return np_max(images, axis=0), norm
+        return np.max(images, axis=0), norm
 
     if return_type == "add":
         return sum(images), norm
@@ -993,10 +982,10 @@ def visualise_render_options(
     if isinstance(widths, float):
         widths = [widths] * len(centers)
 
-    colors = plt.get_cmap(cmap)(linspace(0, 1, len(centers)))[:, :3]
+    colors = plt.get_cmap(cmap)(np.linspace(0, 1, len(centers)))[:, :3]
 
     for center, width, color in zip(centers, widths, colors):
-        xs = linspace(center - 5.0 * width, center + 5.0 * width, 100)
+        xs = np.linspace(center - 5.0 * width, center + 5.0 * width, 100)
         ys = [
             exp(-0.5 * ((center - x) / width) ** 2) / (width * sqrt(2.0 * pi))
             for x in xs
