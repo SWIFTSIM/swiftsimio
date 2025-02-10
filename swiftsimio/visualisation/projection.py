@@ -140,15 +140,19 @@ def project_pixel_grid(
         x_max = box_x
         y_min = np.zeros_like(box_y)
         y_max = box_y
+        #
+        #
 
     x_range = x_max - x_min
     y_range = y_max - y_min
+    #
 
     # Deal with non-cubic boxes:
     # we always use the maximum of x_range and y_range to normalise the coordinates
     # empty pixels in the resulting square image are trimmed afterwards
     max_range = max(x_range, y_range)
 
+    #
     if backend == "histogram":
         hsml = np.empty_like(m)  # not used anyway for this backend
     else:
@@ -175,9 +179,10 @@ def project_pixel_grid(
         x += rotation_center[0]
         y += rotation_center[1]
         z += rotation_center[2]
-
     else:
         x, y, z = data.coordinates.T
+
+    # ------------------------------
 
     if z_slice_included:
         combined_mask = np.logical_and(

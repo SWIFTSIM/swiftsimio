@@ -3,7 +3,7 @@ Sub-module for slice plots in SWFITSIMio.
 """
 
 from typing import Union, Optional
-from numpy import float32, array, ones, matmul, zeros_like
+import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
@@ -18,7 +18,7 @@ def slice_gas_pixel_grid(
     z_slice: Optional[cosmo_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
-    rotation_matrix: Union[None, array] = None,
+    rotation_matrix: Union[None, np.array] = None,
     rotation_center: Union[None, cosmo_array] = None,
     region: Union[None, cosmo_array] = None,
     backend: str = "sph",
@@ -34,7 +34,7 @@ def slice_gas_pixel_grid(
         Dataset from which slice is extracted
 
     resolution : int
-        Specifies size of return array
+        Specifies size of return np.array
 
     z_slice : cosmo_quantity
         Specifies the location along the z-axis where the slice is to be
@@ -51,12 +51,12 @@ def slice_gas_pixel_grid(
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix: np.array, optional
+    rotation_matrix: np.np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a slice
         perpendicular to the z axis.
 
-    rotation_center: np.array, optional
+    rotation_center: np.np.array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
@@ -80,8 +80,8 @@ def slice_gas_pixel_grid(
 
     Returns
     -------
-    ndarray of float32
-        Creates a `resolution` x `resolution` array and returns it,
+    ndarray of np.float32
+        Creates a `resolution` x `resolution` np.array and returns it,
         without appropriate units.
 
     See Also
@@ -89,17 +89,18 @@ def slice_gas_pixel_grid(
     render_gas_voxel_grid : Creates a 3D voxel grid from a SWIFT dataset
 
     """
+    data = data.gas
 
     if z_slice is None:
-        z_slice = zeros_like(data.metadata.boxsize[0])
+        z_slice = np.zeros_like(data.metadata.boxsize[0])
 
-    number_of_gas_particles = data.gas.coordinates.shape[0]
+    number_of_particles = data.coordinates.shape[0]
 
     if project is None:
-        m = ones(number_of_gas_particles, dtype=float32)
+        m = np.ones(number_of_particles, dtype=np.float32)
     else:
-        m = getattr(data.gas, project)
-        if data.gas.coordinates.comoving:
+        m = getattr(data, project)
+        if data.coordinates.comoving:
             if not m.compatible_with_comoving():
                 raise AttributeError(
                     f'Physical quantity "{project}" is not compatible with comoving coordinates!'
@@ -111,54 +112,80 @@ def slice_gas_pixel_grid(
                 )
         m = m.value
 
+    #
+    #
+    #
+    #
     box_x, box_y, box_z = data.metadata.boxsize
 
-    if z_slice > box_z or z_slice < zeros_like(box_z):
+    if z_slice > box_z or z_slice < np.zeros_like(box_z):
         raise ValueError("Please enter a slice value inside the box.")
 
     # Set the limits of the image.
+    #
+    #
     if region is not None:
         x_min, x_max, y_min, y_max = region
+        #
+        #
+        #
+        #
+        #
+        #
+        #
     else:
-        x_min = zeros_like(box_x)
+        x_min = np.zeros_like(box_x)
         x_max = box_x
-        y_min = zeros_like(box_y)
+        y_min = np.zeros_like(box_y)
         y_max = box_y
+        #
+        #
 
     x_range = x_max - x_min
     y_range = y_max - y_min
+    #
 
     # Deal with non-cubic boxes:
     # we always use the maximum of x_range and y_range to normalise the coordinates
     # empty pixels in the resulting square image are trimmed afterwards
     max_range = max(x_range, y_range)
 
-    if rotation_center is not None:
-        # Rotate co-ordinates as required
-        x, y, z = matmul(rotation_matrix, (data.gas.coordinates - rotation_center).T)
-
-        x += rotation_center[0]
-        y += rotation_center[1]
-        z += rotation_center[2]
-
-        z_center = rotation_center[2]
-
-    else:
-        x, y, z = data.gas.coordinates.T
-
-        z_center = zeros_like(box_z)
-
+    #
+    #
+    #
+    #
     hsml = backends_get_hsml[backend](data)
-    if data.gas.coordinates.comoving:
+    #
+    #
+    #
+    #
+    if data.coordinates.comoving:
         if not hsml.compatible_with_comoving():
             raise AttributeError(
-                f"Physical smoothing length is not compatible with comoving coordinates!"
+                "Physical smoothing length is not compatible with comoving coordinates!"
             )
     else:
         if not hsml.compatible_with_physical():
             raise AttributeError(
-                f"Comoving smoothing length is not compatible with physical coordinates!"
+                "Comoving smoothing length is not compatible with physical coordinates!"
             )
+
+    if rotation_center is not None:
+        # Rotate co-ordinates as required
+        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+
+        x += rotation_center[0]
+        y += rotation_center[1]
+        z += rotation_center[2]
+    else:
+        x, y, z = data.coordinates.T
+
+    # ------------------------------
+
+    if rotation_center is not None:
+        z_center = rotation_center[2]
+    else:
+        z_center = np.zeros_like(box_z)
 
     if periodic:
         periodic_box_x = box_x / max_range
@@ -201,7 +228,7 @@ def slice_gas(
     z_slice: Optional[cosmo_quantity] = None,
     project: Union[str, None] = "masses",
     parallel: bool = False,
-    rotation_matrix: Union[None, array] = None,
+    rotation_matrix: Union[None, np.array] = None,
     rotation_center: Union[None, cosmo_array] = None,
     region: Union[None, cosmo_array] = None,
     backend: str = "sph",
@@ -216,7 +243,7 @@ def slice_gas(
         Dataset from which slice is extracted
 
     resolution : int
-        Specifies size of return array
+        Specifies size of return np.array
 
     z_slice : cosmo_quantity
         Specifies the location along the z-axis where the slice is to be
@@ -233,16 +260,16 @@ def slice_gas(
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix: np.array, optional
+    rotation_matrix: np.np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a slice
         perpendicular to the z axis.
 
-    rotation_center: np.array, optional
+    rotation_center: np.np.array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
-    region : array, optional
+    region : np.array, optional
         determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom edges)
         if it is not None. It should have a length of four, and take the form:
@@ -262,8 +289,8 @@ def slice_gas(
 
     Returns
     -------
-    ndarray of float32
-        a `resolution` x `resolution` array of the contribution
+    ndarray of np.float32
+        a `resolution` x `resolution` np.array of the contribution
         of the projected data field to the voxel grid from all of the particles
 
     See Also
@@ -278,7 +305,7 @@ def slice_gas(
     """
 
     if z_slice is None:
-        z_slice = zeros_like(data.metadata.boxsize[0])
+        z_slice = np.zeros_like(data.metadata.boxsize[0])
 
     image = slice_gas_pixel_grid(
         data,
@@ -297,7 +324,7 @@ def slice_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range ** 3)
+        units = 1.0 / (max_range**3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(
@@ -305,17 +332,17 @@ def slice_gas(
         )
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range ** 3)
+        units = 1.0 / (max_range**3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 

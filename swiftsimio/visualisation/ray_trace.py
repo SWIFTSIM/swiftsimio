@@ -250,14 +250,20 @@ def panel_pixel_grid(
 
     box_x, box_y, box_z = data.metadata.boxsize
 
+    #
+    #
+    #
     # Set the limits of the image.
+    #
+    #
     if region is not None:
         x_min, x_max, y_min, y_max = region[:4]
 
         if len(region) == 6:
+            #
             z_min, z_max = region[4:]
         else:
-            z_min = unyt.unyt_quantity(0.0, units=box_z.units)
+            z_min = np.zeros_like(box_z)
             z_max = box_z
     else:
         x_min = np.zeros_like(box_x)
@@ -269,12 +275,17 @@ def panel_pixel_grid(
 
     x_range = x_max - x_min
     y_range = y_max - y_min
+    #
 
     # Deal with non-cubic boxes:
     # we always use the maximum of x_range and y_range to normalise the coordinates
     # empty pixels in the resulting square image are trimmed afterwards
     max_range = max(x_range, y_range)
 
+    #
+    #
+    #
+    #
     hsml = (
         data.smoothing_lengths
         if hasattr(data, "smoothing_lengths")
@@ -300,6 +311,8 @@ def panel_pixel_grid(
         z += rotation_center[2]
     else:
         x, y, z = data.coordinates.T
+
+    # ------------------------------
 
     return core_panels(
         x=x[mask] / max_range,

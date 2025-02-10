@@ -637,10 +637,10 @@ def render_gas_voxel_grid(
     """
     data = data.gas  # coerce rest of this function to share with other vis functions
 
-    number_of_gas_particles = data.particle_ids.size
+    number_of_particles = data.particle_ids.size
 
     if project is None:
-        m = np.ones(number_of_gas_particles, dtype=np.float32)
+        m = np.ones(number_of_particles, dtype=np.float32)
     else:
         m = getattr(data, project)
         if data.coordinates.comoving:
@@ -655,17 +655,33 @@ def render_gas_voxel_grid(
                 )
         m = m.value
 
+    #
+    #
+    #
+    #
     box_x, box_y, box_z = data.metadata.boxsize
 
+    #
+    #
+    #
     # Set the limits of the image.
+    #
+    #
     if region is not None:
         x_min, x_max, y_min, y_max, z_min, z_max = region
+        #
+        #
+        #
+        #
+        #
+        #
+        #
     else:
-        x_min = (0 * box_x).to(box_x.units)
+        x_min = np.zeros_like(box_x)
         x_max = box_x
-        y_min = (0 * box_y).to(box_y.units)
+        y_min = np.zeros_like(box_y)
         y_max = box_y
-        z_min = (0 * box_z).to(box_z.units)
+        z_min = np.zeros_like(box_z)
         z_max = box_z
 
     x_range = x_max - x_min
@@ -680,18 +696,6 @@ def render_gas_voxel_grid(
         raise AttributeError(
             "Projection code is currently not able to handle non-cubic images"
         )
-
-    # Let's just hope that the box is square otherwise we're probably SOL
-    if rotation_center is not None:
-        # Rotate co-ordinates as required
-        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
-
-        x += rotation_center[0]
-        y += rotation_center[1]
-        z += rotation_center[2]
-
-    else:
-        x, y, z = data.coordinates.T
 
     hsml = (
         data.smoothing_lengths
@@ -708,6 +712,18 @@ def render_gas_voxel_grid(
             raise AttributeError(
                 "Comoving smoothing length is not compatible with physical coordinates!"
             )
+
+    if rotation_center is not None:
+        # Rotate co-ordinates as required
+        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+
+        x += rotation_center[0]
+        y += rotation_center[1]
+        z += rotation_center[2]
+    else:
+        x, y, z = data.coordinates.T
+
+    # ------------------------------
 
     if periodic:
         periodic_box_x = box_x / x_range
