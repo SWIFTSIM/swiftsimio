@@ -15,7 +15,7 @@ from swiftsimio.visualisation.slice_backends.sph import kernel, kernel_gamma
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
-    _get_region_limits,
+    _get_region_info,
     _get_rotated_coordinates,
 )
 
@@ -180,16 +180,17 @@ def scatter(
                     else:
                         # Now we loop over the square of cells that the kernel lives in
                         for cell_x in range(
-                            # Ensure that the lowest x value is 0, otherwise we'll segfault
+                            # Ensure that the lowest x value is 0, otherwise we segfault
                             max(0, particle_cell_x - cells_spanned),
-                            # Ensure that the highest x value lies within the np.array bounds,
-                            # otherwise we'll segfault (oops).
+                            # Ensure that the highest x value lies within the np.array
+                            # bounds, otherwise we'll segfault (oops).
                             min(
                                 particle_cell_x + cells_spanned, maximal_array_index + 1
                             ),
                         ):
-                            # The distance in x to our new favourite cell -- remember that our x, y
-                            # are all in a box of [0, 1]; calculate the distance to the cell centre
+                            # The distance in x to our new favourite cell -- remember that
+                            # our x, y are all in a box of [0, 1]; calculate the distance
+                            # to the cell centre
                             distance_x = (
                                 np.float32(cell_x) + 0.5
                             ) * pixel_width - np.float32(x_pos)
@@ -402,16 +403,17 @@ def scatter_limited_z(
                     else:
                         # Now we loop over the square of cells that the kernel lives in
                         for cell_x in range(
-                            # Ensure that the lowest x value is 0, otherwise we'll segfault
+                            # Ensure that the lowest x value is 0, otherwise we segfault
                             max(0, particle_cell_x - cells_spanned),
-                            # Ensure that the highest x value lies within the np.array bounds,
-                            # otherwise we'll segfault (oops).
+                            # Ensure that the highest x value lies within the np.array
+                            # bounds, otherwise we'll segfault (oops).
                             min(
                                 particle_cell_x + cells_spanned, maximal_array_index + 1
                             ),
                         ):
-                            # The distance in x to our new favourite cell -- remember that our x, y
-                            # are all in a box of [0, 1]; calculate the distance to the cell centre
+                            # The distance in x to our new favourite cell -- remember that
+                            # our x, y are all in a box of [0, 1]; calculate the distance
+                            # to the cell centre
                             distance_x = (
                                 np.float32(cell_x) + 0.5
                             ) * pixel_width - np.float32(x_pos)
@@ -644,38 +646,22 @@ def render_gas_voxel_grid(
     data = data.gas
 
     m = _get_projection_field(data, project)
-
-    x_min, x_max, y_min, y_max, z_min, z_max, x_range, y_range, z_range, _ = _get_region_limits(
-        data, region, require_cubic=True
-    )
-
+    region_info = _get_region_info(data, region, require_cubic=True)
     hsml = backends_get_hsml["sph"](data)
-
     x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
 
-    if periodic:
-        periodic_box_x, periodic_box_y, periodic_box_z = (
-            data.metadata.boxsize / cosmo_array([x_range, y_range, z_range])
-        )
-    else:
-        periodic_box_x, periodic_box_y, periodic_box_z = 0.0, 0.0, 0.0
-
     arguments = dict(
-        x=(x - x_min) / x_range,
-        y=(y - y_min) / y_range,
-        z=(z - z_min) / z_range,
+        x=(x - region_info["x_min"]) / region_info["x_range"],
+        y=(y - region_info["y_min"]) / region_info["y_range"],
+        z=(z - region_info["z_min"]) / region_info["z_range"],
         m=m,
-        h=hsml / x_range,
+        h=hsml / region_info["x_range"],  # cubic so x_range == y_range == z_range
         res=resolution,
-        box_x=periodic_box_x,
-        box_y=periodic_box_y,
-        box_z=periodic_box_z,
+        box_x=region_info["periodic_box_x"],
+        box_y=region_info["periodic_box_y"],
+        box_z=region_info["periodic_box_z"],
     )
-
-    if parallel:
-        image = scatter_parallel(**arguments)
-    else:
-        image = scatter(**arguments)
+    image = scatter_parallel(**arguments) if parallel else scatter(**arguments)
 
     return image
 
@@ -776,14 +762,14 @@ def render_gas(
             * data.metadata.boxsize[1]
             * data.metadata.boxsize[2]
         )
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 

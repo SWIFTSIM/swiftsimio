@@ -22,7 +22,7 @@ def _get_projection_field(data, field_name):
     return m
 
 
-def _get_region_limits(data, region, z_slice=None, require_cubic=False):
+def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=True):
     z_slice_included = z_slice is not None
     if not z_slice_included:
         z_slice = np.zeros_like(data.metadata.boxsize[0])
@@ -51,21 +51,29 @@ def _get_region_limits(data, region, z_slice=None, require_cubic=False):
         np.isclose(x_range, y_range) and np.isclose(x_range, z_range)
     ):
         raise AttributeError(
-            "Projection code is currently not able to handle non-cubic images"
+            "Projection code is currently not able to handle non-cubic images."
         )
 
-    return (
-        x_min,
-        x_max,
-        y_min,
-        y_max,
-        z_min,
-        z_max,
-        x_range,
-        y_range,
-        z_range,
-        max_range,
+    periodic_box_x, periodic_box_y, periodic_box_z = (
+        data.metadata.boxsize / max_range if periodic else np.zeros(3)
     )
+
+    return {
+        "x_min": x_min,
+        "x_max": x_max,
+        "y_min": y_min,
+        "y_max": y_max,
+        "z_min": z_min,
+        "z_max": z_max,
+        "x_range": x_range,
+        "y_range": y_range,
+        "z_range": z_range,
+        "max_range": max_range,
+        "z_slice_included": z_slice_included,
+        "periodic_box_x": periodic_box_x,
+        "periodic_box_y": periodic_box_y,
+        "periodic_box_z": periodic_box_z,
+    }
 
 
 def _get_rotated_coordinates(data, rotation_matrix, rotation_center):

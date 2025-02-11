@@ -12,7 +12,7 @@ from swiftsimio.visualisation.projection_backends import backends, backends_para
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
-    _get_region_limits,
+    _get_region_info,
     _get_rotated_coordinates,
 )
 
@@ -106,56 +106,38 @@ def project_pixel_grid(
     """
 
     m = _get_projection_field(data, project)
-
-    # This provides a default 'slice it all' mask.
-    if mask is None:
-        mask = np.s_[:]
-
-    x_min, x_max, y_min, y_max, z_min, z_max, x_range, y_range, _, max_range = _get_region_limits(
-        data, region
-    )
-
-    if backend == "histogram":
-        hsml = np.empty_like(m)  # not used anyway for this backend
-    else:
-        hsml = backends_get_hsml["sph"](data)
-
+    region_info = _get_region_info(data, region)
+    hsml = backends_get_hsml["sph" if backend != "histogram" else "histogram"](data)
     x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
-
-    # ------------------------------
-
-    if (region is not None) and len(
-        region
-    ) != 6:  # if not z_slice_included: ...should refactor
-        combined_mask = np.logical_and(
-            mask, np.logical_and(z <= z_max, z >= z_min)
+    mask = mask if mask is not None else np.s_[...]
+    if not region_info["z_slice_included"]:
+        mask = np.logical_and(
+            mask,
+            np.logical_and(z <= region_info["z_max"], z >= region_info["z_min"]),
         ).astype(bool)
-    else:
-        combined_mask = mask
 
-    if periodic:
-        periodic_box_x, periodic_box_y, _ = data.metadata.boxsize / max_range
-    else:
-        periodic_box_x, periodic_box_y = 0.0, 0.0
-
-    common_arguments = dict(
-        x=(x[combined_mask] - x_min) / max_range,
-        y=(y[combined_mask] - y_min) / max_range,
-        m=m[combined_mask],
-        h=hsml[combined_mask] / max_range,
+    arguments = dict(
+        x=(x[mask] - region_info["x_min"]) / region_info["max_range"],
+        y=(y[mask] - region_info["y_min"]) / region_info["max_range"],
+        m=m[mask],
+        h=hsml[mask] / region_info["max_range"],
         res=resolution,
-        box_x=periodic_box_x,
-        box_y=periodic_box_y,
+        box_x=region_info["periodic_box_x"],
+        box_y=region_info["periodic_box_y"],
     )
-
-    if parallel:
-        image = backends_parallel[backend](**common_arguments)
-    else:
-        image = backends[backend](**common_arguments)
+    image = (
+        backends_parallel[backend](**arguments)
+        if parallel
+        else backends[backend](**arguments)
+    )
 
     # determine the effective number of pixels for each dimension
-    xres = int(np.ceil(resolution * (x_range / max_range)))
-    yres = int(np.ceil(resolution * (y_range / max_range)))
+    xres = int(
+        np.ceil(resolution * (region_info["x_range"] / region_info["max_range"]))
+    )
+    yres = int(
+        np.ceil(resolution * (region_info["y_range"] / region_info["max_range"]))
+    )
 
     # trim the image to remove empty pixels
     return image[:xres, :yres]
@@ -369,23 +351,23 @@ def project_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range ** 2)
+        units = 1.0 / (max_range**2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / (x_range.units * y_range.units))
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range ** 2)
+        units = 1.0 / (max_range**2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 2
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**2
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-2)
 

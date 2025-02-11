@@ -9,7 +9,7 @@ from swiftsimio.visualisation.slice_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
-    _get_region_limits,
+    _get_region_info,
     _get_rotated_coordinates,
 )
 
@@ -97,43 +97,31 @@ def slice_gas_pixel_grid(
     data = data.gas
 
     m = _get_projection_field(data, project)
-
-    x_min, x_max, y_min, y_max, _, _, x_range, y_range, _, max_range = _get_region_limits(
-        data, region, z_slice=z_slice
+    region_info = _get_region_info(data, region, z_slice=z_slice, periodic=periodic)
+    hsml = backends_get_hsml[backend](data)
+    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    z_center = (
+        rotation_center[2]
+        if rotation_center is not None
+        else np.zeros_like(data.metadata.boxsize[2])
     )
 
-    hsml = backends_get_hsml[backend](data)
-
-    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
-
-    if rotation_center is not None:
-        z_center = rotation_center[2]
-    else:
-        z_center = np.zeros_like(data.metadata.boxsize[2])
-
-    if periodic:
-        periodic_box_x, periodic_box_y, periodic_box_z = (
-            data.metadata.boxsize / max_range
-        )
-    else:
-        periodic_box_x, periodic_box_y, periodic_box_z = 0.0, 0.0, 0.0
-
     # determine the effective number of pixels for each dimension
-    xres = int(resolution * x_range / max_range)
-    yres = int(resolution * y_range / max_range)
+    xres = int(resolution * region_info["x_range"] / region_info["max_range"])
+    yres = int(resolution * region_info["y_range"] / region_info["max_range"])
 
     common_parameters = dict(
-        x=(x - x_min) / max_range,
-        y=(y - y_min) / max_range,
-        z=z / max_range,
+        x=(x - region_info["x_min"]) / region_info["max_range"],
+        y=(y - region_info["y_min"]) / region_info["max_range"],
+        z=z / region_info["max_range"],
         m=m,
-        h=hsml / max_range,
-        z_slice=(z_center + z_slice) / max_range,
+        h=hsml / region_info["max_range"],
+        z_slice=(z_center + z_slice) / region_info["max_range"],
         xres=xres,
         yres=yres,
-        box_x=periodic_box_x,
-        box_y=periodic_box_y,
-        box_z=periodic_box_z,
+        box_x=region_info["periodic_box_x"],
+        box_y=region_info["periodic_box_y"],
+        box_z=region_info["periodic_box_z"],
     )
 
     if parallel:
@@ -226,8 +214,7 @@ def slice_gas(
     appropriate
     """
 
-    if z_slice is None:
-        z_slice = np.zeros_like(data.metadata.boxsize[0])
+    z_slice = np.zeros_like(data.metadata.boxsize[0]) if z_slice is None else z_slice
 
     image = slice_gas_pixel_grid(
         data,
@@ -246,7 +233,7 @@ def slice_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range ** 3)
+        units = 1.0 / (max_range**3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(
@@ -254,17 +241,17 @@ def slice_gas(
         )
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range ** 3)
+        units = 1.0 / (max_range**3)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 3
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**3
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-3)
 

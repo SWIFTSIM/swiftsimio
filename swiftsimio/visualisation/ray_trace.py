@@ -23,7 +23,7 @@ from swiftsimio.accelerated import jit, prange, NUM_THREADS
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
-    _get_region_limits,
+    _get_region_info,
     _get_rotated_coordinates,
 )
 
@@ -232,28 +232,21 @@ def panel_pixel_grid(
 ) -> cosmo_array:
 
     m = _get_projection_field(data, project)
-
-    # This provides a default 'slice it all' mask.
-    if mask is None:
-        mask = np.s_[:]
-
-    x_min, x_max, y_min, y_max, z_min, z_max, _, _, _, max_range = _get_region_limits(
-        data, region
-    )
+    region_info = _get_region_info(data, region)
     hsml = backends_get_hsml["sph"](data)
-
     x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    mask = np.s_[...] if mask is None else mask
 
     return core_panels(
-        x=x[mask] / max_range,
-        y=y[mask] / max_range,
+        x=x[mask] / region_info["max_range"],
+        y=y[mask] / region_info["max_range"],
         z=z[mask],
-        h=hsml[mask] / max_range,
+        h=hsml[mask] / region_info["max_range"],
         m=m[mask],
         res=resolution,
         panels=panels,
-        min_z=z_min,
-        max_z=z_max,
+        min_z=region_info["z_min"],
+        max_z=region_info["z_max"],
     )
 
 
@@ -282,23 +275,23 @@ def panel_gas(
         x_range = region[1] - region[0]
         y_range = region[3] - region[2]
         max_range = max(x_range, y_range)
-        units = 1.0 / (max_range ** 2)
+        units = 1.0 / (max_range**2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
         units.convert_to_units(1.0 / (x_range.units * y_range.units))
     else:
         max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range ** 2)
+        units = 1.0 / (max_range**2)
         # Unfortunately this is required to prevent us from {over,under}flowing
         # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units ** 2)
+        units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
     if project is not None:
         units *= getattr(data.gas, project).units
         project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor ** 2
+        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**2
     else:
         new_cosmo_factor = coord_cosmo_factor ** (-2)
 
@@ -388,7 +381,11 @@ def integrate_ray_numba_nocolor(input: np.array, center: float, width: float):
 #                 if factor > 0.5:
 #                     factor = 1.0 - factor
 
-#                 value +=  1 / (width * np.sqrt(2.0 * np.pi)) * np.exp(-0.5 * ((i - center) / width) ** 2)
+#                 value += (
+#                     1
+#                     / (width * np.sqrt(2.0 * np.pi))
+#                     * np.exp(-0.5 * ((i - center) / width) ** 2)
+#                 )
 
 #             output[x, y] = value
 
@@ -403,7 +400,9 @@ def integrate_ray_numba_nocolor(input: np.array, center: float, width: float):
 # width = 0.05
 # centers = [np.mean(log_data) + x * std for x in [0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5]]
 # # %%
-# colors = plt.get_cmap("swift.nineteen_eighty_nine")((np.linspace(0, 1, len(centers))))[:, :3]
+# colors = plt.get_cmap("swift.nineteen_eighty_nine")((np.linspace(0, 1, len(centers))))[
+#     :, :3
+# ]
 
 # grids = [
 #     make_grid(color, center, width) for color, center in zip(colors, centers)
