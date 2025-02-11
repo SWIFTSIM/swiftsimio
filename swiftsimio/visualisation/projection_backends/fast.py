@@ -2,14 +2,9 @@
 Fast backend.
 
 This uses float32 precision and no special cases.
-"""
-
-"""
 The original smoothing code. This provides no renormalisation.
 """
 
-
-from typing import Union
 from math import sqrt
 from numpy import float64, float32, int32, zeros, ndarray
 
@@ -17,10 +12,7 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.visualisation.projection_backends.kernels import (
     kernel_single_precision as kernel,
 )
-from swiftsimio.visualisation.projection_backends.kernels import (
-    kernel_constant,
-    kernel_gamma,
-)
+from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
 
 
 @jit(nopython=True, fastmath=True)

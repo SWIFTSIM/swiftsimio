@@ -3,7 +3,7 @@ import numpy as np
 
 def _get_projection_field(data, field_name):
     if field_name is None:
-        m = np.ones(data.particle_ids.size)
+        m = np.ones_like(data.particle_ids)
     else:
         m = getattr(data, field_name)
         if data.coordinates.comoving:
@@ -18,7 +18,6 @@ def _get_projection_field(data, field_name):
                     f'Comoving quantity "{field_name}" is not compatible with physical '
                     "coordinates!"
                 )
-        m = m.value  # slated for removal
     return m
 
 
@@ -45,7 +44,7 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
     x_range = x_max - x_min
     y_range = y_max - y_min
     z_range = z_max - z_min
-    max_range = np.max([x_range, y_range])
+    max_range = np.r_[x_range, y_range].max()
 
     if require_cubic and not (
         np.isclose(x_range, y_range) and np.isclose(x_range, z_range)

@@ -130,6 +130,7 @@ def project_pixel_grid(
         if parallel
         else backends[backend](**arguments)
     )
+    raise RuntimeError
 
     # determine the effective number of pixels for each dimension
     xres = int(
@@ -334,6 +335,7 @@ def project_gas(
       array if you want it to be visualised the 'right way up'.
     """
 
+    # REFACTOR? can we get this image to come out as a cosmo_array already?
     image = project_gas_pixel_grid(
         data=data,
         resolution=resolution,
@@ -347,20 +349,10 @@ def project_gas(
         periodic=periodic,
     )
 
-    if region is not None:
-        x_range = region[1] - region[0]
-        y_range = region[3] - region[2]
-        max_range = max(x_range, y_range)
-        units = 1.0 / (max_range**2)
-        # Unfortunately this is required to prevent us from {over,under}flowing
-        # the units...
-        units.convert_to_units(1.0 / (x_range.units * y_range.units))
-    else:
-        max_range = max(data.metadata.boxsize[0], data.metadata.boxsize[1])
-        units = 1.0 / (max_range**2)
-        # Unfortunately this is required to prevent us from {over,under}flowing
-        # the units...
-        units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
+    region_info = _get_region_info(data.gas, region)
+    units = 1.0 / (region_info["max_range"] ** 2)
+    # Unfortunately this is required to prevent us from {over,under}flowing the units:
+    units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
 
     comoving = data.gas.coordinates.comoving
     coord_cosmo_factor = data.gas.coordinates.cosmo_factor
