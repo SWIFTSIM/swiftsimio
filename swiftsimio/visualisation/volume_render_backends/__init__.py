@@ -9,10 +9,6 @@ from swiftsimio.visualisation.volume_render_backends.scatter import (
     scatter_parallel,
 )
 
-backends = {
-    "scatter": backends_restore_cosmo_and_units(scatter),
-}
+backends = {"scatter": backends_restore_cosmo_and_units(scatter)}
 
-backends_parallel = {
-    "scatter": backends_restore_cosmo_and_units(scatter_parallel),
-}
+backends_parallel = {"scatter": backends_restore_cosmo_and_units(scatter_parallel)}

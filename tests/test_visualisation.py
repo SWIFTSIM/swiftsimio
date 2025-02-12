@@ -85,16 +85,9 @@ def test_scatter_mass_conservation():
     for resolution in resolutions:
         scatter = projection_backends["fast"]
         image = scatter(
-            x=x,
-            y=y,
-            m=m,
-            h=h,
-            res=resolution,
-            box_x=1.0,
-            box_y=1.0,
-            norm=1.0,
+            x=x, y=y, m=m, h=h, res=resolution, box_x=1.0, box_y=1.0, norm=1.0
         )
-        mass_in_image = image.sum() / (resolution**2)
+        mass_in_image = image.sum() / (resolution ** 2)
 
         # Check mass conservation to 5%
         assert np.isclose(mass_in_image.view(np.ndarray), total_mass, 0.05)
@@ -414,11 +407,7 @@ def test_comoving_versus_physical(filename):
         0.0 * boxsize[2],
         0.2 * boxsize[2],
     ]
-    for func, aexp in [
-        (project_gas, -2.0),
-        (slice_gas, -3.0),
-        (render_gas, -3.0),
-    ]:
+    for func, aexp in [(project_gas, -2.0), (slice_gas, -3.0), (render_gas, -3.0)]:
         # normal case: everything comoving
         data = load(filename, mask=m)
         # we force the default (project="masses") to check the cosmo_factor
@@ -459,7 +448,7 @@ def test_comoving_versus_physical(filename):
             ):
                 img = func(data, resolution=64, project="masses", region=region)
         assert data.gas.masses.comoving and img.comoving
-        assert (img.cosmo_factor.expr - a**aexp).simplify() == 0
+        assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
         # densities are physical, make sure this works with physical coordinates and
         # smoothing lengths
         img = func(data, resolution=64, project="densities", region=region)
@@ -490,11 +479,7 @@ def test_nongas_smoothing_lengths(filename):
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
     )
-    project_pixel_grid(
-        data.dark_matter,
-        resolution=256,
-        project="masses",
-    )
+    project_pixel_grid(data.dark_matter, resolution=256, project="masses")
     assert isinstance(data.dark_matter.smoothing_length, cosmo_array)
 
     # We should also be able to use a unyt_array (rather than cosmo_array) as input,
@@ -529,14 +514,14 @@ def test_panel_rendering(filename):
 
     plt.imsave(
         "panels_added.png",
-        plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(np.sum(panel, axis=-1))),
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(np.sum(panel, axis=-1))),
     )
 
     projected = project_gas(data, res, "masses", backend="renormalised")
 
     plt.imsave(
         "projected.png",
-        plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(projected)),
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(projected)),
     )
 
     fullstack = np.zeros((res, res))
@@ -590,7 +575,7 @@ def test_periodic_boundary_wrapping():
                 res=pixel_resolution,
                 box_x=boxsize,
                 box_y=boxsize,
-                norm=boxsize**2,
+                norm=boxsize ** 2,
             )
             image2 = projection_backends[backend](
                 x=coordinates_non_periodic[:, 0],
@@ -600,7 +585,7 @@ def test_periodic_boundary_wrapping():
                 res=pixel_resolution,
                 box_x=0.0,
                 box_y=0.0,
-                norm=boxsize**2,
+                norm=boxsize ** 2,
             )
             assert (image1 == image2).all()
         except CudaSupportError:
@@ -623,7 +608,7 @@ def test_periodic_boundary_wrapping():
             box_x=boxsize,
             box_y=boxsize,
             box_z=boxsize,
-            norm=boxsize**3,
+            norm=boxsize ** 3,
         )
         image2 = slice_backends[backend](
             x=coordinates_non_periodic[:, 0],
@@ -637,7 +622,7 @@ def test_periodic_boundary_wrapping():
             box_x=0.0,
             box_y=0.0,
             box_z=0.0,
-            norm=boxsize**3,
+            norm=boxsize ** 3,
         )
 
         assert (image1 == image2).all()
@@ -654,7 +639,7 @@ def test_periodic_boundary_wrapping():
         box_x=boxsize,
         box_y=boxsize,
         box_z=boxsize,
-        norm=boxsize**3,
+        norm=boxsize ** 3,
     )
     image2 = scatter(
         x=coordinates_non_periodic[:, 0],
@@ -666,7 +651,7 @@ def test_periodic_boundary_wrapping():
         box_x=0.0,
         box_y=0.0,
         box_z=0.0,
-        norm=boxsize**3,
+        norm=boxsize ** 3,
     )
 
     assert (image1 == image2).all()
@@ -701,11 +686,11 @@ def test_volume_render_and_unfolded_deposit():
         box_x=boxsize,
         box_y=boxsize,
         box_z=boxsize,
-        norm=boxsize**3,
+        norm=boxsize ** 3,
     )
 
     # need to divide out the box volume for the deposition
-    assert np.allclose(deposition / boxsize**3, volume.view(np.ndarray))
+    assert np.allclose(deposition / boxsize ** 3, volume.view(np.ndarray))
 
 
 def test_folding_deposit():
@@ -744,8 +729,8 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
     # Volume render the particles
     volume = render_gas(data, npix, parallel=False).to_physical()
 
-    mean_density_deposit = (np.sum(deposition) / npix**3).to("Msun / kpc**3").v
-    mean_density_volume = (np.sum(volume) / npix**3).to("Msun / kpc**3").v
+    mean_density_deposit = (np.sum(deposition) / npix ** 3).to("Msun / kpc**3").v
+    mean_density_volume = (np.sum(volume) / npix ** 3).to("Msun / kpc**3").v
     mean_density_calculated = (
         (np.sum(data.gas.masses) / (data.metadata.boxsize[0] * data.metadata.a) ** 3)
         .to("Msun / kpc**3")
@@ -770,15 +755,15 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
     min_k = cosmo_quantity(
         1e-2,
-        unyt.Mpc**-1,
+        unyt.Mpc ** -1,
         comoving=True,
-        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor),
+        cosmo_factor=cosmo_factor(a ** -1, data.metadata.scale_factor),
     )
     max_k = cosmo_quantity(
         1e2,
-        unyt.Mpc**-1,
+        unyt.Mpc ** -1,
         comoving=True,
-        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor),
+        cosmo_factor=cosmo_factor(a ** -1, data.metadata.scale_factor),
     )
 
     bins = np.geomspace(min_k, max_k, 32)
@@ -815,7 +800,7 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
         folds[folding] = deposition
 
-        folding_output[2**folding] = (k, power_spectrum, scatter)
+        folding_output[2 ** folding] = (k, power_spectrum, scatter)
 
     # Now try doing them all together at once.
 

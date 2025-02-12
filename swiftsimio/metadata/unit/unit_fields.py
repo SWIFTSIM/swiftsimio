@@ -54,11 +54,11 @@ def generate_units(m, l, t, I, T):
     }
 
     gas = {
-        "density": m / (l**3),
-        "entropy": m * l**2 / (t**2 * T),
+        "density": m / (l ** 3),
+        "entropy": m * l ** 2 / (t ** 2 * T),
         "internal_energy": (l / t) ** 2,
         "smoothing_length": l,
-        "pressure": m / (l * t**2),
+        "pressure": m / (l * t ** 2),
         "diffusion": None,
         "sfr": m / t,
         "temperature": T,
@@ -79,7 +79,7 @@ def generate_units(m, l, t, I, T):
     sinks = {**shared}
 
     stars = {
-        "birth_density": m / (l**3),
+        "birth_density": m / (l ** 3),
         "birth_time": t,
         "initial_masses": m,
         "smoothing_length": l,

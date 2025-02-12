@@ -23,7 +23,7 @@ def test_write():
     x = Writer("galactic", boxsize)
 
     # 32^3 particles.
-    n_p = 32**3
+    n_p = 32 ** 3
 
     # Randomly spaced coordinates from 0, 100 Mpc in each direction
     x.gas.coordinates = np.random.rand(n_p, 3) * (100 * unyt.Mpc)

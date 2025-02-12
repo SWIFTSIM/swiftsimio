@@ -108,8 +108,7 @@ def project_pixel_grid(
     mask = mask if mask is not None else np.s_[...]
     if not region_info["z_slice_included"]:
         mask = np.logical_and(
-            mask,
-            np.logical_and(z <= region_info["z_max"], z >= region_info["z_min"]),
+            mask, np.logical_and(z <= region_info["z_max"], z >= region_info["z_min"])
         ).astype(bool)
 
     kwargs = dict(

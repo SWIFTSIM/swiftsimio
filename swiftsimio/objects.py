@@ -643,7 +643,7 @@ class cosmo_factor(object):
         """
         if self.expr is None:
             return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
 
     def __lt__(self, b: "cosmo_factor") -> bool:
         """
