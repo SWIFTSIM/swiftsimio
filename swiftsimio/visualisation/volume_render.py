@@ -17,6 +17,7 @@ from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
     _get_rotated_coordinates,
+    backend_restore_cosmo_and_units,
 )
 
 
@@ -93,7 +94,7 @@ def render_gas(
     hsml = backends_get_hsml["sph"](data)
     x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
 
-    arguments = dict(
+    kwargs = dict(
         x=(x - region_info["x_min"]) / region_info["x_range"],
         y=(y - region_info["y_min"]) / region_info["y_range"],
         z=(z - region_info["z_min"]) / region_info["z_range"],
@@ -105,11 +106,8 @@ def render_gas(
         box_z=region_info["periodic_box_z"],
         norm=(region_info["x_range"] * region_info["y_range"] * region_info["z_range"]),
     )
-    image = (
-        backends_parallel["scatter"](**arguments)
-        if parallel
-        else backends["scatter"](**arguments)
-    )
+    backend_func = (backends_parallel if parallel else backends)["scatter"]
+    image = backend_restore_cosmo_and_units(backend_func)(**kwargs)
 
     return image
 

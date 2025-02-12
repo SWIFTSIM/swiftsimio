@@ -11,6 +11,7 @@ from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
     _get_rotated_coordinates,
+    backend_restore_cosmo_and_units,
 )
 
 
@@ -122,10 +123,7 @@ def slice_gas(
         box_z=region_info["periodic_box_z"],
         norm=(region_info["x_range"] * region_info["y_range"] * region_info["z_range"]),
     )
-
-    if parallel:
-        image = backends_parallel[backend](**kwargs)
-    else:
-        image = backends[backend](**kwargs)
+    backend_func = (backends_parallel if parallel else backends)[backend]
+    image = backend_restore_cosmo_and_units(backend_func)(**kwargs)
 
     return image

@@ -14,6 +14,7 @@ from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
     _get_rotated_coordinates,
+    backend_restore_cosmo_and_units,
 )
 
 
@@ -36,7 +37,7 @@ def panel_pixel_grid(
 
     # There's a parallel version of core_panels but it seems
     # that it's never used anywhere.
-    return backends["core_panels"](
+    return backend_restore_cosmo_and_units(backends["core_panels"])(
         x=x[mask] / region_info["max_range"],
         y=y[mask] / region_info["max_range"],
         z=z[mask],

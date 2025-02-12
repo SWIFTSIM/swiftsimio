@@ -13,6 +13,7 @@ from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
     _get_rotated_coordinates,
+    backend_restore_cosmo_and_units,
 )
 
 
@@ -121,11 +122,8 @@ def project_pixel_grid(
         box_y=region_info["periodic_box_y"],
         norm=(region_info["x_range"] * region_info["y_range"]),
     )
-    image = (
-        backends_parallel[backend](**kwargs)
-        if parallel
-        else backends[backend](**kwargs)
-    )
+    backend_func = (backends_parallel if parallel else backends)[backend]
+    image = backend_restore_cosmo_and_units(backend_func)(**kwargs)
 
     # determine the effective number of pixels for each dimension
     xres = int(
