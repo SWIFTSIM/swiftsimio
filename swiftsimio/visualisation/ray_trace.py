@@ -37,7 +37,8 @@ def panel_pixel_grid(
 
     # There's a parallel version of core_panels but it seems
     # that it's never used anywhere.
-    return backend_restore_cosmo_and_units(backends["core_panels"])(
+    norm = region_info["x_range"] * region_info["y_range"]
+    return backend_restore_cosmo_and_units(backends["core_panels"], norm=norm)(
         x=x[mask] / region_info["max_range"],
         y=y[mask] / region_info["max_range"],
         z=z[mask],
@@ -47,7 +48,6 @@ def panel_pixel_grid(
         panels=panels,
         min_z=region_info["z_min"],
         max_z=region_info["z_max"],
-        norm=(region_info["x_range"] * region_info["y_range"]),
     )
 
 

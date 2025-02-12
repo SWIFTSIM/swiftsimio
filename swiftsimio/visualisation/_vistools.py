@@ -94,9 +94,8 @@ def _get_rotated_coordinates(data, rotation_matrix, rotation_center):
     return x, y, z
 
 
-def backend_restore_cosmo_and_units(backend_func):
+def backend_restore_cosmo_and_units(backend_func, norm=1.0):
     def wrapper(*args, **kwargs):
-        norm = kwargs.pop("norm")
         comoving = getattr(kwargs["m"], "comoving", None)
         if comoving is True:
             if kwargs["x"].comoving is False or kwargs["y"].comoving is False:

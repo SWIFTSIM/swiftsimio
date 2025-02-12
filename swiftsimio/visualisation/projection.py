@@ -120,10 +120,10 @@ def project_pixel_grid(
         res=resolution,
         box_x=region_info["periodic_box_x"],
         box_y=region_info["periodic_box_y"],
-        norm=(region_info["x_range"] * region_info["y_range"]),
     )
+    norm = region_info["x_range"] * region_info["y_range"]
     backend_func = (backends_parallel if parallel else backends)[backend]
-    image = backend_restore_cosmo_and_units(backend_func)(**kwargs)
+    image = backend_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
 
     # determine the effective number of pixels for each dimension
     xres = int(
