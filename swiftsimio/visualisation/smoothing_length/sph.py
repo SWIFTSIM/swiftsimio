@@ -14,19 +14,8 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
     -------
     The extracted smoothing lengths.
     """
-    hsml = (
+    return (
         data.smoothing_lengths
         if hasattr(data, "smoothing_lengths")
         else data.smoothing_length  # backwards compatibility
     )
-    if data.coordinates.comoving:
-        if not hsml.compatible_with_comoving():
-            raise AttributeError(
-                "Physical smoothing length is not compatible with comoving coordinates!"
-            )
-    else:
-        if not hsml.compatible_with_physical():
-            raise AttributeError(
-                "Comoving smoothing length is not compatible with physical coordinates!"
-            )
-    return hsml

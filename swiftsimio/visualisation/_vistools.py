@@ -1,31 +1,33 @@
 import numpy as np
+from warnings import warn
+from swiftsimio.objects import cosmo_array
+from swiftsimio._array_functions import _copy_cosmo_array_attributes
 
 
 def _get_projection_field(data, field_name):
-    if field_name is None:
-        m = np.ones_like(data.particle_ids)
-    else:
-        m = getattr(data, field_name)
-        if data.coordinates.comoving:
-            if not m.compatible_with_comoving():
-                raise AttributeError(
-                    f'Physical quantity "{field_name}" is not compatible with comoving '
-                    "coordinates!"
-                )
-        else:
-            if not m.compatible_with_physical():
-                raise AttributeError(
-                    f'Comoving quantity "{field_name}" is not compatible with physical '
-                    "coordinates!"
-                )
-    return m
+    return (
+        getattr(data, field_name)
+        if field_name is not None
+        else np.ones_like(data.particle_ids)
+    )
 
 
 def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=True):
+    boxsize = data.metadata.boxsize
+    if region is not None:
+        region = cosmo_array(region)
+    if data.coordinates.comoving:
+        boxsize.convert_to_comoving()
+        if region is not None:
+            region.convert_to_comoving()
+    elif data.coordinates.comoving is False:  # compare to False in case None
+        boxsize.convert_to_physical()
+        if region is not None:
+            region.convert_to_physical()
     z_slice_included = z_slice is not None
     if not z_slice_included:
-        z_slice = np.zeros_like(data.metadata.boxsize[0])
-    box_x, box_y, box_z = data.metadata.boxsize
+        z_slice = np.zeros_like(boxsize[0])
+    box_x, box_y, box_z = boxsize
     if region is not None:
         x_min, x_max, y_min, y_max = region[:4]
         if len(region) == 6:
@@ -54,7 +56,7 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
         )
 
     periodic_box_x, periodic_box_y, periodic_box_z = (
-        data.metadata.boxsize / max_range if periodic else np.zeros(3)
+        boxsize / max_range if periodic else np.zeros(3)
     )
 
     return {
@@ -77,6 +79,10 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
 
 def _get_rotated_coordinates(data, rotation_matrix, rotation_center):
     if rotation_center is not None:
+        if data.coordinates.comoving:
+            rotation_center = rotation_center.to_comoving()
+        elif data.coordinates.comoving is False:
+            rotation_center = rotation_center.to_physical()
         # Rotate co-ordinates as required
         x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
 
@@ -86,3 +92,50 @@ def _get_rotated_coordinates(data, rotation_matrix, rotation_center):
     else:
         x, y, z = data.coordinates.T
     return x, y, z
+
+
+def backends_restore_cosmo_and_units(backend_func):
+
+    def wrapper(*args, **kwargs):
+        norm = kwargs.pop("norm")
+        comoving = getattr(kwargs["m"], "comoving", None)
+        if comoving is True:
+            if kwargs["x"].comoving is False or kwargs["y"].comoving is False:
+                warn(
+                    "Projecting a comoving quantity with physical input for coordinates. "
+                    "Converting coordinate grid to comoving."
+                )
+            kwargs["x"].convert_to_comoving()
+            kwargs["y"].convert_to_comoving()
+            if kwargs["h"].comoving is False:
+                warn(
+                    "Projecting a comoving quantity with physical input for smoothing "
+                    "lengths. Converting smoothing lengths to comoving."
+                )
+            kwargs["h"].convert_to_comoving()
+            norm.convert_to_comoving()
+        elif comoving is False:  # don't use else in case None
+            if kwargs["x"].comoving or kwargs["y"].comoving:
+                warn(
+                    "Projecting a physical quantity with comoving input for coordinates. "
+                    "Converting coordinate grid to physical."
+                )
+            kwargs["x"].convert_to_physical()
+            kwargs["y"].convert_to_physical()
+            if kwargs["h"].comoving:
+                warn(
+                    "Projecting a physical quantity with comoving input for smoothing "
+                    "lengths. Converting smoothing lengths to physical."
+                )
+            kwargs["h"].convert_to_physical()
+            norm.convert_to_physical()
+        return (
+            _copy_cosmo_array_attributes(
+                kwargs["m"],
+                backend_func(*args, **kwargs).view(cosmo_array),
+                copy_units=True,
+            )
+            / norm
+        )
+
+    return wrapper

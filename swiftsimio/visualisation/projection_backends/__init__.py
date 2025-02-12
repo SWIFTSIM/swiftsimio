@@ -6,6 +6,8 @@ fastest to most accurate, with the "_reference" style
 being a developer-only indended feature.
 """
 
+from swiftsimio.visualisation._vistools import backends_restore_cosmo_and_units
+
 from swiftsimio.visualisation.projection_backends.fast import scatter as fast
 from swiftsimio.visualisation.projection_backends.fast import (
     scatter_parallel as fast_parallel,
@@ -48,21 +50,21 @@ from swiftsimio.visualisation.projection_backends.gpu import (
 )
 
 backends = {
-    "histogram": histogram,
-    "fast": fast,
-    "renormalised": renormalised,
-    "subsampled": subsampled,
-    "subsampled_extreme": subsampled_extreme,
-    "reference": reference,
-    "gpu": gpu,
+    "histogram": backends_restore_cosmo_and_units(histogram),
+    "fast": backends_restore_cosmo_and_units(fast),
+    "renormalised": backends_restore_cosmo_and_units(renormalised),
+    "subsampled": backends_restore_cosmo_and_units(subsampled),
+    "subsampled_extreme": backends_restore_cosmo_and_units(subsampled_extreme),
+    "reference": backends_restore_cosmo_and_units(reference),
+    "gpu": backends_restore_cosmo_and_units(gpu),
 }
 
 backends_parallel = {
-    "histogram": histogram_parallel,
-    "fast": fast_parallel,
-    "renormalised": renormalised_parallel,
-    "subsampled": subsampled_parallel,
-    "subsampled_extreme": subsampled_extreme_parallel,
-    "reference": reference_parallel,
-    "gpu": gpu_parallel,
+    "histogram": backends_restore_cosmo_and_units(histogram_parallel),
+    "fast": backends_restore_cosmo_and_units(fast_parallel),
+    "renormalised": backends_restore_cosmo_and_units(renormalised_parallel),
+    "subsampled": backends_restore_cosmo_and_units(subsampled_parallel),
+    "subsampled_extreme": backends_restore_cosmo_and_units(subsampled_extreme_parallel),
+    "reference": backends_restore_cosmo_and_units(reference_parallel),
+    "gpu": backends_restore_cosmo_and_units(gpu_parallel),
 }

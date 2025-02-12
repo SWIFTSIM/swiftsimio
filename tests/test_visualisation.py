@@ -1,28 +1,32 @@
 import pytest
-from swiftsimio import load
-from swiftsimio.visualisation import scatter, slice, volume_render
-from swiftsimio.visualisation.projection import (
-    scatter_parallel,
-    project_gas,
-    project_pixel_grid,
-)
-from swiftsimio.visualisation.slice import slice_scatter_parallel, slice_gas
+from swiftsimio import load, mask
+from swiftsimio.visualisation.projection import project_gas, project_pixel_grid
+from swiftsimio.visualisation.slice import slice_gas
 from swiftsimio.visualisation.volume_render import render_gas
-from swiftsimio.visualisation.volume_render import scatter as volume_scatter
+from swiftsimio.visualisation.ray_trace import panel_gas
+
+from swiftsimio.visualisation.slice_backends import (
+    backends as slice_backends,
+    backends_parallel as slice_backends_parallel,
+)
+from swiftsimio.visualisation.volume_render_backends import (
+    backends as volume_render_backends,
+    backends_parallel as volume_render_backends_parallel,
+)
+from swiftsimio.visualisation.projection_backends import (
+    backends as projection_backends,
+    backends_parallel as projection_backends_parallel,
+)
+
 from swiftsimio.visualisation.power_spectrum import (
     deposit,
     deposition_to_power_spectrum,
     render_to_deposit,
     folded_depositions_to_power_spectrum,
 )
-from swiftsimio.visualisation.ray_trace import panel_gas
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
-from swiftsimio.visualisation.projection_backends import backends as projection_backends
-from swiftsimio.visualisation.slice_backends import (
-    backends as slice_backends,
-    backends_parallel as slice_backends_parallel,
-)
 from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
+
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 from unyt.array import unyt_array
 import unyt
@@ -46,13 +50,14 @@ def test_scatter(save=False):
     for backend in projection_backends.keys():
         try:
             image = projection_backends[backend](
-                np.array([0.0, 1.0, 1.0, -0.000001]),
-                np.array([0.0, 0.0, 1.0, 1.000001]),
-                np.array([1.0, 1.0, 1.0, 1.0]),
-                np.array([0.2, 0.2, 0.2, 0.000002]),
-                256,
-                1.0,
-                1.0,
+                x=np.array([0.0, 1.0, 1.0, -0.000001]),
+                y=np.array([0.0, 0.0, 1.0, 1.000001]),
+                m=np.array([1.0, 1.0, 1.0, 1.0]),
+                h=np.array([0.2, 0.2, 0.2, 0.000002]),
+                res=256,
+                box_x=1.0,
+                box_y=1.0,
+                norm=1.0,
             )
         except CudaSupportError:
             if CUDA_AVAILABLE:
@@ -78,11 +83,21 @@ def test_scatter_mass_conservation():
     total_mass = np.sum(m)
 
     for resolution in resolutions:
-        image = scatter(x, y, m, h, resolution, 1.0, 1.0)
+        scatter = projection_backends["fast"]
+        image = scatter(
+            x=x,
+            y=y,
+            m=m,
+            h=h,
+            res=resolution,
+            box_x=1.0,
+            box_y=1.0,
+            norm=1.0,
+        )
         mass_in_image = image.sum() / (resolution**2)
 
         # Check mass conservation to 5%
-        assert np.isclose(mass_in_image, total_mass, 0.05)
+        assert np.isclose(mass_in_image.view(np.ndarray), total_mass, 0.05)
 
     return
 
@@ -105,9 +120,27 @@ def test_scatter_parallel(save=False):
     hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
     masses = np.ones(number_of_parts, dtype=np.float32)
 
-    image = scatter(coordinates[0], coordinates[1], masses, hsml, resolution, 1.0, 1.0)
+    scatter = projection_backends["fast"]
+    scatter_parallel = projection_backends_parallel["fast"]
+    image = scatter(
+        x=coordinates[0],
+        y=coordinates[1],
+        m=masses,
+        h=hsml,
+        res=resolution,
+        box_x=1.0,
+        box_y=1.0,
+        norm=1.0,
+    )
     image_par = scatter_parallel(
-        coordinates[0], coordinates[1], masses, hsml, resolution, 1.0, 1.0
+        x=coordinates[0],
+        y=coordinates[1],
+        m=masses,
+        h=hsml,
+        res=resolution,
+        box_x=1.0,
+        box_y=1.0,
+        norm=1.0,
     )
 
     if save:
@@ -119,17 +152,20 @@ def test_scatter_parallel(save=False):
 
 
 def test_slice(save=False):
+    slice = slice_backends["sph"]
     image = slice(
-        np.array([0.0, 1.0, 1.0, -0.000001]),
-        np.array([0.0, 0.0, 1.0, 1.000001]),
-        np.array([0.0, 0.0, 1.0, 1.000001]),
-        np.array([1.0, 1.0, 1.0, 1.0]),
-        np.array([0.2, 0.2, 0.2, 0.000002]),
-        0.99,
-        256,
-        1.0,
-        1.0,
-        1.0,
+        x=np.array([0.0, 1.0, 1.0, -0.000001]),
+        y=np.array([0.0, 0.0, 1.0, 1.000001]),
+        z=np.array([0.0, 0.0, 1.0, 1.000001]),
+        m=np.array([1.0, 1.0, 1.0, 1.0]),
+        h=np.array([0.2, 0.2, 0.2, 0.000002]),
+        z_slice=0.99,
+        xres=256,
+        yres=256,
+        box_x=1.0,
+        box_y=1.0,
+        box_z=1.0,
+        norm=1.0,
     )
 
     if save:
@@ -159,30 +195,32 @@ def test_slice_parallel(save=False):
 
     for backend in slice_backends.keys():
         image = slice_backends[backend](
-            coordinates[0],
-            coordinates[1],
-            coordinates[2],
-            masses,
-            hsml,
-            z_slice,
-            resolution,
-            resolution,
-            1.0,
-            1.0,
-            1.0,
+            x=coordinates[0],
+            y=coordinates[1],
+            z=coordinates[2],
+            m=masses,
+            h=hsml,
+            z_slice=z_slice,
+            xres=resolution,
+            yres=resolution,
+            box_x=1.0,
+            box_y=1.0,
+            box_z=1.0,
+            norm=1.0,
         )
         image_par = slice_backends_parallel[backend](
-            coordinates[0],
-            coordinates[1],
-            coordinates[2],
-            masses,
-            hsml,
-            z_slice,
-            resolution,
-            resolution,
-            1.0,
-            1.0,
-            1.0,
+            x=coordinates[0],
+            y=coordinates[1],
+            z=coordinates[2],
+            m=masses,
+            h=hsml,
+            z_slice=z_slice,
+            xres=resolution,
+            yres=resolution,
+            box_x=1.0,
+            box_y=1.0,
+            box_z=1.0,
+            norm=1.0,
         )
 
         assert np.isclose(image, image_par).all()
@@ -195,16 +233,18 @@ def test_slice_parallel(save=False):
 
 def test_volume_render():
     # render image
-    volume_render.scatter(
-        np.array([0.0, 1.0, 1.0, -0.000001]),
-        np.array([0.0, 0.0, 1.0, 1.000001]),
-        np.array([0.0, 0.0, 1.0, 1.000001]),
-        np.array([1.0, 1.0, 1.0, 1.0]),
-        np.array([0.2, 0.2, 0.2, 0.000002]),
-        64,
-        1.0,
-        1.0,
-        1.0,
+    scatter = volume_render_backends["scatter"]
+    scatter(
+        x=np.array([0.0, 1.0, 1.0, -0.000001]),
+        y=np.array([0.0, 0.0, 1.0, 1.000001]),
+        z=np.array([0.0, 0.0, 1.0, 1.000001]),
+        m=np.array([1.0, 1.0, 1.0, 1.0]),
+        h=np.array([0.2, 0.2, 0.2, 0.000002]),
+        res=64,
+        box_x=1.0,
+        box_y=1.0,
+        box_z=1.0,
+        norm=1.0,
     )
 
     return
@@ -223,28 +263,31 @@ def test_volume_parallel():
     hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
     masses = np.ones(number_of_parts, dtype=np.float32)
 
-    image = volume_render.scatter(
-        coordinates[0],
-        coordinates[1],
-        coordinates[2],
-        masses,
-        hsml,
-        resolution,
-        1.0,
-        1.0,
-        1.0,
+    scatter = volume_render_backends["scatter"]
+    image = scatter(
+        x=coordinates[0],
+        y=coordinates[1],
+        z=coordinates[2],
+        m=masses,
+        h=hsml,
+        res=resolution,
+        box_x=1.0,
+        box_y=1.0,
+        box_z=1.0,
+        norm=1.0,
     )
-    image_par = volume_render.scatter_parallel(
-        coordinates[0],
-        coordinates[1],
-        coordinates[2],
-        masses,
-        hsml,
-        resolution,
-        1,
-        1.0,
-        1.0,
-        1.0,
+    scatter_parallel = volume_render_backends_parallel["scatter"]
+    image_par = scatter_parallel(
+        x=coordinates[0],
+        y=coordinates[1],
+        z=coordinates[2],
+        m=masses,
+        h=hsml,
+        res=resolution,
+        box_x=1.0,
+        box_y=1.0,
+        box_z=1.0,
+        norm=1.0,
     )
 
     assert np.isclose(image, image_par).all()
@@ -266,7 +309,7 @@ def test_selection_render(filename):
     project_gas(data, 256, parallel=True, region=[0 * bs, 0.001 * bs] * 2)
     # render non-square
     project_gas(
-        data, 256, parallel=True, region=[0 * bs, 0.00 * bs, 0.25 * bs, 0.75 * bs]
+        data, 256, parallel=True, region=[0 * bs, 0.50 * bs, 0.25 * bs, 0.75 * bs]
     )
 
     # Slicing
@@ -309,20 +352,48 @@ def test_render_outside_region():
     h = 10 ** np.random.rand(number_of_parts) - 1.0
     h[h > 0.5] = 0.05
     m = np.ones_like(h)
-    projection_backends["histogram"](x, y, m, h, resolution, 1.0, 1.0)
+    projection_backends["histogram"](
+        x=x, y=y, m=m, h=h, res=resolution, box_x=1.0, box_y=1.0, norm=1.0
+    )
 
     for backend in projection_backends.keys():
         try:
-            projection_backends[backend](x, y, m, h, resolution, 1.0, 1.0)
+            projection_backends[backend](
+                x=x, y=y, m=m, h=h, res=resolution, box_x=1.0, box_y=1.0, norm=1.0
+            )
         except CudaSupportError:
             if CUDA_AVAILABLE:
                 raise ImportError("Optional loading of the CUDA module is broken")
             else:
                 continue
 
-    slice_scatter_parallel(x, y, z, m, h, 0.2, resolution, 1.0, 1.0, 1.0)
+    slice_backends_parallel["sph"](
+        x=x,
+        y=y,
+        z=z,
+        m=m,
+        h=h,
+        z_slice=0.2,
+        xres=resolution,
+        yres=resolution,
+        box_x=1.0,
+        box_y=1.0,
+        box_z=1.0,
+        norm=1.0,
+    )
 
-    volume_render.scatter_parallel(x, y, z, m, h, resolution, 1, 1.0, 1.0, 1.0)
+    volume_render_backends_parallel["scatter"](
+        x=x,
+        y=y,
+        z=z,
+        m=m,
+        h=h,
+        res=resolution,
+        box_x=1.0,
+        box_y=1.0,
+        box_z=1.0,
+        norm=1.0,
+    )
 
 
 @requires("cosmological_volume.hdf5")
@@ -331,40 +402,81 @@ def test_comoving_versus_physical(filename):
     Test what happens if you try to mix up physical and comoving quantities.
     """
 
-    for func, aexp in [(project_gas, -2.0), (slice_gas, -3.0), (render_gas, -3.0)]:
+    # this test is pretty slow if we don't mask out some particles
+    m = mask(filename)
+    boxsize = m.metadata.boxsize
+    m.constrain_spatial([[0.0 * b, 0.2 * b] for b in boxsize])
+    region = [
+        0.0 * boxsize[0],
+        0.2 * boxsize[0],
+        0.0 * boxsize[1],
+        0.2 * boxsize[1],
+        0.0 * boxsize[2],
+        0.2 * boxsize[2],
+    ]
+    for func, aexp in [
+        (project_gas, -2.0),
+        (slice_gas, -3.0),
+        (render_gas, -3.0),
+    ]:
         # normal case: everything comoving
-        data = load(filename)
+        data = load(filename, mask=m)
         # we force the default (project="masses") to check the cosmo_factor
         # conversion in this case
-        img = func(data, resolution=256, project=None)
-        assert img.comoving
+        img = func(data, resolution=64, project=None, region=region)
+        assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
-        img = func(data, resolution=256, project="densities")
-        assert img.comoving
+        img = func(data, resolution=64, project="densities", region=region)
+        assert data.gas.densities.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
-        # try to mix comoving coordinates with a physical variable
+        # try to mix comoving coordinates with a physical variable:
+        # the coordinates should convert to physical internally and warn
         data.gas.densities.convert_to_physical()
-        with pytest.raises(AttributeError, match="not compatible with comoving"):
-            img = func(data, resolution=256, project="densities")
-        # convert coordinates to physical (but not smoothing lengths)
-        data.gas.coordinates.convert_to_physical()
-        with pytest.raises(AttributeError, match=""):
-            img = func(data, resolution=256, project="masses")
-        # also convert smoothing lengths to physical
-        data.gas.smoothing_lengths.convert_to_physical()
-        # masses are always compatible with either
-        img = func(data, resolution=256, project="masses")
-        # check that we get a physical result
-        assert not img.comoving
-        assert (img.cosmo_factor.expr - a**aexp).simplify() == 0
-        # densities are still compatible with physical
-        img = func(data, resolution=256, project="densities")
-        assert not img.comoving
+        with pytest.warns(
+            UserWarning, match="Converting smoothing lengths to physical."
+        ):
+            with pytest.warns(
+                UserWarning, match="Converting coordinate grid to physical."
+            ):
+                img = func(data, resolution=64, project="densities", region=region)
+        assert data.gas.densities.comoving is False and img.comoving is False
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
-        # now try again with comoving densities
+        # convert coordinates to physical (but not smoothing lengths):
+        # the coordinates (copy) should convert back to comoving to match the masses
+        data.gas.coordinates.convert_to_physical()
+        with pytest.warns(UserWarning, match="Converting coordinate grid to comoving."):
+            img = func(data, resolution=64, project="masses", region=region)
+        assert data.gas.masses.comoving and img.comoving
+        assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
+        # also convert smoothing lengths to physical
+        # everything should still convert back to comoving to match masses
+        data.gas.smoothing_lengths.convert_to_physical()
+        with pytest.warns(
+            UserWarning, match="Converting smoothing lengths to comoving."
+        ):
+            with pytest.warns(
+                UserWarning, match="Converting coordinate grid to comoving."
+            ):
+                img = func(data, resolution=64, project="masses", region=region)
+        assert data.gas.masses.comoving and img.comoving
+        assert (img.cosmo_factor.expr - a**aexp).simplify() == 0
+        # densities are physical, make sure this works with physical coordinates and
+        # smoothing lengths
+        img = func(data, resolution=64, project="densities", region=region)
+        assert data.gas.densities.comoving is False and img.comoving is False
+        assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
+        # now try again with comoving densities, should work and give a comoving img
+        # with internal conversions to comoving
         data.gas.densities.convert_to_comoving()
-        with pytest.raises(AttributeError, match="not compatible with physical"):
-            img = func(data, resolution=256, project="densities")
+        with pytest.warns(
+            UserWarning, match="Converting smoothing lengths to comoving."
+        ):
+            with pytest.warns(
+                UserWarning, match="Converting coordinate grid to comoving."
+            ):
+                img = func(data, resolution=64, project="densities", region=region)
+        assert data.gas.densities.comoving and img.comoving
+        assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
 
 
 @requires("cosmological_volume.hdf5")
@@ -373,7 +485,7 @@ def test_nongas_smoothing_lengths(filename):
     Test that the visualisation tools to calculate smoothing lengths give usable results.
     """
 
-    # If project_pixel_grid runs without error the smoothing lengths seem usable.
+    # If project_gas runs without error the smoothing lengths seem usable.
     data = load(filename)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
@@ -478,6 +590,7 @@ def test_periodic_boundary_wrapping():
                 res=pixel_resolution,
                 box_x=boxsize,
                 box_y=boxsize,
+                norm=boxsize**2,
             )
             image2 = projection_backends[backend](
                 x=coordinates_non_periodic[:, 0],
@@ -487,6 +600,7 @@ def test_periodic_boundary_wrapping():
                 res=pixel_resolution,
                 box_x=0.0,
                 box_y=0.0,
+                norm=boxsize**2,
             )
             assert (image1 == image2).all()
         except CudaSupportError:
@@ -509,6 +623,7 @@ def test_periodic_boundary_wrapping():
             box_x=boxsize,
             box_y=boxsize,
             box_z=boxsize,
+            norm=boxsize**3,
         )
         image2 = slice_backends[backend](
             x=coordinates_non_periodic[:, 0],
@@ -522,12 +637,14 @@ def test_periodic_boundary_wrapping():
             box_x=0.0,
             box_y=0.0,
             box_z=0.0,
+            norm=boxsize**3,
         )
 
         assert (image1 == image2).all()
 
     # test the volume rendering scatter function
-    image1 = volume_render.scatter(
+    scatter = volume_render_backends["scatter"]
+    image1 = scatter(
         x=coordinates_periodic[:, 0],
         y=coordinates_periodic[:, 1],
         z=coordinates_periodic[:, 2],
@@ -537,9 +654,9 @@ def test_periodic_boundary_wrapping():
         box_x=boxsize,
         box_y=boxsize,
         box_z=boxsize,
+        norm=boxsize**3,
     )
-
-    image2 = volume_render.scatter(
+    image2 = scatter(
         x=coordinates_non_periodic[:, 0],
         y=coordinates_non_periodic[:, 1],
         z=coordinates_non_periodic[:, 2],
@@ -549,6 +666,7 @@ def test_periodic_boundary_wrapping():
         box_x=0.0,
         box_y=0.0,
         box_z=0.0,
+        norm=boxsize**3,
     )
 
     assert (image1 == image2).all()
@@ -572,20 +690,22 @@ def test_volume_render_and_unfolded_deposit():
     # 1.0 implies no folding
     deposition = deposit(x, y, z, m, res, 1.0, boxsize, boxsize, boxsize)
 
-    # Need to norm for the volume render
-    volume = volume_scatter(
-        x / boxsize,
-        y / boxsize,
-        z / boxsize,
-        m,
-        h / boxsize,
-        res,
-        boxsize,
-        boxsize,
-        boxsize,
+    # Need to norm coords and box for the volume render
+    volume = volume_render_backends["scatter"](
+        x=x / boxsize,
+        y=y / boxsize,
+        z=z / boxsize,
+        m=m,
+        h=h / boxsize,
+        res=res,
+        box_x=boxsize,
+        box_y=boxsize,
+        box_z=boxsize,
+        norm=boxsize**3,
     )
 
-    assert np.allclose(deposition, volume)
+    # need to divide out the box volume for the deposition
+    assert np.allclose(deposition / boxsize**3, volume.view(np.ndarray))
 
 
 def test_folding_deposit():

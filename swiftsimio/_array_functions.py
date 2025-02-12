@@ -122,7 +122,9 @@ _HANDLED_FUNCTIONS = {}
 # numpy functions (we will actually wrap the functions below):
 
 
-def _copy_cosmo_array_attributes(from_ca: object, to_ca: object) -> object:
+def _copy_cosmo_array_attributes(
+    from_ca: object, to_ca: object, copy_units=False
+) -> object:
     """
     Copy :class:`~swiftsimio.objects.cosmo_array` attributes across two objects.
 
@@ -138,6 +140,9 @@ def _copy_cosmo_array_attributes(from_ca: object, to_ca: object) -> object:
     to_ca : :obj:`object`
         The destination object.
 
+    copy_units : bool
+        If ``True`` also copy ``units`` attribute (usually let :mod:`unyt` handle this).
+
     Returns
     -------
     out : :obj:`object`
@@ -148,6 +153,8 @@ def _copy_cosmo_array_attributes(from_ca: object, to_ca: object) -> object:
         and isinstance(from_ca, objects.cosmo_array)
     ):
         return to_ca
+    if copy_units:
+        to_ca.units = from_ca.units
     to_ca.cosmo_factor = from_ca.cosmo_factor
     to_ca.comoving = from_ca.comoving
     to_ca.valid_transform = from_ca.valid_transform
@@ -722,18 +729,18 @@ def _arctan2_cosmo_factor(
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf2.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
     elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
             f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
     elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(

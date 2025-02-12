@@ -7,7 +7,6 @@ import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 
 from swiftsimio.reader import __SWIFTGroupDataset
-
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
@@ -15,9 +14,6 @@ from swiftsimio.visualisation._vistools import (
     _get_region_info,
     _get_rotated_coordinates,
 )
-
-scatter = backends["fast"]
-scatter_parallel = backends_parallel["fast"]
 
 
 def project_pixel_grid(
@@ -116,7 +112,7 @@ def project_pixel_grid(
             np.logical_and(z <= region_info["z_max"], z >= region_info["z_min"]),
         ).astype(bool)
 
-    arguments = dict(
+    kwargs = dict(
         x=(x[mask] - region_info["x_min"]) / region_info["max_range"],
         y=(y[mask] - region_info["y_min"]) / region_info["max_range"],
         m=m[mask],
@@ -124,13 +120,13 @@ def project_pixel_grid(
         res=resolution,
         box_x=region_info["periodic_box_x"],
         box_y=region_info["periodic_box_y"],
+        norm=(region_info["x_range"] * region_info["y_range"]),
     )
     image = (
-        backends_parallel[backend](**arguments)
+        backends_parallel[backend](**kwargs)
         if parallel
-        else backends[backend](**arguments)
+        else backends[backend](**kwargs)
     )
-    raise RuntimeError
 
     # determine the effective number of pixels for each dimension
     xres = int(
@@ -142,110 +138,6 @@ def project_pixel_grid(
 
     # trim the image to remove empty pixels
     return image[:xres, :yres]
-
-
-def project_gas_pixel_grid(
-    data: SWIFTDataset,
-    resolution: int,
-    project: Union[str, None] = "masses",
-    region: Union[None, cosmo_array] = None,
-    mask: Union[None, np.array] = None,
-    rotation_matrix: Union[None, np.array] = None,
-    rotation_center: Union[None, cosmo_array] = None,
-    parallel: bool = False,
-    backend: str = "fast",
-    periodic: bool = True,
-):
-    r"""
-    Creates a 2D projection of a SWIFT dataset, projected by the "project"
-    variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
-    W_{ij}).
-
-    This function is the same as ``project_gas`` but does not include units.
-
-    Default projection variable is mass. If it is None, then we don't
-    weight with anything, providing a number density image.
-
-    Parameters
-    ----------
-
-    data: SWIFTDataset
-        The SWIFT dataset that you wish to visualise (get this from ``load``)
-
-    resolution: int
-        The resolution of the image. All images returned are square, ``res``
-        by ``res``, pixel grids.
-
-    project: str, optional
-        Variable to project to get the weighted density of. By default, this
-        is mass. If you would like to mass-weight any other variable, you can
-        always create it as ``data.gas.my_variable = data.gas.other_variable
-        * data.gas.masses``.
-
-    region: cosmo_array, optional
-        Region, determines where the image will be created (this corresponds
-        to the left and right-hand edges, and top and bottom edges) if it is
-        not None. It should have a length of four or six, and take the form:
-        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``
-
-    mask: np.array, optional
-        Allows only a sub-set of the particles in data to be visualised. Useful
-        in cases where you have read data out of a ``velociraptor`` catalogue,
-        or if you only want to visualise e.g. star forming particles. This boolean
-        mask is applied just before visualisation.
-
-    rotation_center: np.array, optional
-        Center of the rotation. If you are trying to rotate around a galaxy, this
-        should be the most bound particle.
-
-    rotation_matrix: np.array, optional
-        Rotation matrix (3x3) that describes the rotation of the box around
-        ``rotation_center``. In the default case, this provides a projection
-        along the z axis.
-
-    parallel: bool, optional
-        Defaults to ``False``, whether or not to create the image in parallel.
-        The parallel version of this function uses significantly more memory.
-
-    backend: str, optional
-        Backend to use. See documentation for details. Defaults to 'fast'.
-
-    periodic: bool, optional
-        Account for periodic boundary conditions for the simulation box?
-        Defaults to ``True``.
-
-    Returns
-    -------
-
-    image: np.array
-        Projected image with dimensions of project / length^2, of size
-        ``res`` x ``res``.
-
-
-    Notes
-    -----
-
-    + Particles outside of this range are still considered if their smoothing
-      lengths overlap with the range.
-    + The returned array has x as the first component and y as the second component,
-      which is the opposite to what ``imshow`` requires. You should transpose the
-      array if you want it to be visualised the 'right way up'.
-    """
-
-    image = project_pixel_grid(
-        data=data.gas,
-        resolution=resolution,
-        project=project,
-        mask=mask,
-        parallel=parallel,
-        region=region,
-        rotation_matrix=rotation_matrix,
-        rotation_center=rotation_center,
-        backend=backend,
-        periodic=periodic,
-    )
-
-    return image
 
 
 def project_gas(
@@ -335,9 +227,8 @@ def project_gas(
       array if you want it to be visualised the 'right way up'.
     """
 
-    # REFACTOR? can we get this image to come out as a cosmo_array already?
-    image = project_gas_pixel_grid(
-        data=data,
+    return project_pixel_grid(
+        data=data.gas,
         resolution=resolution,
         project=project,
         mask=mask,
@@ -347,22 +238,4 @@ def project_gas(
         rotation_center=rotation_center,
         backend=backend,
         periodic=periodic,
-    )
-
-    region_info = _get_region_info(data.gas, region)
-    units = 1.0 / (region_info["max_range"] ** 2)
-    # Unfortunately this is required to prevent us from {over,under}flowing the units:
-    units.convert_to_units(1.0 / data.metadata.boxsize.units**2)
-
-    comoving = data.gas.coordinates.comoving
-    coord_cosmo_factor = data.gas.coordinates.cosmo_factor
-    if project is not None:
-        units *= getattr(data.gas, project).units
-        project_cosmo_factor = getattr(data.gas, project).cosmo_factor
-        new_cosmo_factor = project_cosmo_factor / coord_cosmo_factor**2
-    else:
-        new_cosmo_factor = coord_cosmo_factor ** (-2)
-
-    return cosmo_array(
-        image, units=units, cosmo_factor=new_cosmo_factor, comoving=comoving
     )
