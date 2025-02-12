@@ -47,13 +47,13 @@ def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
         1e5,
         "Msun",
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 0, this_mask.metadata.scale_factor),
+        cosmo_factor=cosmo_factor(a**0, this_mask.metadata.scale_factor),
     )
     upper = cosmo_quantity(
         1e13,
         "Msun",
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 0, this_mask.metadata.scale_factor),
+        cosmo_factor=cosmo_factor(a**0, this_mask.metadata.scale_factor),
     )
     this_mask.constrain_mask(
         "spherical_overdensity_200_mean", "total_mass", lower, upper

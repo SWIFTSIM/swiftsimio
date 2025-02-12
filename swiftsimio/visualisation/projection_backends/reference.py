@@ -5,7 +5,6 @@ lie below the resolution limit.
 Uses double precision.
 """
 
-
 from typing import Union
 from math import sqrt, ceil
 from numpy import float32, float64, int32, zeros, ndarray

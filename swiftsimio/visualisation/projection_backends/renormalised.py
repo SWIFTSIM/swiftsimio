@@ -6,7 +6,6 @@ explicit renormalisation of each kernel such that the mass is
 conserved up to floating point precision.
 """
 
-
 """
 The original smoothing code. This provides basic renormalisation
 of the kernel on each call. 

@@ -7,7 +7,6 @@ scales uses subsampling.
 Uses double precision.
 """
 
-
 """
 The original smoothing code. This provides a paranoid supersampling
 of the kernel.

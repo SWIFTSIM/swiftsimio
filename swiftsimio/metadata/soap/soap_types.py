@@ -2,6 +2,7 @@
 Includes the fancy names.
 """
 
+
 # Describes the conversion of hdf5 groups to names
 def get_soap_name_underscore(group: str) -> str:
     soap_name_underscores = {

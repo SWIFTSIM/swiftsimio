@@ -237,7 +237,7 @@ class SWIFTMask(object):
             centers_handle[:][sort],
             units=self.units.length,
             comoving=True,
-            cosmo_factor=cosmo_factor(a ** 1, self.metadata.scale_factor),
+            cosmo_factor=cosmo_factor(a**1, self.metadata.scale_factor),
         )
 
         # Note that we cannot assume that these are cubic, unfortunately.
@@ -245,7 +245,7 @@ class SWIFTMask(object):
             metadata_handle.attrs["size"],
             units=self.units.length,
             comoving=True,
-            cosmo_factor=cosmo_factor(a ** 1, self.metadata.scale_factor),
+            cosmo_factor=cosmo_factor(a**1, self.metadata.scale_factor),
         )
 
         return

@@ -143,7 +143,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a ** 1, 0.5),
+            cosmo_factor=cosmo_factor(a**1, 0.5),
             comoving=True,
         )
         assert arr.compatible_with_comoving()
@@ -152,7 +152,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a ** 1, 0.5),
+            cosmo_factor=cosmo_factor(a**1, 0.5),
             comoving=False,
         )
         assert not arr.compatible_with_comoving()
@@ -161,7 +161,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a ** 0, 0.5),
+            cosmo_factor=cosmo_factor(a**0, 0.5),
             comoving=True,
         )
         assert arr.compatible_with_comoving()
@@ -170,7 +170,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a ** 0, 0.5),
+            cosmo_factor=cosmo_factor(a**0, 0.5),
             comoving=False,
         )
         assert arr.compatible_with_comoving()
@@ -179,7 +179,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            cosmo_factor=cosmo_factor(a**1, 1.0),
             comoving=True,
         )
         assert arr.compatible_with_comoving()
@@ -188,7 +188,7 @@ class TestCopyFuncs:
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
-            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            cosmo_factor=cosmo_factor(a**1, 1.0),
             comoving=False,
         )
         assert arr.compatible_with_comoving()
@@ -232,7 +232,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.ones_like(inp)
         assert res.to_value(u.kpc) == 1
@@ -265,7 +265,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array([2], u.kpc, comoving=False)
         with pytest.raises(
@@ -278,7 +278,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         with pytest.raises(
             ValueError, match="Arguments have cosmo_factors that differ"
@@ -289,13 +289,13 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
         with pytest.raises(
             ValueError, match="Arguments have cosmo_factors that differ"
@@ -306,7 +306,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = inp + inp
         assert res.to_value(u.kpc) == 4
@@ -320,7 +320,7 @@ class TestCosmoArrayUfuncs:
         # no cosmo_factors
         inp = cosmo_array([2], u.kpc, comoving=False)
         res = inp * inp
-        assert res.to_value(u.kpc ** 2) == 4
+        assert res.to_value(u.kpc**2) == 4
         assert res.comoving is False
         assert res.cosmo_factor == cosmo_factor(None, None)
         # one is not cosmo_array
@@ -342,7 +342,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array([2], u.kpc, comoving=False)
         with pytest.raises(InvalidScaleFactor, match="Attempting to multiply"):
@@ -353,7 +353,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         with pytest.raises(InvalidScaleFactor, match="Attempting to multiply"):
             inp1 * inp2
@@ -362,12 +362,12 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = inp * inp
-        assert res.to_value(u.kpc ** 2) == 4
+        assert res.to_value(u.kpc**2) == 4
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** 2
+        assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_dividing_ufunc(self):
         """
@@ -377,12 +377,12 @@ class TestCosmoArrayUfuncs:
             [2.0],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = inp / inp
         assert res.to_value(u.dimensionless) == 1  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** 0
+        assert res.cosmo_factor == inp.cosmo_factor**0
 
     def test_return_without_ufunc(self):
         """
@@ -393,7 +393,7 @@ class TestCosmoArrayUfuncs:
             [1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.logical_not(inp)
         assert res == np.logical_not(1)
@@ -403,7 +403,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.logaddexp(inp, inp)
         assert res == np.logaddexp(2, 2)
@@ -413,13 +413,13 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
         with pytest.raises(
             ValueError, match="Arguments have cosmo_factors that differ"
@@ -431,7 +431,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         with pytest.raises(
             ValueError, match="Arguments have cosmo_factors that differ"
@@ -442,7 +442,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array([2], u.kpc, comoving=False)
         with pytest.raises(
@@ -457,7 +457,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         with pytest.warns(RuntimeWarning, match="Mixing arguments"):
             res = np.logaddexp(inp1, inp2)
@@ -468,7 +468,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = u.unyt_array([2], u.kpc)
         with pytest.warns(RuntimeWarning, match="Mixing arguments"):
@@ -484,12 +484,12 @@ class TestCosmoArrayUfuncs:
             [4],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.sqrt(inp)
-        assert res.to_value(u.kpc ** 0.5) == 2  # also ensures units ok
+        assert res.to_value(u.kpc**0.5) == 2  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** 0.5
+        assert res.cosmo_factor == inp.cosmo_factor**0.5
 
     def test_square_ufunc(self):
         """
@@ -499,12 +499,12 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.square(inp)
-        assert res.to_value(u.kpc ** 2) == 4  # also ensures units ok
+        assert res.to_value(u.kpc**2) == 4  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** 2
+        assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_cbrt_ufunc(self):
         """
@@ -514,7 +514,7 @@ class TestCosmoArrayUfuncs:
             [8],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.cbrt(inp)
         assert res.to_value(u.kpc ** (1.0 / 3.0)) == 2  # also ensures units ok
@@ -529,12 +529,12 @@ class TestCosmoArrayUfuncs:
             [2.0],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.reciprocal(inp)
-        assert res.to_value(u.kpc ** -1) == 0.5  # also ensures units ok
+        assert res.to_value(u.kpc**-1) == 0.5  # also ensures units ok
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** -1
+        assert res.cosmo_factor == inp.cosmo_factor**-1
 
     def test_passthrough_ufunc(self):
         """
@@ -545,7 +545,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.negative(inp)
         assert res.to_value(u.kpc) == -2
@@ -556,7 +556,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.copysign(inp, inp)
         assert res.to_value(u.kpc) == inp.to_value(u.kpc)
@@ -567,13 +567,13 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
         with pytest.raises(
             ValueError, match="Arguments have cosmo_factors that differ"
@@ -588,7 +588,7 @@ class TestCosmoArrayUfuncs:
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.arctan2(inp, inp)
         assert res.to_value(u.dimensionless) == np.arctan2(2, 2)
@@ -603,13 +603,13 @@ class TestCosmoArrayUfuncs:
             [1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [2],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = inp1 < inp2
         assert res.all()
@@ -623,7 +623,7 @@ class TestCosmoArrayUfuncs:
             [1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         out = cosmo_array([np.nan], u.dimensionless, comoving=True)
         np.abs(inp, out=out)
@@ -634,7 +634,7 @@ class TestCosmoArrayUfuncs:
             [1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         # make sure we can also pass a non-cosmo type for out without crashing
         out = np.array([np.nan])
@@ -649,12 +649,12 @@ class TestCosmoArrayUfuncs:
             [[1, 2], [3, 4]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
         res = np.multiply.reduce(inp, axis=0)
-        np.testing.assert_allclose(res.to_value(u.kpc ** 2), np.array([3.0, 8.0]))
+        np.testing.assert_allclose(res.to_value(u.kpc**2), np.array([3.0, 8.0]))
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** 2
+        assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_reduce_divide(self):
         """
@@ -664,12 +664,12 @@ class TestCosmoArrayUfuncs:
             [[1.0, 2.0], [1.0, 4.0], [1.0, 1.0]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=0.5),
         )
         res = np.divide.reduce(inp, axis=0)
-        np.testing.assert_allclose(res.to_value(u.kpc ** -1), np.array([1.0, 0.5]))
+        np.testing.assert_allclose(res.to_value(u.kpc**-1), np.array([1.0, 0.5]))
         assert res.comoving is False
-        assert res.cosmo_factor == inp.cosmo_factor ** -1
+        assert res.cosmo_factor == inp.cosmo_factor**-1
 
     def test_reduce_other(self):
         """
@@ -679,7 +679,7 @@ class TestCosmoArrayUfuncs:
             [[1.0, 2.0], [1.0, 2.0]],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = np.add.reduce(inp, axis=0)
         np.testing.assert_allclose(res.to_value(u.kpc), np.array([2.0, 4.0]))
@@ -695,7 +695,7 @@ class TestCosmoArrayUfuncs:
             [2.5],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res1, res2 = np.modf(inp)
         assert res1.to_value(u.kpc) == 0.5
@@ -709,7 +709,7 @@ class TestCosmoArrayUfuncs:
             [2.5],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res1, res2 = np.frexp(inp)
         assert res1 == 0.625
@@ -727,7 +727,7 @@ class TestCosmoArrayUfuncs:
             [2.5],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         out1 = cosmo_array([np.nan], u.dimensionless, comoving=True)
         out2 = cosmo_array([np.nan], u.dimensionless, comoving=True)
@@ -748,7 +748,7 @@ class TestCosmoArrayUfuncs:
             [1, 1, 1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = 0
         res = inp1 > inp2
@@ -757,7 +757,7 @@ class TestCosmoArrayUfuncs:
             [1, 1, 1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = 0.5
         with pytest.warns(RuntimeWarning, match="Mixing arguments"):
@@ -767,20 +767,20 @@ class TestCosmoArrayUfuncs:
             [1, 1, 1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             [0, 0, 0],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         assert (inp1 > inp2).all()
         inp1 = cosmo_array(
             [1, 1, 1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = np.ones(3) * u.kpc
         with pytest.warns(RuntimeWarning, match="Mixing arguments"):
@@ -789,7 +789,7 @@ class TestCosmoArrayUfuncs:
             [1, 1, 1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = np.zeros(3) * u.kpc
         assert (inp1 > inp2).all()
@@ -797,13 +797,13 @@ class TestCosmoArrayUfuncs:
             [1, 1, 1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             1,
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = inp1 == inp2
         assert res.all()
@@ -811,13 +811,13 @@ class TestCosmoArrayUfuncs:
             [1, 1, 1],
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         inp2 = cosmo_array(
             0,
             u.kpc,
             comoving=False,
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
+            cosmo_factor=cosmo_factor(a**1, scale_factor=1.0),
         )
         res = inp1 > inp2
         assert res.all()
