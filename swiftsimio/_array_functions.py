@@ -2073,7 +2073,7 @@ implements(np.tensordot)(
 
 
 @implements(np.unwrap)
-def unwrap(p, discont=None, axis=-1, *, period=6.283185307179586):
+def unwrap(p, discont=None, axis=-1, *, period=6.283_185_307_179_586):
 
     helper_result = _prepare_array_func_args(
         p, discont=discont, axis=axis, period=period

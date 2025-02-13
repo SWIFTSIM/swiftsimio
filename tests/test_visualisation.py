@@ -50,10 +50,10 @@ def test_scatter(save=False):
     for backend in projection_backends.keys():
         try:
             image = projection_backends[backend](
-                x=np.array([0.0, 1.0, 1.0, -0.000001]),
-                y=np.array([0.0, 0.0, 1.0, 1.000001]),
+                x=np.array([0.0, 1.0, 1.0, -0.000_001]),
+                y=np.array([0.0, 0.0, 1.0, 1.000_001]),
                 m=np.array([1.0, 1.0, 1.0, 1.0]),
-                h=np.array([0.2, 0.2, 0.2, 0.000002]),
+                h=np.array([0.2, 0.2, 0.2, 0.000_002]),
                 res=256,
                 box_x=1.0,
                 box_y=1.0,
@@ -71,7 +71,7 @@ def test_scatter(save=False):
 
 
 def test_scatter_mass_conservation():
-    np.random.seed(971263)
+    np.random.seed(971_263)
     # Width of 0.8 centered on 0.5, 0.5.
     x = 0.8 * np.random.rand(100) + 0.1
     y = 0.8 * np.random.rand(100) + 0.1
@@ -84,7 +84,7 @@ def test_scatter_mass_conservation():
     for resolution in resolutions:
         scatter = projection_backends["fast"]
         image = scatter(x=x, y=y, m=m, h=h, res=resolution, box_x=1.0, box_y=1.0)
-        mass_in_image = image.sum() / (resolution**2)
+        mass_in_image = image.sum() / (resolution ** 2)
 
         # Check mass conservation to 5%
         assert np.isclose(mass_in_image.view(np.ndarray), total_mass, 0.05)
@@ -142,11 +142,11 @@ def test_scatter_parallel(save=False):
 def test_slice(save=False):
     slice = slice_backends["sph"]
     image = slice(
-        x=np.array([0.0, 1.0, 1.0, -0.000001]),
-        y=np.array([0.0, 0.0, 1.0, 1.000001]),
-        z=np.array([0.0, 0.0, 1.0, 1.000001]),
+        x=np.array([0.0, 1.0, 1.0, -0.000_001]),
+        y=np.array([0.0, 0.0, 1.0, 1.000_001]),
+        z=np.array([0.0, 0.0, 1.0, 1.000_001]),
         m=np.array([1.0, 1.0, 1.0, 1.0]),
-        h=np.array([0.2, 0.2, 0.2, 0.000002]),
+        h=np.array([0.2, 0.2, 0.2, 0.000_002]),
         z_slice=0.99,
         xres=256,
         yres=256,
@@ -220,11 +220,11 @@ def test_volume_render():
     # render image
     scatter = volume_render_backends["scatter"]
     scatter(
-        x=np.array([0.0, 1.0, 1.0, -0.000001]),
-        y=np.array([0.0, 0.0, 1.0, 1.000001]),
-        z=np.array([0.0, 0.0, 1.0, 1.000001]),
+        x=np.array([0.0, 1.0, 1.0, -0.000_001]),
+        y=np.array([0.0, 0.0, 1.0, 1.000_001]),
+        z=np.array([0.0, 0.0, 1.0, 1.000_001]),
         m=np.array([1.0, 1.0, 1.0, 1.0]),
-        h=np.array([0.2, 0.2, 0.2, 0.000002]),
+        h=np.array([0.2, 0.2, 0.2, 0.000_002]),
         res=64,
         box_x=1.0,
         box_y=1.0,
@@ -364,15 +364,7 @@ def test_render_outside_region():
     )
 
     volume_render_backends_parallel["scatter"](
-        x=x,
-        y=y,
-        z=z,
-        m=m,
-        h=h,
-        res=resolution,
-        box_x=1.0,
-        box_y=1.0,
-        box_z=1.0,
+        x=x, y=y, z=z, m=m, h=h, res=resolution, box_x=1.0, box_y=1.0, box_z=1.0
     )
 
 
@@ -435,7 +427,7 @@ def test_comoving_versus_physical(filename):
             ):
                 img = func(data, resolution=64, project="masses", region=region)
         assert data.gas.masses.comoving and img.comoving
-        assert (img.cosmo_factor.expr - a**aexp).simplify() == 0
+        assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
         # densities are physical, make sure this works with physical coordinates and
         # smoothing lengths
         img = func(data, resolution=64, project="densities", region=region)
@@ -501,14 +493,14 @@ def test_panel_rendering(filename):
 
     plt.imsave(
         "panels_added.png",
-        plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(np.sum(panel, axis=-1))),
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(np.sum(panel, axis=-1))),
     )
 
     projected = project_gas(data, res, "masses", backend="renormalised")
 
     plt.imsave(
         "projected.png",
-        plt.get_cmap()(LogNorm(vmin=10**6, vmax=10**6.5)(projected)),
+        plt.get_cmap()(LogNorm(vmin=10 ** 6, vmax=10 ** 6.5)(projected)),
     )
 
     fullstack = np.zeros((res, res))
@@ -708,8 +700,8 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
     # Volume render the particles
     volume = render_gas(data, npix, parallel=False).to_physical()
 
-    mean_density_deposit = (np.sum(deposition) / npix**3).to("Msun / kpc**3").v
-    mean_density_volume = (np.sum(volume) / npix**3).to("Msun / kpc**3").v
+    mean_density_deposit = (np.sum(deposition) / npix ** 3).to("Msun / kpc**3").v
+    mean_density_volume = (np.sum(volume) / npix ** 3).to("Msun / kpc**3").v
     mean_density_calculated = (
         (np.sum(data.gas.masses) / (data.metadata.boxsize[0] * data.metadata.a) ** 3)
         .to("Msun / kpc**3")
@@ -734,15 +726,15 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
     min_k = cosmo_quantity(
         1e-2,
-        unyt.Mpc**-1,
+        unyt.Mpc ** -1,
         comoving=True,
-        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor),
+        cosmo_factor=cosmo_factor(a ** -1, data.metadata.scale_factor),
     )
     max_k = cosmo_quantity(
         1e2,
-        unyt.Mpc**-1,
+        unyt.Mpc ** -1,
         comoving=True,
-        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor),
+        cosmo_factor=cosmo_factor(a ** -1, data.metadata.scale_factor),
     )
 
     bins = np.geomspace(min_k, max_k, 32)
@@ -779,7 +771,7 @@ def test_dark_matter_power_spectrum(filename, save=False):
 
         folds[folding] = deposition
 
-        folding_output[2**folding] = (k, power_spectrum, scatter)
+        folding_output[2 ** folding] = (k, power_spectrum, scatter)
 
     # Now try doing them all together at once.
 
