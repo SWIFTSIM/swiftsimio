@@ -51,7 +51,8 @@ def project_pixel_grid(
         Variable to project to get the weighted density of. By default, this
         is mass. If you would like to mass-weight any other variable, you can
         always create it as ``data.gas.my_variable = data.gas.other_variable
-        * data.gas.masses``.
+        * data.gas.masses``. The result is comoving if this is comoving, else
+        it is physical.
 
     region: cosmo_array, optional
         Region, determines where the image will be created (this corresponds
@@ -90,6 +91,7 @@ def project_pixel_grid(
 
     image: cosmo_array
         Projected image with units of project / length^2, of size ``res`` x ``res``.
+        Comoving if ``project`` data are comoving, else physical.
 
 
     Notes
@@ -171,7 +173,8 @@ def project_gas(
         Variable to project to get the weighted density of. By default, this
         is mass. If you would like to mass-weight any other variable, you can
         always create it as ``data.gas.my_variable = data.gas.other_variable
-        * data.gas.masses``.
+        * data.gas.masses``. The result is comoving if this is comoving, else
+        it is physical.
 
     region: cosmo_array, optional
         Region, determines where the image will be created (this corresponds
@@ -210,8 +213,8 @@ def project_gas(
     -------
 
     image: cosmo_array
-        Projected image with units of project / length^2, of size ``res`` x
-        ``res``.
+        Projected image with units of project / length^2, of size ``res`` x ``res``.
+        Comoving if ``project`` data are comoving, else physical.
 
 
     Notes

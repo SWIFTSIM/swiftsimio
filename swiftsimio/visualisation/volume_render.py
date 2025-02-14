@@ -44,8 +44,9 @@ def render_gas(
         Specifies size of return np.array
 
     project : str, optional
-        Data field to be projected. Default is mass. If None then simply
-        count number of particles
+        Data field to be projected. Default is ``"mass"``. If ``None`` then simply
+        count number of particles. The result is comoving if this is comoving, else
+        it is physical.
 
     parallel : bool
         used to determine if we will create the image in parallel. This
@@ -78,9 +79,10 @@ def render_gas(
 
     Returns
     -------
-    np.ndarray of np.float32
-        Creates a `resolution` x `resolution` x `resolution` np.array and
-        returns it, without appropriate units.
+    cosmo_array
+        Voxel grid with units of project / length^3, of size ``resolution`` x
+        ``resolution`` x ``resolution``. Comoving if ``project`` data are
+        comoving, else physical.
 
     See Also
     --------

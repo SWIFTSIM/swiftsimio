@@ -46,8 +46,9 @@ def slice_gas(
         this value refers to the location along the rotated z-axis.
 
     project : str, optional
-        Data field to be projected. Default is mass. If None then simply
-        count number of particles
+        Data field to be projected. Default is mass. If ``None`` then simply
+        count number of particles. The result is comoving if this is comoving,
+        else it is physical.
 
     parallel : bool
         used to determine if we will create the image in parallel. This
@@ -83,9 +84,9 @@ def slice_gas(
 
     Returns
     -------
-    ndarray of np.float32
-        Creates a `resolution` x `resolution` np.array and returns it,
-        without appropriate units.
+    image : cosmo_array
+        Slice image with units of project / length^2, of size ``res`` x ``res``.
+        Comoving if ``project`` data are comoving, else physical.
 
     See Also
     --------
