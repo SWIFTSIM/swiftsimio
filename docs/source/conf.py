@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -98,3 +99,13 @@ def run_apidoc(_):
 
 def setup(app):
     app.connect("builder-inited", run_apidoc)
+
+
+intersphinx_mapping = dict(
+    numpy=("https://numpy.org/doc/stable/", None),
+    numba=("https://numba.readthedocs.io/en/stable/", None),
+    unyt=("https://unyt.readthedocs.io/en/stable/", None),
+    scipy=("https://docs.scipy.org/doc/scipy/", None),
+    swiftgalaxy=("https://swiftsimio.readthedocs.io/en/latest/", None),
+    velociraptor=("https://velociraptor-python.readthedocs.io/en/latest/", None),
+)
