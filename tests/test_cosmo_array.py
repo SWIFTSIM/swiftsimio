@@ -771,6 +771,16 @@ class TestNumpyFunctions:
         for cq in ca(np.arange(3)):
             assert isinstance(cq, cosmo_quantity)
 
+    def test_dot(self):
+        """
+        Make sure that we get a cosmo_array when we use array attribute dot.
+        """
+        res = ca(np.arange(3)).dot(ca(np.arange(3)))
+        assert isinstance(res, cosmo_quantity)
+        assert res.comoving is False
+        assert res.cosmo_factor == cosmo_factor(a ** 2, 0.5)
+        assert res.valid_transform is True
+
 
 class TestCosmoQuantity:
     """
@@ -806,6 +816,23 @@ class TestCosmoQuantity:
             valid_transform=True,
         )
         res = getattr(cq, func)(*args)
+        assert res.comoving is False
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
+        assert res.valid_transform is True
+
+    def test_round(self):
+        """
+        Test that attributes propagate through the round builtin.
+        """
+        cq = cosmo_quantity(
+            1.03,
+            u.m,
+            comoving=False,
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            valid_transform=True,
+        )
+        res = round(cq)
+        assert res.value == 1.0
         assert res.comoving is False
         assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True

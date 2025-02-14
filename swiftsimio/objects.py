@@ -116,6 +116,7 @@ from ._array_functions import (
     _arctan2_cosmo_factor,
     _comparison_cosmo_factor,
     _prepare_array_func_args,
+    _default_binary_wrapper,
 )
 
 try:
@@ -1260,6 +1261,7 @@ class cosmo_array(unyt_array):
     __getitem__ = _propagate_cosmo_array_attributes_to_result(
         _ensure_result_is_cosmo_array_or_quantity(unyt_array.__getitem__)
     )
+    dot = _default_binary_wrapper(unyt_array.dot, _multiply_cosmo_factor)
 
     # Also wrap some array "properties":
     T = property(_propagate_cosmo_array_attributes_to_result(unyt_array.transpose))
@@ -1799,3 +1801,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         if ret.size > 1:
             raise RuntimeError("cosmo_quantity instances must be scalars")
         return ret
+
+    __round__ = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_quantity.__round__)
+    )
