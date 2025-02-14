@@ -1,12 +1,12 @@
 Visualisation
 =============
 
-:mod:`swiftsimio` provides visualisation routines accelerated with the
-:mod:`numba` module. They work without this module, but we strongly recommend
-installing it for the best performance (1000x+ speedups). These are provided
-in the :mod:`swiftismio.visualisation` sub-modules.
+:mod:`swiftsimio` provides visualisation routines in the
+:mod:`swiftsimio.visualisation` sub-module.  They are accelerated with the
+:mod:`numba` module. They can work without :mod:`numba`, but we strongly recommend
+installing it for the best performance (1000x+ speedups).
 
-The three built-in rendering types (described below) have the following
+The four built-in rendering types (described below) have the following
 common interface:
 
 .. code-block:: python
@@ -30,6 +30,7 @@ additional functionality.
    projection
    slice
    volume_render
+   ray_trace
    power_spectra
    tools
 

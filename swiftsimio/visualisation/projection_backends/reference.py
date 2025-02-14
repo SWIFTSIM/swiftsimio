@@ -5,11 +5,9 @@ lie below the resolution limit.
 Uses double precision.
 """
 
-from typing import Union
-from math import sqrt, ceil
+from math import sqrt
 from numpy import float32, float64, int32, zeros, ndarray
 
-from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.visualisation.projection_backends.kernels import (
     kernel_double_precision as kernel,
@@ -151,8 +149,9 @@ def scatter(
                             particle_cell_x + cells_spanned + 1, maximal_array_index + 1
                         ),
                     ):
-                        # The distance in x to our new favourite cell -- remember that our x, y
-                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        # The distance in x to our new favourite cell -- remember that our
+                        # x, y are all in a box of [0, 1]; calculate the distance to the
+                        # cell centre
                         distance_x = (float64(cell_x) + 0.5) * pixel_width - float64(
                             x_pos
                         )

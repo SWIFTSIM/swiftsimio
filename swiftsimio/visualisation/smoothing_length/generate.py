@@ -3,8 +3,7 @@ Routines for generating (approximate) smoothing lengths for particles
 that do not usually carry a smoothing length field (e.g. dark matter).
 """
 
-from numpy import empty, float32
-
+import numpy as np
 from swiftsimio import cosmo_array
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 from swiftsimio._array_functions import _propagate_cosmo_array_attributes_to_result
@@ -14,7 +13,7 @@ from swiftsimio._array_functions import _propagate_cosmo_array_attributes_to_res
 def generate_smoothing_lengths(
     coordinates: cosmo_array,
     boxsize: cosmo_array,
-    kernel_gamma: float32,
+    kernel_gamma: np.float32,
     neighbours=32,
     speedup_fac=2,
     dimension=3,
@@ -28,7 +27,7 @@ def generate_smoothing_lengths(
         a cosmo_array that gives the co-ordinates of all particles
     boxsize : cosmo_array
         the size of the box (3D)
-    kernel_gamma : float32
+    kernel_gamma : np.float32
         the kernel gamma of the kernel being used
     neighbours : int, optional
         the number of neighbours to encompass
@@ -58,7 +57,7 @@ def generate_smoothing_lengths(
 
     tree = KDTree(coordinates.value, boxsize=boxsize.to(coordinates.units).value)
 
-    smoothing_lengths = empty(number_of_parts, dtype=float32)
+    smoothing_lengths = np.empty(number_of_parts, dtype=np.float32)
     smoothing_lengths[-1] = -0.1
 
     # Include speedup_fac stuff here:

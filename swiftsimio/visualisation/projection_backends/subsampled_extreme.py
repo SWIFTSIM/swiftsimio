@@ -5,19 +5,14 @@ kernel for cell overlaps at small scales, and at large
 scales uses subsampling.
 
 Uses double precision.
-"""
 
-"""
 The original smoothing code. This provides a paranoid supersampling
 of the kernel.
 """
 
-
-from typing import Union
 from math import sqrt, ceil
 from numpy import float32, float64, int32, zeros, ndarray
 
-from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.visualisation.projection_backends.kernels import (
     kernel_double_precision as kernel,
@@ -283,9 +278,10 @@ def scatter(
                             ),
                         ):
                             float_cell_y = float64(cell_y)
-                            # Now we subsample the pixels to get a more accurate determination
-                            # of the kernel weight. We take the mean of the kernel evaluations
-                            # within a given pixel and apply this as the true 'kernel evaluation'.
+                            # Now we subsample the pixels to get a more accurate
+                            # determination of the kernel weight. We take the mean of the
+                            # kernel evaluations within a given pixel and apply this as
+                            # the true 'kernel evaluation'.
                             kernel_eval = float64(0.0)
 
                             for subsample_x in range(0, subsample_factor):

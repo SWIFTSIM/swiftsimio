@@ -154,8 +154,9 @@ def scatter(
                             particle_cell_x + cells_spanned + 1, maximal_array_index + 1
                         ),
                     ):
-                        # The distance in x to our new favourite cell -- remember that our x, y
-                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        # The distance in x to our new favourite cell -- remember that our
+                        # x, y are all in a box of [0, 1]; calculate the distance to the
+                        # cell centre
                         distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
                             x_pos
                         )

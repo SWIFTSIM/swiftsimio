@@ -2,19 +2,16 @@
 Projection kernels.
 """
 
-from typing import Union
-from math import sqrt
-from numpy import float64, float32, int32
-
-from swiftsimio.accelerated import jit, NUM_THREADS, prange
+import numpy as np
+from swiftsimio.accelerated import jit
 
 # Taken from Dehnen & Aly 2012
-kernel_gamma = float32(1.897367)
-kernel_constant = float32(7.0 / 3.14159)
+kernel_gamma = np.float32(1.897367)
+kernel_constant = np.float32(7.0 / 3.14159)
 
 
 @jit("float32(float32, float32)", nopython=True, fastmath=True)
-def kernel_single_precision(r: float32, H: float32):
+def kernel_single_precision(r: np.float32, H: np.float32):
     """
     Single precision kernel implementation for swiftsimio.
 
@@ -23,16 +20,16 @@ def kernel_single_precision(r: float32, H: float32):
     Parameters
     ----------
 
-    r : float32
+    r : np.float32
         radius used in kernel computation
 
-    H : float32
+    H : np.float32
         kernel width (i.e. radius of compact support for the kernel)
 
     Returns
     -------
 
-    float32
+    np.float32
         Contribution to the density by the particle
 
     See Also
@@ -45,7 +42,7 @@ def kernel_single_precision(r: float32, H: float32):
 
     .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
-    kernel_constant = float32(2.22817109)
+    kernel_constant = np.float32(2.22817109)
 
     inverse_H = 1.0 / H
     ratio = r * inverse_H
@@ -65,7 +62,7 @@ def kernel_single_precision(r: float32, H: float32):
 
 
 @jit("float64(float64, float64)", nopython=True, fastmath=True)
-def kernel_double_precision(r: float64, H: float64):
+def kernel_double_precision(r: np.float64, H: np.float64):
     """
     Single precision kernel implementation for swiftsimio.
 
@@ -74,15 +71,15 @@ def kernel_double_precision(r: float64, H: float64):
     Parameters
     ----------
 
-    r : float32
+    r : np.float32
         radius used in kernel computation
-    H : float32
+    H : np.float32
         kernel width (i.e. radius of compact support for the kernel)
 
     Returns
     -------
 
-    float32
+    np.float32
         Contribution to the density by the particle
 
     See Also
@@ -95,7 +92,7 @@ def kernel_double_precision(r: float64, H: float64):
 
     .. [2] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
-    kernel_constant = float64(2.22817109)
+    kernel_constant = np.float64(2.22817109)
 
     inverse_H = 1.0 / H
     ratio = r * inverse_H

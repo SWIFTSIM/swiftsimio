@@ -6,15 +6,15 @@ runs on-the-fly, and as such after a run has completed you may wish to create
 a number of more non-standard power spectra.
 
 These tools are available as part of the :mod:`swiftsimio.visualisation.power_spectrum`
-package. Making a power spectrum consists of two major steps: depositing the particles
+module. Making a power spectrum consists of two major steps: depositing the particles
 on grid(s), and then binning their fourier transform to get the one-dimensional power.
 
 
-Depositing on a Grid
+Depositing on a grid
 --------------------
 
 Depositing your particles on a grid is performed using
-:meth:`swiftsimio.visualisation.power_spectrum.render_to_deposit`. This function
+:func:`swiftsimio.visualisation.power_spectrum.render_to_deposit`. This function
 performs a nearest-grid-point (NGP) of all particles in the provided particle
 dataset. For example:
 
@@ -35,17 +35,17 @@ dataset. For example:
 The specific field being depositied can be controlled with the ``project``
 keyword argument. The ``resolution``` argument gives the one-dimensional
 resolution of the 3D grid, so in this case you would recieve a ``512x512x512``
-grid. Note that the ``gas_mass_deposit`` is a :obj:`swiftsimio.cosmo_array`,
+grid. Note that the ``gas_mass_deposit`` is a :obj:`~swiftsimio.objects.cosmo_array`,
 and as such includes cosmological and unit information that is used later
 in the process.
 
 
-Generating a Power Spectrum
+Generating a power spectrum
 ---------------------------
 
 Once you have your grid deposited, you can easily generate a power spectrum
 using the
-:meth:`swiftsimio.visualisation.power_spectrum.deposition_to_power_spectrum`
+:func:`~swiftsimio.visualisation.power_spectrum.deposition_to_power_spectrum`
 function. For example, using the above deposit:
 
 .. code-block:: python
@@ -64,7 +64,7 @@ Wavenumbers are calculated to be at the weighted mean of the k-values in each
 bin, rather than representing the center of the bin.
 
 
-More Complex Scenarios
+More complex scenarios
 ----------------------
 
 In a realistic simualted power spectrum, you will need to perform 'folding'
@@ -89,13 +89,14 @@ The ``folding`` parameter is available for both ``render_to_deposit``
 and ``deposition_to_power_spectrum``, but it may be easier to use the
 utility functions provided for automatically stitching together
 the folded spectra. The function
-:meth:`swiftsimio.visualsation.power_spectrum.folded_depositions_to_power_spectrum`
+:func:`~swiftsimio.visualsation.power_spectrum.folded_depositions_to_power_spectrum`
 allows you to do this easily:
 
 .. code-block:: python
 
+    import unyt as u
     from swiftsimio.visualisation.power_spectrum import folded_depositions_to_power_spectrum
-    import unyt
+    from swiftsimio.objects import cosmo_quantity, cosmo_factor, a
 
     folded_depositions = {}
 
@@ -112,7 +113,20 @@ allows you to do this easily:
         depositions=folded_depositions,
         box_size=data.metadata.box_size,
         number_of_wavenumber_bins=128,
-        wavenumber_range=[1e-2 / unyt.Mpc, 1e2 / unyt.Mpc],
+        wavenumber_range=[
+	    cosmo_quantity(
+	        1e-2,
+	        u.Mpc**-1,
+	        comoving=True,
+	        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor,
+            )
+	    cosmo_quantity(
+	        1e2,
+		u.Mpc**-1,
+		comoving=True,
+		cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor,
+	    ),
+	],
         log_wavenumber_bins=True,
         workers=4,
         minimal_sample_modes=8192,
@@ -129,19 +143,19 @@ visualisation.
 There are a few crucial parameters to this function:
 
 1. ``workers`` is the number of threads to use for the calculation of
-   the fourier transforms.
+   the Fourier transforms.
 2. ``minimal_sample_modes`` is the minimum number of modes that must be
-    present in a bin for it to be included in the final power spectrum.
-    Generally for a big simulation you want to set this to around 10'000,
-    and this number is ignored for the lowest wavenumber bin.
+   present in a bin for it to be included in the final power spectrum.
+   Generally for a big simulation you want to set this to around 10,000,
+   and this number is ignored for the lowest wavenumber bin.
 3. ``cutoff_above_wavenumber_fraction`` is the fraction of the
    individual fold's (as represented by the FFT itself) maximally sampled
    wavenumber. Ignored for the last fold, and we always cap the maximal
-   wavenumber to the nyquist frequency.
+   wavenumber to the Nyquist frequency.
 4. ``shot_noise_norm`` is the number of particles in the simulation
-    that contribute to the power spectrum. This is used to normalise
-    the power spectrum to the shot noise level. This is very
-    important in this case because of the use of NGP deposition.
+   that contribute to the power spectrum. This is used to normalise
+   the power spectrum to the shot noise level. This is very
+   important in this case because of the use of NGP deposition.
    
 Foldings are stitched using a simple method where the 'better sampled'
 foldings are used preferentially, up to the cutoff value.

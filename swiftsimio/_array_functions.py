@@ -729,18 +729,18 @@ def _arctan2_cosmo_factor(
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf2.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
     elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
             f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
     elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(
@@ -1023,7 +1023,8 @@ def _default_unary_wrapper(
 
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+        Prepare arguments, handle ``cosmo_factor`` attriubtes, and attach attributes to
+        output.
 
         Returns
         -------
@@ -1070,7 +1071,8 @@ def _default_binary_wrapper(
 
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes to
+        output.
 
         Returns
         -------
@@ -1114,7 +1116,8 @@ def _default_comparison_wrapper(unyt_func: Callable) -> Callable:
     # _comparison_cosmo_factor with them as the inputs
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes to
+        output.
 
         Returns
         -------
@@ -1156,7 +1159,8 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
 
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor``s, and attach attributes to output.
+        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes to
+        output.
 
         Returns
         -------
