@@ -39,9 +39,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy",
+    "numpy>=2.1.0",
     "h5py",
-    "unyt>=3.0.2",
+    "unyt>=3.0.4",
     "numba>=0.50.0",
 ]
 
