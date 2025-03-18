@@ -41,7 +41,7 @@ classifiers = [
 dependencies = [
     "numpy>=2.1.0",
     "h5py",
-    "unyt@git+https://github.com/kyleaoman/unyt.git#egg=fix_block_wrapper",
+    "unyt>=3.0.4",
     "numba>=0.50.0",
 ]
 
