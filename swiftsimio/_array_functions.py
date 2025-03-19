@@ -10,6 +10,7 @@ are documented to assist in maintenance and development of swiftsimio.
 """
 
 import warnings
+from functools import reduce
 import numpy as np
 from typing import Callable, Tuple
 import unyt
@@ -328,12 +329,7 @@ def _multiply_cosmo_factor(
     out : swiftsimio.objects.cosmo_factor
         The product of the input :class:`~swiftsimio.objects.cosmo_factor`s.
     """
-    if len(cfs) == 1:
-        return __binary_multiply_cosmo_factor(cfs[0])
-    retval = __binary_multiply_cosmo_factor(cfs[0], cfs[1])
-    for cf in cfs[2:]:
-        retval = __binary_multiply_cosmo_factor(retval, cf)
-    return retval
+    return reduce(__binary_multiply_cosmo_factor, cfs)
 
 
 def __binary_multiply_cosmo_factor(
@@ -392,12 +388,7 @@ def _preserve_cosmo_factor(
     out : swiftsimio.objects.cosmo_factor
         The preserved :class:`~swiftsimio.objects.cosmo_factor`.
     """
-    if len(cfs) == 1:
-        return cfs[0]
-    retval = __binary_preserve_cosmo_factor(cfs[0], cfs[1])
-    for cf in cfs[2:]:
-        retval = __binary_preserve_cosmo_factor(retval, cf)
-    return retval
+    return reduce(__binary_preserve_cosmo_factor, cfs)
 
 
 def __binary_preserve_cosmo_factor(
@@ -729,18 +720,18 @@ def _arctan2_cosmo_factor(
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf2.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
     elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
             f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
     elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(
