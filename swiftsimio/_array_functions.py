@@ -123,7 +123,7 @@ _HANDLED_FUNCTIONS = {}
 # numpy functions (we will actually wrap the functions below):
 
 
-def _copy_cosmo_array_attributes(
+def _copy_cosmo_array_attributes_if_present(
     from_ca: object, to_ca: object, copy_units=False
 ) -> object:
     """
@@ -189,7 +189,7 @@ def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
 
     def wrapped(obj, *args, **kwargs):
         # omit docstring so that sphinx picks up docstring of wrapped function
-        return _copy_cosmo_array_attributes(obj, func(obj, *args, **kwargs))
+        return _copy_cosmo_array_attributes_if_present(obj, func(obj, *args, **kwargs))
 
     return wrapped
 
@@ -2167,4 +2167,6 @@ def meshgrid(*xi, **kwargs):
     # However we can't just use _propagate_cosmo_array_attributes_to_result because we
     # need to iterate over arguments.
     res = np.meshgrid._implementation(*xi, **kwargs)
-    return tuple(_copy_cosmo_array_attributes(x, r) for (x, r) in zip(xi, res))
+    return tuple(
+        _copy_cosmo_array_attributes_if_present(x, r) for (x, r) in zip(xi, res)
+    )

@@ -1,7 +1,7 @@
 import numpy as np
 from warnings import warn
 from swiftsimio.objects import cosmo_array
-from swiftsimio._array_functions import _copy_cosmo_array_attributes
+from swiftsimio._array_functions import _copy_cosmo_array_attributes_if_present
 
 
 def _get_projection_field(data, field_name):
@@ -128,7 +128,7 @@ def backend_restore_cosmo_and_units(backend_func, norm=1.0):
             kwargs["h"].convert_to_physical()
             norm.convert_to_physical()
         return (
-            _copy_cosmo_array_attributes(
+            _copy_cosmo_array_attributes_if_present(
                 kwargs["m"],
                 backend_func(*args, **kwargs).view(cosmo_array),
                 copy_units=True,
