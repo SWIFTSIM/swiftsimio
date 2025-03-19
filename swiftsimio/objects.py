@@ -339,7 +339,7 @@ class cosmo_factor(object):
             cosmo_factor(expr=a**2, scale_factor=0.5)
         """
 
-        obj = cls(a ** exponent, scale_factor)
+        obj = cls(a**exponent, scale_factor)
 
         return obj
 
@@ -677,7 +677,7 @@ class cosmo_factor(object):
         """
         if self.expr is None:
             return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b: "cosmo_factor") -> bool:
         """
@@ -863,6 +863,36 @@ def _parse_cosmo_factor_args(
     scale_factor: float = None,
     scale_exponent: numeric_type = None,
 ) -> cosmo_factor:
+    """
+    Decide what provided cosmology information to use, or raise an error.
+
+    If both a ``cosmo_factor`` and a (``scale_factor``, ``scale_exponent``) pair are
+    given then this is an error. If only one of ``scale_factor`` and ``scale_exponent``
+    is given this is an error. Otherwise we construct the
+    :class:`~swiftsimio.objects.cosmo_factor`, unless it's going to be a ``NULL_CF`` with
+    the information we have - in that case we return ``None`` to give a chance for it
+    to be filled in elsewhere before assuming the ``NULL_CF`` default.
+
+    Parameters
+    ----------
+    cf : swiftsimio.objects.cosmo_factor
+        The :class:`~swiftsimio.objects.cosmo_factor` passed as an explicit argument.
+    scale_factor : numeric_type
+        The scale factor passed as a kwarg.
+    scale_exponent : float
+        The exponent for the scale factor to convert to/from comoving passed as a kwarg.
+
+    Returns
+    -------
+    out : cosmo_factor or None
+        The :class:`~swiftsimio.objects.cosmo_factor` to use, or ``None``.
+
+    Raises
+    ------
+    ValueError
+        If multiple values or incomplete information for the desired
+        :class:`~swiftsimio.objects.cosmo_factor` are provided.
+    """
     if cf is None and scale_factor is None and scale_exponent is None:
         # we can return promptly
         return None
@@ -974,7 +1004,8 @@ class cosmo_array(unyt_array):
         ...     np.arange(3),
         ...     u.kpc,
         ...     comoving=True,
-        ...     cosmo_factor=cosmo_factor.create(1.0, 1)
+        ...     scale_factor=1.0,
+        ...     scale_exponent=1,
         ... )
         >>> cosmo_array([x, x])
         cosmo_array([[0, 1, 2],
@@ -1206,10 +1237,13 @@ class cosmo_array(unyt_array):
             # ndarray with object dtype goes to next case to properly handle e.g.
             # ndarrays containing cosmo_quantities
 
-            pass
+            cosmo_factor = _parse_cosmo_factor_args(
+                cf=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
+            )
 
         elif _iterable(input_array) and input_array:
-
             # if _prepare_array_func_args finds cosmo_array input it will convert to:
             default_cm = comoving if comoving is not None else True
 

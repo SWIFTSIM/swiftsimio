@@ -12,7 +12,7 @@ import unyt
 import h5py
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
-from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.objects import cosmo_array, cosmo_factor
 from abc import ABC, abstractmethod
 
 import re
@@ -698,9 +698,7 @@ class SWIFTGroupMetadata(object):
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
-            a_factor_this_dataset = a ** cosmo_exponent
-
-            return cosmo_factor(a_factor_this_dataset, current_scale_factor)
+            return cosmo_factor.create(current_scale_factor, cosmo_exponent)
 
         self.field_cosmologies = [
             get_cosmo(self.metadata.handle[x]) for x in self.field_paths
@@ -888,8 +886,8 @@ class SWIFTUnits(object):
 
 def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
     """
-    Discriminates between the different types of metadata objects read from SWIFT-compatile
-    files.
+    Discriminates between the different types of metadata objects read from
+    SWIFT-compatible files.
 
     Parameters
     ----------

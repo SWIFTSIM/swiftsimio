@@ -5,8 +5,7 @@ This will ensure that all particle fields are populated correctly, and that they
 be read in.
 """
 
-import pytest
-
+import numpy as np
 from tests.helper import requires
 from swiftsimio import load, mask
 
@@ -37,8 +36,8 @@ def test_cosmology_metadata(filename):
 @requires("cosmological_volume.hdf5")
 def test_time_metadata(filename):
     """
-    This tests the time metadata and also tests the ability to include two items at once from
-    the same header attribute.
+    This tests the time metadata and also tests the ability to include two items at once
+    from the same header attribute.
     """
 
     data = load(filename)
@@ -153,20 +152,17 @@ def test_cell_metadata_is_valid(filename):
     mask_region = mask(filename)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
-    mask_region.constrain_spatial([[0 * b, b] for b in mask_region.metadata.boxsize])
+    mask_region.constrain_spatial(
+        cosmo_array(
+            [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
+        ).T
+    )
     data = load(filename, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.gas.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.gas.coordinates.units)
     offsets = mask_region.offsets["gas"]
     counts = mask_region.counts["gas"]
-
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
-    )
 
     start_offset = offsets
     stop_offset = offsets + counts
@@ -203,7 +199,11 @@ def test_dithered_cell_metadata_is_valid(filename):
     mask_region = mask(filename)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
-    mask_region.constrain_spatial([[0 * b, b] for b in mask_region.metadata.boxsize])
+    mask_region.constrain_spatial(
+        cosmo_array(
+            [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
+        ).T
+    )
     data = load(filename, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
@@ -212,7 +212,7 @@ def test_dithered_cell_metadata_is_valid(filename):
     boxsize = cosmo_array(
         boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, mask_region.metadata.a),
     )
     offsets = mask_region.offsets["dark_matter"]
     counts = mask_region.counts["dark_matter"]
@@ -256,7 +256,7 @@ def test_reading_select_region_metadata(filename):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.2, boxsize * 0.8]).T
 
@@ -308,7 +308,7 @@ def test_reading_select_region_metadata_not_spatial_only(filename):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.26, boxsize * 0.74]).T
 

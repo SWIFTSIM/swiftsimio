@@ -5,12 +5,11 @@ Tests that we can open SOAP files
 from tests.helper import requires
 
 from swiftsimio import load, mask, cosmo_quantity
-from swiftsimio.objects import cosmo_quantity, cosmo_factor, a
 
 
 @requires("soap_example.hdf5")
 def test_soap_can_load(filename):
-    data = load(filename)
+    load(filename)
 
     return
 
@@ -47,13 +46,15 @@ def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
         1e5,
         "Msun",
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 0, this_mask.metadata.scale_factor),
+        scale_factor=this_mask.metadata.scale_factor,
+        scale_exponent=0,
     )
     upper = cosmo_quantity(
         1e13,
         "Msun",
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 0, this_mask.metadata.scale_factor),
+        scale_factor=this_mask.metadata.scale_factor,
+        scale_exponent=0,
     )
     this_mask.constrain_mask(
         "spherical_overdensity_200_mean", "total_mass", lower, upper

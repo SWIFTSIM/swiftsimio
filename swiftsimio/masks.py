@@ -15,7 +15,6 @@ from swiftsimio.objects import (
     InvalidSnapshot,
     cosmo_array,
     cosmo_quantity,
-    cosmo_factor,
 )
 
 from swiftsimio.accelerated import ranges_from_array
@@ -236,7 +235,8 @@ class SWIFTMask(object):
             centers_handle[:][sort],
             units=self.units.length,
             comoving=True,
-            cosmo_factor=cosmo_factor.create(self.metadata.scale_factor, 1),
+            scale_factor=self.metadata.scale_factor,
+            scale_exponent=1,
         )
 
         # Note that we cannot assume that these are cubic, unfortunately.
@@ -244,7 +244,8 @@ class SWIFTMask(object):
             metadata_handle.attrs["size"],
             units=self.units.length,
             comoving=True,
-            cosmo_factor=cosmo_factor.create(self.metadata.scale_factor, 1),
+            scale_factor=self.metadata.scale_factor,
+            scale_exponent=1,
         )
 
         return
@@ -551,8 +552,8 @@ class SWIFTMask(object):
 
         if not self.metadata.homogeneous_arrays:
             raise RuntimeError(
-                "Cannot constrain to a single row in a non-homogeneous array; you currently "
-                f"are using a {self.metadata.output_type} file"
+                "Cannot constrain to a single row in a non-homogeneous array; you "
+                f"currently are using a {self.metadata.output_type} file"
             )
 
         if not self.spatial_only:
@@ -578,8 +579,8 @@ class SWIFTMask(object):
 
         if not self.metadata.homogeneous_arrays:
             raise RuntimeError(
-                "Cannot constrain to a single row in a non-homogeneous array; you currently "
-                f"are using a {self.metadata.output_type} file"
+                "Cannot constrain to a single row in a non-homogeneous array; you "
+                f"currently are using a {self.metadata.output_type} file"
             )
 
         if self.spatial_only:
