@@ -11,11 +11,7 @@ import numpy as np
 
 from swiftsimio.metadata.objects import SWIFTMetadata
 
-from swiftsimio.objects import (
-    InvalidSnapshot,
-    cosmo_array,
-    cosmo_quantity,
-)
+from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 
 from swiftsimio.accelerated import ranges_from_array
 

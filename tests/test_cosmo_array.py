@@ -111,11 +111,7 @@ class TestCosmoArrayInit:
         Check initializing from a bare numpy array.
         """
         arr = cosmo_array(
-            np.ones(5),
-            units=u.Mpc,
-            scale_factor=1.0,
-            scale_exponent=1,
-            comoving=False,
+            np.ones(5), units=u.Mpc, scale_factor=1.0, scale_exponent=1, comoving=False
         )
         assert hasattr(arr, "cosmo_factor")
         assert hasattr(arr, "comoving")
@@ -177,18 +173,14 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [
                 cosmo_array(
-                    [1],
-                    units=u.Mpc,
-                    comoving=False,
-                    scale_factor=1.0,
-                    scale_exponent=1,
+                    [1], units=u.Mpc, comoving=False, scale_factor=1.0, scale_exponent=1
                 )
                 for _ in range(5)
             ]
         )
         assert isinstance(arr, cosmo_array)
         assert hasattr(arr, "cosmo_factor") and arr.cosmo_factor == cosmo_factor(
-            a**1, 1
+            a ** 1, 1
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
 
@@ -635,11 +627,7 @@ class TestNumpyFunctions:
         (
             None,
             cosmo_array(
-                [1, 2, 3],
-                u.s,
-                comoving=False,
-                scale_factor=1.0,
-                scale_exponent=1,
+                [1, 2, 3], u.s, comoving=False, scale_factor=1.0, scale_exponent=1
             ),
             np.array([1, 2, 3]),
         ),
@@ -725,9 +713,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**-1, 1.0),
-                    np.histogram2d: cosmo_factor(a**-3, 1.0),
-                    np.histogramdd: cosmo_factor(a**-6, 1.0),
+                    np.histogram: cosmo_factor(a ** -1, 1.0),
+                    np.histogram2d: cosmo_factor(a ** -3, 1.0),
+                    np.histogramdd: cosmo_factor(a ** -6, 1.0),
                 }[func]
             )
         elif density and isinstance(weights, cosmo_array):
@@ -735,9 +723,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**0, 1.0),
-                    np.histogram2d: cosmo_factor(a**-2, 1.0),
-                    np.histogramdd: cosmo_factor(a**-5, 1.0),
+                    np.histogram: cosmo_factor(a ** 0, 1.0),
+                    np.histogram2d: cosmo_factor(a ** -2, 1.0),
+                    np.histogramdd: cosmo_factor(a ** -5, 1.0),
                 }[func]
             )
         elif not density and isinstance(weights, cosmo_array):
@@ -745,9 +733,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a**1, 1.0),
-                    np.histogram2d: cosmo_factor(a**1, 1.0),
-                    np.histogramdd: cosmo_factor(a**1, 1.0),
+                    np.histogram: cosmo_factor(a ** 1, 1.0),
+                    np.histogram2d: cosmo_factor(a ** 1, 1.0),
+                    np.histogramdd: cosmo_factor(a ** 1, 1.0),
                 }[func]
             )
         ret_bins = {
@@ -759,9 +747,9 @@ class TestNumpyFunctions:
             ret_bins,
             (
                 [
-                    cosmo_factor(a**1, 1.0),
-                    cosmo_factor(a**2, 1.0),
-                    cosmo_factor(a**3, 1.0),
+                    cosmo_factor(a ** 1, 1.0),
+                    cosmo_factor(a ** 2, 1.0),
+                    cosmo_factor(a ** 3, 1.0),
                 ]
             ),
         ):
@@ -794,7 +782,7 @@ class TestNumpyFunctions:
         res = ca(np.arange(3)).dot(ca(np.arange(3)))
         assert isinstance(res, cosmo_quantity)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**2, 0.5)
+        assert res.cosmo_factor == cosmo_factor(a ** 2, 0.5)
         assert res.valid_transform is True
 
 
@@ -834,7 +822,7 @@ class TestCosmoQuantity:
         )
         res = getattr(cq, func)(*args)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True
 
     def test_round(self):
@@ -852,7 +840,7 @@ class TestCosmoQuantity:
         res = round(cq)
         assert res.value == 1.0
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True
 
     def test_scalar_return_func(self):
@@ -886,7 +874,7 @@ class TestCosmoQuantity:
         )
         res = getattr(cq, prop)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
         assert res.valid_transform is True
 
 
@@ -957,11 +945,7 @@ class TestMultiplicationByUnyt:
         changes in unyt, see `test_rmultiplication_by_unyt`.
         """
         ca = cosmo_array(
-            np.ones(3),
-            u.Mpc,
-            comoving=True,
-            scale_factor=1.0,
-            scale_exponent=1,
+            np.ones(3), u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1
         )
         # required so that can test right-sided division with the same assertions:
         assert np.allclose(ca.to_value(ca.units), 1)
@@ -969,7 +953,7 @@ class TestMultiplicationByUnyt:
         multiplied_by_quantity = ca * (1 * u.Mpc)  # parentheses very important here
         # get the same result twice through left-sided multiplication and division:
         lmultiplied_by_unyt = ca * u.Mpc
-        ldivided_by_unyt = ca / u.Mpc**-1
+        ldivided_by_unyt = ca / u.Mpc ** -1
 
         for multiplied_by_unyt in (lmultiplied_by_unyt, ldivided_by_unyt):
             assert isinstance(multiplied_by_quantity, cosmo_array)
@@ -1003,7 +987,7 @@ class TestMultiplicationByUnyt:
         multiplied_by_quantity = ca * (1 * u.Mpc)  # parentheses very important here
         # get 2x the same result through right-sided multiplication and division:
         rmultiplied_by_unyt = u.Mpc * ca
-        rdivided_by_unyt = u.Mpc**2 / ca
+        rdivided_by_unyt = u.Mpc ** 2 / ca
 
         for multiplied_by_unyt in (rmultiplied_by_unyt, rdivided_by_unyt):
             assert isinstance(multiplied_by_quantity, cosmo_array)
