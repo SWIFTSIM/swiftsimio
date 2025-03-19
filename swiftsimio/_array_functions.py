@@ -443,7 +443,7 @@ def __binary_preserve_cosmo_factor(
         return cf2
     elif cf1 != cf2:
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
-    elif cf1 == cf2:
+    else:  # cf1 == cf2
         return cf1  # or cf2, they're equal
 
 
@@ -720,18 +720,18 @@ def _arctan2_cosmo_factor(
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
+        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf2.scale_factor)
     elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
             f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
     elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
-        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(
