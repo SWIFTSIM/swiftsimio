@@ -12,7 +12,7 @@ are documented to assist in maintenance and development of swiftsimio.
 import warnings
 from functools import reduce
 import numpy as np
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Optional
 import unyt
 from unyt import unyt_quantity, unyt_array
 from swiftsimio import objects
@@ -450,8 +450,7 @@ def __binary_preserve_cosmo_factor(
 def _power_cosmo_factor(
     cf1: "objects.cosmo_factor",
     cf2: "objects.cosmo_factor",
-    inputs: "Tuple[objects.cosmo_array]" = None,
-    power: float = None,
+    power: Optional[float] = None,
 ) -> "objects.cosmo_factor":
     """
     Raise a :class:`~swiftsimio.objects.cosmo_factor` to a power of another
@@ -460,17 +459,13 @@ def _power_cosmo_factor(
     Parameters
     ----------
     cf1 : swiftsimio.objects.cosmo_factor
-        :class:`~swiftsimio.objects.cosmo_factor` that is the base.
+        :class:`~swiftsimio.objects.cosmo_factor` attached to the base.
 
     cf2 : swiftsimio.objects.cosmo_factor
-        :class:`~swiftsimio.objects.cosmo_factor` that is the exponent.
-
-    inputs : :obj:`tuple`
-        The objects that ``cf1`` and ``cf2`` are attached to. Give ``inputs`` or
-        ``power``, not both.
+        :class:`~swiftsimio.objects.cosmo_factor` attached to the exponent.
 
     power : float
-        The power to raise ``cf1`` to. Give ``inputs`` or ``power``, not both.
+        The power to raise ``cf1`` to.
 
     Returns
     -------
@@ -483,9 +478,8 @@ def _power_cosmo_factor(
         If the exponent is not a dimensionless quantity, or the exponent has a
         ``cosmo_factor`` whose scaling with scale factor is not ``1.0``.
     """
-    if inputs is not None and power is not None:
+    if power is None:
         raise ValueError
-    power = inputs[1] if inputs else power
     if hasattr(power, "units"):
         if not power.units.is_dimensionless:
             raise ValueError("Exponent must be dimensionless.")
@@ -578,7 +572,7 @@ def _reciprocal_cosmo_factor(
 
 
 def _passthrough_cosmo_factor(
-    cf: "objects.cosmo_factor", cf2: "objects.cosmo_factor" = None, **kwargs
+    cf: "objects.cosmo_factor", cf2: "Optional[objects.cosmo_factor]" = None, **kwargs
 ) -> "objects.cosmo_factor":
     """
     Preserve a :class:`~swiftsimio.objects.cosmo_factor`, optionally checking that it
@@ -615,7 +609,7 @@ def _passthrough_cosmo_factor(
 def _return_without_cosmo_factor(
     cf: "objects.cosmo_factor",
     cf2: "objects.cosmo_factor" = np._NoValue,
-    zero_comparison: bool = None,
+    zero_comparison: Optional[bool] = None,
     **kwargs,
 ) -> None:
     """
@@ -737,7 +731,7 @@ def _arctan2_cosmo_factor(
 def _comparison_cosmo_factor(
     cf1: "objects.cosmo_factor",
     cf2: "objects.cosmo_factor",
-    inputs: "Tuple[objects.cosmo_array]" = None,
+    inputs: "Optional[Tuple[objects.cosmo_array]]" = None,
 ) -> None:
     """
     Helper to enable comparisons involving :class:`~swiftsimio.objects.cosmo_factor`s.
@@ -946,7 +940,7 @@ def _return_helper(
     res: np.ndarray,
     helper_result: dict,
     ret_cf: "objects.cosmo_factor",
-    out: np.ndarray = None,
+    out: Optional[np.ndarray] = None,
 ) -> "objects.cosmo_array":
     """
     Helper function to attach our cosmo attributes to return values of wrapped functions.
