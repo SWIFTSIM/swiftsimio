@@ -450,6 +450,7 @@ def __binary_preserve_cosmo_factor(
 def _power_cosmo_factor(
     cf1: "objects.cosmo_factor",
     cf2: "objects.cosmo_factor",
+    inputs: "Optional[Tuple[objects.cosmo_array]]" = None,
     power: Optional[float] = None,
 ) -> "objects.cosmo_factor":
     """
@@ -464,8 +465,12 @@ def _power_cosmo_factor(
     cf2 : swiftsimio.objects.cosmo_factor
         :class:`~swiftsimio.objects.cosmo_factor` attached to the exponent.
 
+    inputs : :obj:`tuple`
+        The objects that ``cf1`` and ``cf2`` are attached to. Give ``inputs`` or
+        ``power``, not both.
+
     power : float
-        The power to raise ``cf1`` to.
+        The power to raise ``cf1`` to. Give ``inputs`` or ``power``, not both.
 
     Returns
     -------
@@ -478,8 +483,9 @@ def _power_cosmo_factor(
         If the exponent is not a dimensionless quantity, or the exponent has a
         ``cosmo_factor`` whose scaling with scale factor is not ``1.0``.
     """
-    if power is None:
+    if (inputs is not None and power is not None) or (inputs is None and power is None):
         raise ValueError
+    power = inputs[1] if inputs else power
     if hasattr(power, "units"):
         if not power.units.is_dimensionless:
             raise ValueError("Exponent must be dimensionless.")
