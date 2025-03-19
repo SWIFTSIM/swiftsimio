@@ -13,7 +13,7 @@ import unyt
 from unyt import unyt_array, unyt_quantity
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
-from typing import Iterable, Union, Tuple, Callable
+from typing import Iterable, Union, Tuple, Callable, Optional
 from collections.abc import Collection
 
 import sympy
@@ -858,6 +858,36 @@ class cosmo_factor(object):
 NULL_CF = cosmo_factor(None, None)  # helps avoid name collisions with kwargs below
 
 
+def _parse_cosmo_factor_args(
+    cf: cosmo_factor = None,
+    scale_factor: float = None,
+    scale_exponent: numeric_type = None,
+) -> cosmo_factor:
+    if cf is None and scale_factor is None and scale_exponent is None:
+        # we can return promptly
+        return None
+    if cf is not None:
+        if scale_factor is not None or scale_exponent is not None:
+            raise ValueError(
+                "Provide either `cosmo_factor` or (`scale_factor` and `scale_exponent`,"
+                "not both (perhaps there was a `cosmo_factor` attached to the input"
+                "array or scalar?)."
+            )
+        else:
+            return cf
+    else:
+        if (scale_factor is not None and scale_exponent is None) or (
+            scale_factor is None and scale_exponent is not None
+        ):
+            raise ValueError(
+                "Provide values for both `scale_factor` and `scale_exponent`."
+            )
+        if scale_factor is None and scale_exponent is None:
+            return NULL_CF
+        else:
+            return cosmo_factor.create(scale_factor, scale_exponent)
+
+
 class cosmo_array(unyt_array):
     """
     Cosmology array class.
@@ -1060,11 +1090,14 @@ class cosmo_array(unyt_array):
         cls,
         input_array: Iterable,
         units: Union[str, unyt.unit_object.Unit, "astropy.units.core.Unit"] = None,
+        *,
         registry: unyt.unit_registry.UnitRegistry = None,
         dtype: Union[np.dtype, str] = None,
         bypass_validation: bool = False,
         name: str = None,
         cosmo_factor: cosmo_factor = None,
+        scale_factor: Optional[float] = None,
+        scale_exponent: Optional[float] = None,
         comoving: bool = None,
         valid_transform: bool = True,
         compression: str = None,
@@ -1097,6 +1130,12 @@ class cosmo_array(unyt_array):
             conversions.
         cosmo_factor : swiftsimio.objects.cosmo_factor
             Object to store conversion data between comoving and physical coordinates.
+        scale_factor : float
+            The scale factor associated to the data. Also provide a value for
+            ``scale_exponent``.
+        scale_exponent : int or float
+            The exponent for the scale factor giving the scaling for conversion to/from
+            comoving units. Also provide a value for ``scale_factor``.
         comoving : bool
             Flag to indicate whether using comoving coordinates.
         valid_transform : bool
@@ -1122,6 +1161,8 @@ class cosmo_array(unyt_array):
             # dtype, units, registry & name are handled by unyt
             obj.comoving = comoving
             obj.cosmo_factor = cosmo_factor if cosmo_factor is not None else NULL_CF
+            if scale_factor is not None:  # ambiguity, but this is `bypass_validation`
+                obj.cosmo_factor = cosmo_factor.create(scale_factor, scale_exponent)
             obj.valid_transform = valid_transform
             obj.compression = compression
 
@@ -1132,6 +1173,11 @@ class cosmo_array(unyt_array):
             obj = input_array.view(cls)
 
             # do cosmo_factor first since it can be used in comoving/physical conversion:
+            cosmo_factor = _parse_cosmo_factor_args(
+                cf=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
+            )
             if cosmo_factor is not None:
                 obj.cosmo_factor = cosmo_factor
             # else is already copied from input_array
@@ -1176,6 +1222,11 @@ class cosmo_array(unyt_array):
 
             # default to comoving, cosmo_factor and compression given as kwargs
             comoving = helper_result["comoving"] if comoving is None else comoving
+            cosmo_factor = _parse_cosmo_factor_args(
+                cf=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
+            )
             cosmo_factor = (
                 _preserve_cosmo_factor(*helper_result["cfs"])
                 if cosmo_factor is None
@@ -1844,15 +1895,20 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
     def __new__(
         cls,
         input_scalar: numeric_type,
-        units: Union[str, unyt.unit_object.Unit, "astropy.units.core.Unit"] = None,
-        registry: unyt.unit_registry.UnitRegistry = None,
-        dtype: Union[np.dtype, str] = None,
+        units: Optional[
+            Union[str, unyt.unit_object.Unit, "astropy.units.core.Unit"]
+        ] = None,
+        *,
+        registry: Optional[unyt.unit_registry.UnitRegistry] = None,
+        dtype: Optional[Union[np.dtype, str]] = None,
         bypass_validation: bool = False,
-        name: str = None,
-        cosmo_factor: cosmo_factor = None,
-        comoving: bool = None,
+        name: Optional[str] = None,
+        cosmo_factor: Optional[cosmo_factor] = None,
+        scale_factor: Optional[float] = None,
+        scale_exponent: Optional[float] = None,
+        comoving: Optional[bool] = None,
         valid_transform: bool = True,
-        compression: str = None,
+        compression: Optional[str] = None,
     ) -> "cosmo_quantity":
         """
         Closely inspired by the :meth:`unyt.array.unyt_quantity.__new__` constructor.
@@ -1882,6 +1938,14 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             conversions.
         cosmo_factor : swiftsimio.objects.cosmo_factor
             Object to store conversion data between comoving and physical coordinates.
+            The same information can be provided using the ``scale_factor`` and
+            ``scale_exponent`` arguments, instead.
+        scale_factor : float
+            The scale factor associated to the data. Also provide a value for
+            ``scale_exponent``.
+        scale_exponent : int or float
+            The exponent for the scale factor giving the scaling for conversion to/from
+            comoving units. Also provide a value for ``scale_factor``.
         comoving : bool
             Flag to indicate whether using comoving coordinates.
         valid_transform : bool
@@ -1895,12 +1959,14 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             ret = super().__new__(
                 cls,
                 np.asarray(input_scalar),
-                units,
-                registry,
+                units=units,
+                registry=registry,
                 dtype=dtype,
                 bypass_validation=bypass_validation,
                 name=name,
                 cosmo_factor=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
                 comoving=comoving,
                 valid_transform=valid_transform,
                 compression=compression,
@@ -1917,8 +1983,6 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             if cosmo_factor is None
             else cosmo_factor
         )
-        if cosmo_factor is None:
-            cosmo_factor = NULL_CF
         comoving = (
             getattr(input_scalar, "comoving", None) if comoving is None else comoving
         )
@@ -1935,12 +1999,14 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         ret = super().__new__(
             cls,
             np.asarray(input_scalar),
-            units,
-            registry,
+            units=units,
+            registry=registry,
             dtype=dtype,
             bypass_validation=bypass_validation,
             name=name,
             cosmo_factor=cosmo_factor,
+            scale_factor=scale_factor,
+            scale_exponent=scale_exponent,
             comoving=comoving,
             valid_transform=valid_transform,
             compression=compression,

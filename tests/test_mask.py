@@ -7,7 +7,7 @@ from swiftsimio import load, mask
 import numpy as np
 
 from unyt import dimensionless
-from swiftsimio import cosmo_array as array
+from swiftsimio import cosmo_array
 
 
 @requires("cosmological_volume.hdf5")
@@ -23,8 +23,8 @@ def test_reading_select_region_spatial(filename):
     mask_region = mask(filename, spatial_only=True)
     mask_region_nospatial = mask(filename, spatial_only=False)
 
-    restrict = array(
-        [[0.0, 0.0, 0.0] * full_data.metadata.boxsize, full_data.metadata.boxsize * 0.5]
+    restrict = cosmo_array(
+        [np.zeros_like(full_data.metadata.boxsize), full_data.metadata.boxsize * 0.5]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
@@ -55,11 +55,8 @@ def test_reading_select_region_half_box(filename):
     # Mask off the lower bottom corner of the volume.
     mask_region = mask(filename, spatial_only=True)
 
-    restrict = array(
-        [
-            [0.0, 0.0, 0.0] * full_data.metadata.boxsize,
-            full_data.metadata.boxsize * 0.49,
-        ]
+    restrict = cosmo_array(
+        [np.zeros_like(full_data.metadata.boxsize), full_data.metadata.boxsize * 0.49]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
