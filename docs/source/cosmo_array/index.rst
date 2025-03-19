@@ -47,7 +47,7 @@ is done with the :meth:`~swiftsimio.objects.cosmo_array.to_physical`, :meth:`~sw
 
 The ``valid_transform`` is a boolean flag that is set to ``False`` for some arrays that don't make sense to convert to comoving.
 
-:class:`~swiftsimio.objects.cosmo_array` supports array arithmetic and the entire :mod:`numpy` range of functions. Attempting to combine arrays (e.g. by addition) will validate the cosmology information first. The implementation is designed to be permissive: it will only raise exceptions when a genuinely invalid combination is encountered, but is tolerant of missing cosmology information. When one argument in a relevant operation (like addition) is not a :class:`~swiftsimio.objects.cosmo_array` the attributes of the :class:`~swiftsimio.objects.cosmo_array` will be assumed for both arguments. In such cases a warning is produced stating that this assumption has been made.
+:class:`~swiftsimio.objects.cosmo_array` supports array arithmetic and the entire :mod:`numpy` range of functions. Attempting to combine arrays (e.g. by addition) will validate the cosmology information first. The implementation is designed to be permissive: it will only raise exceptions when a genuinely invalid combination is encountered, but is tolerant of missing cosmology information. When one argument in a relevant operation (like addition, for example) is not a :class:`~swiftsimio.objects.cosmo_array` the attributes of the :class:`~swiftsimio.objects.cosmo_array` will be assumed for both arguments. In such cases a warning is produced stating that this assumption has been made.
 
 .. note::
 
@@ -65,12 +65,13 @@ To make the most of the utility offered by the :class:`~swiftsimio.objects.cosmo
        [1, 2, 3],
        u.Mpc,
        comoving=True,
-       cosmo_factor=cosmo_factor.create(0.5, 1)  # scale factor, exponent
+       scale_factor=0.5,  # a=0.5, i.e. z=1
+       scale_exponent=1,  # distances scale as a**1, so the scale exponent is 1
    )
    # consider getting the scale factor from metadata when applicable, i.e. replace:
-   # cosmo_factor.create(0.5, 1)
+   # scale_factor=0.5
    # with:
-   # cosmo_factor.create(data.metadata.a, 1)
+   # scale_factor=data.metadata.a
 
 There is also a very similar :class:`~swiftsimio.objects.cosmo_quantity` class designed for scalar values,
 analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter this being returned by :mod:`numpy` functions. Cosmology-aware scalar values can be initialized similarly:
@@ -84,6 +85,7 @@ analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter this bein
        2,
        u.Mpc,
        comoving=False,
-       cosmo_factor=cosmo_factor.create(0.5, 1)
+       scale_factor=0.5,
+       cosmo_factor=1,
    )
    
