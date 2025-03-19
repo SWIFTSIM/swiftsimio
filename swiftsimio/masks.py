@@ -16,7 +16,6 @@ from swiftsimio.objects import (
     cosmo_array,
     cosmo_quantity,
     cosmo_factor,
-    a,
 )
 
 from swiftsimio.accelerated import ranges_from_array
@@ -237,7 +236,7 @@ class SWIFTMask(object):
             centers_handle[:][sort],
             units=self.units.length,
             comoving=True,
-            cosmo_factor=cosmo_factor(a ** 1, self.metadata.scale_factor),
+            cosmo_factor=cosmo_factor.create(self.metadata.scale_factor, 1),
         )
 
         # Note that we cannot assume that these are cubic, unfortunately.
@@ -245,7 +244,7 @@ class SWIFTMask(object):
             metadata_handle.attrs["size"],
             units=self.units.length,
             comoving=True,
-            cosmo_factor=cosmo_factor(a ** 1, self.metadata.scale_factor),
+            cosmo_factor=cosmo_factor.create(self.metadata.scale_factor, 1),
         )
 
         return

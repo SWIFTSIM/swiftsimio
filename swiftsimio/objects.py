@@ -292,6 +292,9 @@ class cosmo_factor(object):
         >>> cosmo_factor(a**2, scale_factor=0.5) * cosmo_factor(a**-1, scale_factor=0.5)
         cosmo_factor(expr=a, scale_factor=0.5)
 
+    See Also
+    --------
+    swiftsimio.objects.cosmo_factor.create
     """
 
     def __init__(self, expr: sympy.Expr, scale_factor: float) -> None:
@@ -305,10 +308,40 @@ class cosmo_factor(object):
 
         scale_factor : float
             The scale factor (a).
+
+        See Also
+        --------
+        swiftsimio.objects.cosmo_factor.create
         """
         self.expr = expr
         self.scale_factor = scale_factor
         pass
+
+    @classmethod
+    def create(cls, scale_factor: float, exponent: numeric_type) -> "cosmo_factor":
+        """
+        Create a :class:`~swiftsimio.objects.cosmo_factor` from a scale factor and
+        exponent.
+
+        Parameters
+        ----------
+        scale_factor : :obj:`float`
+            The scale factor.
+
+        exponent : :obj:`int` or :obj:`float`
+            The exponent defining the scaling with the scale factor.
+
+        Examples
+        --------
+        ::
+
+            >>> cosmo_factor.create(0.5, 2)
+            cosmo_factor(expr=a**2, scale_factor=0.5)
+        """
+
+        obj = cls(a ** exponent, scale_factor)
+
+        return obj
 
     def __str__(self) -> str:
         """
@@ -906,12 +939,12 @@ class cosmo_array(unyt_array):
 
     ::
 
-        >>> from swiftsimio.objects import cosmo_array, cosmo_factor, a
+        >>> from swiftsimio.objects import cosmo_array, cosmo_factor
         >>> x = cosmo_array(
         ...     np.arange(3),
         ...     u.kpc,
         ...     comoving=True,
-        ...     cosmo_factor=cosmo_factor(a**1, scale_factor=1.0)
+        ...     cosmo_factor=cosmo_factor.create(1.0, 1)
         ... )
         >>> cosmo_array([x, x])
         cosmo_array([[0, 1, 2],

@@ -59,16 +59,18 @@ To make the most of the utility offered by the :class:`~swiftsimio.objects.cosmo
 
    import unyt as u
    from swiftsimio.objects import cosmo_array, cosmo_factor
-   from swiftsimio.objects import a  # the scale factor represented by a sympy expression
 
+   # suppose the scale factor is 0.5 and it scales as a**1, then: 
    my_cosmo_array = cosmo_array(
        [1, 2, 3],
        u.Mpc,
        comoving=True,
-       cosmo_factor=cosmo_factor(a**1, 1.0)  # 1.0 is the current scale factor
+       cosmo_factor=cosmo_factor.create(0.5, 1)  # scale factor, exponent
    )
-   # consider getting the scale factor from metadata when applicable, like:
-   # data.metadata.a
+   # consider getting the scale factor from metadata when applicable, i.e. replace:
+   # cosmo_factor.create(0.5, 1)
+   # with:
+   # cosmo_factor.create(data.metadata.a, 1)
 
 There is also a very similar :class:`~swiftsimio.objects.cosmo_quantity` class designed for scalar values,
 analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter this being returned by :mod:`numpy` functions. Cosmology-aware scalar values can be initialized similarly:
@@ -76,7 +78,12 @@ analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter this bein
 .. code-block:: python
 
    import unyt as u
-   from swiftsimio.objects import cosmo_quantity, cosmo_factor, a
+   from swiftsimio.objects import cosmo_quantity, cosmo_factor
 
-   my_cosmo_quantity = cosmo_quantity(2, u.Mpc, comoving=False, cosmo_factor=cosmo_factor(a**1, 0.5))
+   my_cosmo_quantity = cosmo_quantity(
+       2,
+       u.Mpc,
+       comoving=False,
+       cosmo_factor=cosmo_factor.create(0.5, 1)
+   )
    
