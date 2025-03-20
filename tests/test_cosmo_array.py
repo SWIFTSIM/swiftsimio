@@ -116,6 +116,16 @@ class TestCosmoArrayInit:
         assert hasattr(arr, "cosmo_factor")
         assert hasattr(arr, "comoving")
         assert isinstance(arr, cosmo_array)
+        # also with a cosmo_factor argument instead of scale_factor & scale_exponent
+        arr = cosmo_array(
+            np.ones(5),
+            units=u.Mpc,
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            comoving=False,
+        )
+        assert hasattr(arr, "cosmo_factor")
+        assert hasattr(arr, "comoving")
+        assert isinstance(arr, cosmo_array)
 
     def test_init_from_list(self):
         """
@@ -131,6 +141,16 @@ class TestCosmoArrayInit:
         assert hasattr(arr, "cosmo_factor")
         assert hasattr(arr, "comoving")
         assert isinstance(arr, cosmo_array)
+        # also with a cosmo_factor argument instead of scale_factor & scale_exponent
+        arr = cosmo_array(
+            [1, 1, 1, 1, 1],
+            units=u.Mpc,
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            comoving=False,
+        )
+        assert hasattr(arr, "cosmo_factor")
+        assert hasattr(arr, "comoving")
+        assert isinstance(arr, cosmo_array)
 
     def test_init_from_unyt_array(self):
         """
@@ -140,6 +160,15 @@ class TestCosmoArrayInit:
             u.unyt_array(np.ones(5), units=u.Mpc),
             scale_factor=1.0,
             scale_exponent=1,
+            comoving=False,
+        )
+        assert hasattr(arr, "cosmo_factor")
+        assert hasattr(arr, "comoving")
+        assert isinstance(arr, cosmo_array)
+        # also with a cosmo_factor argument instead of scale_factor & scale_exponent
+        arr = cosmo_array(
+            u.unyt_array(np.ones(5), units=u.Mpc),
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -162,6 +191,15 @@ class TestCosmoArrayInit:
         assert hasattr(arr, "cosmo_factor")
         assert hasattr(arr, "comoving")
         assert isinstance(arr, cosmo_array)
+        # also with a cosmo_factor argument instead of scale_factor & scale_exponent
+        arr = cosmo_array(
+            [u.unyt_array(1, units=u.Mpc) for _ in range(5)],
+            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            comoving=False,
+        )
+        assert hasattr(arr, "cosmo_factor")
+        assert hasattr(arr, "comoving")
+        assert isinstance(arr, cosmo_array)
 
     def test_init_from_list_of_cosmo_arrays(self):
         """
@@ -174,6 +212,23 @@ class TestCosmoArrayInit:
             [
                 cosmo_array(
                     [1], units=u.Mpc, comoving=False, scale_factor=1.0, scale_exponent=1
+                )
+                for _ in range(5)
+            ]
+        )
+        assert isinstance(arr, cosmo_array)
+        assert hasattr(arr, "cosmo_factor") and arr.cosmo_factor == cosmo_factor(
+            a ** 1, 1
+        )
+        assert hasattr(arr, "comoving") and arr.comoving is False
+        # also with a cosmo_factor argument instead of scale_factor & scale_exponent
+        arr = cosmo_array(
+            [
+                cosmo_array(
+                    [1],
+                    units=u.Mpc,
+                    comoving=False,
+                    cosmo_factor=cosmo_factor(a ** 1, 1.0),
                 )
                 for _ in range(5)
             ]
