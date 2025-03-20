@@ -239,6 +239,60 @@ class TestCosmoArrayInit:
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
 
+    def test_expected_init_failures(self):
+        for cls, inp in ((cosmo_array, [1]), (cosmo_quantity, 1)):
+            # we refuse both cosmo_factor and scale_factor/scale_exponent provided:
+            with pytest.raises(ValueError):
+                cls(
+                    inp,
+                    units=u.Mpc,
+                    comoving=False,
+                    cosmo_factor=cosmo_factor.create(1.0, 1),
+                    scale_factor=0.5,
+                    scale_exponent=1,
+                )
+            # unless they match, that's fine:
+            cls(
+                inp,
+                units=u.Mpc,
+                comoving=False,
+                cosmo_factor=cosmo_factor.create(1.0, 1),
+                scale_factor=1.0,
+                scale_exponent=1,
+            )
+            # we refuse scale_factor with missing scale_exponent and vice-versa:
+            with pytest.raises(ValueError):
+                cls(inp, units=u.Mpc, comoving=False, scale_factor=1.0)
+            with pytest.raises(ValueError):
+                cls(inp, units=u.Mpc, comoving=False, scale_exponent=1)
+            # we refuse overriding an input cosmo_array's information:
+            with pytest.raises(ValueError):
+                cls(
+                    cls(
+                        inp,
+                        units=u.Mpc,
+                        comoving=False,
+                        cosmo_factor=cosmo_factor.create(1.0, 1),
+                    ),
+                    units=u.Mpc,
+                    comoving=False,
+                    scale_factor=0.5,
+                    scale_exponent=1,
+                )
+            # unless it matches, that's fine:
+            cls(
+                cls(
+                    inp,
+                    units=u.Mpc,
+                    comoving=False,
+                    cosmo_factor=cosmo_factor.create(1.0, 1),
+                ),
+                units=u.Mpc,
+                comoving=False,
+                scale_factor=1.0,
+                scale_exponent=1,
+            )
+
 
 class TestNumpyFunctions:
     """

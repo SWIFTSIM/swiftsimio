@@ -898,11 +898,15 @@ def _parse_cosmo_factor_args(
         return None
     if cf is not None:
         if scale_factor is not None or scale_exponent is not None:
-            raise ValueError(
-                "Provide either `cosmo_factor` or (`scale_factor` and `scale_exponent`,"
-                "not both (perhaps there was a `cosmo_factor` attached to the input"
-                "array or scalar?)."
-            )
+            if cosmo_factor.create(scale_factor, scale_exponent) != cf:
+                raise ValueError(
+                    "Provide either `cosmo_factor` or (`scale_factor` and "
+                    "`scale_exponent`, not both (perhaps there was a `cosmo_factor` "
+                    "attached to the input array or scalar?)."
+                )
+            else:
+                # the duplicate information matches so let's allow it
+                return cf
         else:
             return cf
     else:
@@ -1204,6 +1208,11 @@ class cosmo_array(unyt_array):
             obj = input_array.view(cls)
 
             # do cosmo_factor first since it can be used in comoving/physical conversion:
+            cosmo_factor = (
+                input_array.cosmo_factor
+                if input_array.cosmo_factor != NULL_CF
+                else None
+            )
             cosmo_factor = _parse_cosmo_factor_args(
                 cf=cosmo_factor,
                 scale_factor=scale_factor,
