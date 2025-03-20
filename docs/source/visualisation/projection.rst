@@ -305,7 +305,6 @@ mass density map for dark matter. We provide a utility to do this through
    # Generate smoothing lengths for the dark matter
    data.dark_matter.smoothing_length = generate_smoothing_lengths(
        data.dark_matter.coordinates,
-       data.metadata.boxsize,
        kernel_gamma=1.8,
        neighbours=57,
        speedup_fac=2,
@@ -317,7 +316,6 @@ mass density map for dark matter. We provide a utility to do this through
        # Note here that we pass in the dark matter dataset not the whole
        # data object, to specify what particle type we wish to visualise
        data=data.dark_matter,
-       boxsize=data.metadata.boxsize,
        resolution=1024,
        project="masses",
        parallel=True,
