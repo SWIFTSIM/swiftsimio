@@ -580,6 +580,13 @@ class TestNumpyFunctions:
         functions_checked = list()
         bad_funcs = dict()
         for fname, args in functions_to_check.items():
+            # ----- this is to be removed ------
+            # ---- see test_block_is_broken ----
+            if fname == "block":
+                # we skip this function due to issue in unyt with unreleased fix
+                functions_checked.append(np.block)
+                continue
+            # ----------------------------------
             ua_args = list()
             for arg in args:
                 ua_args.append(arg_to_ua(arg))
@@ -665,6 +672,21 @@ class TestNumpyFunctions:
                     for f in unchecked_functions
                 ],
             )
+
+    @pytest.mark.xfail
+    def test_block_is_broken(self):
+        """
+        There is an issue in unyt affecting np.block and fixed in
+        https://github.com/yt-project/unyt/pull/571
+
+        When this fix is released:
+        - This test will unexpectedly pass (instead of xfailing).
+        - Remove lines flagged with a comment in `test_explicitly_handled_funcs`.
+        - Remove this test.
+        """
+        assert isinstance(
+            np.block([[ca(np.arange(3))], [ca(np.arange(3))]]), cosmo_array
+        )
 
     # the combinations of units and cosmo_factors is nonsense but it's just for testing...
     @pytest.mark.parametrize(
@@ -1086,6 +1108,8 @@ class TestMultiplicationByUnyt:
 
         If this is fixed in the future this test will pass and can be merged with
         `test_multiplication_by_unyt` to tidy up.
+
+        See https://github.com/yt-project/unyt/pull/572
         """
         ca = cosmo_array(
             np.ones(3), u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1
