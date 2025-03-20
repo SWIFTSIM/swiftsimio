@@ -54,7 +54,7 @@ function. For example, using the above deposit:
 
     wavenumbers, power_spectrum, _ = deposition_to_power_spectrum(
         deposition=gas_mass_deposit,
-        box_size=data.metadata.box_size,
+        boxsize=data.metadata.boxsize,
     )
 
 This power spectrum can then be plotted. Units are included on both the wavenumbers
@@ -94,47 +94,39 @@ allows you to do this easily:
 
 .. code-block:: python
 
-    import unyt as u
-    from swiftsimio.visualisation.power_spectrum import folded_depositions_to_power_spectrum
-    from swiftsimio.objects import cosmo_quantity, cosmo_factor, a
-
-    folded_depositions = {}
-
-    for folding in [x * 2 for x in range(5)]:
-        folded_depositions[folding] = render_to_deposit(
-            data.gas,
-            resolution=512,
-            project="masses",
-            parallel=True,
-            folding=folding,
-        )
-
-    bins, centers, power_spectrum, foldings = folded_depositions_to_power_spectrum(
-        depositions=folded_depositions,
-        box_size=data.metadata.box_size,
-        number_of_wavenumber_bins=128,
-        wavenumber_range=[
-	    cosmo_quantity(
-	        1e-2,
-	        u.Mpc**-1,
-	        comoving=True,
-	        cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor,
-            )
-	    cosmo_quantity(
-	        1e2,
-		u.Mpc**-1,
-		comoving=True,
-		cosmo_factor=cosmo_factor(a**-1, data.metadata.scale_factor,
-	    ),
-	],
-        log_wavenumber_bins=True,
-        workers=4,
-        minimal_sample_modes=8192,
-        cutoff_above_wavenumber_fraction=0.75,
-        shot_noise_norm=len(gas_mass_deposit),
-        
-    )
-
+   import unyt as u
+   from swiftsimio.visualisation.power_spectrum import folded_depositions_to_power_spectrum
+   from swiftsimio.objects import cosmo_array
+   
+   folded_depositions = {}
+   
+   for folding in [x * 2 for x in range(5)]:
+       folded_depositions[folding] = render_to_deposit(
+           data.gas,
+           resolution=512,
+           project="masses",
+           parallel=True,
+           folding=folding,
+       )
+   
+   bins, centers, power_spectrum, foldings = folded_depositions_to_power_spectrum(
+       depositions=folded_depositions,
+       boxsize=data.metadata.boxsize,
+       number_of_wavenumber_bins=128,
+       wavenumber_range=cosmo_array(
+           [1e-2, 1e2],
+           u.Mpc**-1,
+           comoving=True,
+           scale_factor=data.metadata.a,
+           scale_exponent=-1,
+       ),
+       log_wavenumber_bins=True,
+       workers=4,
+       minimal_sample_modes=8192,
+       cutoff_above_wavenumber_fraction=0.75,
+       shot_noise_norm=len(gas_mass_deposit),
+   )
+   
 The 'used' foldings of the power spectrum are shown in the
 ``foldings`` return vaule, which is an array containing the folding
 that was used for each given bin. This is useful for debugging and

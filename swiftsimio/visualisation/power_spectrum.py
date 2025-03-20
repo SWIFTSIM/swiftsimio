@@ -198,7 +198,7 @@ def render_to_deposit(
     """
 
     # Get the positions and masses
-    folding = 2.0 ** folding
+    folding = 2.0**folding
     positions = data.coordinates
     quantity = getattr(data, project)
 
@@ -216,9 +216,9 @@ def render_to_deposit(
             )
 
     # Get the box size
-    box_size = data.metadata.boxsize
+    boxsize = data.metadata.boxsize
 
-    if not box_size.units == positions.units:
+    if not boxsize.units == positions.units:
         raise AttributeError("Box size and positions have different units!")
 
     # Deposit the particles
@@ -229,9 +229,9 @@ def render_to_deposit(
         m=quantity.v,
         res=resolution,
         fold=folding,
-        box_x=box_size[0].v,
-        box_y=box_size[1].v,
-        box_z=box_size[2].v,
+        box_x=boxsize[0].v,
+        box_y=boxsize[1].v,
+        box_z=boxsize[2].v,
     )
 
     if parallel:
@@ -245,10 +245,10 @@ def render_to_deposit(
     units = 1.0 / (
         data.metadata.boxsize[0] * data.metadata.boxsize[1] * data.metadata.boxsize[2]
     )
-    units.convert_to_units(1.0 / data.metadata.boxsize.units ** 3)
+    units.convert_to_units(1.0 / data.metadata.boxsize.units**3)
 
     units *= quantity.units
-    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor ** 3)
+    new_cosmo_factor = quantity.cosmo_factor / (coord_cosmo_factor**3)
 
     return cosmo_array(
         deposition, comoving=comoving, cosmo_factor=new_cosmo_factor, units=units
@@ -257,7 +257,7 @@ def render_to_deposit(
 
 def folded_depositions_to_power_spectrum(
     depositions: Dict[int, cosmo_array],
-    box_size: cosmo_array,
+    boxsize: cosmo_array,
     number_of_wavenumber_bins: int,
     cross_depositions: Optional[Dict[int, cosmo_array]] = None,
     wavenumber_range: Optional[Tuple[cosmo_quantity]] = None,
@@ -279,7 +279,7 @@ def folded_depositions_to_power_spectrum(
         Dictionary of depositions, where the key is the base folding.
         So that would be 0 for no folding, 1 for a half-box-size folding,
         2 for a quarter, etc. The 'real' folding is 2 ** depositions.keys().
-    box_size: cosmo_array
+    boxsize: cosmo_array
         The box size of the deposition, from the dataset.
     number_of_wavenumber_bins: int
         The number of bins to use in the power spectrum.
@@ -353,12 +353,12 @@ def folded_depositions_to_power_spectrum(
 
     wavenumber_centers = 0.5 * (wavenumber_bins[1:] + wavenumber_bins[:-1])
     wavenumber_centers.name = r"Wavenumbers $k$"
-    box_volume = np.prod(box_size)
+    box_volume = np.prod(boxsize)
     power_spectrum = cosmo_array(
         np.zeros(number_of_wavenumber_bins),
         units=box_volume.units,
         comoving=box_volume.comoving,
-        cosmo_factor=box_volume.cosmo_factor ** -1,
+        cosmo_factor=box_volume.cosmo_factor**-1,
         name="Power spectrum $P(k)$",
     )
     folding_tracker = np.ones(number_of_wavenumber_bins, dtype=float)
@@ -379,7 +379,7 @@ def folded_depositions_to_power_spectrum(
             folded_counts,
         ) = deposition_to_power_spectrum(
             deposition=depositions[folding],
-            box_size=box_size,
+            boxsize=boxsize,
             folding=folding,
             wavenumber_bins=wavenumber_bins,
             workers=workers,
@@ -396,7 +396,7 @@ def folded_depositions_to_power_spectrum(
 
         if folding != final_folding:
             cutoff_wavenumber = (
-                2.0 ** folding * np.min(depositions[folding].shape) / np.min(box_size)
+                2.0**folding * np.min(depositions[folding].shape) / np.min(boxsize)
             )
 
             if cutoff_above_wavenumber_fraction is not None:
@@ -421,7 +421,7 @@ def folded_depositions_to_power_spectrum(
             corrected_wavenumber_centers[prefer_bins] = folded_wavenumber_centers[
                 prefer_bins
             ].to(corrected_wavenumber_centers.units)
-            folding_tracker[prefer_bins] = 2.0 ** folding
+            folding_tracker[prefer_bins] = 2.0**folding
 
             contributed_counts[prefer_bins] = folded_counts[prefer_bins]
         elif transition == "average":
@@ -454,7 +454,7 @@ def folded_depositions_to_power_spectrum(
 
             # For debugging, we calculate an effective fold number.
             folding_tracker[use_bins] = (
-                (folding_tracker * existing_weight + (2.0 ** folding) * new_weight)
+                (folding_tracker * existing_weight + (2.0**folding) * new_weight)
                 / transition_norm
             )[use_bins]
 
@@ -472,7 +472,7 @@ def folded_depositions_to_power_spectrum(
 
 def deposition_to_power_spectrum(
     deposition: cosmo_array,
-    box_size: cosmo_array,
+    boxsize: cosmo_array,
     folding: int = 0,
     cross_deposition: Optional[cosmo_array] = None,
     wavenumber_bins: Optional[cosmo_array] = None,
@@ -487,7 +487,7 @@ def deposition_to_power_spectrum(
     ----------
     deposition: ~swiftsimio.objects.cosmo_array[float32, float32, float32]
         The deposition to convert to a power spectrum.
-    box_size: ~swiftsimio.objects.cosmo_array
+    boxsize: ~swiftsimio.objects.cosmo_array
         The box size of the deposition, from the dataset.
     folding: int
         The folding number (i.e. box-size is divided by 2^folding)
@@ -535,9 +535,9 @@ def deposition_to_power_spectrum(
             deposition.shape == cross_deposition.shape
         ), "Depositions must have the same shape"
 
-    folding = 2.0 ** folding
+    folding = 2.0**folding
 
-    box_size_folded = box_size[0] / folding
+    boxsize_folded = boxsize[0] / folding
     npix = deposition.shape[0]
 
     mean_deposition = np.mean(deposition)
@@ -557,10 +557,10 @@ def deposition_to_power_spectrum(
     else:
         conj_fft = fft.conj()
 
-    fourier_amplitudes = (fft * conj_fft).real * box_size_folded ** 3
+    fourier_amplitudes = (fft * conj_fft).real * boxsize_folded**3
 
     # Calculate k-value spacing (centered FFT)
-    dk = 2 * np.pi / (box_size_folded)
+    dk = 2 * np.pi / (boxsize_folded)
 
     # Create k-values array (adjust range based on your needs)
     kfreq = np.fft.fftfreq(npix, d=1 / dk) * npix
@@ -589,16 +589,16 @@ def deposition_to_power_spectrum(
     divisor[zero_mask] = 1
 
     # Correct for folding
-    binned_amplitudes *= folding ** 3
+    binned_amplitudes *= folding**3
 
     # Correct units and names
     wavenumbers = binned_wavenumbers / divisor
     wavenumbers.name = "Wavenumber $k$"
 
     shot_noise = (
-        (box_size[0] ** 3 / shot_noise_norm)
+        (boxsize[0] ** 3 / shot_noise_norm)
         if shot_noise_norm is not None
-        else zeros_like(box_size[0] ** 3)  # copy cosmo properties
+        else zeros_like(boxsize[0] ** 3)  # copy cosmo properties
     )
     power_spectrum = (binned_amplitudes / divisor) - shot_noise
 

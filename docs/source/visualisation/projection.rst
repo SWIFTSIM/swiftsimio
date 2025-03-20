@@ -193,87 +193,96 @@ is shown in the ``velociraptor`` section.
 
 .. code-block:: python
 
-   from swiftsimio import load, mask
+   from swiftsimio import load, mask, cosmo_array
    from velociraptor import load as load_catalogue
    from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
-   from swiftsimio.visualisation.projection import project_gas_pixel_grid
-
+   from swiftsimio.visualisation.projection import project_gas
+   
    import unyt
    import numpy as np
-   import matplotlib.pyplot as plt
-   from matplotlib.colors import LogNorm
-
+   
    # Radius around which to load data, we will visualise half of this
    size = 1000 * unyt.kpc
-
+   
    snapshot_filename = "cosmo_volume_example.hdf5"
    catalogue_filename = "cosmo_volume_example.properties"
-
+   
    catalogue = load_catalogue(catalogue_filename)
-
+   
    # Which halo should we visualise?
    halo = 0
-
+   
    x = catalogue.positions.xcmbp[halo]
    y = catalogue.positions.ycmbp[halo]
    z = catalogue.positions.zcmbp[halo]
-
+   
    lx = catalogue.angular_momentum.lx[halo]
    ly = catalogue.angular_momentum.ly[halo]
    lz = catalogue.angular_momentum.lz[halo]
-
+   
    # The angular momentum vector will point perpendicular to the galaxy disk.
    # If your simulation contains stars, use lx_star
    angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
-
-   face_on_rotation_matrix = rotation_matrix_from_vector(
-      angular_momentum_vector
-   )
-   edge_on_rotation_matrix = rotation_matrix_from_vector(
-      angular_momentum_vector,
-      axis="y"
-   )
-
-   region = [
-      [x - size, x + size],
-      [y - size, y + size],
-      [z - size, z + size],
-   ]
-
-   visualise_region = [
-      x - 0.5 * size, x + 0.5 * size,
-      y - 0.5 * size, y + 0.5 * size,
-   ]
-
+   
+   face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
+   edge_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector, axis="y")
+   
    data_mask = mask(snapshot_filename)
+   region = cosmo_array(
+       [
+           [x - size, x + size],
+           [y - size, y + size],
+           [z - size, z + size],
+       ],
+       x.units,
+       comoving=True,
+       scale_factor=data_mask.metadata.a,
+       scale_exponent=1,
+   )
+   
+   visualise_region = cosmo_array(
+       [
+           x - 0.5 * size,
+           x + 0.5 * size,
+           y - 0.5 * size,
+           y + 0.5 * size,
+       ],
+       comoving=True,
+       scale_factor=data_mask.metadata.a,
+       scale_exponent=1,
+   )
+   
    data_mask.constrain_spatial(region)
    data = load(snapshot_filename, mask=data_mask)
-
+   
    # Use project_gas_pixel_grid to generate projected images
-
+   
    common_arguments = dict(
        data=data,
        resolution=512,
        parallel=True,
        region=visualise_region,
-       periodic=False, # disable periodic boundaries when using rotations
+       periodic=False,  # disable periodic boundaries when using rotations
    )
-
-   un_rotated = project_gas_pixel_grid(**common_arguments)
-
-   face_on = project_gas_pixel_grid(
-      **common_arguments,
-      rotation_center=unyt.unyt_array([x, y, z]),
-      rotation_matrix=face_on_rotation_matrix,
+   
+   un_rotated = project_gas(**common_arguments)
+   
+   rotation_center = cosmo_array(
+       [x, y, z], comoving=True, scale_factor=data_mask.metadata.a, scale_exponent=1
    )
-
-   edge_on = project_gas_pixel_grid(
-      **common_arguments,
-      rotation_center=unyt.unyt_array([x, y, z]),
-      rotation_matrix=edge_on_rotation_matrix,
+   face_on = project_gas(
+       **common_arguments,
+       rotation_center=rotation_center,
+       rotation_matrix=face_on_rotation_matrix,
    )
-
+   
+   edge_on = project_gas(
+       **common_arguments,
+       rotation_center=rotation_center,
+       rotation_matrix=edge_on_rotation_matrix,
+   )
+   
 Using this with the provided example data will just show blobs due to its low resolution
 nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
 galaxies, but that data is too large to provide as an example in this tutorial.
@@ -305,6 +314,7 @@ mass density map for dark matter. We provide a utility to do this through
    # Generate smoothing lengths for the dark matter
    data.dark_matter.smoothing_length = generate_smoothing_lengths(
        data.dark_matter.coordinates,
+       data.metadata.boxsize,
        kernel_gamma=1.8,
        neighbours=57,
        speedup_fac=2,

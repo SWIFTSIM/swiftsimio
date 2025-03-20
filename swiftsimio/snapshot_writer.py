@@ -268,7 +268,7 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the scale factor associated quantities
             a_exp = a_exponents.get(name, 0)
-            a_factor = scale_factor ** a_exp
+            a_factor = scale_factor**a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
@@ -503,7 +503,7 @@ class SWIFTSnapshotWriter(object):
     def __init__(
         self,
         unit_system: Union[unyt.UnitSystem, str],
-        box_size: cosmo_array,
+        boxsize: cosmo_array,
         dimension=3,
         compress=True,
         extra_header: Union[None, dict] = None,
@@ -542,13 +542,13 @@ class SWIFTSnapshotWriter(object):
 
         # Validate the boxsize and convert to our units.
         try:
-            for x in box_size:
+            for x in boxsize:
                 x.convert_to_base(self.unit_system)
-            self.box_size = box_size
+            self.boxsize = boxsize
         except TypeError:
             # This is just a single number (i.e. uniform in all dimensions)
-            box_size.convert_to_base(self.unit_system)
-            self.box_size = box_size
+            boxsize.convert_to_base(self.unit_system)
+            self.boxsize = boxsize
 
         self.dimension = dimension
         self.compress = compress
@@ -634,7 +634,7 @@ class SWIFTSnapshotWriter(object):
                 mass_table[_ptype_str_to_int(number)] = getattr(self, name).masses[0]
 
         attrs = {
-            "BoxSize": self.box_size,
+            "BoxSize": self.boxsize,
             "NumPart_Total": number_of_particles,
             "NumPart_Total_HighWord": [0] * 6,
             "Flag_Entropy_ICs": 0,

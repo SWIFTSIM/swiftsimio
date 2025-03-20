@@ -175,7 +175,7 @@ these highlights. The example below shows how to use this.
    from swiftsimio.visualisation import volume_render
    
    # Load the data
-   data = load("test_data/eagle_6.hdf5")
+   data = load("eagle_6.hdf5")
    
    # Rough location of an interesting galaxy in the volume.
    region = [
