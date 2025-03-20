@@ -41,7 +41,7 @@ classifiers = [
 dependencies = [
     "numpy>=2.1.0",
     "h5py",
-    "unyt",
+    "unyt>=3.0.4",
     "numba>=0.50.0",
 ]
 
