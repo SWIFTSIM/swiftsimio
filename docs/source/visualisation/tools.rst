@@ -9,8 +9,8 @@ Tools
 
 The :mod:`swiftsimio.visualisation.tools.cmaps` module includes three
 objects that can be used to deploy two dimensional colour maps. The first,
-:class:`swiftsimio.visualisation.tools.cmaps.LinearSegmentedCmap2D`, and second
-:class:`swiftsimio.visualisation.tools.cmaps.LinearSegmentedCmap2DHSV`, allow
+:class:`~swiftsimio.visualisation.tools.cmaps.LinearSegmentedCmap2D`, and second
+:class:`~swiftsimio.visualisation.tools.cmaps.LinearSegmentedCmap2DHSV`, allow
 you to generate new color maps from sets of colors and coordinates.
 
 .. code-block:: python
@@ -22,7 +22,7 @@ you to generate new color maps from sets of colors and coordinates.
 	)
 	
 This generates a color map that is a quasi-linear interpolation between all
-of the points. The map can be displayed using the ``plot`` method,
+of the points. The map can be displayed using the :func:`~matplotlib.pyplot.plot` function,
 
 .. code-block:: python
 
@@ -30,7 +30,7 @@ of the points. The map can be displayed using the ``plot`` method,
 	
 	bower.plot(ax)
 	
-Which generates:
+which generates:
 
 .. image:: bower_cmap.png
 

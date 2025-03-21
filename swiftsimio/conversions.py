@@ -4,12 +4,11 @@ Includes conversions between SWIFT internal values and
 """
 
 from swiftsimio.optional_packages import ASTROPY_AVAILABLE
-import unyt
+from swiftsimio.objects import cosmo_quantity
 
 if ASTROPY_AVAILABLE:
     from astropy.cosmology import w0waCDM
     from astropy.cosmology.core import Cosmology
-    import astropy.version
     import astropy.constants as const
     import astropy.units as astropy_units
     import numpy as np
@@ -46,12 +45,14 @@ if ASTROPY_AVAILABLE:
             raise AttributeError(
                 "SWIFTsimIO uses astropy, which cannot handle this cosmological model."
             )
-        if not int(N_eff) == deg_nu.astype(int).sum() + int(N_ur):
+        if not int(N_eff) == deg_nu.astype(int).sum() + int(np.squeeze(N_ur)):
             raise AttributeError(
-                "SWIFTsimIO uses astropy, which cannot handle this cosmological model."
+                "SWIFTSimIO uses astropy, which cannot handle this cosmological model."
             )
         ap_m_nu = [[m] * int(d) for m, d in zip(M_nu_eV, deg_nu)]  # replicate
-        ap_m_nu = sum(ap_m_nu, []) + [0.0] * int(N_ur)  # flatten + add massless
+        ap_m_nu = sum(ap_m_nu, []) + [0.0] * int(
+            np.squeeze(N_ur)
+        )  # flatten + add massless
         ap_m_nu = np.array(ap_m_nu) * astropy_units.eV
         return ap_m_nu
 
@@ -74,7 +75,7 @@ if ASTROPY_AVAILABLE:
             correct parameters.
         """
 
-        H0 = unyt.unyt_quantity(cosmo["H0 [internal units]"][0], units=1.0 / units.time)
+        H0 = cosmo_quantity(cosmo["H0 [internal units]"][0], units=1.0 / units.time)
 
         Omega_b = cosmo["Omega_b"][0]
         Omega_lambda = cosmo["Omega_lambda"][0]

@@ -172,8 +172,8 @@ def generate_getter(
                             self,
                             f"_{name}",
                             cosmo_array(
-                                # Only use column data if array is multidimensional, otherwise
-                                # we will crash here
+                                # Only use column data if array is multidimensional,
+                                # otherwise we will crash here
                                 (
                                     handle[field][:, columns]
                                     if handle[field].ndim > 1
@@ -366,7 +366,10 @@ class __SWIFTNamedColumnDataset(object):
         return
 
     def __str__(self):
-        return f'Named columns instance with {self.named_columns} available for "{self.name}"'
+        return (
+            f"Named columns instance with {self.named_columns} available "
+            f'for "{self.name}"'
+        )
 
     def __repr__(self):
         return self.__str__()

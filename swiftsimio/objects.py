@@ -1,18 +1,20 @@
 """
-Contains global objects, e.g. the superclass version of the
-unyt_array that we use, called cosmo_array.
+Contains classes for our custom :class:`~swiftsimio.objects.cosmo_array`,
+:class:`~swiftsimio.objects.cosmo_quantity` and
+:class:`~swiftsimio.objects.cosmo_factor` objects for cosmology-aware
+arrays, extending the functionality of the :class:`~unyt.array.unyt_array`.
+
+For developers, see also :mod:`swiftsimio._array_functions` containing
+helpers, wrappers and implementations that enable most :mod:`numpy` and
+:mod:`unyt` functions to work with our cosmology-aware arrays.
 """
 
-import warnings
-
 import unyt
-from unyt import unyt_array
-from unyt.array import multiple_output_operators
-
-try:
-    from unyt.array import POWER_MAPPING
-except ImportError:
-    raise ImportError("unyt >=2.9.0 required")
+from unyt import unyt_array, unyt_quantity
+from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
+from numbers import Number as numeric_type
+from typing import Iterable, Union, Tuple, Callable, Optional
+from collections.abc import Collection
 
 import sympy
 import numpy as np
@@ -95,304 +97,123 @@ from numpy import (
     isnat,
     heaviside,
     matmul,
+    vecdot,
 )
-from numpy._core.umath import _ones_like
+from numpy._core.umath import _ones_like, clip
+from ._array_functions import (
+    _propagate_cosmo_array_attributes_to_result,
+    _ensure_result_is_cosmo_array_or_quantity,
+    _sqrt_cosmo_factor,
+    _multiply_cosmo_factor,
+    _preserve_cosmo_factor,
+    _power_cosmo_factor,
+    _square_cosmo_factor,
+    _cbrt_cosmo_factor,
+    _divide_cosmo_factor,
+    _reciprocal_cosmo_factor,
+    _passthrough_cosmo_factor,
+    _return_without_cosmo_factor,
+    _arctan2_cosmo_factor,
+    _comparison_cosmo_factor,
+    _prepare_array_func_args,
+    _default_binary_wrapper,
+)
 
 try:
-    from numpy._core.umath import clip
+    import pint
 except ImportError:
-    clip = None
+    pass  # only for type hinting
+
+try:
+    import astropy.units
+except ImportError:
+    pass  # only for type hinting
 
 # The scale factor!
 a = sympy.symbols("a")
 
 
+def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
+    """
+    Checks that ``comoving`` and ``valid_transform`` attributes are compatible.
+
+    Comoving arrays must be able to transform, while arrays that don't transform must
+    be physical. This function raises if this is not the case.
+
+    Parameters
+    ----------
+    obj : swiftsimio.objects.cosmo_array
+        The array whose validity is to be checked.
+
+    Raises
+    ------
+    AssertionError
+        When an invalid combination of ``comoving`` and ``valid_transform`` is found.
+    """
+    if not obj.valid_transform:
+        assert (
+            not obj.comoving
+        ), "Cosmo arrays without a valid transform to comoving units must be physical"
+    if obj.comoving:
+        assert (
+            obj.valid_transform
+        ), "Comoving cosmo_arrays must be able to be transformed to physical"
+
+
 class InvalidConversionError(Exception):
-    def __init__(self, message="Could not convert to comoving coordinates"):
+    """
+    Raised when converting from comoving from physical to comoving is not allowed.
+
+    Parameters
+    ----------
+    message : str, optional
+        Message to print in case of invalid conversion.
+    """
+
+    def __init__(
+        self, message: str = "Could not convert to comoving coordinates."
+    ) -> None:
+        """
+        Constructor for warning of invalid conversion.
+
+        Parameters
+        ----------
+        message : str, optional
+            Message to print in case of invalid conversion.
+        """
         self.message = message
-
-
-def _propagate_cosmo_array_attributes(func):
-    def wrapped(self, *args, **kwargs):
-        ret = func(self, *args, **kwargs)
-        if not type(ret) is cosmo_array:
-            return ret
-        if hasattr(self, "cosmo_factor"):
-            ret.cosmo_factor = self.cosmo_factor
-        if hasattr(self, "comoving"):
-            ret.comoving = self.comoving
-        if hasattr(self, "valid_transform"):
-            ret.valid_transform = self.valid_transform
-        return ret
-
-    return wrapped
-
-
-def _sqrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(
-        ca_cf, (False, None), power=0.5
-    )  # ufunc sqrt not supported
-
-
-def _multiply_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    if (cf1 is None) and (cf2 is None):
-        # neither has cosmo_factor information:
-        return None
-    elif not ca1 and ca2:
-        # one is not a cosmo_array, allow e.g. multiplication by constants:
-        return cf2
-    elif ca1 and not ca2:
-        # two is not a cosmo_array, allow e.g. multiplication by constants:
-        return cf1
-    elif (ca1 and ca2) and ((cf1 is None) or (cf2 is None)):
-        # both cosmo_array but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors ({cf1} and {cf2}),"
-            f" discarding cosmo_factor in return value.",
-            RuntimeWarning,
-        )
-        return None
-    elif (ca1 and ca2) and ((cf1 is not None) and (cf2 is not None)):
-        # both cosmo_array and both with cosmo_factor:
-        return cf1 * cf2  # cosmo_factor.__mul__ raises if scale factors differ
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
-
-
-def _preserve_cosmo_factor(ca_cf1, ca_cf2=None, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # single argument, return promptly
-        return cf1
-    elif (cf1 is None) and (cf2 is None):
-        # neither has cosmo_factor information:
-        return None
-    elif ca1 and not ca2:
-        # only one is cosmo_array
-        return cf1
-    elif ca2 and not ca1:
-        # only one is cosmo_array
-        return cf2
-    elif (ca1 and ca2) and (cf1 is None and cf2 is not None):
-        # both cosmo_array, but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
-        return cf2
-    elif (ca1 and ca2) and (cf1 is not None and cf2 is None):
-        # both cosmo_array, but not both with cosmo_factor
-        # (both without shortcircuited above already):
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf1}) for all arguments.",
-            RuntimeWarning,
-        )
-        return cf1
-    elif (ca1 and ca2) and (cf1 != cf2):
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
-        )
-    elif (ca1 and ca2) and (cf1 == cf2):
-        return cf1  # or cf2, they're equal
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
-
-
-def _power_cosmo_factor(ca_cf1, ca_cf2, inputs=None, power=None):
-    if inputs is not None and power is not None:
-        raise ValueError
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    power = inputs[1] if inputs else power
-    if hasattr(power, "units"):
-        if not power.units.is_dimensionless:
-            raise ValueError("Exponent must be dimensionless.")
-        elif power.units is not unyt.dimensionless:
-            power = power.to_value(unyt.dimensionless)
-        # else power.units is unyt.dimensionless, do nothing
-    if ca2 and cf2.a_factor != 1.0:
-        raise ValueError("Exponent has scaling with scale factor != 1.")
-    if cf1 is None:
-        return None
-    return np.power(cf1, power)
-
-
-def _square_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=2)
-
-
-def _cbrt_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=1.0 / 3.0)
-
-
-def _divide_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    return _multiply_cosmo_factor(
-        (ca1, cf1), (ca2, _reciprocal_cosmo_factor((ca2, cf2)))
-    )
-
-
-def _reciprocal_cosmo_factor(ca_cf, **kwargs):
-    return _power_cosmo_factor(ca_cf, (False, None), power=-1)
-
-
-def _passthrough_cosmo_factor(ca_cf, ca_cf2=None, **kwargs):
-    ca, cf = ca_cf
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # no second argument, return promptly
-        return cf
-    elif (cf2 is not None) and cf != cf2:
-        # if both have cosmo_factor information and it differs this is an error
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
-        )
-    else:
-        # passthrough is for e.g. ufuncs with a second dimensionless argument,
-        # so ok if cf2 is None and cf1 is not
-        return cf
-
-
-def _return_without_cosmo_factor(ca_cf, ca_cf2=None, inputs=None, zero_comparison=None):
-    ca, cf = ca_cf
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    if ca_cf2 is None:
-        # no second argument
-        pass
-    elif ca and not ca2:
-        # one is not a cosmo_array, warn on e.g. comparison to constants:
-        if not zero_comparison:
-            warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
-                f" assuming provided cosmo_factor ({cf}) for all arguments.",
-                RuntimeWarning,
-            )
-    elif not ca and ca2:
-        # two is not a cosmo_array, warn on e.g. comparison to constants:
-        if not zero_comparison:
-            warnings.warn(
-                f"Mixing ufunc arguments with and without cosmo_factors, continuing"
-                f" assuming provided cosmo_factor ({cf2}) for all arguments.",
-                RuntimeWarning,
-            )
-    elif (ca and ca2) and (cf is not None and cf2 is None):
-        # one has no cosmo_factor information, warn:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf}) for all arguments.",
-            RuntimeWarning,
-        )
-    elif (ca and ca2) and (cf is None and cf2 is not None):
-        # two has no cosmo_factor information, warn:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
-    elif (cf is not None) and (cf2 is not None) and (cf != cf2):
-        # both have cosmo_factor, don't match:
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf} and {cf2}."
-        )
-    elif ((cf is not None) and (cf2 is not None) and (cf == cf2)) or (
-        (cf is None) and (cf2 is None)
-    ):
-        # both have cosmo_factor, and they match, or neither has cosmo_factor:
-        pass
-    else:
-        raise RuntimeError("Unexpected state, please report this error on github.")
-    # return without cosmo_factor
-    return None
-
-
-def _arctan2_cosmo_factor(ca_cf1, ca_cf2, **kwargs):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2
-    if (cf1 is None) and (cf2 is None):
-        return None
-    if cf1 is None and cf2 is not None:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf2}) for all arguments.",
-            RuntimeWarning,
-        )
-    if cf1 is not None and cf2 is None:
-        warnings.warn(
-            f"Mixing ufunc arguments with and without cosmo_factors, continuing assuming"
-            f" provided cosmo_factor ({cf1}) for all arguments.",
-            RuntimeWarning,
-        )
-    if (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
-        raise ValueError(
-            f"Ufunc arguments have cosmo_factors that differ: {cf1} and {cf2}."
-        )
-    return cosmo_factor(a ** 0, scale_factor=cf1.scale_factor)
-
-
-def _comparison_cosmo_factor(ca_cf1, ca_cf2=None, inputs=None):
-    ca1, cf1 = ca_cf1
-    ca2, cf2 = ca_cf2 if ca_cf2 is not None else (None, None)
-    try:
-        iter(inputs[0])
-    except TypeError:
-        if ca1:
-            input1_iszero = not inputs[0].value and inputs[0] is not False
-        else:
-            input1_iszero = not inputs[0] and inputs[0] is not False
-    else:
-        if ca1:
-            input1_iszero = not inputs[0].value.any()
-        else:
-            input1_iszero = not inputs[0].any()
-    try:
-        iter(inputs[1])
-    except IndexError:
-        input2_iszero = None
-    except TypeError:
-        if ca2:
-            input2_iszero = not inputs[1].value and inputs[1] is not False
-        else:
-            input2_iszero = not inputs[1] and inputs[1] is not False
-    else:
-        if ca2:
-            input2_iszero = not inputs[1].value.any()
-        else:
-            input2_iszero = not inputs[1].any()
-    zero_comparison = input1_iszero or input2_iszero
-    return _return_without_cosmo_factor(
-        ca_cf1, ca_cf2=ca_cf2, inputs=inputs, zero_comparison=zero_comparison
-    )
 
 
 class InvalidScaleFactor(Exception):
     """
     Raised when a scale factor is invalid, such as when adding
     two cosmo_factors with inconsistent scale factors.
+
+    Parameters
+    ----------
+    message : str, optional
+        Message to print in case of invalid scale factor.
     """
 
-    def __init__(self, message=None, *args):
+    def __init__(self, message: str = None, *args) -> None:
         """
-        Constructor for warning of invalid scale factor
+        Constructor for warning of invalid scale factor.
 
         Parameters
         ----------
-
         message : str, optional
-            Message to print in case of invalid scale factor
+            Message to print in case of invalid scale factor.
         """
         self.message = message
 
     def __str__(self):
         """
-        Print warning message of invalid scale factor
+        Print warning message for invalid scale factor.
+
+        Returns
+        -------
+        out : str
+            The error message.
         """
         return f"InvalidScaleFactor: {self.message}"
 
@@ -401,116 +222,196 @@ class InvalidSnapshot(Exception):
     """
     Generated when a snapshot is invalid (e.g. you are trying to partially load a
     sub-snapshot).
+
+    Parameters
+    ----------
+    message : str, optional
+        Message to print in case of invalid snapshot.
     """
 
-    def __init__(self, message=None, *args):
+    def __init__(self, message: str = None, *args) -> None:
         """
         Constructor for warning of invalid snapshot
 
         Parameters
         ----------
-
         message : str, optional
             Message to print in case of invalid snapshot
         """
         self.message = message
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Print warning message of invalid snapshot
         """
         return f"InvalidSnapshot: {self.message}"
 
 
-class cosmo_factor:
+class cosmo_factor(object):
     """
     Cosmology factor class for storing and computing conversion between
     comoving and physical coordinates.
 
     This takes the expected exponent of the array that can be parsed
-    by sympy, and the current value of the cosmological scale factor a.
+    by :mod:`sympy`, and the current value of the cosmological scale factor ``a``.
 
     This should be given as the conversion from comoving to physical, i.e.
+    :math:`r = a^f \times r` where :math:`a` is the scale factor,
+    :math:`r` is a physical quantity and :math`r'` a comoving quantity.
 
-    r = cosmo_factor * r' with r in physical and r' comoving
+    Parameters
+    ----------
+    expr : sympy.Expr
+        Expression used to convert between comoving and physical coordinates.
+    scale_factor : float
+        The scale factor (a).
+
+    Attributes
+    ----------
+    expr : sympy.Expr
+        Expression used to convert between comoving and physical coordinates.
+
+    scale_factor : float
+        The scale factor (a).
 
     Examples
     --------
+    Mass density transforms as :math:`a^3`. To set up a ``cosmo_factor``, supposing
+    a current ``scale_factor=0.97``, we import the scale factor ``a`` and initialize
+    as:
 
-    Typically this would make cosmo_factor = a for the conversion between
-    comoving positions r' and physical co-ordinates r.
+    ::
 
-    To do this, use the a imported from objects multiplied as you'd like:
+        from swiftsimio.objects import a  # the scale factor (a sympy symbol object)
+        density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
 
-    ``density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)``
+    :class:`~swiftsimio.objects.cosmo_factor` supports arithmetic, for example:
 
+    ::
+
+        >>> cosmo_factor(a**2, scale_factor=0.5) * cosmo_factor(a**-1, scale_factor=0.5)
+        cosmo_factor(expr=a, scale_factor=0.5)
+
+    See Also
+    --------
+    swiftsimio.objects.cosmo_factor.create
     """
 
-    def __init__(self, expr, scale_factor):
+    def __init__(self, expr: sympy.Expr, scale_factor: float) -> None:
         """
-        Constructor for cosmology factor class
+        Constructor for cosmology factor class.
 
         Parameters
         ----------
-
         expr : sympy.expr
-            expression used to convert between comoving and physical coordinates
+            Expression used to convert between comoving and physical coordinates.
 
         scale_factor : float
-            the scale factor of the simulation data
+            The scale factor (a).
+
+        See Also
+        --------
+        swiftsimio.objects.cosmo_factor.create
         """
         self.expr = expr
         self.scale_factor = scale_factor
         pass
 
-    def __str__(self):
+    @classmethod
+    def create(cls, scale_factor: float, exponent: numeric_type) -> "cosmo_factor":
         """
-        Print exponent and current scale factor
+        Create a :class:`~swiftsimio.objects.cosmo_factor` from a scale factor and
+        exponent.
+
+        Parameters
+        ----------
+        scale_factor : :obj:`float`
+            The scale factor.
+
+        exponent : :obj:`int` or :obj:`float`
+            The exponent defining the scaling with the scale factor.
+
+        Examples
+        --------
+        ::
+
+            >>> cosmo_factor.create(0.5, 2)
+            cosmo_factor(expr=a**2, scale_factor=0.5)
+        """
+
+        obj = cls(a ** exponent, scale_factor)
+
+        return obj
+
+    def __str__(self) -> str:
+        """
+        Print exponent and current scale factor.
 
         Returns
         -------
-
-        str
-            string to print exponent and current scale factor
+        out : str
+            String with exponent and current scale factor.
         """
         return str(self.expr) + f" at a={self.scale_factor}"
 
     @property
-    def a_factor(self):
+    def a_factor(self) -> float:
         """
-        The a-factor for the unit.
+        The multiplicative factor for conversion from comoving to physical.
 
-        e.g. for density this is 1 / a**3.
+        For example, for density this is :math:`a^{-3}`.
 
         Returns
         -------
-
-        float
-            the a-factor for given unit
+        out : float
+            The multiplicative factor for conversion from comoving to physical.
         """
+        if (self.expr is None) or (self.scale_factor is None):
+            return None
         return float(self.expr.subs(a, self.scale_factor))
 
     @property
-    def redshift(self):
+    def redshift(self) -> float:
         """
-        Compute the redshift from the scale factor.
+        The redshift computed from the scale factor.
+
+        Returns the redshift :math:`z = \\frac{1}{a} - 1`, where :math:`a` is the scale
+        factor.
 
         Returns
         -------
-
-        float
-            redshift from the given scale factor
-
-        Notes
-        -----
-
-        Returns the redshift
-        ..math:: z = \\frac{1}{a} - 1,
-        where :math: `a` is the scale factor
+        out : float
+            The redshift.
         """
+        if self.scale_factor is None:
+            return None
         return (1.0 / self.scale_factor) - 1.0
 
-    def __add__(self, b):
+    def __add__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Add two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to add to this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The sum of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to be summed is not a :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError("Can only add cosmo_factor to another cosmo_factor.")
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to add two cosmo_factors with different scale factors "
@@ -525,7 +426,34 @@ class cosmo_factor:
 
         return cosmo_factor(expr=self.expr, scale_factor=self.scale_factor)
 
-    def __sub__(self, b):
+    def __sub__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Subtract two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to subtract from this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The difference of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to be subtracted is not a
+            :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError(
+                "Can only subtract cosmo_factor from another cosmo_factor."
+            )
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to subtract two cosmo_factors with different scale factors "
@@ -540,96 +468,568 @@ class cosmo_factor:
 
         return cosmo_factor(expr=self.expr, scale_factor=self.scale_factor)
 
-    def __mul__(self, b):
+    def __mul__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Multiply two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to multiply this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The product of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to be multiplied is not a
+            :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError(
+                "Can only multiply cosmo_factor with another cosmo_factor."
+            )
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to multiply two cosmo_factors with different scale factors "
                 f"{self.scale_factor} and {b.scale_factor}"
             )
 
+        if ((self.expr is None) and (b.expr is not None)) or (
+            (self.expr is not None) and (b.expr is None)
+        ):
+            raise InvalidScaleFactor(
+                "Attempting to multiply an initialized cosmo_factor with an "
+                f"uninitialized cosmo_factor {self} and {b}."
+            )
+        if (self.expr is None) and (b.expr is None):
+            # let's be permissive and allow two uninitialized cosmo_factors through
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
+
         return cosmo_factor(expr=self.expr * b.expr, scale_factor=self.scale_factor)
 
-    def __truediv__(self, b):
+    def __truediv__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Divide two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to divide this one by.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The quotient of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to divide by is not a :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError("Can only divide cosmo_factor with another cosmo_factor.")
         if not self.scale_factor == b.scale_factor:
             raise InvalidScaleFactor(
                 "Attempting to divide two cosmo_factors with different scale factors "
                 f"{self.scale_factor} and {b.scale_factor}"
             )
 
+        if ((self.expr is None) and (b.expr is not None)) or (
+            (self.expr is not None) and (b.expr is None)
+        ):
+            raise InvalidScaleFactor(
+                "Attempting to divide an initialized cosmo_factor with an "
+                f"uninitialized cosmo_factor {self} and {b}."
+            )
+        if (self.expr is None) and (b.expr is None):
+            # let's be permissive and allow two uninitialized cosmo_factors through
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
+
         return cosmo_factor(expr=self.expr / b.expr, scale_factor=self.scale_factor)
 
-    def __radd__(self, b):
+    def __radd__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Add two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to add to this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The sum of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to be summed is not a :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
         return self.__add__(b)
 
-    def __rsub__(self, b):
+    def __rsub__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Subtract two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to subtract from this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The difference of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to be subtracted is not a
+            :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
         return self.__sub__(b)
 
-    def __rmul__(self, b):
+    def __rmul__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Multiply two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to multiply this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The product of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to be multiplied is not a
+            :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
         return self.__mul__(b)
 
-    def __rtruediv__(self, b):
+    def __rtruediv__(self, b: "cosmo_factor") -> "cosmo_factor":
+        """
+        Divide two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to divide this one by.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The quotient of the two :class:`~swiftsimio.objects.cosmo_factor`s.
+
+        Raises
+        ------
+        ValueError
+            If the object to divide by is not a :class:`~swiftsimio.objects.cosmo_factor`.
+
+        swiftsimio.objects.InvalidScaleFactor
+            If the :class:`~swiftsimio.objects.cosmo_factor` has a ``scale_factor`` that
+            does not match this one's.
+        """
         return b.__truediv__(self)
 
-    def __pow__(self, p):
+    def __pow__(self, p: float) -> "cosmo_factor":
+        """
+        Raise this :class:`~swiftsimio.objects.cosmo_factor` to an exponent.
+
+        Parameters
+        ----------
+        p : float
+            The exponent by which to raise this :class:`~swiftsimio.objects.cosmo_factor`.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_factor
+            The exponentiated :class:`~swiftsimio.objects.cosmo_factor`s.
+        """
+        if self.expr is None:
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
         return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
 
-    def __lt__(self, b):
+    def __lt__(self, b: "cosmo_factor") -> bool:
+        """
+        Compare the values of two :meth:`~swiftsimio.objects.cosmo_factor.a_factor`s.
+
+        The :meth:`~swiftsimio.objects.cosmo_factor.a_factor` is the ``expr`` attribute
+        evaluated given the ``scale_factor`` attribute.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to compare with this one.
+
+        Returns
+        -------
+        out : bool
+            The result of the comparison.
+
+        Raises
+        ------
+        ValueError
+            If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
         return self.a_factor < b.a_factor
 
-    def __gt__(self, b):
+    def __gt__(self, b: "cosmo_factor") -> bool:
+        """
+        Compare the values of two :meth:`~swiftsimio.objects.cosmo_factor.a_factor`s.
+
+        The :meth:`~swiftsimio.objects.cosmo_factor.a_factor` is the ``expr`` attribute
+        evaluated given the ``scale_factor`` attribute.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to compare with this one.
+
+        Returns
+        -------
+        out : bool
+            The result of the comparison.
+
+        Raises
+        ------
+        ValueError
+            If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
         return self.a_factor > b.a_factor
 
-    def __le__(self, b):
+    def __le__(self, b: "cosmo_factor") -> bool:
+        """
+        Compare the values of two :meth:`~swiftsimio.objects.cosmo_factor.a_factor`s.
+
+        The :meth:`~swiftsimio.objects.cosmo_factor.a_factor` is the ``expr`` attribute
+        evaluated given the ``scale_factor`` attribute.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to compare with this one.
+
+        Returns
+        -------
+        out : bool
+            The result of the comparison.
+
+        Raises
+        ------
+        ValueError
+            If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
         return self.a_factor <= b.a_factor
 
-    def __ge__(self, b):
+    def __ge__(self, b: "cosmo_factor") -> bool:
+        """
+        Compare the values of two :meth:`~swiftsimio.objects.cosmo_factor.a_factor`s.
+
+        The :meth:`~swiftsimio.objects.cosmo_factor.a_factor` is the ``expr`` attribute
+        evaluated given the ``scale_factor`` attribute.
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to compare with this one.
+
+        Returns
+        -------
+        out : bool
+            The result of the comparison.
+
+        Raises
+        ------
+        ValueError
+            If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
         return self.a_factor >= b.a_factor
 
-    def __eq__(self, b):
-        # Doesn't handle some corner cases, e.g. cosmo_factor(a ** 1, scale_factor=1)
-        # is considered equal to cosmo_factor(a ** 2, scale_factor=1) because
-        # 1 ** 1 == 1 ** 2. Should check self.expr vs b.expr with sympy?
+    def __eq__(self, b: "cosmo_factor") -> bool:
+        """
+        Compare the expressions and values of two
+        :meth:`~swiftsimio.objects.cosmo_factor.a_factor`s.
+
+        The :meth:`~swiftsimio.objects.cosmo_factor.a_factor` is the ``expr`` attribute
+        evaluated given the ``scale_factor`` attribute. Notice that unlike ``__gt__``,
+        ``__ge__``, ``__lt__`` and ``__le__``, (in)equality comparisons check that the
+        expression is (un)equal as well as the value. This is so that e.g. ``a**1`` and
+        ``a**2``, both with ``scale_factor=1.0`` are not equal (both have
+        ``a_factor==1``).
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to compare with this one.
+
+        Returns
+        -------
+        out : bool
+            The result of the comparison.
+
+        Raises
+        ------
+        ValueError
+            If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
+        """
+        if not isinstance(b, cosmo_factor):
+            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
         return (self.scale_factor == b.scale_factor) and (self.a_factor == b.a_factor)
 
-    def __ne__(self, b):
+    def __ne__(self, b: "cosmo_factor") -> bool:
+        """
+        Compare the expressions and values of two
+        :meth:`~swiftsimio.objects.cosmo_factor.a_factor`s.
+
+        The :meth:`~swiftsimio.objects.cosmo_factor.a_factor` is the ``expr`` attribute
+        evaluated given the ``scale_factor`` attribute. Notice that unlike ``__gt__``,
+        ``__ge__``, ``__lt__`` and ``__le__``, (in)equality comparisons check that the
+        expression is (un)equal as well as the value. This is so that e.g. ``a**1`` and
+        ``a**2``, both with ``scale_factor=1.0`` are not equal (both have
+        ``a_factor==1``).
+
+        Parameters
+        ----------
+        b : swiftsimio.objects.cosmo_factor
+            The :class:`~swiftsimio.objects.cosmo_factor` to compare with this one.
+
+        Returns
+        -------
+        out : bool
+            The result of the comparison.
+
+        Raises
+        ------
+        ValueError
+            If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
+        """
         return not self.__eq__(b)
+
+    def __repr__(self) -> str:
+        """
+        Get a string representation of the scaling with the scale factor.
+
+        Returns
+        -------
+        out : str
+            String representation of the scaling with the scale factor.
+        """
+        return f"cosmo_factor(expr={self.expr}, scale_factor={self.scale_factor})"
+
+
+NULL_CF = cosmo_factor(None, None)  # helps avoid name collisions with kwargs below
+
+
+def _parse_cosmo_factor_args(
+    cf: cosmo_factor = None,
+    scale_factor: float = None,
+    scale_exponent: numeric_type = None,
+) -> cosmo_factor:
+    """
+    Decide what provided cosmology information to use, or raise an error.
+
+    If both a ``cosmo_factor`` and a (``scale_factor``, ``scale_exponent``) pair are
+    given then this is an error. If only one of ``scale_factor`` and ``scale_exponent``
+    is given this is an error. Otherwise we construct the
+    :class:`~swiftsimio.objects.cosmo_factor`, unless it's going to be a ``NULL_CF`` with
+    the information we have - in that case we return ``None`` to give a chance for it
+    to be filled in elsewhere before assuming the ``NULL_CF`` default.
+
+    Parameters
+    ----------
+    cf : swiftsimio.objects.cosmo_factor
+        The :class:`~swiftsimio.objects.cosmo_factor` passed as an explicit argument.
+    scale_factor : numeric_type
+        The scale factor passed as a kwarg.
+    scale_exponent : float
+        The exponent for the scale factor to convert to/from comoving passed as a kwarg.
+
+    Returns
+    -------
+    out : cosmo_factor or None
+        The :class:`~swiftsimio.objects.cosmo_factor` to use, or ``None``.
+
+    Raises
+    ------
+    ValueError
+        If multiple values or incomplete information for the desired
+        :class:`~swiftsimio.objects.cosmo_factor` are provided.
+    """
+    if cf is None and scale_factor is None and scale_exponent is None:
+        # we can return promptly
+        return None
+    if cf is not None:
+        if scale_factor is not None or scale_exponent is not None:
+            if cosmo_factor.create(scale_factor, scale_exponent) != cf:
+                raise ValueError(
+                    "Provide either `cosmo_factor` or (`scale_factor` and "
+                    "`scale_exponent`, not both (perhaps there was a `cosmo_factor` "
+                    "attached to the input array or scalar?)."
+                )
+            else:
+                # the duplicate information matches so let's allow it
+                return cf
+        else:
+            return cf
+    else:
+        if (scale_factor is not None and scale_exponent is None) or (
+            scale_factor is None and scale_exponent is not None
+        ):
+            raise ValueError(
+                "Provide values for both `scale_factor` and `scale_exponent`."
+            )
+        if scale_factor is None and scale_exponent is None:
+            return NULL_CF
+        else:
+            return cosmo_factor.create(scale_factor, scale_exponent)
 
 
 class cosmo_array(unyt_array):
     """
     Cosmology array class.
 
-    This inherits from the unyt.unyt_array, and adds
-    four variables: compression, cosmo_factor, comoving, and valid_transform.
-    Data is assumed to be comoving when passed to the object but you
-    can override this by setting the latter flag to be False.
+    This inherits from the :class:`~unyt.array.unyt_array`, and adds
+    four attributes: ``compression``, ``cosmo_factor``, ``comoving``, and
+    ``valid_transform``.
+
+    .. note::
+
+        :class:`~swiftsimio.objects.cosmo_array` and the related
+        :class:`~swiftsimio.objects.cosmo_quantity` are now intended to support all
+        :mod:`numpy` functions, propagating units (thanks to :mod:`unyt`) and
+        cosmology information. There are a large number of functions, and a very
+        large number of possible parameter combinations, so some corner cases may
+        have been missed in testing. Please report any issues on github, they are
+        usually easy to fix for future use! Currently :mod:`scipy` functions are
+        not supported (although some might "just work"). Requests to fully support
+        specific functions can also be submitted as github issues.
 
     Parameters
     ----------
-
-    unyt_array : unyt.unyt_array
-        the inherited unyt_array
+    input_array : np.ndarray, unyt.array.unyt_array or iterable
+        A tuple, list, or array to attach units and cosmology information to.
+    units : str, unyt.unit_object.Unit or astropy.units.core.Unit, optional
+        The units of the array. When using strings, powers must be specified using
+        python syntax (``cm**3``, not ``cm^3``).
+    registry : unyt.unit_registry.UnitRegistry, optional
+        The registry to create units from. If ``units`` is already associated
+        with a unit registry and this is specified, this will be used instead of the
+        registry associated with the unit object.
+    dtype : np.dtype or str, optional
+        The dtype of the array data. Defaults to the dtype of the input data, or, if
+        none is found, uses ``np.float64``.
+    bypass_validation : bool, optional
+        If ``True``, all input validation is skipped. Using this option may produce
+        corrupted or invalid data, but can lead to significant speedups
+        in the input validation logic adds significant overhead. If set, minimally
+        pass valid values for units, comoving and cosmo_factor. Defaults to ``False``.
+    name : str, optional
+        The name of the array. Defaults to ``None``. This attribute does not propagate
+        through mathematical operations, but is preserved under indexing and unit
+        conversions.
+    cosmo_factor : swiftsimio.objects.cosmo_factor
+        Object to store conversion data between comoving and physical coordinates.
+    comoving : bool
+        Flag to indicate whether using comoving coordinates.
+    valid_transform : bool
+        Flag to indicate whether this array can be converted to comoving. If ``False``,
+        then ``comoving`` must be ``False``.
+    compression : string
+        Description of the compression filters that were applied to that array in the
+        hdf5 file.
 
     Attributes
     ----------
-
     comoving : bool
-        if True then the array is in comoving co-ordinates, and if
-        False then it is in physical units.
+        If ``True`` then the array is in comoving coordinates, if``False`` then it is in
+        physical units.
 
-    cosmo_factor : float
-        Object to store conversion data between comoving and physical coordinates
+    cosmo_factor : swiftsimio.objects.cosmo_factor
+        Object to store conversion data between comoving and physical coordinates.
 
     compression : string
         String describing any compression that was applied to this array in the
         hdf5 file.
 
     valid_transform: bool
-       if True then the array can be converted from physical to comoving units
+       If ``True`` then the array can be converted from physical to comoving units.
 
+    Notes
+    -----
+    This class will generally try to make sense of input and initialize an array-like
+    object consistent with the input, and warn or raise if this cannot be done
+    consistently. However, the way that :class:`~unyt.array.unyt_array` handles input
+    imposes some limits to this. In particular, nested non-numpy containers given in
+    input are not traversed recursively, but only one level deep. This means that
+    while with this input the attributes are detected by the new array correctly:
+
+    ::
+
+        >>> from swiftsimio.objects import cosmo_array, cosmo_factor
+        >>> x = cosmo_array(
+        ...     np.arange(3),
+        ...     u.kpc,
+        ...     comoving=True,
+        ...     scale_factor=1.0,
+        ...     scale_exponent=1,
+        ... )
+        >>> cosmo_array([x, x])
+        cosmo_array([[0, 1, 2],
+               [0, 1, 2]], 'kpc', comoving='True', cosmo_factor='a at a=1.0',
+               valid_transform='True')
+
+    with this input they are lost:
+
+    ::
+
+        >>> cosmo_array([[x, x],[x, x]])
+        cosmo_array([[[0, 1, 2],[0, 1, 2]],[[0, 1, 2],[0, 1, 2]]],
+               '(dimensionless)', comoving='None', cosmo_factor='None at a=None',
+               valid_transform='True')
+
+    See Also
+    --------
+    swiftsimio.objects.cosmo_quantity
     """
 
-    # TODO:
     _cosmo_factor_ufunc_registry = {
         add: _preserve_cosmo_factor,
         subtract: _preserve_cosmo_factor,
@@ -718,65 +1118,71 @@ class cosmo_array(unyt_array):
         _ones_like: _preserve_cosmo_factor,
         matmul: _multiply_cosmo_factor,
         clip: _passthrough_cosmo_factor,
+        vecdot: _multiply_cosmo_factor,
     }
 
     def __new__(
         cls,
-        input_array,
-        units=None,
-        registry=None,
-        dtype=None,
-        bypass_validation=False,
-        input_units=None,
-        name=None,
-        cosmo_factor=None,
-        comoving=None,
-        valid_transform=True,
-        compression=None,
-    ):
+        input_array: Iterable,
+        units: Union[str, unyt.unit_object.Unit, "astropy.units.core.Unit"] = None,
+        *,
+        registry: unyt.unit_registry.UnitRegistry = None,
+        dtype: Union[np.dtype, str] = None,
+        bypass_validation: bool = False,
+        name: str = None,
+        cosmo_factor: cosmo_factor = None,
+        scale_factor: Optional[float] = None,
+        scale_exponent: Optional[float] = None,
+        comoving: bool = None,
+        valid_transform: bool = True,
+        compression: str = None,
+    ) -> "cosmo_array":
         """
-        Essentially a copy of the __new__ constructor.
+        Closely inspired by the :meth:`unyt.array.unyt_array.__new__` constructor.
 
         Parameters
         ----------
-        input_array : iterable
-            A tuple, list, or array to attach units to
-        units : str, unyt.unit_symbols or astropy.unit, optional
-            The units of the array. Powers must be specified using python syntax
-            (cm**3, not cm^3).
+        input_array : np.ndarray, unyt.array.unyt_array or iterable
+            A tuple, list, or array to attach units and cosmology information to.
+        units : str, unyt.unit_object.Unit or astropy.units.core.Unit, optional
+            The units of the array. When using strings, powers must be specified using
+            python syntax (``cm**3``, not ``cm^3``).
         registry : unyt.unit_registry.UnitRegistry, optional
-            The registry to create units from. If input_units is already associated with a
-            unit registry and this is specified, this will be used instead of the registry
-            associated with the unit object.
+            The registry to create units from. If ``units`` is already associated
+            with a unit registry and this is specified, this will be used instead of the
+            registry associated with the unit object.
         dtype : np.dtype or str, optional
             The dtype of the array data. Defaults to the dtype of the input data, or, if
-            none is found, uses np.float64
+            none is found, uses ``np.float64``.
         bypass_validation : bool, optional
-            If True, all input validation is skipped. Using this option may produce
-            corrupted, invalid units or array data, but can lead to significant speedups
-            in the input validation logic adds significant overhead. If set, input_units
-            must be a valid unit object. Defaults to False.
-        input_units : str, optional
-            deprecated in favour of units option
+            If ``True``, all input validation is skipped. Using this option may produce
+            corrupted or invalid data, but can lead to significant speedups
+            in the input validation logic adds significant overhead. If set, minimally
+            pass valid values for units, comoving and cosmo_factor. Defaults to ``False``.
         name : str, optional
-            The name of the array. Defaults to None. This attribute does not propagate
+            The name of the array. Defaults to ``None``. This attribute does not propagate
             through mathematical operations, but is preserved under indexing and unit
             conversions.
-        cosmo_factor : cosmo_factor
-            cosmo_factor object to store conversion data between comoving and physical
-            coordinates
+        cosmo_factor : swiftsimio.objects.cosmo_factor
+            Object to store conversion data between comoving and physical coordinates.
+        scale_factor : float
+            The scale factor associated to the data. Also provide a value for
+            ``scale_exponent``.
+        scale_exponent : int or float
+            The exponent for the scale factor giving the scaling for conversion to/from
+            comoving units. Also provide a value for ``scale_factor``.
         comoving : bool
-            flag to indicate whether using comoving coordinates
+            Flag to indicate whether using comoving coordinates.
         valid_transform : bool
-            flag to indicate whether this array can be converted to comoving
+            Flag to indicate whether this array can be converted to comoving. If
+            ``False``, then ``comoving`` must be ``False``.
         compression : string
-            description of the compression filters that were applied to that array in the
-            hdf5 file
+            Description of the compression filters that were applied to that array in the
+            hdf5 file.
         """
 
-        cosmo_factor: cosmo_factor
+        if bypass_validation is True:
 
-        try:
             obj = super().__new__(
                 cls,
                 input_array,
@@ -786,81 +1192,153 @@ class cosmo_array(unyt_array):
                 bypass_validation=bypass_validation,
                 name=name,
             )
-        except TypeError:
-            # Older versions of unyt (before input_units was deprecated)
-            obj = super().__new__(
-                cls,
-                input_array,
-                units=units,
-                registry=registry,
-                dtype=dtype,
-                bypass_validation=bypass_validation,
-                input_units=input_units,
-                name=name,
+
+            # dtype, units, registry & name are handled by unyt
+            obj.comoving = comoving
+            obj.cosmo_factor = cosmo_factor if cosmo_factor is not None else NULL_CF
+            if scale_factor is not None:  # ambiguity, but this is `bypass_validation`
+                obj.cosmo_factor = cosmo_factor.create(scale_factor, scale_exponent)
+            obj.valid_transform = valid_transform
+            obj.compression = compression
+
+            return obj
+
+        if isinstance(input_array, cosmo_array):
+
+            obj = input_array.view(cls)
+
+            # do cosmo_factor first since it can be used in comoving/physical conversion:
+            cosmo_factor = (
+                input_array.cosmo_factor
+                if input_array.cosmo_factor != NULL_CF
+                else None
             )
-        except TypeError:
-            # Even older versions of unyt (before name was added)
-            obj = super().__new__(
-                cls,
-                input_array,
-                units=units,
-                registry=registry,
-                dtype=dtype,
-                bypass_validation=bypass_validation,
-                input_units=input_units,
+            cosmo_factor = _parse_cosmo_factor_args(
+                cf=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
             )
+            if cosmo_factor is not None:
+                obj.cosmo_factor = cosmo_factor
+            # else is already copied from input_array
+
+            if comoving is True:
+                obj.convert_to_comoving()
+            elif comoving is False:
+                obj.convert_to_physical()
+            # else is already copied from input_array
+
+            # only overwrite valid_transform after transforming so that invalid
+            # transformations raise:
+            obj.valid_transform = valid_transform
+            _verify_valid_transform_validity(obj)
+
+            obj.compression = (
+                compression if compression is not None else obj.compression
+            )
+
+            return obj
+
+        elif isinstance(input_array, np.ndarray) and input_array.dtype != object:
+
+            # guard np.ndarray so it doesn't get caught by _iterable in next case
+
+            # ndarray with object dtype goes to next case to properly handle e.g.
+            # ndarrays containing cosmo_quantities
+
+            cosmo_factor = _parse_cosmo_factor_args(
+                cf=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
+            )
+
+        elif _iterable(input_array) and input_array:
+            # if _prepare_array_func_args finds cosmo_array input it will convert to:
+            default_cm = comoving if comoving is not None else True
+
+            # coerce any cosmo_array inputs to consistency:
+            helper_result = _prepare_array_func_args(
+                *input_array, _default_cm=default_cm
+            )
+
+            input_array = helper_result["args"]
+
+            # default to comoving, cosmo_factor and compression given as kwargs
+            comoving = helper_result["comoving"] if comoving is None else comoving
+            cosmo_factor = _parse_cosmo_factor_args(
+                cf=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
+            )
+            cosmo_factor = (
+                _preserve_cosmo_factor(*helper_result["cfs"])
+                if cosmo_factor is None
+                else cosmo_factor
+            )
+            compression = (
+                helper_result["compression"] if compression is None else compression
+            )
+            # valid_transform has a non-None default, so we have to decide to always
+            # respect it
+
+        obj = super().__new__(
+            cls,
+            input_array,
+            units=units,
+            registry=registry,
+            dtype=dtype,
+            bypass_validation=bypass_validation,
+            name=name,
+        )
 
         if isinstance(obj, unyt_array) and not isinstance(obj, cls):
             obj = obj.view(cls)
 
-        obj.cosmo_factor = cosmo_factor
+        # attach our attributes:
         obj.comoving = comoving
+        # unyt allows creating a unyt_array from e.g. arrays with heterogenous units
+        # (it probably shouldn't...), so we don't recurse deeply and therefore
+        # can't guarantee that cosmo_factor isn't None at this point, guard with default
+        obj.cosmo_factor = cosmo_factor if cosmo_factor is not None else NULL_CF
         obj.compression = compression
         obj.valid_transform = valid_transform
-        if not obj.valid_transform:
-            assert (
-                not obj.comoving
-            ), "Cosmo arrays without a valid transform to comoving units must be physical"
-        if obj.comoving:
-            assert (
-                obj.valid_transform
-            ), "Comoving Cosmo arrays must be able to be transformed to physical"
+        _verify_valid_transform_validity(obj)
 
         return obj
 
-    def __array_finalize__(self, obj):
+    def __array_finalize__(self, obj: "cosmo_array") -> None:
         super().__array_finalize__(obj)
         if obj is None:
             return
-        self.cosmo_factor = getattr(obj, "cosmo_factor", None)
+        self.cosmo_factor = getattr(obj, "cosmo_factor", NULL_CF)
         self.comoving = getattr(obj, "comoving", None)
         self.compression = getattr(obj, "compression", None)
         self.valid_transform = getattr(obj, "valid_transform", True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.comoving:
             comoving_str = "(Comoving)"
+        elif self.comoving is None:
+            comoving_str = "(Physical/comoving not set)"
         else:
             comoving_str = "(Physical)"
 
         return super().__str__() + " " + comoving_str
 
-    def __repr__(self):
-        if self.comoving:
-            comoving_str = ", comoving=True)"
-        elif self.comoving is None:
-            comoving_str = ")"
-        else:
-            comoving_str = ", comoving=False)"
-        # Remove final parenthesis and append comoving flag
-        return super().__repr__()[:-1] + comoving_str
+    def __repr__(self) -> str:
+        return super().__repr__()
 
-    def __reduce__(self):
+    def __reduce__(self) -> tuple:
         """
-        Pickle reduction method
+        Pickle reduction method.
 
-        Here we add an extra element at the start of the unyt_array state
-        tuple to store the cosmology info.
+        Here we add an extra element at the start of the :class:`~unyt.array.unyt_array`
+        state tuple to store the cosmology info.
+
+        Returns
+        -------
+        out : tuple
+            The state ready for pickling.
         """
         np_ret = super(cosmo_array, self).__reduce__()
         obj_state = np_ret[2]
@@ -870,53 +1348,56 @@ class cosmo_array(unyt_array):
         new_ret = np_ret[:2] + cosmo_state + np_ret[3:]
         return new_ret
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Tuple) -> None:
         """
-        Pickle setstate method
+        Pickle setstate method.
 
         Here we extract the extra cosmology info we added to the object
-        state and pass the rest to unyt_array.__setstate__.
+        state and pass the rest to :meth:`unyt.array.unyt_array.__setstate__`.
+
+        Parameters
+        ----------
+        state : tuple
+            A :obj:`tuple` containing the extra state information.
         """
         super(cosmo_array, self).__setstate__(state[1:])
         self.cosmo_factor, self.comoving, self.valid_transform = state[0]
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
-    __getitem__ = _propagate_cosmo_array_attributes(unyt_array.__getitem__)
-    __copy__ = _propagate_cosmo_array_attributes(unyt_array.__copy__)
-    __deepcopy__ = _propagate_cosmo_array_attributes(unyt_array.__deepcopy__)
-    in_cgs = _propagate_cosmo_array_attributes(unyt_array.in_cgs)
-    astype = _propagate_cosmo_array_attributes(unyt_array.astype)
-    in_units = _propagate_cosmo_array_attributes(unyt_array.in_units)
-    byteswap = _propagate_cosmo_array_attributes(unyt_array.byteswap)
-    compress = _propagate_cosmo_array_attributes(unyt_array.compress)
-    diagonal = _propagate_cosmo_array_attributes(unyt_array.diagonal)
-    flatten = _propagate_cosmo_array_attributes(unyt_array.flatten)
-    ravel = _propagate_cosmo_array_attributes(unyt_array.ravel)
-    repeat = _propagate_cosmo_array_attributes(unyt_array.repeat)
-    reshape = _propagate_cosmo_array_attributes(unyt_array.reshape)
-    swapaxes = _propagate_cosmo_array_attributes(unyt_array.swapaxes)
-    take = _propagate_cosmo_array_attributes(unyt_array.take)
-    transpose = _propagate_cosmo_array_attributes(unyt_array.transpose)
-    view = _propagate_cosmo_array_attributes(unyt_array.view)
+    astype = _propagate_cosmo_array_attributes_to_result(unyt_array.astype)
+    in_units = _propagate_cosmo_array_attributes_to_result(unyt_array.in_units)
+    byteswap = _propagate_cosmo_array_attributes_to_result(unyt_array.byteswap)
+    compress = _propagate_cosmo_array_attributes_to_result(unyt_array.compress)
+    diagonal = _propagate_cosmo_array_attributes_to_result(unyt_array.diagonal)
+    flatten = _propagate_cosmo_array_attributes_to_result(unyt_array.flatten)
+    ravel = _propagate_cosmo_array_attributes_to_result(unyt_array.ravel)
+    repeat = _propagate_cosmo_array_attributes_to_result(unyt_array.repeat)
+    swapaxes = _propagate_cosmo_array_attributes_to_result(unyt_array.swapaxes)
+    transpose = _propagate_cosmo_array_attributes_to_result(unyt_array.transpose)
+    view = _propagate_cosmo_array_attributes_to_result(unyt_array.view)
+    __copy__ = _propagate_cosmo_array_attributes_to_result(unyt_array.__copy__)
+    __deepcopy__ = _propagate_cosmo_array_attributes_to_result(unyt_array.__deepcopy__)
+    in_cgs = _propagate_cosmo_array_attributes_to_result(unyt_array.in_cgs)
+    take = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_array.take)
+    )
+    reshape = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_array.reshape)
+    )
+    __getitem__ = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_array.__getitem__)
+    )
+    dot = _default_binary_wrapper(unyt_array.dot, _multiply_cosmo_factor)
 
-    # Also wrap some array "attributes":
-
-    @property
-    def T(self):
-        return self.transpose()  # transpose is wrapped above.
-
-    @property
-    def ua(self):
-        return _propagate_cosmo_array_attributes(np.ones_like)(self)
-
-    @property
-    def unit_array(self):
-        return _propagate_cosmo_array_attributes(np.ones_like)(self)
+    # Also wrap some array "properties":
+    T = property(_propagate_cosmo_array_attributes_to_result(unyt_array.transpose))
+    ua = property(_propagate_cosmo_array_attributes_to_result(np.ones_like))
+    unit_array = property(_propagate_cosmo_array_attributes_to_result(np.ones_like))
 
     def convert_to_comoving(self) -> None:
         """
-        Convert the internal data to be in comoving units.
+        Convert the internal data in-place to be in comoving units.
         """
         if self.comoving:
             return
@@ -930,7 +1411,7 @@ class cosmo_array(unyt_array):
 
     def convert_to_physical(self) -> None:
         """
-        Convert the internal data to be in physical units.
+        Convert the internal data in-place to be in physical units.
         """
         if self.comoving is None:
             raise InvalidConversionError
@@ -943,28 +1424,28 @@ class cosmo_array(unyt_array):
             values *= self.cosmo_factor.a_factor
             self.comoving = False
 
-    def to_physical(self):
+    def to_physical(self) -> "cosmo_array":
         """
         Creates a copy of the data in physical units.
 
         Returns
         -------
-        cosmo_array
-            copy of cosmo_array in physical units
+        out : swiftsimio.objects.cosmo_array
+            Copy of this array in physical units.
         """
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
         copied_data.convert_to_physical()
 
         return copied_data
 
-    def to_comoving(self):
+    def to_comoving(self) -> "cosmo_array":
         """
         Creates a copy of the data in comoving units.
 
         Returns
         -------
-        cosmo_array
-            copy of cosmo_array in comoving units
+        out : swiftsimio.objects.cosmo_array
+            Copy of this array in comoving units
         """
         if not self.valid_transform:
             raise InvalidConversionError
@@ -973,60 +1454,82 @@ class cosmo_array(unyt_array):
 
         return copied_data
 
-    def compatible_with_comoving(self):
+    def compatible_with_comoving(self) -> bool:
         """
-        Is this cosmo_array compatible with a comoving cosmo_array?
+        Is this :class:`~swiftsimio.objects.cosmo_array` compatible with a comoving
+        :class:`~swiftsimio.objects.cosmo_array`?
 
-        This is the case if the cosmo_array is comoving, or if the scale factor
-        exponent is 0 (cosmo_factor.a_factor() == 1)
+        This is the case if the :class:`~swiftsimio.objects.cosmo_array` is comoving, or
+        if the scale factor exponent is 0, or the scale factor is 1
+        (either case satisfies ``cosmo_factor.a_factor() == 1``).
+
+        Returns
+        -------
+        out : bool
+            ``True`` if compatible, ``False`` otherwise.
         """
         return self.comoving or (self.cosmo_factor.a_factor == 1.0)
 
-    def compatible_with_physical(self):
+    def compatible_with_physical(self) -> bool:
         """
-        Is this cosmo_array compatible with a physical cosmo_array?
+        Is this :class:`~swiftsimio.objects.cosmo_array` compatible with a physical
+        :class:`~swiftsimio.objects.cosmo_array`?
 
-        This is the case if the cosmo_array is physical, or if the scale factor
-        exponent is 0 (cosmo_factor.a_factor == 1)
+        This is the case if the :class:`~swiftsimio.objects.cosmo_array` is physical, or
+        if the scale factor exponent is 0, or the scale factor is 1
+        (either case satisfies ``cosmo_factor.a_factor() == 1``).
+
+        Returns
+        -------
+        out : bool
+            ``True`` if compatible, ``False`` otherwise.
         """
         return (not self.comoving) or (self.cosmo_factor.a_factor == 1.0)
 
     @classmethod
     def from_astropy(
         cls,
-        arr,
-        unit_registry=None,
-        comoving=None,
-        cosmo_factor=None,
-        compression=None,
-        valid_transform=True,
-    ):
+        arr: "astropy.units.quantity.Quantity",
+        unit_registry: unyt.unit_registry.UnitRegistry = None,
+        comoving: bool = None,
+        cosmo_factor: cosmo_factor = cosmo_factor(None, None),
+        compression: str = None,
+        valid_transform: bool = True,
+    ) -> "cosmo_array":
         """
-        Convert an AstroPy "Quantity" to a cosmo_array.
+        Convert an :class:`astropy.units.quantity.Quantity` to a
+        :class:`~swiftsimio.objects.cosmo_array`.
 
         Parameters
         ----------
-        arr: AstroPy Quantity
-            The Quantity to convert from.
-        unit_registry: yt UnitRegistry, optional
-            A yt unit registry to use in the conversion. If one is not supplied, the
+        arr: astropy.units.quantity.Quantity
+            The quantity to convert from.
+        unit_registry : unyt.unit_registry.UnitRegistry, optional
+            A unyt registry to use in the conversion. If one is not supplied, the
             default one will be used.
         comoving : bool
-            if True then the array is in comoving co-ordinates, and if False then it is in
-            physical units.
-        cosmo_factor : float
-            Object to store conversion data between comoving and physical coordinates
+            Flag to indicate whether using comoving coordinates.
+        cosmo_factor : swiftsimio.objects.cosmo_factor
+            Object to store conversion data between comoving and physical coordinates.
         compression : string
-            String describing any compression that was applied to this array in the hdf5
-            file.
+            Description of the compression filters that were applied to that array in the
+            hdf5 file.
         valid_transform : bool
-            flag to indicate whether this array can be converted to comoving
+            Flag to indicate whether this array can be converted to comoving. If
+            ``False``, then ``comoving`` must be ``False``.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_array
+            A cosmology-aware array.
 
         Example
         -------
-        >>> from astropy.units import kpc
-        >>> cosmo_array.from_astropy([1, 2, 3] * kpc)
-        cosmo_array([1., 2., 3.], 'kpc')
+        ::
+
+            >>> from astropy.units import kpc
+            >>> cosmo_array.from_astropy([1, 2, 3] * kpc)
+            cosmo_array([1., 2., 3.], 'kpc')
         """
 
         obj = super().from_astropy(arr, unit_registry=unit_registry).view(cls)
@@ -1040,46 +1543,54 @@ class cosmo_array(unyt_array):
     @classmethod
     def from_pint(
         cls,
-        arr,
-        unit_registry=None,
-        comoving=None,
-        cosmo_factor=None,
-        compression=None,
-        valid_transform=True,
-    ):
+        arr: "pint.registry.Quantity",
+        unit_registry: unyt.unit_registry.UnitRegistry = None,
+        comoving: bool = None,
+        cosmo_factor: cosmo_factor = cosmo_factor(None, None),
+        compression: str = None,
+        valid_transform: bool = True,
+    ) -> "cosmo_array":
         """
-        Convert a Pint "Quantity" to a cosmo_array.
+        Convert a :class:`pint.registry.Quantity` to a
+        :class:`~swiftsimio.objects.cosmo_array`.
 
         Parameters
         ----------
-        arr : Pint Quantity
-            The Quantity to convert from.
-        unit_registry : yt UnitRegistry, optional
-            A yt unit registry to use in the conversion. If one is not
-            supplied, the default one will be used.
+        arr: pint.registry.Quantity
+            The quantity to convert from.
+        unit_registry : unyt.unit_registry.UnitRegistry, optional
+            A unyt registry to use in the conversion. If one is not supplied, the
+            default one will be used.
         comoving : bool
-            if True then the array is in comoving co-ordinates, and if False then it is in
-            physical units.
-        cosmo_factor : float
-            Object to store conversion data between comoving and physical coordinates
+            Flag to indicate whether using comoving coordinates.
+        cosmo_factor : swiftsimio.objects.cosmo_factor
+            Object to store conversion data between comoving and physical coordinates.
         compression : string
-            String describing any compression that was applied to this array in the hdf5
-            file.
+            Description of the compression filters that were applied to that array in the
+            hdf5 file.
         valid_transform : bool
-            flag to indicate whether this array can be converted to comoving
+            Flag to indicate whether this array can be converted to comoving. If
+            ``False``, then ``comoving`` must be ``False``.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_array
+            A cosmology-aware array.
 
         Examples
         --------
-        >>> from pint import UnitRegistry
-        >>> import numpy as np
-        >>> ureg = UnitRegistry()
-        >>> a = np.arange(4)
-        >>> b = ureg.Quantity(a, "erg/cm**3")
-        >>> b
-        <Quantity([0 1 2 3], 'erg / centimeter ** 3')>
-        >>> c = cosmo_array.from_pint(b)
-        >>> c
-        cosmo_array([0, 1, 2, 3], 'erg/cm**3')
+        ::
+
+            >>> from pint import UnitRegistry
+            >>> import numpy as np
+            >>> ureg = UnitRegistry()
+            >>> a = np.arange(4)
+            >>> b = ureg.Quantity(a, "erg/cm**3")
+            >>> b
+            <Quantity([0 1 2 3], 'erg / centimeter ** 3')>
+            >>> c = cosmo_array.from_pint(b)
+            >>> c
+            cosmo_array([0, 1, 2, 3], 'erg/cm**3')
         """
         obj = super().from_pint(arr, unit_registry=unit_registry).view(cls)
         obj.comoving = comoving
@@ -1089,41 +1600,41 @@ class cosmo_array(unyt_array):
 
         return obj
 
-    # TODO:
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        cms = [
-            (hasattr(inp, "comoving"), getattr(inp, "comoving", None)) for inp in inputs
-        ]
-        cfs = [
-            (hasattr(inp, "cosmo_factor"), getattr(inp, "cosmo_factor", None))
-            for inp in inputs
-        ]
-        comps = [
-            (hasattr(inp, "compression"), getattr(inp, "compression", None))
-            for inp in inputs
-        ]
+    def __array_ufunc__(
+        self, ufunc: np.ufunc, method: str, *inputs, **kwargs
+    ) -> object:
+        """
+        Handles :mod:`numpy` ufunc calls on :class:`~swiftsimio.objects.cosmo_array`
+        input.
 
-        # if we're here at least one input must be a cosmo_array
-        if all([cm[1] for cm in cms if cm[0]]):
-            # all cosmo_array inputs are comoving
-            ret_cm = True
-        elif not any([cm[1] for cm in cms if cm[0]]):
-            # all cosmo_array inputs are physical
-            ret_cm = False
-        else:
-            # mix of comoving and physical inputs
-            inputs = [
-                inp.to_comoving() if cm[0] and not cm[1] else inp
-                for inp, cm in zip(inputs, cms)
-            ]
-            ret_cm = True
+        :mod:`numpy` facilitates wrapping array classes by handing off to this function
+        when a function of :class:`numpy.ufunc` type is called with arguments from an
+        inheriting array class. Since we inherit from :class:`~unyt.array.unyt_array`,
+        we let :mod:`unyt` handle what to do with the units and take care of processing
+        the cosmology information via our helper functions.
 
-        if len(set(comps)) == 1:
-            # all compressions identical, preserve it
-            ret_comp = comps[0]
-        else:
-            # mixed compressions, strip it off
-            ret_comp = None
+        Parameters
+        ----------
+        ufunc : numpy.ufunc
+            The numpy function being called.
+
+        method : str, optional
+            Some ufuncs have methods accessed as attributes, such as ``"reduce"``.
+            If using such a method, this argument receives its name.
+
+        inputs : tuple
+            Arguments to the ufunc.
+
+        kwargs : dict
+            Keyword arguments to the ufunc.
+
+        Returns
+        -------
+        out : object
+            The result of the ufunc call, with our cosmology attribute processing applied.
+        """
+        helper_result = _prepare_array_func_args(*inputs, **kwargs)
+        cfs = helper_result["cfs"]
 
         # make sure we evaluate the cosmo_factor_ufunc_registry function:
         # might raise/warn even if we're not returning a cosmo_array
@@ -1131,48 +1642,422 @@ class cosmo_array(unyt_array):
             power_map = POWER_MAPPING[ufunc]
             if "axis" in kwargs and kwargs["axis"] is not None:
                 ret_cf = _power_cosmo_factor(
-                    cfs[0],
-                    (False, None),
-                    power=power_map(inputs[0].shape[kwargs["axis"]]),
+                    cfs[0], None, power=power_map(inputs[0].shape[kwargs["axis"]])
                 )
             else:
                 ret_cf = _power_cosmo_factor(
-                    cfs[0], (False, None), power=power_map(inputs[0].size)
+                    cfs[0], None, power=power_map(inputs[0].size)
                 )
+        elif (
+            ufunc in (logical_and, logical_or, logical_xor, logical_not)
+            and method == "reduce"
+        ):
+            ret_cf = _return_without_cosmo_factor(cfs[0])
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
-        ret = super().__array_ufunc__(ufunc, method, *inputs, **kwargs)
+        ret = _ensure_result_is_cosmo_array_or_quantity(super().__array_ufunc__)(
+            ufunc, method, *inputs, **kwargs
+        )
         # if we get a tuple we have multiple return values to deal with
-        # if unyt returns a bare ndarray, do the same
-        # otherwise we create a view and attach our attributes
         if isinstance(ret, tuple):
-            ret = tuple(
-                r.view(type(self)) if isinstance(r, unyt_array) else r for r in ret
-            )
             for r in ret:
-                if isinstance(r, type(self)):
-                    r.comoving = ret_cm
+                if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
+                    r.comoving = helper_result["comoving"]
                     r.cosmo_factor = ret_cf
-                    r.compression = ret_comp
-        if isinstance(ret, unyt_array):
-            ret = ret.view(type(self))
-            ret.comoving = ret_cm
+                    r.compression = helper_result["compression"]
+        elif isinstance(ret, cosmo_array):  # also recognizes cosmo_quantity
+            ret.comoving = helper_result["comoving"]
             ret.cosmo_factor = ret_cf
-            ret.compression = ret_comp
+            ret.compression = helper_result["compression"]
         if "out" in kwargs:
             out = kwargs.pop("out")
             if ufunc not in multiple_output_operators:
                 out = out[0]
-                if isinstance(out, cosmo_array):
-                    out.comoving = ret_cm
+                if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
+                    out.comoving = helper_result["comoving"]
                     out.cosmo_factor = ret_cf
-                    out.compression = ret_comp
+                    out.compression = helper_result["compression"]
             else:
                 for o in out:
-                    if isinstance(o, type(self)):
-                        o.comoving = ret_cm
+                    if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
+                        o.comoving = helper_result["comoving"]
                         o.cosmo_factor = ret_cf
-                        o.compression = ret_comp
+                        o.compression = helper_result["compression"]
 
         return ret
+
+    def __array_function__(
+        self, func: Callable, types: Collection, args: tuple, kwargs: dict
+    ):
+        """
+        Handles :mod:`numpy` function calls on :class:`~swiftsimio.objects.cosmo_array`
+        input.
+
+        :mod:`numpy` facilitates wrapping array classes by handing off to this function
+        when a numpy-defined function is called with arguments from an
+        inheriting array class. Since we inherit from :class:`~unyt.array.unyt_array`,
+        we let :mod:`unyt` handle what to do with the units and take care of processing
+        the cosmology information via our helper functions.
+
+        Parameters
+        ----------
+        func : Callable
+            The numpy function being called.
+
+        types : collections.abc.Collection
+            A collection of unique argument types from the original :mod:`numpy` function
+            call that implement ``__array_function__``.
+
+        args : tuple
+            Arguments to the functions.
+
+        kwargs : dict
+            Keyword arguments to the function.
+
+        Returns
+        -------
+        out : object
+            The result of the ufunc call, with our cosmology attribute processing applied.
+        """
+        # Follow NEP 18 guidelines
+        # https://numpy.org/neps/nep-0018-array-function-protocol.html
+        from ._array_functions import _HANDLED_FUNCTIONS
+        from unyt._array_functions import (
+            _HANDLED_FUNCTIONS as _UNYT_HANDLED_FUNCTIONS,
+            _UNSUPPORTED_FUNCTIONS as _UNYT_UNSUPPORTED_FUNCTIONS,
+        )
+
+        # Let's claim to support everything supported by unyt.
+        # If we can't do this in future, follow their pattern of
+        # defining out own _UNSUPPORTED_FUNCTIONS in a _array_functions.py file
+        _UNSUPPORTED_FUNCTIONS = _UNYT_UNSUPPORTED_FUNCTIONS
+
+        if func in _UNSUPPORTED_FUNCTIONS:
+            # following NEP 18, return NotImplemented as a sentinel value
+            # which will lead to raising a TypeError, while
+            # leaving other arguments a chance to take the lead
+            return NotImplemented
+
+        if not all(issubclass(t, cosmo_array) or t is np.ndarray for t in types):
+            # Note: this allows subclasses that don't override
+            # __array_function__ to handle cosmo_array objects
+            return NotImplemented
+
+        if func in _HANDLED_FUNCTIONS:
+            function_to_invoke = _HANDLED_FUNCTIONS[func]
+        elif func in _UNYT_HANDLED_FUNCTIONS:
+            function_to_invoke = _UNYT_HANDLED_FUNCTIONS[func]
+        else:
+            # default to numpy's private implementation
+            function_to_invoke = func._implementation
+        return function_to_invoke(*args, **kwargs)
+
+    def __mul__(
+        self, b: Union[int, float, np.ndarray, unyt.unit_object.Unit]
+    ) -> "cosmo_array":
+        """
+        Multiply this :class:`~swiftsimio.objects.cosmo_array`.
+
+        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
+        second argument is a :class:`~unyt.unit_object.Unit`.
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit`
+            The object to multiply with this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_array
+            The result of the multiplication.
+        """
+        if isinstance(b, unyt.unit_object.Unit):
+            retval = self.__copy__()
+            retval.units = retval.units * b
+            return retval
+        else:
+            return super().__mul__(b)
+
+    def __rmul__(
+        self, b: Union[int, float, np.ndarray, unyt.unit_object.Unit]
+    ) -> "cosmo_array":
+        """
+        Multiply this :class:`~swiftsimio.objects.cosmo_array` (as the right argument).
+
+        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
+        second argument is a :class:`~unyt.unit_object.Unit`.
+
+        .. note::
+
+            This function is never called when `b` is a :class:`unyt.unit_object.Unit`
+            because :mod:`unyt` handles the operation. This results in a silent demotion
+            to a :class:`unyt.array.unyt_array`.
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit`
+            The object to multiply with this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_array
+            The result of the multiplication.
+        """
+        if isinstance(b, unyt.unit_object.Unit):
+            return self.__mul__(b)
+        else:
+            return super().__rmul__(b)
+
+    def __truediv__(
+        self, b: Union[int, float, np.ndarray, unyt.unit_object.Unit]
+    ) -> "cosmo_array":
+        """
+        Divide this :class:`~swiftsimio.objects.cosmo_array`.
+
+        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
+        second argument is a :class:`~unyt.unit_object.Unit`.
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit`
+            The object to divide this one by.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_array
+            The result of the division.
+        """
+        if isinstance(b, unyt.unit_object.Unit):
+            return self.__mul__(1 / b)
+        else:
+            return super().__truediv__(b)
+
+    def __rtruediv__(
+        self, b: Union[int, float, np.ndarray, unyt.unit_object.Unit]
+    ) -> "cosmo_array":
+        """
+        Divide this :class:`~swiftsimio.objects.cosmo_array` (as the right argument).
+
+        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
+        second argument is a :class:`~unyt.unit_object.Unit`.
+
+        .. note::
+
+            This function is never called when `b` is a :class:`unyt.unit_object.Unit`
+            because :mod:`unyt` handles the operation. This results in a silent demotion
+            to a :class:`unyt.array.unyt_array`.
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit`
+            The object to divide by this one.
+
+        Returns
+        -------
+        out : swiftsimio.objects.cosmo_array
+            The result of the division.
+        """
+        if isinstance(b, unyt.unit_object.Unit):
+            return (1 / self).__mul__(b)
+        else:
+            return super().__rtruediv__(b)
+
+
+class cosmo_quantity(cosmo_array, unyt_quantity):
+    """
+    Cosmology scalar class.
+
+    This inherits from both the :class:`~swiftsimio.objects.cosmo_array` and the
+    :class:`~unyt.array.unyt_quantity`, and has the same four attributes as
+    :class:`~swiftsimio.objects.cosmo_array`: ``compression``, ``cosmo_factor``,
+    ``comoving``, and ``valid_transform``.
+
+    Like :class:`unyt.array.unyt_quantity`, it is intended to hold a scalar value.
+    Values of this type will be returned by :mod:`numpy` functions that return
+    scalar values.
+
+    Other than containing a scalar, functionality is identical to
+    :class:`~swiftsimio.objects.cosmo_array`. Refer to that class's documentation.
+
+    Parameters
+    ----------
+    input_scalar : float or unyt.array.unyt_quantity
+        A tuple, list, or array to attach units and cosmology information to.
+    units : str, unyt.unit_object.Unit or astropy.units.core.Unit, optional
+        The units of the array. When using strings, powers must be specified using
+        python syntax (``cm**3``, not ``cm^3``).
+    registry : unyt.unit_registry.UnitRegistry, optional
+        The registry to create units from. If ``units`` is already associated
+        with a unit registry and this is specified, this will be used instead of the
+        registry associated with the unit object.
+    dtype : np.dtype or str, optional
+        The dtype of the array data. Defaults to the dtype of the input data, or, if
+        none is found, uses ``np.float64``.
+    bypass_validation : bool, optional
+        If ``True``, all input validation is skipped. Using this option may produce
+        corrupted or invalid data, but can lead to significant speedups
+        in the input validation logic adds significant overhead. If set, minimally
+        pass valid values for units, comoving and cosmo_factor. Defaults to ``False``.
+    name : str, optional
+        The name of the array. Defaults to ``None``. This attribute does not propagate
+        through mathematical operations, but is preserved under indexing and unit
+        conversions.
+    cosmo_factor : swiftsimio.objects.cosmo_factor
+        Object to store conversion data between comoving and physical coordinates.
+    comoving : bool
+        Flag to indicate whether using comoving coordinates.
+    valid_transform : bool
+        Flag to indicate whether this array can be converted to comoving. If
+        ``False``, then ``comoving`` must be ``False``.
+    compression : string
+        Description of the compression filters that were applied to that array in the
+        hdf5 file.
+
+    Attributes
+    ----------
+    comoving : bool
+        if True then the array is in comoving co-ordinates, and if
+        False then it is in physical units.
+
+    cosmo_factor : float
+        Object to store conversion data between comoving and physical coordinates
+
+    compression : string
+        String describing any compression that was applied to this array in the
+        hdf5 file.
+
+    valid_transform: bool
+       if True then the array can be converted from physical to comoving units
+    """
+
+    def __new__(
+        cls,
+        input_scalar: numeric_type,
+        units: Optional[
+            Union[str, unyt.unit_object.Unit, "astropy.units.core.Unit"]
+        ] = None,
+        *,
+        registry: Optional[unyt.unit_registry.UnitRegistry] = None,
+        dtype: Optional[Union[np.dtype, str]] = None,
+        bypass_validation: bool = False,
+        name: Optional[str] = None,
+        cosmo_factor: Optional[cosmo_factor] = None,
+        scale_factor: Optional[float] = None,
+        scale_exponent: Optional[float] = None,
+        comoving: Optional[bool] = None,
+        valid_transform: bool = True,
+        compression: Optional[str] = None,
+    ) -> "cosmo_quantity":
+        """
+        Closely inspired by the :meth:`unyt.array.unyt_quantity.__new__` constructor.
+
+        Parameters
+        ----------
+        input_scalar : float or unyt.array.unyt_quantity
+            A tuple, list, or array to attach units and cosmology information to.
+        units : str, unyt.unit_object.Unit or astropy.units.core.Unit, optional
+            The units of the array. When using strings, powers must be specified using
+            python syntax (``cm**3``, not ``cm^3``).
+        registry : unyt.unit_registry.UnitRegistry, optional
+            The registry to create units from. If ``units`` is already associated
+            with a unit registry and this is specified, this will be used instead of the
+            registry associated with the unit object.
+        dtype : np.dtype or str, optional
+            The dtype of the array data. Defaults to the dtype of the input data, or, if
+            none is found, uses ``np.float64``.
+        bypass_validation : bool, optional
+            If ``True``, all input validation is skipped. Using this option may produce
+            corrupted or invalid data, but can lead to significant speedups
+            in the input validation logic adds significant overhead. If set, minimally
+            pass valid values for units, comoving and cosmo_factor. Defaults to ``False``.
+        name : str, optional
+            The name of the array. Defaults to ``None``. This attribute does not propagate
+            through mathematical operations, but is preserved under indexing and unit
+            conversions.
+        cosmo_factor : swiftsimio.objects.cosmo_factor
+            Object to store conversion data between comoving and physical coordinates.
+            The same information can be provided using the ``scale_factor`` and
+            ``scale_exponent`` arguments, instead.
+        scale_factor : float
+            The scale factor associated to the data. Also provide a value for
+            ``scale_exponent``.
+        scale_exponent : int or float
+            The exponent for the scale factor giving the scaling for conversion to/from
+            comoving units. Also provide a value for ``scale_factor``.
+        comoving : bool
+            Flag to indicate whether using comoving coordinates.
+        valid_transform : bool
+            Flag to indicate whether this array can be converted to comoving. If
+            ``False``, then ``comoving`` must be ``False``.
+        compression : string
+            Description of the compression filters that were applied to that array in the
+            hdf5 file.
+        """
+        if bypass_validation is True:
+            ret = super().__new__(
+                cls,
+                np.asarray(input_scalar),
+                units=units,
+                registry=registry,
+                dtype=dtype,
+                bypass_validation=bypass_validation,
+                name=name,
+                cosmo_factor=cosmo_factor,
+                scale_factor=scale_factor,
+                scale_exponent=scale_exponent,
+                comoving=comoving,
+                valid_transform=valid_transform,
+                compression=compression,
+            )
+
+        if not isinstance(input_scalar, (numeric_type, np.number, np.ndarray)):
+            raise RuntimeError("cosmo_quantity values must be numeric")
+
+        # Use values from kwargs, if None use values from input_scalar
+        units = getattr(input_scalar, "units", None) if units is None else units
+        name = getattr(input_scalar, "name", None) if name is None else name
+        cosmo_factor = (
+            getattr(input_scalar, "cosmo_factor", None)
+            if cosmo_factor is None
+            else cosmo_factor
+        )
+        comoving = (
+            getattr(input_scalar, "comoving", None) if comoving is None else comoving
+        )
+        valid_transform = (
+            getattr(input_scalar, "valid_transform", None)
+            if valid_transform is None
+            else valid_transform
+        )
+        compression = (
+            getattr(input_scalar, "compression", None)
+            if compression is None
+            else compression
+        )
+        ret = super().__new__(
+            cls,
+            np.asarray(input_scalar),
+            units=units,
+            registry=registry,
+            dtype=dtype,
+            bypass_validation=bypass_validation,
+            name=name,
+            cosmo_factor=cosmo_factor,
+            scale_factor=scale_factor,
+            scale_exponent=scale_exponent,
+            comoving=comoving,
+            valid_transform=valid_transform,
+            compression=compression,
+        )
+        if ret.size > 1:
+            raise RuntimeError("cosmo_quantity instances must be scalars")
+        return ret
+
+    __round__ = _propagate_cosmo_array_attributes_to_result(
+        _ensure_result_is_cosmo_array_or_quantity(unyt_quantity.__round__)
+    )

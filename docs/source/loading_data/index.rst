@@ -247,47 +247,6 @@ Then, to access individual columns (in this case element abundances):
    data.gas.element_mass_fractions.silicon
 
 
-Non-unyt properties
--------------------
-
-Each data array has some custom properties that are not present within the base
-:obj:`unyt.unyt_array` class. We create our own version of this in
-:obj:`swiftsimio.objects.cosmo_array`, which allows each dataset to contain
-its own cosmology and name properties.
-
-For instance, should you ever need to know what a dataset represents, you can
-ask for a description:
-
-.. code-block:: python
-
-   print(rho_gas.name)
-
-which will output ``Co-moving mass densities of the particles``. They include
-scale-factor information, too, through the ``cosmo_factor`` object,
-
-.. code-block:: python
-
-   # Conversion factor to make the densities a physical quantity
-   print(rho_gas.cosmo_factor.a_factor)
-   physical_rho_gas = rho_gas.cosmo_factor.a_factor * rho_gas
-
-   # Symbolic scale-factor expression
-   print(rho_gas.cosmo_factor.expr)
-
-which will output ``132651.002785671`` and ``a**(-3.0)``. This is an easy way
-to convert your co-moving values to physical ones.
-
-An even easier way to convert your properties to physical is to use the
-built-in ``to_physical`` and ``convert_to_physical`` methods, as follows:
-
-.. code-block:: python
-
-   physical_rho_gas = rho_gas.to_physical()
-
-   # Convert in-place
-   rho_gas.convert_to_physical()
-
-
 User-defined particle types
 ---------------------------
 
@@ -310,38 +269,3 @@ in SWIFT will be automatically read.
        "extra_test.hdf5",
    )
 
-
-Halo Catalogues
----------------
-
-SWIFT-compatible halo catalogues, such as those written with SOAP, can be
-loaded entirely transparently with ``swiftsimio``. It is generally possible
-to use all of the functionality (masking, visualisation, etc.) that is used
-with snapshots with these files, assuming the files conform to the
-correct metadata standard.
-
-An example SOAP file is available at
-``http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/soap_example.hdf5``
-
-You can load SOAP files as follows:
-
-.. code-block:: python
-
-   from swiftsimio import load
-
-   catalogue = load("soap_example.hdf5")
-
-   print(catalogue.spherical_overdensity_200_mean.total_mass)
-
-   # >>> [  591.      328.5     361.      553.      530.      507.      795.
-   #        574.      489.5     233.75      0.     1406.      367.5    2308.
-   #        ...
-   #        0.      534.        0.      191.75   1450.      600.      290.   ] 10000000000.0*Msun (Physical)
-
-What's going on here? Under the hood, ``swiftsimio`` has a discrimination function
-between different metadata types, based upon a property stored in the HDF5 file,
-``Header/OutputType``. If this is set to ``FullVolume``, we have a snapshot,
-and use the :obj:`swiftsimio.metadata.objects.SWIFTSnapshotMetadata`
-class. If it is ``SOAP``, we use
-:obj:`swiftsimio.metadata.objects.SWIFTSOAPMetadata`, which instructs
-``swiftsimio`` to read slightly different properties from the HDF5 file.

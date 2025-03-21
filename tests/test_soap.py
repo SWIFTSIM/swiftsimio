@@ -4,13 +4,12 @@ Tests that we can open SOAP files
 
 from tests.helper import requires
 
-from swiftsimio import load, mask
-import unyt
+from swiftsimio import load, mask, cosmo_quantity
 
 
 @requires("soap_example.hdf5")
 def test_soap_can_load(filename):
-    data = load(filename)
+    load(filename)
 
     return
 
@@ -43,8 +42,20 @@ def test_soap_can_mask_non_spatial(filename):
 def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
     this_mask = mask(filename, spatial_only=False)
 
-    lower = unyt.unyt_quantity(1e5, "Msun")
-    upper = unyt.unyt_quantity(1e13, "Msun")
+    lower = cosmo_quantity(
+        1e5,
+        "Msun",
+        comoving=True,
+        scale_factor=this_mask.metadata.scale_factor,
+        scale_exponent=0,
+    )
+    upper = cosmo_quantity(
+        1e13,
+        "Msun",
+        comoving=True,
+        scale_factor=this_mask.metadata.scale_factor,
+        scale_exponent=0,
+    )
     this_mask.constrain_mask(
         "spherical_overdensity_200_mean", "total_mass", lower, upper
     )
@@ -60,9 +71,7 @@ def test_soap_can_mask_spatial_and_non_spatial_actually_use(filename):
     masses2 = data2.spherical_overdensity_200_mean.total_mass
 
     # Manually mask
-    custom_mask = (
-        unyt.unyt_array(masses2.to_value(masses2.units), masses2.units) >= lower
-    ) & (unyt.unyt_array(masses2.to_value(masses2.units), masses2.units) <= upper)
+    custom_mask = (masses2 >= lower) & (masses2 <= upper)
 
     assert len(masses2[custom_mask]) == len(masses)
 

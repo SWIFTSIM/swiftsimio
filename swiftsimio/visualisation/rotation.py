@@ -2,10 +2,9 @@
 Rotation matrix calculation routines.
 """
 
-from swiftsimio.accelerated import jit
-from numpy import float64, array, matrix, cross, identity, dot, matmul
+from numpy import float64, array, cross, identity, dot, matmul
 from numpy.linalg import norm, inv
-from math import sin, cos, sqrt, acos
+from math import sin, acos
 
 
 def rotation_matrix_from_vector(vector: float64, axis: str = "z") -> array:

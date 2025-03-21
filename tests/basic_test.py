@@ -4,7 +4,6 @@ Basic integration test!
 
 from swiftsimio import load
 from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
 
 import unyt
 import numpy as np
@@ -53,7 +52,7 @@ def test_load():
     """
     x = load("test.hdf5")
 
-    density = x.gas.internal_energy
-    coordinates = x.gas.coordinates
+    x.gas.internal_energy
+    x.gas.coordinates
 
     os.remove("test.hdf5")

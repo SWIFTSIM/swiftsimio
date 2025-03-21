@@ -109,8 +109,8 @@ In the above it's important to note the following:
 + Only the density and temperatures (corresponding to the ``PartType0/Densities`` and
   ``PartType0/Temperatures``) datasets are read in.
 + That data is only read in once the
-  :meth:`swiftsimio.objects.cosmo_array.convert_to_cgs` method is called.
-+ :meth:`swiftsimio.objects.cosmo_array.convert_to_cgs` converts data in-place;
+  :meth:`~swiftsimio.objects.cosmo_array.convert_to_cgs` method is called.
++ :meth:`~swiftsimio.objects.cosmo_array.convert_to_cgs` converts data in-place;
   i.e. it returns `None`.
 + The data is cached and not re-read in when ``plt.scatter`` is called.
 

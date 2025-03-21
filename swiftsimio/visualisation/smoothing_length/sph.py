@@ -14,9 +14,8 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
     -------
     The extracted smoothing lengths.
     """
-    try:
-        hsml = data.gas.smoothing_lengths
-    except AttributeError:
-        # Backwards compatibility
-        hsml = data.gas.smoothing_length
-    return hsml
+    return (
+        data.smoothing_lengths
+        if hasattr(data, "smoothing_lengths")
+        else data.smoothing_length  # backwards compatibility
+    )

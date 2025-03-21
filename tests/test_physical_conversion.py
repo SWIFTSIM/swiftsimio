@@ -10,7 +10,12 @@ def test_convert(filename):
     """
     data = load(filename)
     coords = data.gas.coordinates
+    units = coords.units
     coords_physical = coords.to_physical()
 
-    assert array_equal(coords * data.metadata.a, coords_physical)
+    # array_equal applied to cosmo_array's is aware of physical & comoving
+    # make sure to compare bare arrays:
+    assert array_equal(
+        coords.to_value(units) * data.metadata.a, coords_physical.to_value(units)
+    )
     return

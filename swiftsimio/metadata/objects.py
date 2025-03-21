@@ -12,7 +12,7 @@ import unyt
 import h5py
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
-from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.objects import cosmo_array, cosmo_factor
 from abc import ABC, abstractmethod
 
 import re
@@ -610,12 +610,8 @@ class SWIFTGroupMetadata(object):
                     # We should probably warn the user here...
                     pass
 
-            # Deal with case where we _really_ have a dimensionless quantity. Comparing with
-            # 1.0 doesn't work, beacause in these cases unyt reverts to a floating point
-            # comparison.
-            try:
-                units.units
-            except AttributeError:
+            # Deal with case where we _really_ have a dimensionless quantity.
+            if not hasattr(units, "units"):
                 units = None
 
             return units
@@ -702,9 +698,7 @@ class SWIFTGroupMetadata(object):
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
-            a_factor_this_dataset = a ** cosmo_exponent
-
-            return cosmo_factor(a_factor_this_dataset, current_scale_factor)
+            return cosmo_factor.create(current_scale_factor, cosmo_exponent)
 
         self.field_cosmologies = [
             get_cosmo(self.metadata.handle[x]) for x in self.field_paths
@@ -847,17 +841,8 @@ class SWIFTUnits(object):
         Property that gets the file handle, which can be shared
         with other objects for efficiency reasons.
         """
-        if isinstance(self._handle, h5py.File):
-            # Can be open or closed, let's test.
-            try:
-                file = self._handle.file
-
-                return self._handle
-            except ValueError:
-                # This will be the case if there is no active file handle
-                pass
-
-        self._handle = h5py.File(self.filename, "r")
+        if not self._handle:  # if self._handle is None, or if file closed (h5py #1363)
+            self._handle = h5py.File(self.filename, "r")
 
         return self._handle
 
@@ -901,8 +886,8 @@ class SWIFTUnits(object):
 
 def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
     """
-    Discriminates between the different types of metadata objects read from SWIFT-compatile
-    files.
+    Discriminates between the different types of metadata objects read from
+    SWIFT-compatible files.
 
     Parameters
     ----------

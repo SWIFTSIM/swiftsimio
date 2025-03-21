@@ -5,8 +5,7 @@ This will ensure that all particle fields are populated correctly, and that they
 be read in.
 """
 
-import pytest
-
+import numpy as np
 from tests.helper import requires
 from swiftsimio import load, mask
 
@@ -37,8 +36,8 @@ def test_cosmology_metadata(filename):
 @requires("cosmological_volume.hdf5")
 def test_time_metadata(filename):
     """
-    This tests the time metadata and also tests the ability to include two items at once from
-    the same header attribute.
+    This tests the time metadata and also tests the ability to include two items at once
+    from the same header attribute.
     """
 
     data = load(filename)
@@ -153,20 +152,17 @@ def test_cell_metadata_is_valid(filename):
     mask_region = mask(filename)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
-    mask_region.constrain_spatial([[0 * b, b] for b in mask_region.metadata.boxsize])
+    mask_region.constrain_spatial(
+        cosmo_array(
+            [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
+        ).T
+    )
     data = load(filename, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.gas.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.gas.coordinates.units)
     offsets = mask_region.offsets["gas"]
     counts = mask_region.counts["gas"]
-
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
-    )
 
     start_offset = offsets
     stop_offset = offsets + counts
@@ -187,11 +183,8 @@ def test_cell_metadata_is_valid(filename):
                 continue
 
             # Give it a little wiggle room.
-            # Mask_region provides unyt_array, not cosmo_array, anticipate warnings.
-            with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-                assert max <= upper * 1.05
-            with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-                assert min > lower * 0.95
+            assert max <= upper * 1.05
+            assert min > lower * 0.95
 
 
 @requires("cosmological_volume_dithered.hdf5")
@@ -206,7 +199,11 @@ def test_dithered_cell_metadata_is_valid(filename):
     mask_region = mask(filename)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
-    mask_region.constrain_spatial([[0 * b, b] for b in mask_region.metadata.boxsize])
+    mask_region.constrain_spatial(
+        cosmo_array(
+            [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
+        ).T
+    )
     data = load(filename, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
@@ -240,12 +237,8 @@ def test_dithered_cell_metadata_is_valid(filename):
                 continue
 
             # Give it a little wiggle room
-            # Mask_region provides unyt_array, not cosmo_array, anticipate warnings.
-            with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-                assert max <= upper * 1.05
-            # Mask_region provides unyt_array, not cosmo_array, anticipate warnings.
-            with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-                assert min > lower * 0.95
+            assert max <= upper * 1.05
+            assert min > lower * 0.95
 
 
 @requires("cosmological_volume.hdf5")
@@ -274,27 +267,22 @@ def test_reading_select_region_metadata(filename):
     selected_coordinates = selected_data.gas.coordinates
 
     # Now need to repeat teh selection by hand:
-    # Iterating a cosmo_array gives unyt_quantities, anticipate the warning for comparing to cosmo_array.
-    with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-        subset_mask = logical_and.reduce(
-            [
-                logical_and(x > y_lower, x < y_upper)
-                for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
-            ]
-        )
+
+    subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
+        ]
+    )
 
     # We also need to repeat for the thing we just selected; the cells only give
     # us an _approximate_ selection!
-    # Iterating a cosmo_array gives unyt_quantities, anticipate the warning for comparing to cosmo_array.
-    with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-        selected_subset_mask = logical_and.reduce(
-            [
-                logical_and(x > y_lower, x < y_upper)
-                for x, (y_lower, y_upper) in zip(
-                    selected_data.gas.coordinates.T, restrict
-                )
-            ]
-        )
+    selected_subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(selected_data.gas.coordinates.T, restrict)
+        ]
+    )
 
     hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
 
@@ -331,27 +319,21 @@ def test_reading_select_region_metadata_not_spatial_only(filename):
     selected_coordinates = selected_data.gas.coordinates
 
     # Now need to repeat the selection by hand:
-    # Iterating a cosmo_array gives unyt_quantities, anticipate the warning for comparing to cosmo_array.
-    with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-        subset_mask = logical_and.reduce(
-            [
-                logical_and(x > y_lower, x < y_upper)
-                for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
-            ]
-        )
+    subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
+        ]
+    )
 
     # We also need to repeat for the thing we just selected; the cells only give
     # us an _approximate_ selection!
-    # Iterating a cosmo_array gives unyt_quantities, anticipate the warning for comparing to cosmo_array.
-    with pytest.warns(RuntimeWarning, match="Mixing ufunc arguments"):
-        selected_subset_mask = logical_and.reduce(
-            [
-                logical_and(x > y_lower, x < y_upper)
-                for x, (y_lower, y_upper) in zip(
-                    selected_data.gas.coordinates.T, restrict
-                )
-            ]
-        )
+    selected_subset_mask = logical_and.reduce(
+        [
+            logical_and(x > y_lower, x < y_upper)
+            for x, (y_lower, y_upper) in zip(selected_data.gas.coordinates.T, restrict)
+        ]
+    )
 
     hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
 

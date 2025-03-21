@@ -123,7 +123,7 @@ def read_ranges_from_file_unchunked(
     already_read = 0
     handle_multidim = handle.ndim > 1
 
-    for (read_start, read_end) in ranges:
+    for read_start, read_end in ranges:
         if read_end == read_start:
             continue
 

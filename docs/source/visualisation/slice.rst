@@ -5,7 +5,7 @@ The :mod:`swiftsimio.visualisation.slice` sub-module provides an interface
 to render SWIFT data onto a slice. This takes your 3D data and finds the 3D
 density at fixed z-position, slicing through the box.
 
-The default :code:`"sph"` backend effectively solves the equation:
+The default ``"sph"`` backend effectively solves the equation:
 
 :math:`\tilde{A}_i = \sum_j A_j W_{ij, 3D}`
 
@@ -19,7 +19,7 @@ nearest-neighbour interpolation to compute the densities at each pixel.
 This backend is more suited for use with moving-mesh hydrodynamics schemes.
 
 The primary function here is
-:meth:`swiftsimio.visualisation.slice.slice_gas`, which allows you to
+:func:`swiftsimio.visualisation.slice.slice_gas`, which allows you to
 create a gas slice of any field. See the example below.
 
 Example
@@ -58,8 +58,9 @@ Example
 This basic demonstration creates a mass density map.
 
 To create, for example, a projected temperature map, we need to remove the
-density dependence (i.e. :meth:`slice_gas` returns a volumetric temperature
-in units of K / kpc^3 and we just want K) by dividing out by this:
+density dependence (i.e. :func:`~swiftsimio.visualisation.slice.slice_gas`
+returns a volumetric temperature in units of K / kpc^3 and we just want K)
+by dividing out by this:
 
 .. code-block:: python
 
@@ -121,7 +122,7 @@ All visualisation functions by default assume a periodic box. Rather than
 simply summing each individual particle once, eight additional periodic copies
 of each particle are also accounted for. Most copies will contribute outside the
 valid pixel range, but the copies that do not ensure that pixels close to the
-edge receive all necessary contributions. Thanks to Numba optimisations, the
+edge receive all necessary contributions. Thanks to :mod:`numba` optimisations, the
 overhead of these additional copies is relatively small.
 
 There are some caveats with this approach. If you try to visualise a subset of
@@ -139,11 +140,12 @@ Rotations
 Rotations of the box prior to slicing are provided in a similar fashion to the 
 :mod:`swiftsimio.visualisation.projection` sub-module, by using the 
 :mod:`swiftsimio.visualisation.rotation` sub-module. To rotate the perspective
-prior to slicing a ``rotation_center`` argument in :meth:`slice_gas` needs
+prior to slicing a ``rotation_center`` argument in
+:func:`~swiftsimio.visualisation.slice.slice_gas` needs
 to be provided, specifying the point around which the rotation takes place. 
 The angle of rotation is specified with a matrix, supplied by ``rotation_matrix``
-in :meth:`slice_gas`. The rotation matrix may be computed with 
-:meth:`rotation_matrix_from_vector`. This will result in the perspective being 
+in :func:`~swiftsimio.visualisation.slice.slice_gas`. The rotation matrix may be computed with 
+:func:`~swiftsimio.visualisation.rotation.rotation_matrix_from_vector`. This will result in the perspective being 
 rotated to be along the provided vector. This approach to rotations applied to 
 the above example is shown below.
 
@@ -209,8 +211,8 @@ smoothing lengths, and smoothed quantities, to generate a pixel grid that
 represents the smoothed, sliced, version of the data.
 
 This API is available through
-:meth:`swiftsimio.visualisation.slice.slice_scatter` and
-:meth:`swiftsimio.visualisation.slice.slice_scatter_parallel` for the parallel
+:func:`swiftsimio.visualisation.slice_backends.backends["sph"]` and
+:func:`swiftsimio.visualisation.slice_backends.backends_parallel["sph"]` for the parallel
 version. The parallel version uses significantly more memory as it allocates
 a thread-local image array for each thread, summing them in the end. Here we
 will only describe the ``scatter`` variant, but they behave in the exact same way.
@@ -235,7 +237,9 @@ not crash the code, and may even contribute to the image if their smoothing
 lengths overlap with [0, 1]. You will need to re-scale your data such that it
 lives within this range. Smoothing lengths and z coordinates need to be
 re-scaled in the same way (using the same scaling factor), but z coordinates do
-not need to lie in the domain [0, 1]. Then you may use the function as follows:
+not need to lie in the domain [0, 1]. You should provide inputs as raw numpy arrays
+(not :class:`~swiftsimio.objects.cosmo_array` or :class:`~unyt.array.unyt_array`).
+Then you may use the function as follows:
 
 .. code-block:: python
 

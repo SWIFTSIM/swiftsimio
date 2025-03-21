@@ -1,6 +1,7 @@
 """
 Test for extra particle types.
 """
+
 from swiftsimio import load, metadata
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units

@@ -4,16 +4,11 @@ Renormalised projection visualisation.
 This version of the function is the same as `fast` but provides an
 explicit renormalisation of each kernel such that the mass is
 conserved up to floating point precision.
-"""
 
-
-"""
 The original smoothing code. This provides basic renormalisation
-of the kernel on each call. 
+of the kernel on each call.
 """
 
-
-from typing import Union
 from math import sqrt
 from numpy import float64, float32, int32, zeros, ndarray
 
@@ -22,10 +17,7 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.visualisation.projection_backends.kernels import (
     kernel_single_precision as kernel,
 )
-from swiftsimio.visualisation.projection_backends.kernels import (
-    kernel_constant,
-    kernel_gamma,
-)
+from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
 
 
 @jit(nopython=True, fastmath=True)
@@ -167,8 +159,9 @@ def scatter(
                         particle_cell_x - cells_spanned + 1,
                         particle_cell_x + cells_spanned,
                     ):
-                        # The distance in x to our new favourite cell -- remember that our x, y
-                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        # The distance in x to our new favourite cell -- remember that our
+                        # x, y are all in a box of [0, 1]; calculate the distance to the
+                        # cell centre
                         distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
                             x_pos
                         )
@@ -199,8 +192,9 @@ def scatter(
                             particle_cell_x + cells_spanned + 1, maximal_array_index + 1
                         ),
                     ):
-                        # The distance in x to our new favourite cell -- remember that our x, y
-                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        # The distance in x to our new favourite cell -- remember that our
+                        # x, y are all in a box of [0, 1]; calculate the distance to the
+                        # cell centre
                         distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
                             x_pos
                         )

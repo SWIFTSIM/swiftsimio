@@ -16,6 +16,8 @@ packages = [
     "swiftsimio.visualisation",
     "swiftsimio.visualisation.projection_backends",
     "swiftsimio.visualisation.slice_backends",
+    "swiftsimio.visualisation.volume_render_backends",
+    "swiftsimio.visualisation.ray_trace_backends",
     "swiftsimio.visualisation.tools",
     "swiftsimio.visualisation.smoothing_length",
 ]
@@ -37,9 +39,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy",
+    "numpy>=2.1.0",
     "h5py",
-    "unyt>=3.0.2",
+    "unyt>=3.0.4",
     "numba>=0.50.0",
 ]
 

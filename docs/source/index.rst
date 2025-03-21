@@ -17,8 +17,10 @@ snapshots to enable partial reading.
 
    getting_started/index
    loading_data/index
+   cosmo_array/index
    masking/index
    visualisation/index
+   soap/index
    velociraptor/index
    creating_initial_conditions/index
    statistics/index

@@ -14,6 +14,7 @@ from typing import Union, List, Callable
 from functools import reduce
 
 from swiftsimio import metadata
+from swiftsimio.objects import cosmo_array
 from swiftsimio.metadata.cosmology.cosmology_fields import a_exponents
 
 
@@ -51,7 +52,7 @@ class __SWIFTWriterParticleDataset(object):
         checks if all required datasets are empty.
     check_consistent(self)
         performs consistency checks on dataset
-    generate_smoothing_lengths(self, boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity], dimension: int)
+    generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int)
         automatically generates the smoothing lengths
     write_particle_group(self, file_handle: h5py.File, compress: bool)
         writes the particle group's required properties to file.
@@ -162,11 +163,7 @@ class __SWIFTWriterParticleDataset(object):
 
         return True
 
-    def generate_smoothing_lengths(
-        self,
-        boxsize: Union[List[unyt.unyt_quantity], unyt.unyt_quantity],
-        dimension: int,
-    ):
+    def generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int):
         """
         Automatically generates the smoothing lengths as 2 * the mean interparticle separation.
 
@@ -175,7 +172,7 @@ class __SWIFTWriterParticleDataset(object):
 
         Parameters
         ----------
-        boxsize : unyt.unyt_quantity or list of unyt.unyt_quantity
+        boxsize : cosmo_array or cosmo_quantity
             size of SWIFT computational box
         dimension : int
             number of box dimensions
@@ -506,7 +503,7 @@ class SWIFTSnapshotWriter(object):
     def __init__(
         self,
         unit_system: Union[unyt.UnitSystem, str],
-        box_size: Union[list, unyt.unyt_quantity],
+        boxsize: cosmo_array,
         dimension=3,
         compress=True,
         extra_header: Union[None, dict] = None,
@@ -522,7 +519,7 @@ class SWIFTSnapshotWriter(object):
         ----------
         unit_system : unyt.UnitSystem or str
             unit system for dataset
-        boxsize : list or unyt.unyt_quantity
+        boxsize : cosmo_array
             size of simulation box and associated units
         dimension : int, optional
             dimensions of simulation
@@ -545,13 +542,13 @@ class SWIFTSnapshotWriter(object):
 
         # Validate the boxsize and convert to our units.
         try:
-            for x in box_size:
+            for x in boxsize:
                 x.convert_to_base(self.unit_system)
-            self.box_size = box_size
+            self.boxsize = boxsize
         except TypeError:
             # This is just a single number (i.e. uniform in all dimensions)
-            box_size.convert_to_base(self.unit_system)
-            self.box_size = box_size
+            boxsize.convert_to_base(self.unit_system)
+            self.boxsize = boxsize
 
         self.dimension = dimension
         self.compress = compress
@@ -637,7 +634,7 @@ class SWIFTSnapshotWriter(object):
                 mass_table[_ptype_str_to_int(number)] = getattr(self, name).masses[0]
 
         attrs = {
-            "BoxSize": self.box_size,
+            "BoxSize": self.boxsize,
             "NumPart_Total": number_of_particles,
             "NumPart_Total_HighWord": [0] * 6,
             "Flag_Entropy_ICs": 0,

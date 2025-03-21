@@ -2,7 +2,7 @@
 Contains the description of the metadata fields in the SWIFT snapshots.
 """
 
-from ..objects import cosmo_factor, a
+from ..objects import cosmo_factor
 
 metadata_fields_to_read = {
     "Code": "code",
@@ -77,7 +77,7 @@ def generate_cosmo_args_header_unpack_arrays(scale_factor) -> dict:
     # should not be cosmo_array'd).
     cosmo_args = {
         "boxsize": dict(
-            cosmo_factor=cosmo_factor(a ** 1, scale_factor=scale_factor),
+            cosmo_factor=cosmo_factor.create(scale_factor, 1),
             comoving=True,  # if it's not, then a=1 and it doesn't matter
             valid_transform=True,
         )

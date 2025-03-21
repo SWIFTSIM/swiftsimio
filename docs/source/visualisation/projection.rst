@@ -15,7 +15,7 @@ with :math:`\tilde{A}_i` the smoothed quantity in pixel :math:`i`, and
 Here we use the Wendland-C2 kernel.
 
 The primary function here is
-:meth:`swiftsimio.visualisation.projection.project_gas`, which allows you to
+:func:`swiftsimio.visualisation.projection.project_gas`, which allows you to
 create a gas projection of any field. See the example below.
 
 Example
@@ -29,7 +29,7 @@ Example
    data = load("cosmo_volume_example.hdf5")
 
    # This creates a grid that has units msun / Mpc^2, and can be transformed like
-   # any other unyt quantity
+   # any other cosmo_array
    mass_map = project_gas(
        data,
        resolution=1024,
@@ -52,7 +52,7 @@ Example
 This basic demonstration creates a mass surface density map.
 
 To create, for example, a projected temperature map, we need to remove the
-surface density dependence (i.e. :meth:`project_gas` returns a surface
+surface density dependence (i.e. :func:`~swiftsimio.visualisation.projection.project_gas` returns a surface
 temperature in units of K / kpc^2 and we just want K) by dividing out by
 this:
 
@@ -114,11 +114,11 @@ backends are as follows:
 + ``fast``: The default backend - this is extremely fast, and provides very basic
   smoothing, with a return type of single precision floating point numbers.
 + ``histogram``: This backend provides zero smoothing, and acts in a similar way
-  to the ``np.hist2d`` function but with the same arguments as ``scatter``.
-+ ``reference``: The same backend as ``fast`` but with two distinguishing features;
+  to the :func:`~numpy.histogram2d` function but with the same arguments as ``scatter``.
++ ``reference``: The same backend as ``fast`` but with two distinguishing features:
   all calculations are performed in double precision, and it will return early
   with a warning message if there are not enough pixels to fully resolve each kernel.
-  Regular users should not use this mode.
+  Intended for developer usage, regular users should not use this mode.
 + ``renormalised``: The same as ``fast``, but each kernel is evaluated twice and
   renormalised to ensure mass conservation within floating point precision. Returns
   single precision arrays.
@@ -166,7 +166,7 @@ All visualisation functions by default assume a periodic box. Rather than
 simply projecting each individual particle once, four additional periodic copies
 of each particle are also projected. Most copies will project outside the valid
 pixel range, but the copies that do not ensure that pixels close to the edge
-receive all necessary contributions. Thanks to Numba optimisations, the overhead
+receive all necessary contributions. Thanks to :mod:`numba` optimisations, the overhead
 of these additional copies is relatively small.
 
 There are some caveats with this approach. If you try to visualise a subset of
@@ -183,8 +183,8 @@ Rotations
 Sometimes you will need to visualise a galaxy from a different perspective.
 The :mod:`swiftsimio.visualisation.rotation` sub-module provides routines to
 generate rotation matrices corresponding to vectors, which can then be
-provided to the ``rotation_matrix`` argument of :meth:`project_gas` (and
-:meth:`project_gas_pixel_grid`). You will also need to supply the
+provided to the ``rotation_matrix`` argument of :func:`~swiftsimio.visualisation.projection.project_gas` (and
+:func:`~swiftsimio.visualisation.projection.project_gas_pixel_grid`). You will also need to supply the
 ``rotation_center`` argument, as the rotation takes place around this given
 point. The example code below loads a snapshot, and a halo catalogue, and
 creates an edge-on and face-on projection using the integration in
@@ -193,87 +193,96 @@ is shown in the ``velociraptor`` section.
 
 .. code-block:: python
 
-   from swiftsimio import load, mask
+   from swiftsimio import load, mask, cosmo_array
    from velociraptor import load as load_catalogue
    from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
-   from swiftsimio.visualisation.projection import project_gas_pixel_grid
-
+   from swiftsimio.visualisation.projection import project_gas
+   
    import unyt
    import numpy as np
-   import matplotlib.pyplot as plt
-   from matplotlib.colors import LogNorm
-
+   
    # Radius around which to load data, we will visualise half of this
    size = 1000 * unyt.kpc
-
+   
    snapshot_filename = "cosmo_volume_example.hdf5"
    catalogue_filename = "cosmo_volume_example.properties"
-
+   
    catalogue = load_catalogue(catalogue_filename)
-
+   
    # Which halo should we visualise?
    halo = 0
-
+   
    x = catalogue.positions.xcmbp[halo]
    y = catalogue.positions.ycmbp[halo]
    z = catalogue.positions.zcmbp[halo]
-
+   
    lx = catalogue.angular_momentum.lx[halo]
    ly = catalogue.angular_momentum.ly[halo]
    lz = catalogue.angular_momentum.lz[halo]
-
+   
    # The angular momentum vector will point perpendicular to the galaxy disk.
    # If your simulation contains stars, use lx_star
    angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
-
-   face_on_rotation_matrix = rotation_matrix_from_vector(
-      angular_momentum_vector
-   )
-   edge_on_rotation_matrix = rotation_matrix_from_vector(
-      angular_momentum_vector,
-      axis="y"
-   )
-
-   region = [
-      [x - size, x + size],
-      [y - size, y + size],
-      [z - size, z + size],
-   ]
-
-   visualise_region = [
-      x - 0.5 * size, x + 0.5 * size,
-      y - 0.5 * size, y + 0.5 * size,
-   ]
-
+   
+   face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
+   edge_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector, axis="y")
+   
    data_mask = mask(snapshot_filename)
+   region = cosmo_array(
+       [
+           [x - size, x + size],
+           [y - size, y + size],
+           [z - size, z + size],
+       ],
+       x.units,
+       comoving=True,
+       scale_factor=data_mask.metadata.a,
+       scale_exponent=1,
+   )
+   
+   visualise_region = cosmo_array(
+       [
+           x - 0.5 * size,
+           x + 0.5 * size,
+           y - 0.5 * size,
+           y + 0.5 * size,
+       ],
+       comoving=True,
+       scale_factor=data_mask.metadata.a,
+       scale_exponent=1,
+   )
+   
    data_mask.constrain_spatial(region)
    data = load(snapshot_filename, mask=data_mask)
-
+   
    # Use project_gas_pixel_grid to generate projected images
-
+   
    common_arguments = dict(
        data=data,
        resolution=512,
        parallel=True,
        region=visualise_region,
-       periodic=False, # disable periodic boundaries when using rotations
+       periodic=False,  # disable periodic boundaries when using rotations
    )
-
-   un_rotated = project_gas_pixel_grid(**common_arguments)
-
-   face_on = project_gas_pixel_grid(
-      **common_arguments,
-      rotation_center=unyt.unyt_array([x, y, z]),
-      rotation_matrix=face_on_rotation_matrix,
+   
+   un_rotated = project_gas(**common_arguments)
+   
+   rotation_center = cosmo_array(
+       [x, y, z], comoving=True, scale_factor=data_mask.metadata.a, scale_exponent=1
    )
-
-   edge_on = project_gas_pixel_grid(
-      **common_arguments,
-      rotation_center=unyt.unyt_array([x, y, z]),
-      rotation_matrix=edge_on_rotation_matrix,
+   face_on = project_gas(
+       **common_arguments,
+       rotation_center=rotation_center,
+       rotation_matrix=face_on_rotation_matrix,
    )
-
+   
+   edge_on = project_gas(
+       **common_arguments,
+       rotation_center=rotation_center,
+       rotation_matrix=edge_on_rotation_matrix,
+   )
+   
 Using this with the provided example data will just show blobs due to its low resolution
 nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
 galaxies, but that data is too large to provide as an example in this tutorial.
@@ -287,15 +296,12 @@ Other particle types
 --------------------
 
 Other particle types are able to be visualised through the use of the
-:meth:`swiftsimio.visualisation.projection.project_pixel_grid` function. This
-does not attach correct symbolic units, so you will have to work those out
-yourself, but it does perform the smoothing. We aim to introduce the feature
-of correctly applied units to these projections soon.
+:func:`swiftsimio.visualisation.projection.project_pixel_grid` function.
 
 To use this feature for particle types that do not have smoothing lengths, you
 will need to generate them, as in the example below where we create a
 mass density map for dark matter. We provide a utility to do this through
-:meth:`swiftsimio.visualisation.smoothing_length.generate_smoothing_lengths`.
+:func:`~swiftsimio.visualisation.smoothing_length.generate.generate_smoothing_lengths`.
 
 .. code-block:: python
 
@@ -320,7 +326,6 @@ mass density map for dark matter. We provide a utility to do this through
        # Note here that we pass in the dark matter dataset not the whole
        # data object, to specify what particle type we wish to visualise
        data=data.dark_matter,
-       boxsize=data.metadata.boxsize,
        resolution=1024,
        project="masses",
        parallel=True,
@@ -348,15 +353,15 @@ smoothing lengths, and smoothed quantities, to generate a pixel grid that
 represents the smoothed version of the data.
 
 This API is available through
-:meth:`swiftsimio.visualisation.projection.scatter` and
-:meth:`swiftsimio.visualisation.projection.scatter_parallel` for the parallel
+:obj:`swiftsimio.visualisation.projection_backends.backends["scatter"]` and
+:obj:`swiftsimio.visualisation.projection_backends.backends_parallel["scatter"]` for the parallel
 version. The parallel version uses significantly more memory as it allocates
 a thread-local image array for each thread, summing them in the end. Here we
 will only describe the ``scatter`` variant, but they behave in the exact same way.
 
 By default this uses the "fast" backend. To use the others, you can select them
 manually from the module, or by using the ``backends`` and ``backends_parallel``
-dictionaries in :mod:`swiftsimio.visualisation.projection`.
+dictionaries in :mod:`swiftsimio.visualisation.projection_backends`.
 
 To use this function, you will need:
 
@@ -374,7 +379,9 @@ The key here is that only particles in the domain [0, 1] in x, and [0, 1] in y
 will be visible in the image. You may have particles outside of this range;
 they will not crash the code, and may even contribute to the image if their
 smoothing lengths overlap with [0, 1]. You will need to re-scale your data
-such that it lives within this range. Then you may use the function as follows:
+such that it lives within this range. You should also pass raw numpy arrays (not
+:class:`~swiftsimio.objects.cosmo_array` or :class:`~unyt.array.unyt_array`, the
+inputs are dimensionless). Then you may use the function as follows:
 
 .. code-block:: python
 
@@ -383,12 +390,12 @@ such that it lives within this range. Then you may use the function as follows:
    # Using the variable names from above
    out = scatter(x=x, y=y, h=h, m=m, res=res)
 
-``out`` will be a 2D :mod:`numpy` grid of shape ``[res, res]``. You will need
+``out`` will be a 2D :class:`~numpy.ndarray` grid of shape ``[res, res]``. You will need
 to re-scale this back to your original dimensions to get it in the correct units,
 and do not forget that it now represents the smoothed quantity per surface area.
 
 If the optional arguments ``box_x`` and ``box_y`` are provided, they should
 contain the simulation box size in the same re-scaled coordinates as ``x`` and
 ``y``. The projection backend will then correctly apply periodic boundary
-wrapping. If ``box_x`` and ``box_y`` are not provided or set to 0, no
+wrapping. If ``box_x`` and ``box_y`` are not provided or set to ``0``, no
 periodic boundaries are applied.
