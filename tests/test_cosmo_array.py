@@ -1078,23 +1078,28 @@ class TestMultiplicationByUnyt:
         ca = cosmo_array(
             np.ones(3), u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1
         )
-        # required so that can test right-sided division with the same assertions:
-        assert np.allclose(ca.to_value(ca.units), 1)
-        # the reference result:
-        multiplied_by_quantity = ca * (1 * u.Mpc)  # parentheses very important here
-        # get the same result twice through left-sided multiplication and division:
+
+        lmultiplied_by_quantity = ca * (1 * u.Mpc)  # parentheses very important here
         lmultiplied_by_unyt = ca * u.Mpc
-        ldivided_by_unyt = ca / u.Mpc ** -1
+        assert isinstance(lmultiplied_by_quantity, cosmo_array)
+        assert isinstance(lmultiplied_by_unyt, cosmo_array)
+        assert lmultiplied_by_unyt.comoving == lmultiplied_by_quantity.comoving
+        assert np.allclose(
+            lmultiplied_by_unyt.to_value(lmultiplied_by_quantity.units),
+            lmultiplied_by_quantity.to_value(lmultiplied_by_quantity.units),
+        )
 
-        for multiplied_by_unyt in (lmultiplied_by_unyt, ldivided_by_unyt):
-            assert isinstance(multiplied_by_quantity, cosmo_array)
-            assert isinstance(multiplied_by_unyt, cosmo_array)
-            assert np.allclose(
-                multiplied_by_unyt.to_value(multiplied_by_quantity.units),
-                multiplied_by_quantity.to_value(multiplied_by_quantity.units),
-            )
+        ldivided_by_quantity = ca / (1 * u.Mpc)
+        ldivided_by_unyt = ca / u.Mpc
+        assert isinstance(ldivided_by_quantity, cosmo_array)
+        assert isinstance(ldivided_by_unyt, cosmo_array)
+        assert ldivided_by_unyt.comoving == ldivided_by_quantity.comoving
+        assert np.allclose(
+            ldivided_by_unyt.to_value(ldivided_by_quantity.units),
+            ldivided_by_quantity.to_value(ldivided_by_quantity.units),
+        )
 
-    @pytest.mark.xfail
+    # @pytest.mark.xfail
     def test_rmultiplication_by_unyt(self):
         """
         We desire consistent behaviour for example for `cosmo_array(...) * (1 * u.Mpc)` as
@@ -1107,25 +1112,33 @@ class TestMultiplicationByUnyt:
         to xfail.
 
         If this is fixed in the future this test will pass and can be merged with
-        `test_multiplication_by_unyt` to tidy up.
+        `test_multiplication_by_unyt` to tidy up. Also clean up docstrings of
+        `cosmo_array.__mul__`, `cosmo_array.__rmul__`, `cosmo_array.__truediv__`,
+        `cosmo_array.__rtruediv__`.
 
         See https://github.com/yt-project/unyt/pull/572
         """
         ca = cosmo_array(
             np.ones(3), u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1
         )
-        # required so that can test right-sided division with the same assertions:
-        assert np.allclose(ca.to_value(ca.units), 1)
-        # the reference result:
-        multiplied_by_quantity = ca * (1 * u.Mpc)  # parentheses very important here
-        # get 2x the same result through right-sided multiplication and division:
-        rmultiplied_by_unyt = u.Mpc * ca
-        rdivided_by_unyt = u.Mpc ** 2 / ca
 
-        for multiplied_by_unyt in (rmultiplied_by_unyt, rdivided_by_unyt):
-            assert isinstance(multiplied_by_quantity, cosmo_array)
-            assert isinstance(multiplied_by_unyt, cosmo_array)
-            assert np.allclose(
-                multiplied_by_unyt.to_value(multiplied_by_quantity.units),
-                multiplied_by_quantity.to_value(multiplied_by_quantity.units),
-            )
+        rmultiplied_by_quantity = (1 * u.Mpc) * ca  # parentheses very important here
+        assert rmultiplied_by_quantity.comoving
+        rmultiplied_by_unyt = u.Mpc * ca
+        assert isinstance(rmultiplied_by_quantity, cosmo_array)
+        assert isinstance(rmultiplied_by_unyt, cosmo_array)
+        assert rmultiplied_by_unyt.comoving == rmultiplied_by_quantity.comoving
+        assert np.allclose(
+            rmultiplied_by_unyt.to_value(rmultiplied_by_quantity.units),
+            rmultiplied_by_quantity.to_value(rmultiplied_by_quantity.units),
+        )
+
+        rdivided_by_quantity = (1 * u.Mpc) / ca  # parentheses very important here
+        rdivided_by_unyt = u.Mpc / ca
+        assert isinstance(rdivided_by_quantity, cosmo_array)
+        assert isinstance(rdivided_by_unyt, cosmo_array)
+        assert rdivided_by_unyt.comoving == rdivided_by_quantity.comoving
+        assert np.allclose(
+            rdivided_by_unyt.to_value(rdivided_by_quantity.units),
+            rdivided_by_quantity.to_value(rdivided_by_quantity.units),
+        )
