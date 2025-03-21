@@ -700,12 +700,20 @@ def test_volume_render_and_unfolded_deposit_with_units(filename):
     # Volume render the particles
     volume = render_gas(data, npix, parallel=False).to_physical()
 
-    mean_density_deposit = (np.sum(deposition) / npix ** 3).to("Msun / kpc**3").v
-    mean_density_volume = (np.sum(volume) / npix ** 3).to("Msun / kpc**3").v
+    mean_density_deposit = (
+        (np.sum(deposition) / npix ** 3)
+        .to_comoving()
+        .to_value(unyt.solMass / unyt.kpc ** 3)
+    )
+    mean_density_volume = (
+        (np.sum(volume) / npix ** 3)
+        .to_comoving()
+        .to_value(unyt.solMass / unyt.kpc ** 3)
+    )
     mean_density_calculated = (
-        (np.sum(data.gas.masses) / (data.metadata.boxsize[0] * data.metadata.a) ** 3)
-        .to("Msun / kpc**3")
-        .v
+        (np.sum(data.gas.masses) / np.prod(data.metadata.boxsize))
+        .to_comoving()
+        .to_value(unyt.solMass / unyt.kpc ** 3)
     )
 
     assert np.isclose(mean_density_deposit, mean_density_calculated)
