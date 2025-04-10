@@ -40,7 +40,5 @@ def test_convert_to_value(filename):
     coords_comoving_values = coords.to_comoving_value(units)
     print(coords_physical_values / (coords_comoving_values * data.metadata.a))
     assert allclose(
-        coords_physical_values,
-        coords_comoving_values * data.metadata.a,
-        rtol=1e-6,
+        coords_physical_values, coords_comoving_values * data.metadata.a, rtol=1e-6
     )
