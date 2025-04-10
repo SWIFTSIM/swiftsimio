@@ -45,6 +45,8 @@ is done with the :meth:`~swiftsimio.objects.cosmo_array.to_physical`, :meth:`~sw
    # Convert in-place
    rho_gas.convert_to_physical()
 
+If you instead want to get the raw array values in either physical or comoving units, the :meth:`~swiftsimio.objects.cosmo_array.to_physical_value` and :meth:`~swiftsimio.objects.cosmo_array.to_comoving_value` are provided, analogous to the :meth:`~unyt.unyt_array.unyt_array.to_value`.
+
 The ``valid_transform`` is a boolean flag that is set to ``False`` for some arrays that don't make sense to convert to comoving.
 
 :class:`~swiftsimio.objects.cosmo_array` supports array arithmetic and the entire :mod:`numpy` range of functions. Attempting to combine arrays (e.g. by addition) will validate the cosmology information first. The implementation is designed to be permissive: it will only raise exceptions when a genuinely invalid combination is encountered, but is tolerant of missing cosmology information. When one argument in a relevant operation (like addition, for example) is not a :class:`~swiftsimio.objects.cosmo_array` the attributes of the :class:`~swiftsimio.objects.cosmo_array` will be assumed for both arguments. In such cases a warning is produced stating that this assumption has been made.
