@@ -92,7 +92,7 @@ def render_gas(
     data = data.gas
 
     m = _get_projection_field(data, project)
-    region_info = _get_region_info(data, region, require_cubic=True)
+    region_info = _get_region_info(data, region, require_cubic=True, periodic=periodic)
     hsml = backends_get_hsml["sph"](data)
     x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
 

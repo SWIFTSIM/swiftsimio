@@ -105,7 +105,7 @@ def project_pixel_grid(
     """
 
     m = _get_projection_field(data, project)
-    region_info = _get_region_info(data, region)
+    region_info = _get_region_info(data, region, periodic=periodic)
     hsml = backends_get_hsml["sph" if backend != "histogram" else "histogram"](data)
     x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
     mask = mask if mask is not None else np.s_[...]
