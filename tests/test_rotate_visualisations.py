@@ -24,13 +24,12 @@ def test_project(filename):
     create_single_particle_dataset(filename, output_filename)
     data = load(output_filename)
 
+    unrotated = project_gas(data, resolution=1024, project="masses", parallel=True)
+
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    unrotated = project_gas(data, resolution=1024, project="masses", parallel=True)
-
     rotated = project_gas(
         data,
         resolution=1024,
@@ -61,21 +60,22 @@ def test_slice(filename):
     create_single_particle_dataset(filename, output_filename)
     data = load(output_filename)
 
+    unrotated = slice_gas(
+        data,
+        resolution=1024,
+        z_slice=data.gas.coordinates[0, 2],
+        project="masses",
+        parallel=True,
+    )
+
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    slice_z = centre[2]
-
-    unrotated = slice_gas(
-        data, resolution=1024, z_slice=slice_z, project="masses", parallel=True
-    )
-
     rotated = slice_gas(
         data,
         resolution=1024,
-        z_slice=0 * slice_z,
+        z_slice=0 * data.gas.coordinates[0, 2],
         project="masses",
         rotation_center=centre,
         rotation_matrix=matrix,
@@ -107,13 +107,12 @@ def test_render(filename):
     create_single_particle_dataset(filename, output_filename)
     data = load(output_filename)
 
+    unrotated = render_gas(data, resolution=256, project="masses", parallel=True)
+
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    unrotated = render_gas(data, resolution=256, project="masses", parallel=True)
-
     rotated = render_gas(
         data,
         resolution=256,
