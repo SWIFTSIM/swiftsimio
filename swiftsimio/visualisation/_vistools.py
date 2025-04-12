@@ -40,8 +40,8 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
         y_min, y_max = np.zeros_like(box_y), box_y
         z_min, z_max = np.zeros_like(box_z), box_z
 
-    if z_slice_included and (z_slice > box_z) or (z_slice < np.zeros_like(box_z)):
-        raise ValueError("Please enter a slice value inside the box.")
+    if z_slice_included and periodic:
+        z_slice = z_slice % box_z
 
     x_range = x_max - x_min
     y_range = y_max - y_min
@@ -77,21 +77,22 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
     }
 
 
-def _get_rotated_coordinates(data, rotation_matrix, rotation_center):
+def _get_rotated_and_wrapped_coordinates(
+    data, rotation_matrix, rotation_center, periodic
+):
     if rotation_center is not None:
         if data.coordinates.comoving:
             rotation_center = rotation_center.to_comoving()
         elif data.coordinates.comoving is False:
             rotation_center = rotation_center.to_physical()
         # Rotate co-ordinates as required
-        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
-
-        x += rotation_center[0]
-        y += rotation_center[1]
-        z += rotation_center[2]
+        coords = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+        coords += rotation_center
     else:
-        x, y, z = data.coordinates.T
-    return x, y, z
+        coords = data.coordinates
+    if periodic:
+        coords = coords % data.metadata.boxsize
+    return coords.T
 
 
 def backend_restore_cosmo_and_units(backend_func, norm=1.0):

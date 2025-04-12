@@ -13,7 +13,7 @@ from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
-    _get_rotated_coordinates,
+    _get_rotated_and_wrapped_coordinates,
     backend_restore_cosmo_and_units,
 )
 
@@ -32,7 +32,9 @@ def panel_pixel_grid(
     m = _get_projection_field(data, project)
     region_info = _get_region_info(data, region)
     hsml = backends_get_hsml["sph"](data)
-    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    x, y, z = _get_rotated_and_wrapped_coordinates(
+        data, rotation_matrix, rotation_center, True  # always assume periodic box?
+    )
     mask = np.s_[...] if mask is None else mask
 
     # There's a parallel version of core_panels but it seems

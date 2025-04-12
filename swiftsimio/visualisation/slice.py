@@ -10,7 +10,7 @@ from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
-    _get_rotated_coordinates,
+    _get_rotated_and_wrapped_coordinates,
     backend_restore_cosmo_and_units,
 )
 
@@ -99,7 +99,9 @@ def slice_gas(
     m = _get_projection_field(data, project)
     region_info = _get_region_info(data, region, z_slice=z_slice, periodic=periodic)
     hsml = backends_get_hsml[backend](data)
-    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    x, y, z = _get_rotated_and_wrapped_coordinates(
+        data, rotation_matrix, rotation_center, periodic
+    )
     z_center = (
         rotation_center[2]
         if rotation_center is not None

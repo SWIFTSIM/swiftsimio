@@ -16,7 +16,7 @@ from swiftsimio.visualisation.volume_render_backends import backends, backends_p
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
-    _get_rotated_coordinates,
+    _get_rotated_and_wrapped_coordinates,
     backend_restore_cosmo_and_units,
 )
 
@@ -94,7 +94,9 @@ def render_gas(
     m = _get_projection_field(data, project)
     region_info = _get_region_info(data, region, require_cubic=True, periodic=periodic)
     hsml = backends_get_hsml["sph"](data)
-    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    x, y, z = _get_rotated_and_wrapped_coordinates(
+        data, rotation_matrix, rotation_center, periodic
+    )
 
     kwargs = dict(
         x=(x - region_info["x_min"]) / region_info["x_range"],
