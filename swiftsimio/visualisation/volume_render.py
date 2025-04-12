@@ -38,7 +38,7 @@ def render_gas(
     Parameters
     ----------
     data : SWIFTDataset
-        Dataset from which slice is extracted
+        Dataset from which render is extracted
 
     resolution : int
         Specifies size of return np.array

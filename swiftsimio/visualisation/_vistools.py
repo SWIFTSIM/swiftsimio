@@ -86,12 +86,12 @@ def _get_rotated_and_wrapped_coordinates(
         elif data.coordinates.comoving is False:
             rotation_center = rotation_center.to_physical()
         # Rotate co-ordinates as required
-        coords = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
+        coords = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T).T
         coords += rotation_center
     else:
         coords = data.coordinates
     if periodic:
-        coords = coords % data.metadata.boxsize
+        coords %= data.metadata.boxsize
     return coords.T
 
 
