@@ -275,11 +275,11 @@ def scatter(
     if box_x == 0.0:
         n_xshift = 1
     else:
-        n_xshift = 3
+        n_xshift = ceil(1 / box_x) + 2
     if box_y == 0.0:
         n_yshift = 1
     else:
-        n_yshift = 3
+        n_yshift = ceil(1 / box_y) + 2
     # set up a 3D grid:
     # the first dimension are the particles
     # the second and third dimension are the periodic

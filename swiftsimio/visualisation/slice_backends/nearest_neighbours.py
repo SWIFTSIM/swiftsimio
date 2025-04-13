@@ -41,11 +41,11 @@ def build_tree(
         )
     if box_x != 0 or box_y != 0 or box_z != 0:
         if box_x != 0:
-            x[x < 0] += box_x
+            x %= box_x
         if box_y != 0:
-            y[y < 0] += box_y
+            y %= box_y
         if box_z != 0:
-            z[z < 0] += box_z
+            z %= box_z
         data = stack((x, y, z), axis=1)
         return KDTree(data, boxsize=[box_x, box_y, box_z])
     else:
