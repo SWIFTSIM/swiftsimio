@@ -116,8 +116,8 @@ def project_pixel_grid(
             mask, np.logical_and(z <= region_info["z_max"], z >= region_info["z_min"])
         ).astype(bool)
 
-    normed_x = ((x[mask] - region_info["x_min"]) / region_info["max_range"])
-    normed_y = ((y[mask] - region_info["y_min"]) / region_info["max_range"])
+    normed_x = (x[mask] - region_info["x_min"]) / region_info["max_range"]
+    normed_y = (y[mask] - region_info["y_min"]) / region_info["max_range"]
     if periodic:
         # place everything inside the [0, 1] box, the backend will tile as needed
         normed_x %= 1
