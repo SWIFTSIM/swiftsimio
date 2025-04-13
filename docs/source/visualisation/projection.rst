@@ -174,8 +174,6 @@ the particles in the box (e.g. using a mask), then only periodic copies of
 particles in this subset will be used. If the subset does not include particles
 on the other side of the periodic boundary, then these will still be missing
 from the projection. The same is true if you visualise a region of the box.
-The periodic boundary wrapping is also not compatible with rotations (see below)
-and should therefore not be used together with a rotation.
 
 Rotations
 ---------
@@ -263,7 +261,6 @@ is shown in the ``velociraptor`` section.
        resolution=512,
        parallel=True,
        region=visualise_region,
-       periodic=False,  # disable periodic boundaries when using rotations
    )
    
    un_rotated = project_gas(**common_arguments)
