@@ -40,10 +40,16 @@ def panel_pixel_grid(
     # There's a parallel version of core_panels but it seems
     # that it's never used anywhere.
     norm = region_info["x_range"] * region_info["y_range"]
+
+    x_normed = (x[mask] - region_info["x_min"]) / region_info["max_range"]
+    y_normed = (y[mask] - region_info["y_min"]) / region_info["max_range"]
+    if True:  # would be `if periodic`, but this is always true in ray_trace?
+        x_normed %= 1
+        y_normed %= 1
     return backend_restore_cosmo_and_units(backends["core_panels"], norm=norm)(
-        x=(x[mask] - region_info["x_min"]) / region_info["max_range"],
-        y=(y[mask] - region_info["y_min"]) / region_info["max_range"],
-        z=z[mask],
+        x=x_normed,
+        y=y_normed,
+        z=z[mask],  # not sure if this should be normed & wrapped if periodic?
         h=hsml[mask] / region_info["max_range"],
         m=m[mask],
         res=resolution,

@@ -98,10 +98,18 @@ def render_gas(
         data, rotation_matrix, rotation_center, periodic
     )
 
+    x_normed = (x - region_info["x_min"]) / region_info["x_range"]
+    y_normed = (y - region_info["y_min"]) / region_info["y_range"]
+    z_normed = (z - region_info["z_min"]) / region_info["z_range"]
+    if periodic:
+        # place everything inside the [0, 1] box, the backend will tile as needed
+        x_normed %= 1
+        y_normed %= 1
+        z_normed %= 1
     kwargs = dict(
-        x=(x - region_info["x_min"]) / region_info["x_range"],
-        y=(y - region_info["y_min"]) / region_info["y_range"],
-        z=(z - region_info["z_min"]) / region_info["z_range"],
+        x=x_normed,
+        y=y_normed,
+        z=z_normed,
         m=m,
         h=hsml / region_info["x_range"],  # cubic so x_range == y_range == z_range
         res=resolution,

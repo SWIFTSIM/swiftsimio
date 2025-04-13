@@ -112,10 +112,18 @@ def slice_gas(
     xres = int(resolution * region_info["x_range"] / region_info["max_range"])
     yres = int(resolution * region_info["y_range"] / region_info["max_range"])
 
+    normed_x = (x - region_info["x_min"]) / region_info["max_range"]
+    normed_y = (y - region_info["y_min"]) / region_info["max_range"]
+    normed_z = z / region_info["max_range"]
+    if periodic:
+        # place everything inside the [0, 1] box, the backend will tile as needed
+        normed_x %= 1
+        normed_y %= 1
+        normed_z %= 1
     kwargs = dict(
-        x=(x - region_info["x_min"]) / region_info["max_range"],
-        y=(y - region_info["y_min"]) / region_info["max_range"],
-        z=z / region_info["max_range"],
+        x=normed_x,
+        y=normed_y,
+        z=normed_z,
         m=m,
         h=hsml / region_info["max_range"],
         z_slice=(z_center + z_slice) / region_info["max_range"],
