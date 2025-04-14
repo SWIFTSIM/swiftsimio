@@ -80,14 +80,20 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
 def _get_rotated_and_wrapped_coordinates(
     data, rotation_matrix, rotation_center, periodic
 ):
+    if rotation_center is not None and periodic is True:
+        raise ValueError(
+            "Rotation and periodic boundaries in visualisation are incompatible."
+        )
     if rotation_center is not None:
         if data.coordinates.comoving:
             rotation_center = rotation_center.to_comoving()
         elif data.coordinates.comoving is False:
             rotation_center = rotation_center.to_physical()
         # Rotate co-ordinates as required
-        coords = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T).T
-        coords += rotation_center
+        coords = (
+            np.matmul(rotation_matrix, (data.coordinates - rotation_center).T).T
+            + rotation_center
+        )
     else:
         coords = data.coordinates
     if periodic:

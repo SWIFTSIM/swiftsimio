@@ -111,10 +111,29 @@ def project_pixel_grid(
         data, rotation_matrix, rotation_center, periodic
     )
     mask = mask if mask is not None else np.s_[...]
-    if not region_info["z_slice_included"]:
-        mask = np.logical_and(
-            mask, np.logical_and(z <= region_info["z_max"], z >= region_info["z_min"])
-        ).astype(bool)
+    if region_info["z_slice_included"]:
+        if periodic:
+            if region_info["z_range"] > data.metadata.boxsize[2]:
+                raise ValueError(
+                    "Projection depth of more than the box depth is not supported."
+                )
+            if (region_info["z_max"] % data.metadata.boxsize[2]) <= (
+                region_info["z_min"] % data.metadata.boxsize[2]
+            ):
+                z_mask = np.logical_or(
+                    z <= region_info["z_max"] % data.metadata.boxsize[2],
+                    z >= region_info["z_min"] % data.metadata.boxsize[2],
+                )
+            else:
+                z_mask = np.logical_and(
+                    z <= region_info["z_max"] % data.metadata.boxsize[2],
+                    z >= region_info["z_min"] % data.metadata.boxsize[2],
+                )
+        else:
+            z_mask = np.logical_and(
+                z <= region_info["z_max"], z >= region_info["z_min"]
+            )
+        mask = np.logical_and(mask, z_mask).astype(bool)
 
     normed_x = (x[mask] - region_info["x_min"]) / region_info["max_range"]
     normed_y = (y[mask] - region_info["y_min"]) / region_info["max_range"]
@@ -126,7 +145,7 @@ def project_pixel_grid(
         x=normed_x,
         y=normed_y,
         m=m[mask],
-        h=hsml[mask] / region_info["max_range"],
+        h=(hsml[mask] / region_info["max_range"]) if hsml is not None else None,
         res=resolution,
         box_x=region_info["periodic_box_x"],
         box_y=region_info["periodic_box_y"],
