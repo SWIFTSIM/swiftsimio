@@ -129,7 +129,9 @@ There are some caveats with this approach. If you try to visualise a subset of
 the particles in the box (e.g. using a mask), then only periodic copies of
 particles in this subset will be used. If the subset does not include particles
 on the other side of the periodic boundary, then these will still be missing
-from the slice. The same is true if you visualise a region of the box. The periodic boundary wrapping is also not compatible with rotations (see below)	and should therefore not be used together with a rotation.
+from the slice. The same is true if you visualise a region of the box.
+The periodic boundary wrapping is also not compatible with rotations (see below)
+and should therefore not be used together with a rotation.
 
 
 Rotations
@@ -174,6 +176,7 @@ the above example is shown below.
        rotation_matrix=matrix,
        rotation_center=center,
        parallel=True,
+       periodic=False,  # disable periodic boundaries when using rotations
    )
    
    # Map in msun * K / mpc^3
@@ -185,6 +188,7 @@ the above example is shown below.
        rotation_matrix=matrix,
        rotation_center=center,
        parallel=True,
+       periodic=False,
    )
 
    temp_map = mass_weighted_temp_map / mass_map
