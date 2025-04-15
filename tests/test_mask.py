@@ -3,7 +3,6 @@ Tests the masking using some test data.
 """
 
 import h5py
-from tests.helper import requires
 import pytest
 from swiftsimio import load, mask
 import numpy as np
@@ -12,18 +11,17 @@ from unyt import dimensionless
 from swiftsimio import cosmo_array
 
 
-@requires("cosmological_volume.hdf5")
-def test_reading_select_region_spatial(filename):
+def test_reading_select_region_spatial(cosmological_volume):
     """
     Tests reading select regions of the volume, comparing the masks attained with
     spatial_only = True and spatial_only = False.
     """
 
-    full_data = load(filename)
+    full_data = load(cosmological_volume)
 
     # Mask off the lower bottom corner of the volume.
-    mask_region = mask(filename, spatial_only=True)
-    mask_region_nospatial = mask(filename, spatial_only=False)
+    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region_nospatial = mask(cosmological_volume, spatial_only=False)
 
     restrict = cosmo_array(
         [np.zeros_like(full_data.metadata.boxsize), full_data.metadata.boxsize * 0.5]
@@ -32,8 +30,8 @@ def test_reading_select_region_spatial(filename):
     mask_region.constrain_spatial(restrict=restrict)
     mask_region_nospatial.constrain_spatial(restrict=restrict)
 
-    selected_data = load(filename, mask=mask_region)
-    selected_data_nospatial = load(filename, mask=mask_region_nospatial)
+    selected_data = load(cosmological_volume, mask=mask_region)
+    selected_data_nospatial = load(cosmological_volume, mask=mask_region_nospatial)
 
     selected_coordinates = selected_data.gas.coordinates
     selected_coordinates_nospatial = selected_data_nospatial.gas.coordinates
@@ -43,8 +41,7 @@ def test_reading_select_region_spatial(filename):
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_reading_select_region_half_box(filename):
+def test_reading_select_region_half_box(cosmological_volume):
     """
     Tests reading the spatial region and sees if it lies within the region
     we told it to!
@@ -53,7 +50,7 @@ def test_reading_select_region_half_box(filename):
     """
 
     # Mask off the lower bottom corner of the volume.
-    mask_region = mask(filename, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
 
     # the region can be padded by a cell if min & max particle positions are absent
     # in metadata
@@ -69,7 +66,7 @@ def test_reading_select_region_half_box(filename):
 
     mask_region.constrain_spatial(restrict=restrict)
 
-    selected_data = load(filename, mask=mask_region)
+    selected_data = load(cosmological_volume, mask=mask_region)
 
     selected_coordinates = selected_data.gas.coordinates
     # Some of these particles will be outside because of the periodic BCs
@@ -81,15 +78,14 @@ def test_reading_select_region_half_box(filename):
     assert selected_coordinates.size > 0
 
 
-@requires("cosmological_volume.hdf5")
-def test_region_mask_not_modified(filename):
+def test_region_mask_not_modified(cosmological_volume):
     """
     Tests if a mask region is modified during the course of its use.
 
     Checks if https://github.com/SWIFTSIM/swiftsimio/issues/22 is broken.
     """
 
-    this_mask = mask(filename, spatial_only=True)
+    this_mask = mask(cosmological_volume, spatial_only=True)
     bs = this_mask.metadata.boxsize
 
     read = [[0 * b, 0.5 * b] for b in bs]
@@ -100,16 +96,15 @@ def test_region_mask_not_modified(filename):
     assert read == read_constant
 
 
-@requires("cosmological_volume.hdf5")
-def test_region_mask_intersection(filename):
+def test_region_mask_intersection(cosmological_volume):
     """
     Tests that the intersection of two spatial mask regions includes the same cells as two
     separate masks of the same two regions.
     """
 
-    mask_1 = mask(filename, spatial_only=True)
-    mask_2 = mask(filename, spatial_only=True)
-    mask_intersect = mask(filename, spatial_only=True)
+    mask_1 = mask(cosmological_volume, spatial_only=True)
+    mask_2 = mask(cosmological_volume, spatial_only=True)
+    mask_intersect = mask(cosmological_volume, spatial_only=True)
     bs = mask_intersect.metadata.boxsize
     region_1 = [[0 * b, 0.1 * b] for b in bs]
     region_2 = [[0.6 * b, 0.7 * b] for b in bs]

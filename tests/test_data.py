@@ -6,7 +6,6 @@ be read in.
 """
 
 import numpy as np
-from tests.helper import requires
 from swiftsimio import load, mask
 
 import h5py
@@ -18,13 +17,12 @@ from numpy import array as numpy_array
 from swiftsimio.objects import cosmo_array, cosmo_factor, a
 
 
-@requires("cosmological_volume.hdf5")
-def test_cosmology_metadata(filename):
+def test_cosmology_metadata(cosmological_volume):
     """
     Tests to see if we get the unpacked cosmology metadata correct.
     """
 
-    data = load(filename)
+    data = load(cosmological_volume)
 
     assert data.metadata.a == data.metadata.scale_factor
     assert np.isclose(data.metadata.a, 1.0 / (1.0 + data.metadata.redshift), atol=1e-8)
@@ -32,14 +30,13 @@ def test_cosmology_metadata(filename):
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_time_metadata(filename):
+def test_time_metadata(cosmological_volume):
     """
     This tests the time metadata and also tests the ability to include two items at once
     from the same header attribute.
     """
 
-    data = load(filename)
+    data = load(cosmological_volume)
 
     assert data.metadata.z == data.metadata.redshift
 
@@ -48,42 +45,38 @@ def test_time_metadata(filename):
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_temperature_units(filename):
+def test_temperature_units(cosmological_volume):
     """
     This tests checks if we correctly read in temperature units. Based
     on a past bug, to make sure we never break this again.
     """
 
-    data = load(filename)
+    data = load(cosmological_volume)
     if hasattr(data.gas, "temperatures"):
         # newer sample data doesn't store temperatures
         data.gas.temperatures.convert_to_units(K)
-
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_initial_mass_table(filename):
+def test_initial_mass_table(cosmological_volume):
     """
     This tests checks if we correctly read in the initial mass table. Based
     on a past bug, to make sure we never break this again.
     """
 
-    data = load(filename)
+    data = load(cosmological_volume)
     data.metadata.initial_mass_table.gas.convert_to_units(Msun)
 
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_units(filename):
+def test_units(cosmological_volume):
     """
     Tests that these fields have the same units within SWIFTsimIO as they
     do in the SWIFT code itself.
     """
 
-    data = load(filename)
+    data = load(cosmological_volume)
 
     shared = ["coordinates", "masses", "particle_ids", "velocities"]
 
@@ -139,7 +132,7 @@ def test_units(filename):
             # Find the path in the HDF5 for our linked dataset
             path = paths[names == property][0]
 
-            with h5py.File(filename, "r") as handle:
+            with h5py.File(cosmological_volume, "r") as handle:
                 swift_units = handle[path].attrs[
                     "Conversion factor to CGS (not including cosmological corrections)"
                 ][0]
@@ -151,15 +144,14 @@ def test_units(filename):
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_cell_metadata_is_valid(filename):
+def test_cell_metadata_is_valid(cosmological_volume):
     """
     Test that the metadata does what we think it does!
 
     I.e. that it sets the particles contained in a top-level cell.
     """
 
-    mask_region = mask(filename)
+    mask_region = mask(cosmological_volume)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
     mask_region.constrain_spatial(
@@ -167,7 +159,7 @@ def test_cell_metadata_is_valid(filename):
             [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
         ).T
     )
-    data = load(filename, mask=mask_region)
+    data = load(cosmological_volume, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.gas.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.gas.coordinates.units)
@@ -196,8 +188,7 @@ def test_cell_metadata_is_valid(filename):
             assert min > lower * 0.95
 
 
-@requires("cosmological_volume_dithered.hdf5")
-def test_dithered_cell_metadata_is_valid(filename):
+def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
     """
     Test that the metadata does what we think it does, in the
     dithered case.
@@ -205,7 +196,7 @@ def test_dithered_cell_metadata_is_valid(filename):
     I.e. that it sets the particles contained in a top-level cell.
     """
 
-    mask_region = mask(filename)
+    mask_region = mask(cosmological_volume_dithered)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
     mask_region.constrain_spatial(
@@ -213,7 +204,7 @@ def test_dithered_cell_metadata_is_valid(filename):
             [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
         ).T
     )
-    data = load(filename, mask=mask_region)
+    data = load(cosmological_volume_dithered, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.dark_matter.coordinates.units)
@@ -250,16 +241,15 @@ def test_dithered_cell_metadata_is_valid(filename):
             assert min > lower * 0.95
 
 
-@requires("cosmological_volume.hdf5")
-def test_reading_select_region_metadata(filename):
+def test_reading_select_region_metadata(cosmological_volume):
     """
     Tests reading select regions of the volume.
     """
 
-    full_data = load(filename)
+    full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
-    mask_region = mask(filename, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
 
     # can be removed when issue #128 resolved:
     boxsize = cosmo_array(
@@ -271,7 +261,7 @@ def test_reading_select_region_metadata(filename):
 
     mask_region.constrain_spatial(restrict=restrict)
 
-    selected_data = load(filename, mask=mask_region)
+    selected_data = load(cosmological_volume, mask=mask_region)
 
     selected_coordinates = selected_data.gas.coordinates
 
@@ -302,16 +292,15 @@ def test_reading_select_region_metadata(filename):
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_reading_select_region_metadata_not_spatial_only(filename):
+def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     """
     The same as test_reading_select_region_metadata but for spatial_only=False.
     """
 
-    full_data = load(filename)
+    full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
-    mask_region = mask(filename, spatial_only=False)
+    mask_region = mask(cosmological_volume, spatial_only=False)
 
     # can be removed when issue #128 resolved:
     boxsize = cosmo_array(
@@ -323,7 +312,7 @@ def test_reading_select_region_metadata_not_spatial_only(filename):
 
     mask_region.constrain_spatial(restrict=restrict)
 
-    selected_data = load(filename, mask=mask_region)
+    selected_data = load(cosmological_volume, mask=mask_region)
 
     selected_coordinates = selected_data.gas.coordinates
 
