@@ -110,8 +110,8 @@ def slice_gas(
     )
 
     # determine the effective number of pixels for each dimension
-    xres = int(resolution * region_info["x_range"] / region_info["max_range"])
-    yres = int(resolution * region_info["y_range"] / region_info["max_range"])
+    xres = int(np.ceil(resolution * region_info["x_range"] / region_info["max_range"]))
+    yres = int(np.ceil(resolution * region_info["y_range"] / region_info["max_range"]))
 
     normed_x = (x - region_info["x_min"]) / region_info["max_range"]
     normed_y = (y - region_info["y_min"]) / region_info["max_range"]
@@ -152,7 +152,7 @@ def slice_gas(
         box_y=region_info["periodic_box_y"],
         box_z=region_info["periodic_box_z"],
     )
-    norm = region_info["x_range"] * region_info["y_range"] * region_info["z_range"]
+    norm = region_info["max_range"] ** 3
     backend_func = (backends_parallel if parallel else backends)[backend]
     image = backend_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
 

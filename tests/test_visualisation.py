@@ -39,6 +39,38 @@ except ImportError:
     pass
 
 
+def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
+    """
+    Compare array values in ``a`` and ``b``, return ``True`` if a fraction
+    ``frac`` of values are within a retlative tolerance ``tol`` of their
+    counterparts.
+
+    Paramters
+    ---------
+    a : ~swiftsimio.objects.cosmo_array
+        The first array to compare.
+    b : ~swiftsimio.objects.cosmo_array
+        The second array to compare
+    frac : float
+        The fraction of the values that must be within the tolerance.
+    tol : float
+        The relative tolerance for matching.
+
+    Returns
+    -------
+    out : bool
+        ``True`` if enough values match within the tolerance, ``False`` otherwise.
+    """
+    assert a.shape == b.shape
+
+    with np.testing.suppress_warnings() as sup:
+        sup.filter(RuntimeWarning, "divide by zero encountered in divide")
+        sup.filter(RuntimeWarning, "invalid value encountered in divide")
+        ratios = np.abs((a / b).to_value(unyt.dimensionless) - 1)
+    ratios[np.isnan(ratios)] = 0  # 0 == 0 is a match
+    return np.sum(ratios < tol) / a.size > frac
+
+
 class TestProjection:
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_scatter(self, backend, save=False):
@@ -267,38 +299,6 @@ class TestProjection:
             periodic=False,
             backend=backend,
         )
-
-        def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
-            """
-            Compare array values in ``a`` and ``b``, return ``True`` if a fraction
-            ``frac`` of values are within a retlative tolerance ``tol`` of their
-            counterparts.
-
-            Paramters
-            ---------
-            a : ~swiftsimio.objects.cosmo_array
-                The first array to compare.
-            b : ~swiftsimio.objects.cosmo_array
-                The second array to compare
-            frac : float
-                The fraction of the values that must be within the tolerance.
-            tol : float
-                The relative tolerance for matching.
-
-            Returns
-            -------
-            out : bool
-                ``True`` if enough values match within the tolerance, ``False`` otherwise.
-            """
-            assert a.shape == b.shape
-
-            with np.testing.suppress_warnings() as sup:
-                sup.filter(RuntimeWarning, "divide by zero encountered in divide")
-                sup.filter(RuntimeWarning, "invalid value encountered in divide")
-                ratios = np.abs((a / b).to_value(unyt.dimensionless) - 1)
-            ratios[np.isnan(ratios)] = 0  # 0 == 0 is a match
-            return np.sum(ratios < tol) / a.size > (frac)
-
         edge_mask = np.s_[box_res // 6 : -box_res // 6, box_res // 6 : -box_res // 6]
         assert fraction_within_tolerance(
             edge_img[box_res // 4 :, : box_res // 2][edge_mask],
@@ -486,6 +486,164 @@ class TestSlice:
         )
 
         assert (image1 == image2).all()
+
+    @pytest.mark.parametrize("backend", slice_backends.keys())
+    def test_equivalent_regions(self, backend, cosmo_volume_example):
+        """
+        Here we test that various regions are (close enough to) equivalent.
+        The ref_img is just a slice through the whole box at z=0.5 * lbox.
+        The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
+        as many times as we like.
+        The far_img is way, way outside the box, confirming that we can place the region
+        anywhere.
+        The neg_img places the slice at z=-0.5 * lbox.
+        The wrap_img places the slice at z=1.5 * lbox.
+        The edge_img is the only non-periodic case, framed to only partially contain the
+        box. We check that it matches the expected region of the ref_img (with the edges
+        trimmed a bit).
+        """
+        sd = load(cosmo_volume_example)
+        parallel = True
+        lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
+        box_res = 512
+        ref_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        big_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, 3 * lbox, 0, 3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res * 3,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        far_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        neg_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, -lbox, -0.7 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                -0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        wrap_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, lbox, 1.3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                1.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        edge_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [-0.25 * lbox, 0.75 * lbox, 0.5 * lbox, 1.5 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=False,
+            backend=backend,
+        )
+        edge_mask = np.s_[box_res // 6 : -box_res // 6, box_res // 6 : -box_res // 6]
+        assert fraction_within_tolerance(
+            edge_img[box_res // 4 :, : box_res // 2][edge_mask],
+            ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
+            frac={"nearest_neighbours": 0.9}.get(backend, 0.99),
+        )
+        assert np.allclose(far_img, ref_img)
+        assert fraction_within_tolerance(
+            big_img,
+            np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1),
+            frac={"nearest_neighbours": 0.9}.get(backend, 0.99),
+        )
+        assert np.allclose(neg_img, ref_img)
+        assert np.allclose(wrap_img, ref_img)
 
 
 class TestVolumeRender:
