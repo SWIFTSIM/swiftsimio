@@ -112,7 +112,7 @@ def project_pixel_grid(
         data, rotation_matrix, rotation_center, periodic
     )
     mask = mask if mask is not None else np.s_[...]
-    if region_info["z_slice_included"]:
+    if region_info["region_includes_z"]:
         if periodic:
             if region_info["z_range"] > data.metadata.boxsize[2]:
                 raise ValueError(

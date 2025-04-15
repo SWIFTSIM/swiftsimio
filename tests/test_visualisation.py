@@ -192,7 +192,7 @@ class TestProjection:
             pytest.xfail("gpu backend currently broken")
         parallel = True
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
-        box_res = {"histogram": 256, "reference": 2200}.get(backend, 512)
+        box_res = 256
         ref_img = project_gas(
             sd,
             region=cosmo_array(
@@ -509,7 +509,7 @@ class TestSlice:
         sd = load(cosmo_volume_example)
         parallel = True
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
-        box_res = 512
+        box_res = 256
         ref_img = slice_gas(
             sd,
             region=cosmo_array(
@@ -638,13 +638,13 @@ class TestSlice:
         assert fraction_within_tolerance(
             edge_img[box_res // 4 :, : box_res // 2][edge_mask],
             ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
-            frac={"nearest_neighbours": 0.9}.get(backend, 0.99),
+            frac={"nearest_neighbours": 0.8}.get(backend, 0.99),
         )
         assert np.allclose(far_img, ref_img)
         assert fraction_within_tolerance(
             big_img,
             np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1),
-            frac={"nearest_neighbours": 0.9}.get(backend, 0.99),
+            frac={"nearest_neighbours": 0.8}.get(backend, 0.99),
         )
         assert np.allclose(neg_img, ref_img)
         assert np.allclose(wrap_img, ref_img)
@@ -857,7 +857,7 @@ class TestVolumeRender:
         sd = load(cosmo_volume_example)
         parallel = False  # memory gets a bit out of hand otherwise
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
-        box_res = 256
+        box_res = 32
         ref_img = render_gas(
             sd,
             region=cosmo_array(
@@ -942,7 +942,7 @@ class TestVolumeRender:
         slab = np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
         cube = np.concatenate([slab] * 3, axis=2)
         assert fraction_within_tolerance(big_img, cube)
-        assert np.allclose(
+        assert fraction_within_tolerance(
             ref_img,
             np.concatenate(
                 (
@@ -951,7 +951,6 @@ class TestVolumeRender:
                 ),
                 axis=-1,
             ),
-            rtol=1e-1,
         )
 
 

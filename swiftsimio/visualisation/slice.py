@@ -98,7 +98,7 @@ def slice_gas(
     z_slice = np.zeros_like(data.metadata.boxsize[0]) if z_slice is None else z_slice
 
     m = _get_projection_field(data, project)
-    region_info = _get_region_info(data, region, z_slice=z_slice, periodic=periodic)
+    region_info = _get_region_info(data, region, periodic=periodic)
     hsml = backends_get_hsml[backend](data)
     x, y, z = _get_rotated_and_wrapped_coordinates(
         data, rotation_matrix, rotation_center, periodic
@@ -116,6 +116,7 @@ def slice_gas(
     normed_x = (x - region_info["x_min"]) / region_info["max_range"]
     normed_y = (y - region_info["y_min"]) / region_info["max_range"]
     normed_z = z / region_info["max_range"]
+    normed_z_slice = (z_slice + z_center) / region_info["max_range"]
     if periodic:
         # place everything inside the [0, 1] box, the backend will tile as needed
         normed_x %= cosmo_quantity(
@@ -139,13 +140,20 @@ def slice_gas(
             scale_factor=data.metadata.a,
             scale_exponent=0,
         )
+        normed_z_slice %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_z.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
     kwargs = dict(
         x=normed_x,
         y=normed_y,
         z=normed_z,
         m=m,
         h=hsml / region_info["max_range"],
-        z_slice=(z_center + z_slice) / region_info["max_range"],
+        z_slice=normed_z_slice,
         xres=xres,
         yres=yres,
         box_x=region_info["periodic_box_x"],
@@ -155,5 +163,4 @@ def slice_gas(
     norm = region_info["max_range"] ** 3
     backend_func = (backends_parallel if parallel else backends)[backend]
     image = backend_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
-
     return image

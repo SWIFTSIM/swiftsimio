@@ -12,7 +12,7 @@ def _get_projection_field(data, field_name):
     )
 
 
-def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=True):
+def _get_region_info(data, region, require_cubic=False, periodic=True):
     boxsize = data.metadata.boxsize
     if region is not None:
         region = cosmo_array(region)
@@ -24,24 +24,20 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
         boxsize.convert_to_physical()
         if region is not None:
             region.convert_to_physical()
-    z_slice_included = z_slice is not None
-    if not z_slice_included:
-        z_slice = np.zeros_like(boxsize[0])
     box_x, box_y, box_z = boxsize
     if region is not None:
         x_min, x_max, y_min, y_max = region[:4]
         if len(region) == 6:
-            z_slice_included = True
+            region_includes_z = True
             z_min, z_max = region[4:]
         else:
+            region_includes_z = False
             z_min, z_max = np.zeros_like(box_z), box_z
     else:
+        region_includes_z = False
         x_min, x_max = np.zeros_like(box_x), box_x
         y_min, y_max = np.zeros_like(box_y), box_y
         z_min, z_max = np.zeros_like(box_z), box_z
-
-    if z_slice_included and periodic:
-        z_slice = z_slice % box_z
 
     x_range = x_max - x_min
     y_range = y_max - y_min
@@ -70,7 +66,7 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
         "y_range": y_range,
         "z_range": z_range,
         "max_range": max_range,
-        "z_slice_included": z_slice_included,
+        "region_includes_z": region_includes_z,
         "periodic_box_x": periodic_box_x,
         "periodic_box_y": periodic_box_y,
         "periodic_box_z": periodic_box_z,
