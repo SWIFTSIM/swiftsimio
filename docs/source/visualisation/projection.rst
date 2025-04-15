@@ -38,15 +38,17 @@ Example
        periodic=True,
    )
 
-   # Let's say we wish to save it as msun / kpc^2,
+   # Let's say we wish to save it as msun / kpc^2 (physical, not comoving),
    from unyt import msun, kpc
-   mass_map.convert_to_units(msun / kpc**2)
-
    from matplotlib.pyplot import imsave
    from matplotlib.colors import LogNorm
 
    # Normalize and save
-   imsave("gas_surface_dens_map.png", LogNorm()(mass_map.value), cmap="viridis")
+   imsave(
+       "gas_surface_dens_map.png",
+       LogNorm()(mass_map.to_physical_value(msun / kpc**2)),
+       cmap="viridis",
+   )
 
 
 This basic demonstration creates a mass surface density map.
@@ -86,13 +88,15 @@ this:
    temp_map = mass_weighted_temp_map / mass_map
 
    from unyt import K
-   temp_map.convert_to_units(K)
-
    from matplotlib.pyplot import imsave
    from matplotlib.colors import LogNorm
 
    # Normalize and save
-   imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
+   imsave(
+       "temp_map.png",
+       LogNorm()(temp_map.to_physical_value(K)),
+       cmap="twilight",
+   )
 
 
 The output from this example, when used with the example data provided in the
@@ -222,8 +226,9 @@ is shown in the ``velociraptor`` section.
    
    # The angular momentum vector will point perpendicular to the galaxy disk.
    # If your simulation contains stars, use lx_star
-   angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
+   angular_momentum_vector = cosmo_array([lx, ly, lz])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
+   angular_momentum_vector = angular_momentum_vector.to_physical_value(u.dimensionless)
    
    face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
    edge_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector, axis="y")

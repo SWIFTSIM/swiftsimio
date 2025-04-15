@@ -55,7 +55,10 @@ def generate_smoothing_lengths(
 
     number_of_parts = coordinates.shape[0]
 
-    tree = KDTree(coordinates.value, boxsize=boxsize.to(coordinates.units).value)
+    tree = KDTree(
+        coordinates.to_value(coordinates.units),
+        boxsize=boxsize.to_value(coordinates.units),
+    )
 
     smoothing_lengths = np.empty(number_of_parts, dtype=np.float32)
     smoothing_lengths[-1] = -0.1
