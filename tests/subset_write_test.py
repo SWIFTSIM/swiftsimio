@@ -1,5 +1,3 @@
-from tests.helper import requires
-
 from swiftsimio.subset_writer import write_subset
 import swiftsimio as sw
 import os
@@ -50,8 +48,7 @@ def compare_data_contents(A, B):
     assert bad_compares == [], f"compare failed on {bad_compares}"
 
 
-@requires("cosmological_volume.hdf5")
-def test_subset_writer(filename):
+def test_subset_writer(cosmological_volume):
     """
     Test to make sure subset writing works as intended
 
@@ -62,7 +59,7 @@ def test_subset_writer(filename):
     outfile = "subset_cosmological_volume.hdf5"
 
     # Create a mask
-    mask = sw.mask(filename)
+    mask = sw.mask(cosmological_volume)
 
     boxsize = mask.metadata.boxsize
 
@@ -81,7 +78,7 @@ def test_subset_writer(filename):
     sub_mask.constrain_spatial(sub_load_region)
     mask.constrain_spatial(sub_load_region)
 
-    snapshot = sw.load(filename, mask)
+    snapshot = sw.load(cosmological_volume, mask)
     sub_snapshot = sw.load(outfile, sub_mask)
 
     compare_data_contents(snapshot, sub_snapshot)

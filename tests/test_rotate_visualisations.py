@@ -1,4 +1,4 @@
-from tests.helper import requires, create_single_particle_dataset
+from tests.helper import create_single_particle_dataset
 from swiftsimio import load
 from swiftsimio.visualisation.projection import project_gas
 from swiftsimio.visualisation.slice import slice_gas
@@ -8,20 +8,19 @@ from numpy import array_equal
 from os import remove
 
 
-@requires("cosmological_volume.hdf5")
-def test_project(filename):
+def test_project(cosmological_volume):
     """
     Checks that gas projection of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    filename: str
+    cosmological_volume: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(filename, output_filename)
+    create_single_particle_dataset(cosmological_volume, output_filename)
     data = load(output_filename)
 
     unrotated = project_gas(
@@ -47,20 +46,19 @@ def test_project(filename):
     remove(output_filename)
 
 
-@requires("cosmological_volume.hdf5")
-def test_slice(filename):
+def test_slice(cosmological_volume):
     """
     Checks that a slice of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    filename: str
+    cosmological_volume: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(filename, output_filename)
+    create_single_particle_dataset(cosmological_volume, output_filename)
     data = load(output_filename)
 
     unrotated = slice_gas(
@@ -96,20 +94,19 @@ def test_slice(filename):
     remove(output_filename)
 
 
-@requires("cosmological_volume.hdf5")
-def test_render(filename):
+def test_render(cosmological_volume):
     """
     Checks that a volume render of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    filename: str
+    cosmological_volume: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(filename, output_filename)
+    create_single_particle_dataset(cosmological_volume, output_filename)
     data = load(output_filename)
 
     unrotated = render_gas(
