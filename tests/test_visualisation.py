@@ -115,7 +115,7 @@ class TestProjection:
         for resolution in resolutions:
             scatter = projection_backends["fast"]
             image = scatter(x=x, y=y, m=m, h=h, res=resolution, box_x=1.0, box_y=1.0)
-            mass_in_image = image.sum() / (resolution**2)
+            mass_in_image = image.sum() / (resolution ** 2)
 
             # Check mass conservation to 5%
             assert np.isclose(mass_in_image.view(np.ndarray), total_mass, 0.05)
@@ -778,19 +778,19 @@ class TestVolumeRender:
         volume = render_gas(data, npix, parallel=False).to_physical()
 
         mean_density_deposit = (
-            (np.sum(deposition) / npix**3)
+            (np.sum(deposition) / npix ** 3)
             .to_comoving()
-            .to_value(unyt.solMass / unyt.kpc**3)
+            .to_value(unyt.solMass / unyt.kpc ** 3)
         )
         mean_density_volume = (
-            (np.sum(volume) / npix**3)
+            (np.sum(volume) / npix ** 3)
             .to_comoving()
-            .to_value(unyt.solMass / unyt.kpc**3)
+            .to_value(unyt.solMass / unyt.kpc ** 3)
         )
         mean_density_calculated = (
             (np.sum(data.gas.masses) / np.prod(data.metadata.boxsize))
             .to_comoving()
-            .to_value(unyt.solMass / unyt.kpc**3)
+            .to_value(unyt.solMass / unyt.kpc ** 3)
         )
 
         assert np.isclose(mean_density_deposit, mean_density_calculated)
@@ -839,6 +839,120 @@ class TestVolumeRender:
         )
 
         assert (image1 == image2).all()
+
+    def test_equivalent_regions(self, cosmo_volume_example):
+        """
+        Here we test that various regions are (close enough to) equivalent.
+        The ref_img is just a render of the whole box.
+        The big_img is the box tiled 3x3x3 times, confirming that we can periodically wrap
+        as many times as we like.
+        The far_img is way, way outside the box, confirming that we can place the region
+        anywhere.
+        The straddled_img is offset by half a box length, the two halves of the result
+        should agree with the opposite halves of the ref_img.
+        The edge_img is the only non-periodic case, framed to only partially contain the
+        box. We check that it matches the expected region of the ref_img (with the edges
+        trimmed a bit).
+        """
+        sd = load(cosmo_volume_example)
+        parallel = False  # memory gets a bit out of hand otherwise
+        lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
+        box_res = 256
+        ref_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, 0, lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+        )
+        big_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [0, 3 * lbox, 0, 3 * lbox, 0, 3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res * 3,
+            parallel=parallel,
+            periodic=True,
+        )
+        far_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+        )
+        straddled_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, -0.5 * lbox, 0.5 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+        )
+        edge_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [
+                    -0.25 * lbox,
+                    0.75 * lbox,
+                    0.5 * lbox,
+                    1.5 * lbox,
+                    0.5 * lbox,
+                    1.5 * lbox,
+                ],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=False,
+        )
+        edge_mask = np.s_[
+            box_res // 6 : -box_res // 6,
+            box_res // 6 : -box_res // 6,
+            box_res // 6 : -box_res // 6,
+        ]
+        assert fraction_within_tolerance(
+            edge_img[box_res // 4 :, : box_res // 2, : box_res // 2][edge_mask],
+            ref_img[: 3 * box_res // 4, box_res // 2 :, box_res // 2 :][edge_mask],
+        )
+        assert np.allclose(far_img, ref_img)
+        slab = np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
+        cube = np.concatenate([slab] * 3, axis=2)
+        assert fraction_within_tolerance(big_img, cube)
+        assert np.allclose(
+            ref_img,
+            np.concatenate(
+                (
+                    straddled_img[..., box_res // 2 :],
+                    straddled_img[..., : box_res // 2],
+                ),
+                axis=-1,
+            ),
+            rtol=1e-1,
+        )
 
 
 def test_selection_render(cosmological_volume):
@@ -940,7 +1054,7 @@ def test_comoving_versus_physical(cosmological_volume):
             ):
                 img = func(data, resolution=64, project="masses", region=region)
         assert data.gas.masses.comoving and img.comoving
-        assert (img.cosmo_factor.expr - a**aexp).simplify() == 0
+        assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
         # densities are physical, make sure this works with physical coordinates and
         # smoothing lengths
         img = func(data, resolution=64, project="densities", region=region)
@@ -1001,14 +1115,14 @@ class TestPowerSpectrum:
 
         min_k = cosmo_quantity(
             1e-2,
-            unyt.Mpc**-1,
+            unyt.Mpc ** -1,
             comoving=True,
             scale_factor=data.metadata.scale_factor,
             scale_exponent=-1,
         )
         max_k = cosmo_quantity(
             1e2,
-            unyt.Mpc**-1,
+            unyt.Mpc ** -1,
             comoving=True,
             scale_factor=data.metadata.scale_factor,
             scale_exponent=-1,
@@ -1048,7 +1162,7 @@ class TestPowerSpectrum:
 
             folds[folding] = deposition
 
-            folding_output[2**folding] = (k, power_spectrum, scatter)
+            folding_output[2 ** folding] = (k, power_spectrum, scatter)
 
         # Now try doing them all together at once.
 
