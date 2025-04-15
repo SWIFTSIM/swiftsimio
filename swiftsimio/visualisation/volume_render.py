@@ -6,7 +6,8 @@ of the particles and projects them onto a grid.
 from typing import List, Literal, Tuple, Union
 from math import sqrt, exp, pi
 import numpy as np
-from swiftsimio import SWIFTDataset, cosmo_array
+import unyt as u
+from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import jit
 
 from swiftsimio.optional_packages import plt
@@ -98,18 +99,36 @@ def render_gas(
         data, rotation_matrix, rotation_center, periodic
     )
 
-    x_normed = (x - region_info["x_min"]) / region_info["x_range"]
-    y_normed = (y - region_info["y_min"]) / region_info["y_range"]
-    z_normed = (z - region_info["z_min"]) / region_info["z_range"]
+    normed_x = (x - region_info["x_min"]) / region_info["x_range"]
+    normed_y = (y - region_info["y_min"]) / region_info["y_range"]
+    normed_z = (z - region_info["z_min"]) / region_info["z_range"]
     if periodic:
         # place everything inside the [0, 1] box, the backend will tile as needed
-        x_normed %= 1
-        y_normed %= 1
-        z_normed %= 1
+        normed_x %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_x.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
+        normed_y %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_y.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
+        normed_z %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_z.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
     kwargs = dict(
-        x=x_normed,
-        y=y_normed,
-        z=z_normed,
+        x=normed_x,
+        y=normed_y,
+        z=normed_z,
         m=m,
         h=hsml / region_info["x_range"],  # cubic so x_range == y_range == z_range
         res=resolution,

@@ -4,7 +4,8 @@ Calls functions from `projection_backends`.
 
 from typing import Union
 import numpy as np
-from swiftsimio import SWIFTDataset, cosmo_array
+import unyt as u
+from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 
 from swiftsimio.reader import __SWIFTGroupDataset
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
@@ -139,8 +140,20 @@ def project_pixel_grid(
     normed_y = (y[mask] - region_info["y_min"]) / region_info["max_range"]
     if periodic:
         # place everything inside the [0, 1] box, the backend will tile as needed
-        normed_x %= 1
-        normed_y %= 1
+        normed_x %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_x.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
+        normed_y %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_y.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
     kwargs = dict(
         x=normed_x,
         y=normed_y,

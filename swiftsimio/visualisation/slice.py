@@ -3,6 +3,7 @@ Sub-module for slice plots in SWFITSIMio.
 """
 
 from typing import Union, Optional
+import unyt as u
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
@@ -117,9 +118,27 @@ def slice_gas(
     normed_z = z / region_info["max_range"]
     if periodic:
         # place everything inside the [0, 1] box, the backend will tile as needed
-        normed_x %= 1
-        normed_y %= 1
-        normed_z %= 1
+        normed_x %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_x.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
+        normed_y %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_y.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
+        normed_z %= cosmo_quantity(
+            1,
+            u.dimensionless,
+            comoving=normed_z.comoving,
+            scale_factor=data.metadata.a,
+            scale_exponent=0,
+        )
     kwargs = dict(
         x=normed_x,
         y=normed_y,

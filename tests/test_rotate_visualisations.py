@@ -24,7 +24,9 @@ def test_project(filename):
     create_single_particle_dataset(filename, output_filename)
     data = load(output_filename)
 
-    unrotated = project_gas(data, resolution=1024, project="masses", parallel=True)
+    unrotated = project_gas(
+        data, resolution=1024, project="masses", parallel=True, periodic=False
+    )
 
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
@@ -37,6 +39,7 @@ def test_project(filename):
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     assert array_equal(rotated, unrotated)
@@ -66,6 +69,7 @@ def test_slice(filename):
         z_slice=data.gas.coordinates[0, 2],
         project="masses",
         parallel=True,
+        periodic=False,
     )
 
     # Compute rotation matrix for rotating around particle
@@ -80,6 +84,7 @@ def test_slice(filename):
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     # Check that we didn't miss the particle
@@ -107,7 +112,9 @@ def test_render(filename):
     create_single_particle_dataset(filename, output_filename)
     data = load(output_filename)
 
-    unrotated = render_gas(data, resolution=256, project="masses", parallel=True)
+    unrotated = render_gas(
+        data, resolution=256, project="masses", parallel=True, periodic=False
+    )
 
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
@@ -120,6 +127,7 @@ def test_render(filename):
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     assert array_equal(rotated, unrotated)
