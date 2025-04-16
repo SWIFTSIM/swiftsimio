@@ -3,7 +3,6 @@ Sub-module for slice plots in SWFITSIMio.
 """
 
 from typing import Union, Optional
-import unyt as u
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
@@ -118,35 +117,11 @@ def slice_gas(
     normed_z = z / region_info["max_range"]
     normed_z_slice = (z_slice + z_center) / region_info["max_range"]
     if periodic:
-        # place everything inside the [0, 1] box, the backend will tile as needed
-        normed_x %= cosmo_quantity(
-            1,
-            u.dimensionless,
-            comoving=normed_x.comoving,
-            scale_factor=data.metadata.a,
-            scale_exponent=0,
-        )
-        normed_y %= cosmo_quantity(
-            1,
-            u.dimensionless,
-            comoving=normed_y.comoving,
-            scale_factor=data.metadata.a,
-            scale_exponent=0,
-        )
-        normed_z %= cosmo_quantity(
-            1,
-            u.dimensionless,
-            comoving=normed_z.comoving,
-            scale_factor=data.metadata.a,
-            scale_exponent=0,
-        )
-        normed_z_slice %= cosmo_quantity(
-            1,
-            u.dimensionless,
-            comoving=normed_z.comoving,
-            scale_factor=data.metadata.a,
-            scale_exponent=0,
-        )
+        # place everything in the region inside [0, 1], the backend will tile as needed
+        normed_x %= region_info["periodic_box_x"]
+        normed_y %= region_info["periodic_box_y"]
+        normed_z %= region_info["periodic_box_z"]
+        normed_z_slice %= region_info["periodic_box_z"]
     kwargs = dict(
         x=normed_x,
         y=normed_y,
