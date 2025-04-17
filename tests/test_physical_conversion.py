@@ -1,14 +1,12 @@
-from tests.helper import requires
-from swiftsimio import load, cosmo_array
+from swiftsimio import load
 from numpy import array_equal
 
 
-@requires("cosmological_volume.hdf5")
-def test_convert(filename):
+def test_convert(cosmological_volume):
     """
     Check that the conversion to physical units is done correctly
     """
-    data = load(filename)
+    data = load(cosmological_volume)
     coords = data.gas.coordinates
     units = coords.units
     coords_physical = coords.to_physical()

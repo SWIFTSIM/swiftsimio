@@ -4,6 +4,7 @@ Reference evaluation - returns a 2d histogram (i.e. no smoothing).
 Uses double precision.
 """
 
+from math import ceil
 import numpy as np
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 
@@ -85,14 +86,14 @@ def scatter(
         xshift_min = 0
         xshift_max = 1
     else:
-        xshift_min = -1
-        xshift_max = 2
+        xshift_min = -1  # x_min is always at x=0
+        xshift_max = ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
-        yshift_min = -1
-        yshift_max = 2
+        yshift_min = -1  # y_min is always at y=0
+        yshift_max = ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, mass in zip(x, y, m):
         # loop over periodic copies of this particle

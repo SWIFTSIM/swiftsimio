@@ -4,14 +4,12 @@ Tests the smoothing length generation code.
 
 from swiftsimio import load
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
-from tests.helper import requires
 
 from numpy import isclose
 
 
-@requires("cosmological_volume.hdf5")
-def test_generate_smoothing_length(filename):
-    data = load(filename)
+def test_generate_smoothing_length(cosmological_volume):
+    data = load(cosmological_volume)
 
     smoothing_lengths = data.gas.smoothing_lengths
 
@@ -41,9 +39,8 @@ def test_generate_smoothing_length(filename):
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_generate_smoothing_length_faster(filename):
-    data = load(filename)
+def test_generate_smoothing_length_faster(cosmological_volume):
+    data = load(cosmological_volume)
 
     smoothing_lengths = data.gas.smoothing_lengths
 

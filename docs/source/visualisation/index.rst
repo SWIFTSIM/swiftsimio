@@ -30,7 +30,6 @@ additional functionality.
    projection
    slice
    volume_render
-   ray_trace
    power_spectra
    tools
 

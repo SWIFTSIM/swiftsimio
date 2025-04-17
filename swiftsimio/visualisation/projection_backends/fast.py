@@ -5,7 +5,7 @@ This uses float32 precision and no special cases.
 The original smoothing code. This provides no renormalisation.
 """
 
-from math import sqrt
+from math import sqrt, ceil
 from numpy import float64, float32, int32, zeros, ndarray
 
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
@@ -96,14 +96,14 @@ def scatter(
         xshift_min = 0
         xshift_max = 1
     else:
-        xshift_min = -1
-        xshift_max = 2
+        xshift_min = -1  # x_min is always at x=0
+        xshift_max = ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
-        yshift_min = -1
-        yshift_max = 2
+        yshift_min = -1  # y_min is always at y=0
+        yshift_max = ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
         # loop over periodic copies of this particle

@@ -176,7 +176,7 @@ the above example is shown below.
        rotation_matrix=matrix,
        rotation_center=center,
        parallel=True,
-       periodic=False, # disable periodic boundaries when using rotations
+       periodic=False,  # disable periodic boundaries when using rotations
    )
    
    # Map in msun * K / mpc^3

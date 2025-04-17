@@ -12,7 +12,7 @@ from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
-    _get_rotated_coordinates,
+    _get_rotated_and_wrapped_coordinates,
     backend_restore_cosmo_and_units,
 )
 
@@ -105,20 +105,47 @@ def project_pixel_grid(
     """
 
     m = _get_projection_field(data, project)
-    region_info = _get_region_info(data, region)
+    region_info = _get_region_info(data, region, periodic=periodic)
     hsml = backends_get_hsml["sph" if backend != "histogram" else "histogram"](data)
-    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    x, y, z = _get_rotated_and_wrapped_coordinates(
+        data, rotation_matrix, rotation_center, periodic
+    )
     mask = mask if mask is not None else np.s_[...]
-    if not region_info["z_slice_included"]:
-        mask = np.logical_and(
-            mask, np.logical_and(z <= region_info["z_max"], z >= region_info["z_min"])
-        ).astype(bool)
+    if region_info["region_includes_z"]:
+        if periodic:
+            if region_info["z_range"] > data.metadata.boxsize[2]:
+                raise ValueError(
+                    "Projection depth of more than the box depth is not supported."
+                )
+            if (region_info["z_max"] % data.metadata.boxsize[2]) <= (
+                region_info["z_min"] % data.metadata.boxsize[2]
+            ):
+                z_mask = np.logical_or(
+                    z <= region_info["z_max"] % data.metadata.boxsize[2],
+                    z >= region_info["z_min"] % data.metadata.boxsize[2],
+                )
+            else:
+                z_mask = np.logical_and(
+                    z <= region_info["z_max"] % data.metadata.boxsize[2],
+                    z >= region_info["z_min"] % data.metadata.boxsize[2],
+                )
+        else:
+            z_mask = np.logical_and(
+                z <= region_info["z_max"], z >= region_info["z_min"]
+            )
+        mask = np.logical_and(mask, z_mask).astype(bool)
 
+    normed_x = (x[mask] - region_info["x_min"]) / region_info["max_range"]
+    normed_y = (y[mask] - region_info["y_min"]) / region_info["max_range"]
+    if periodic:
+        # place everything in the region inside [0, 1], the backend will tile as needed
+        normed_x %= region_info["periodic_box_x"]
+        normed_y %= region_info["periodic_box_y"]
     kwargs = dict(
-        x=(x[mask] - region_info["x_min"]) / region_info["max_range"],
-        y=(y[mask] - region_info["y_min"]) / region_info["max_range"],
+        x=normed_x,
+        y=normed_y,
         m=m[mask],
-        h=hsml[mask] / region_info["max_range"],
+        h=(hsml[mask] / region_info["max_range"]) if hsml is not None else None,
         res=resolution,
         box_x=region_info["periodic_box_x"],
         box_y=region_info["periodic_box_y"],
