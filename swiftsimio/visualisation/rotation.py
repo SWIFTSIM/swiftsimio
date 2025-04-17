@@ -33,7 +33,9 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
         Rotation matrix (3x3).
     """
 
-    normed_vector = (vector / np.linalg.norm(vector)).to_value(u.dimensionless)
+    normed_vector = vector / np.linalg.norm(vector)
+    if isinstance(normed_vector, u.unyt_array):
+        normed_vector = normed_vector.to_value(u.dimensionless)
 
     # Directional vector describing the axis we wish to look 'down'
     original_direction = np.zeros(3, dtype=np.float64)
