@@ -228,7 +228,6 @@ is shown in the ``velociraptor`` section.
    # If your simulation contains stars, use lx_star
    angular_momentum_vector = cosmo_array([lx, ly, lz])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
-   angular_momentum_vector = angular_momentum_vector.to_physical_value(u.dimensionless)
    
    face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
    edge_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector, axis="y")

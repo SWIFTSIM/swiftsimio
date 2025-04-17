@@ -2,12 +2,11 @@
 Rotation matrix calculation routines.
 """
 
-from numpy import float64, array, cross, identity, dot, matmul
-from numpy.linalg import norm, inv
-from math import sin, acos
+import numpy as np
+import unyt as u
 
 
-def rotation_matrix_from_vector(vector: float64, axis: str = "z") -> array:
+def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarray:
     """
     Calculate a rotation matrix from a vector. The comparison vector is
     assumed to be along an axis, x, y, or z (by default this is z). The
@@ -34,10 +33,10 @@ def rotation_matrix_from_vector(vector: float64, axis: str = "z") -> array:
         Rotation matrix (3x3).
     """
 
-    normed_vector = vector / norm(vector)
+    normed_vector = (vector / np.linalg.norm(vector)).to_value(u.dimensionless)
 
     # Directional vector describing the axis we wish to look 'down'
-    original_direction = array([0.0, 0.0, 0.0], dtype=float64)
+    original_direction = np.zeros(3, dtype=np.float64)
     switch = {"x": 0, "y": 1, "z": 2}
 
     try:
@@ -47,23 +46,23 @@ def rotation_matrix_from_vector(vector: float64, axis: str = "z") -> array:
             f"Parameter axis must be one of x, y, or z. You supplied {axis}."
         )
 
-    cross_product = cross(original_direction, normed_vector)
-    mod_cross_product = norm(cross_product)
-    cross_product /= mod_cross_product
+    cross_product = np.cross(original_direction, normed_vector)
+    mod_cross_product = np.linalg.norm(cross_product)
+    cross_product = cross_product / mod_cross_product
 
     if mod_cross_product <= 1e-6:
         # This case only covers when we point the vector
         # in the exact opposite direction (e.g. flip z).
-        output = identity(3)
+        output = np.identity(3)
         output[switch[axis], switch[axis]] = -1.0
 
         return output
     else:
-        cos_theta = dot(original_direction, normed_vector)
-        sin_theta = sin(acos(cos_theta))
+        cos_theta = np.dot(original_direction, normed_vector)
+        sin_theta = np.sin(np.arccos(cos_theta))
 
         # Skew symmetric matrix for cross product
-        A = array(
+        A = np.array(
             [
                 [0.0, -cross_product[2], cross_product[1]],
                 [cross_product[2], 0.0, -cross_product[0]],
@@ -71,4 +70,6 @@ def rotation_matrix_from_vector(vector: float64, axis: str = "z") -> array:
             ]
         )
 
-        return inv(identity(3) + sin_theta * A + (1 - cos_theta) * matmul(A, A))
+        return np.linalg.inv(
+            np.identity(3) + sin_theta * A + (1 - cos_theta) * np.dot(A, A)
+        )
