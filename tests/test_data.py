@@ -167,7 +167,6 @@ def test_cell_metadata_is_valid(filename):
     start_offset = offsets
     stop_offset = offsets + counts
 
-    print(mask_region.centers)
     for center, start, stop in zip(
         mask_region.centers.to(data.gas.coordinates.units), start_offset, stop_offset
     ):
@@ -212,7 +211,7 @@ def test_dithered_cell_metadata_is_valid(filename):
     boxsize = cosmo_array(
         boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, mask_region.metadata.a),
     )
     offsets = mask_region.offsets["dark_matter"]
     counts = mask_region.counts["dark_matter"]
@@ -256,7 +255,7 @@ def test_reading_select_region_metadata(filename):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.2, boxsize * 0.8]).T
 
@@ -308,7 +307,7 @@ def test_reading_select_region_metadata_not_spatial_only(filename):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.26, boxsize * 0.74]).T
 
