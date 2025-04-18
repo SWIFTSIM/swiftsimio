@@ -130,7 +130,6 @@ def test_mask_periodic_wrapping(filename):
     mask as one that runs off the lower edge (they are chosen to be equivalent
     under periodic wrapping).
     """
-    # Mask off the lower bottom corner of the volume.
     mask_region_upper = mask(filename, spatial_only=True)
     mask_region_lower = mask(filename, spatial_only=True)
     restrict_upper = cosmo_array(
@@ -156,3 +155,25 @@ def test_mask_periodic_wrapping(filename):
     selected_coordinates_lower = selected_data_lower.gas.coordinates
     assert selected_coordinates_lower.size > 0  # check that we selected something
     assert np.array_equal(selected_coordinates_upper, selected_coordinates_lower)
+
+
+@requires("cosmological_volume.hdf5")
+def test_mask_pad_wrapping(filename):
+    """
+    When we mask all the way to the edge of the box, we should get a cell on the
+    opposite edge as padding in case particles have drifted out of their cell.
+    """
+    mask_region = mask(filename, spatial_only=True)
+    restrict = cosmo_array(
+        [
+            mask_region.metadata.boxsize * 0.8,
+            mask_region.metadata.boxsize,
+        ]
+    ).T
+
+    mask_region.constrain_spatial(restrict=restrict)
+    selected_data = load(filename, mask=mask_region)
+    selected_coordinates = selected_data.gas.coordinates
+    # extending mask to to 1.01 times the box size gives >32k particles
+    # we expect to get the same
+    assert (selected_coordinates < mask_region.metadata.boxsize * 0.1).sum() > 32000
