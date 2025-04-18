@@ -381,8 +381,8 @@ class SWIFTMask(object):
                 continue
 
             # Include the cell size so it's easier to find the overlap
-            lower = restrict[dimension][0] - 0.5 * self.cell_size[dimension]
-            upper = restrict[dimension][1] + 0.5 * self.cell_size[dimension]
+            lower = restrict[dimension][0]
+            upper = restrict[dimension][1]
             boxsize = self.metadata.boxsize[dimension]
 
             # Now need to deal with the three wrapping cases:
@@ -392,8 +392,12 @@ class SWIFTMask(object):
 
                 this_mask = np.logical_or.reduce(
                     [
-                        self.centers[cell_mask, dimension] > lower,
-                        self.centers[cell_mask, dimension] <= upper,
+                        self.centers[cell_mask, dimension]
+                        + 0.5 * self.cell_size[dimension]
+                        > lower,
+                        self.centers[cell_mask, dimension]
+                        - 0.5 * self.cell_size[dimension]
+                        <= upper,
                     ]
                 )
             elif upper > boxsize:
@@ -402,16 +406,24 @@ class SWIFTMask(object):
 
                 this_mask = np.logical_or.reduce(
                     [
-                        self.centers[cell_mask, dimension] > lower,
-                        self.centers[cell_mask, dimension] <= upper,
+                        self.centers[cell_mask, dimension]
+                        + 0.5 * self.cell_size[dimension]
+                        > lower,
+                        self.centers[cell_mask, dimension]
+                        - 0.5 * self.cell_size[dimension]
+                        <= upper,
                     ]
                 )
             else:
                 # No wrapping required
                 this_mask = np.logical_and.reduce(
                     [
-                        self.centers[cell_mask, dimension] > lower,
-                        self.centers[cell_mask, dimension] <= upper,
+                        self.centers[cell_mask, dimension]
+                        + 0.5 * self.cell_size[dimension]
+                        > lower,
+                        self.centers[cell_mask, dimension]
+                        - 0.5 * self.cell_size[dimension]
+                        <= upper,
                     ]
                 )
 
