@@ -55,8 +55,17 @@ def test_reading_select_region_half_box(filename):
     # Mask off the lower bottom corner of the volume.
     mask_region = mask(filename, spatial_only=True)
 
+    # the region can be padded by a cell if min & max particle positions are absent
+    # in metadata
+    pad_frac = (mask_region.cell_size / mask_region.metadata.boxsize).to_value(
+        dimensionless
+    )
+
     restrict = cosmo_array(
-        [np.zeros_like(full_data.metadata.boxsize), full_data.metadata.boxsize * 0.49]
+        [
+            full_data.metadata.boxsize * (pad_frac + 0.01),
+            full_data.metadata.boxsize * (0.5 - pad_frac - 0.01),
+        ]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
@@ -64,12 +73,13 @@ def test_reading_select_region_half_box(filename):
     selected_data = load(filename, mask=mask_region)
 
     selected_coordinates = selected_data.gas.coordinates
-
     # Some of these particles will be outside because of the periodic BCs
     assert (
         (selected_coordinates / full_data.metadata.boxsize).to_value(dimensionless)
-        > 0.5
+        > 0.5 + pad_frac
     ).sum() < 25
+    # make sure the test isn't trivially passed because we selected nothing:
+    assert selected_coordinates.size > 0
 
 
 @requires("cosmological_volume.hdf5")
@@ -109,6 +119,8 @@ def test_region_mask_intersection(filename):
     # the intersect=True flag is optional on the first call:
     mask_intersect.constrain_spatial(region_1, intersect=True)
     mask_intersect.constrain_spatial(region_2, intersect=True)
-    assert (
-        np.logical_or(mask_1.cell_mask, mask_2.cell_mask) == mask_intersect.cell_mask
-    ).all()
+    for group_name in mask_1.metadata.present_group_names:
+        assert (
+            np.logical_or(mask_1.cell_mask[group_name], mask_2.cell_mask[group_name])
+            == mask_intersect.cell_mask[group_name]
+        ).all()
