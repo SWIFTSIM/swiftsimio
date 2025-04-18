@@ -444,10 +444,10 @@ class SWIFTMask(object):
             boxsize = self.metadata.boxsize[dimension]
             if restrict[dimension] is None:
                 continue
-            if lower.value < 0:
+            if lower.value <= 0:
                 reduce_function = np.logical_or
                 lower %= boxsize
-            elif upper > boxsize:
+            elif upper >= boxsize:
                 reduce_function = np.logical_or
                 upper %= boxsize
             else:
@@ -461,7 +461,7 @@ class SWIFTMask(object):
                 this_mask = reduce_function.reduce(
                     [
                         self.maxpositions[group_name][cell_mask[group_name], dimension]
-                        > lower,
+                        >= lower,
                         self.minpositions[group_name][cell_mask[group_name], dimension]
                         <= upper,
                     ]

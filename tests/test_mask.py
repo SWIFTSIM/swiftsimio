@@ -163,14 +163,44 @@ def test_mask_pad_wrapping(filename):
     When we mask all the way to the edge of the box, we should get a cell on the
     opposite edge as padding in case particles have drifted out of their cell.
     """
+    mask_region_lower = mask(filename, spatial_only=True)
+    mask_region_upper = mask(filename, spatial_only=True)
+    restrict_lower = cosmo_array(
+        [mask_region_lower.metadata.boxsize * 0.8, mask_region_lower.metadata.boxsize]
+    ).T
+    restrict_upper = cosmo_array(
+        [
+            mask_region_upper.metadata.boxsize * 0,
+            mask_region_upper.metadata.boxsize * 0.2,
+        ]
+    ).T
+
+    mask_region_lower.constrain_spatial(restrict=restrict_lower)
+    mask_region_upper.constrain_spatial(restrict=restrict_upper)
+    selected_data_lower = load(filename, mask=mask_region_lower)
+    selected_data_upper = load(filename, mask=mask_region_upper)
+    selected_coordinates_lower = selected_data_lower.gas.coordinates
+    selected_coordinates_upper = selected_data_upper.gas.coordinates
+    # extending upper mask to to 1.01 times the box size gives >32k particles
+    # we expect to get the same
+    assert (
+        selected_coordinates_lower < mask_region_lower.metadata.boxsize * 0.1
+    ).sum() > 32000
+    assert (
+        selected_coordinates_upper > mask_region_upper.metadata.boxsize * 0.9
+    ).sum() > 32000
+
+
+@requires("cosmological_volume.hdf5")
+def test_mask_entire_box(filename):
+    """
+    When we explicitly set the region to the whole box, we'd better get all of the cells!
+    """
     mask_region = mask(filename, spatial_only=True)
     restrict = cosmo_array(
-        [mask_region.metadata.boxsize * 0.8, mask_region.metadata.boxsize]
+        [mask_region.metadata.boxsize * 0.0, mask_region.metadata.boxsize]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
-    selected_data = load(filename, mask=mask_region)
-    selected_coordinates = selected_data.gas.coordinates
-    # extending mask to to 1.01 times the box size gives >32k particles
-    # we expect to get the same
-    assert (selected_coordinates < mask_region.metadata.boxsize * 0.1).sum() > 32000
+    for group_mask in mask_region.cell_mask.values():
+        assert group_mask.all()
