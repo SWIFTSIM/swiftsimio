@@ -165,10 +165,7 @@ def test_mask_pad_wrapping(filename):
     """
     mask_region = mask(filename, spatial_only=True)
     restrict = cosmo_array(
-        [
-            mask_region.metadata.boxsize * 0.8,
-            mask_region.metadata.boxsize,
-        ]
+        [mask_region.metadata.boxsize * 0.8, mask_region.metadata.boxsize]
     ).T
 
     mask_region.constrain_spatial(restrict=restrict)
