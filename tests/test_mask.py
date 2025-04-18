@@ -50,8 +50,6 @@ def test_reading_select_region_half_box(filename):
     Specifically, we test to see if all particles lie within half a boxsize.
     """
 
-    full_data = load(filename)
-
     # Mask off the lower bottom corner of the volume.
     mask_region = mask(filename, spatial_only=True)
 
@@ -60,11 +58,10 @@ def test_reading_select_region_half_box(filename):
     pad_frac = (mask_region.cell_size / mask_region.metadata.boxsize).to_value(
         dimensionless
     )
-
     restrict = cosmo_array(
         [
-            full_data.metadata.boxsize * (pad_frac + 0.01),
-            full_data.metadata.boxsize * (0.5 - pad_frac - 0.01),
+            mask_region.metadata.boxsize * (pad_frac + 0.01),
+            mask_region.metadata.boxsize * (0.5 - pad_frac - 0.01),
         ]
     ).T
 
@@ -75,7 +72,7 @@ def test_reading_select_region_half_box(filename):
     selected_coordinates = selected_data.gas.coordinates
     # Some of these particles will be outside because of the periodic BCs
     assert (
-        (selected_coordinates / full_data.metadata.boxsize).to_value(dimensionless)
+        (selected_coordinates / mask_region.metadata.boxsize).to_value(dimensionless)
         > 0.5 + pad_frac
     ).sum() < 25
     # make sure the test isn't trivially passed because we selected nothing:
@@ -124,3 +121,38 @@ def test_region_mask_intersection(filename):
             np.logical_or(mask_1.cell_mask[group_name], mask_2.cell_mask[group_name])
             == mask_intersect.cell_mask[group_name]
         ).all()
+
+
+@requires("cosmological_volume.hdf5")
+def test_mask_periodic_wrapping(filename):
+    """
+    Check that a region that runs off the upper edge of the box gives the same
+    mask as one that runs off the lower edge (they are chosen to be equivalent
+    under periodic wrapping).
+    """
+    # Mask off the lower bottom corner of the volume.
+    mask_region_upper = mask(filename, spatial_only=True)
+    mask_region_lower = mask(filename, spatial_only=True)
+    restrict_upper = cosmo_array(
+        [
+            mask_region_upper.metadata.boxsize * 0.8,
+            mask_region_upper.metadata.boxsize * 1.2,
+        ]
+    ).T
+    restrict_lower = cosmo_array(
+        [
+            mask_region_lower.metadata.boxsize * (-0.2),
+            mask_region_lower.metadata.boxsize * 0.2,
+        ]
+    ).T
+
+    mask_region_upper.constrain_spatial(restrict=restrict_upper)
+    mask_region_lower.constrain_spatial(restrict=restrict_lower)
+
+    selected_data_upper = load(filename, mask=mask_region_upper)
+    selected_data_lower = load(filename, mask=mask_region_lower)
+
+    selected_coordinates_upper = selected_data_upper.gas.coordinates
+    selected_coordinates_lower = selected_data_lower.gas.coordinates
+    assert selected_coordinates_lower.size > 0  # check that we selected something
+    assert np.array_equal(selected_coordinates_upper, selected_coordinates_lower)
