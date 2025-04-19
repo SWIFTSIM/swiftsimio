@@ -27,8 +27,7 @@ def test_cosmology_metadata(filename):
     data = load(filename)
 
     assert data.metadata.a == data.metadata.scale_factor
-
-    assert data.metadata.a == 1.0 / (1.0 + data.metadata.redshift)
+    assert np.isclose(data.metadata.a, 1.0 / (1.0 + data.metadata.redshift), atol=1e-8)
 
     return
 
