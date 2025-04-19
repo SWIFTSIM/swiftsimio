@@ -118,11 +118,15 @@ def create_single_particle_dataset(filename: str, output_name: str):
 
     # Get rid of all traces of DM
     del outfile["/Cells/Counts/PartType1"]
-    del outfile["/Cells/Offsets/PartType1"]
-    nparts_total = [2, 0, 0, 0, 0, 0]
-    nparts_this_file = [2, 0, 0, 0, 0, 0]
+    if "Offsets" in outfile["/Cells"].keys():
+        del outfile["/Cells/Offsets/PartType1"]
+    if "OffsetsInFile" in outfile["/Cells"].keys():
+        del outfile["/Cells/OffsetsInFile/PartType1"]
+    nparts_total = [2, 0, 0, 0, 0, 0, 0]
+    nparts_this_file = [2, 0, 0, 0, 0, 0, 0]
     outfile["/Header"].attrs["NumPart_Total"] = nparts_total
-    outfile["/Header"].attrs["NumPart_ThisFile"] = nparts_this_file
+    outfile["/Header"].attrs["NumPart_ThisFile"] = nparts_this_file 
+    outfile["/Header"].attrs["CanHaveTypes"] = [1, 0, 0, 0, 0, 0, 0]
 
     # Tidy up
     infile.close()
