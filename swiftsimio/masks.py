@@ -422,6 +422,11 @@ class SWIFTMask(object):
 
             These values must have units associated with them.
 
+        Raises
+        ------
+        ValueError
+            If the mask boundaries are outside the interval [-Lbox/2, 3*Lbox/2].
+
         Returns
         -------
 
@@ -442,28 +447,51 @@ class SWIFTMask(object):
             lower = restrict[dimension][0]
             upper = restrict[dimension][1]
             boxsize = self.metadata.boxsize[dimension]
-            if restrict[dimension] is None:
+            if np.logical_or.reduce(
+                (
+                    lower < -boxsize / 2,
+                    upper < -boxsize / 2,
+                    lower > 3 * boxsize / 2,
+                    upper > 3 * boxsize / 2,
+                )
+            ):
+                # because we're only going to make one periodic copy on either side,
+                # we're in trouble
+                raise ValueError(
+                    "Mask region boundaries must be in interval [-boxsize/2, 3*boxsize/2]"
+                    f" along {'xyz'[dimension]}-axis."
+                )
+            if restrict[dimension] is None or np.abs(upper - lower) > boxsize:
+                # keep everything along this axis
                 continue
-            if lower.value <= 0:
-                reduce_function = np.logical_or
-                lower %= boxsize
-            elif upper >= boxsize:
-                reduce_function = np.logical_or
-                upper %= boxsize
-            else:
-                reduce_function = np.logical_and
+            if upper < lower:
+                # inverted case, convert to a "normal" case in target window
+                if lower > boxsize / 2:
+                    lower -= boxsize
+                elif upper < boxsize / 2:  # don't shift both else we get the whole box!
+                    upper += boxsize
             group_names = (
                 ["shared"]
                 if self.metadata.output_type in ["SOAP", "FOF"]
                 else self.metadata.present_group_names
             )
             for group_name in group_names:
-                this_mask = reduce_function.reduce(
+                # selection intersects one of the 3 periodic copies of a cell:
+                this_mask = np.logical_or.reduce(
                     [
-                        self.maxpositions[group_name][cell_mask[group_name], dimension]
-                        >= lower,
-                        self.minpositions[group_name][cell_mask[group_name], dimension]
-                        <= upper,
+                        np.logical_and(
+                            self.maxpositions[group_name][
+                                cell_mask[group_name], dimension
+                            ]
+                            + shift * boxsize
+                            >= lower,
+                            self.minpositions[group_name][
+                                cell_mask[group_name], dimension
+                            ]
+                            + shift * boxsize
+                            <= upper,
+                        )
+                        for shift in (-1, 0, 1)
                     ]
                 )
                 cell_mask[group_name][cell_mask[group_name]] = this_mask

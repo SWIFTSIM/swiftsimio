@@ -3,6 +3,7 @@ Tests the masking using some test data.
 """
 
 from tests.helper import requires
+import pytest
 from swiftsimio import load, mask
 import numpy as np
 
@@ -185,10 +186,12 @@ def test_mask_pad_wrapping(filename):
     # we expect to get the same
     assert (
         selected_coordinates_lower < mask_region_lower.metadata.boxsize * 0.1
-    ).sum() > 32000
+    ).sum() > 10000
     assert (
         selected_coordinates_upper > mask_region_upper.metadata.boxsize * 0.9
-    ).sum() > 32000
+    ).sum() > 10000
+    # when extending this test:
+    # in the case where input file has cell bbox metadata expect to get a lot less
 
 
 @requires("cosmological_volume.hdf5")
@@ -204,3 +207,44 @@ def test_mask_entire_box(filename):
     mask_region.constrain_spatial(restrict=restrict)
     for group_mask in mask_region.cell_mask.values():
         assert group_mask.all()
+
+
+@requires("cosmological_volume.hdf5")
+def test_invalid_mask_interval(filename):
+    """
+    We should get an error if the mask boundaries go out of bounds.
+    """
+    mask_region = mask(filename, spatial_only=True)
+    restrict = cosmo_array(
+        [mask_region.metadata.boxsize * -2, mask_region.metadata.boxsize * 2]
+    ).T
+    with pytest.raises(ValueError, match="Mask region boundaries must be in interval"):
+        mask_region.constrain_spatial(restrict=restrict)
+
+
+@requires("cosmological_volume.hdf5")
+def test_inverted_mask_boundaries(filename):
+    """
+    Upper boundary can be below lower boundary, in that case we select wrapping
+    in the other direction. Check this by making an "inverted" selection and
+    comparing to the "uninverted" selection through the boundary.
+    """
+    mask_region = mask(filename, spatial_only=True)
+    mask_region_inverted = mask(filename, spatial_only=True)
+    restrict = cosmo_array(
+        [-mask_region.metadata.boxsize * 0.2, mask_region.metadata.boxsize * 0.2]
+    ).T
+    restrict_inverted = cosmo_array(
+        [mask_region.metadata.boxsize * 0.8, mask_region.metadata.boxsize * 0.2]
+    ).T
+
+    mask_region.constrain_spatial(restrict=restrict)
+    mask_region_inverted.constrain_spatial(restrict=restrict_inverted)
+    selected_data = load(filename, mask=mask_region)
+    selected_data_inverted = load(filename, mask=mask_region_inverted)
+
+    selected_coordinates = selected_data.gas.coordinates
+    selected_coordinates_inverted = selected_data_inverted.gas.coordinates
+    print(selected_coordinates.size, selected_coordinates_inverted.size)
+    assert selected_coordinates.size > 0  # check that we selected something
+    assert np.array_equal(selected_coordinates, selected_coordinates_inverted)
