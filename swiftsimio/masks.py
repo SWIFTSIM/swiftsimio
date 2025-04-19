@@ -484,12 +484,12 @@ class SWIFTMask(object):
                                 cell_mask[group_name], dimension
                             ]
                             + shift * boxsize
-                            >= lower,
+                            > lower,
                             self.minpositions[group_name][
                                 cell_mask[group_name], dimension
                             ]
                             + shift * boxsize
-                            <= upper,
+                            < upper,
                         )
                         for shift in (-1, 0, 1)
                     ]
