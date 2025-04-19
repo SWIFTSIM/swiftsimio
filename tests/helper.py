@@ -125,7 +125,7 @@ def create_single_particle_dataset(filename: str, output_name: str):
     nparts_total = [2, 0, 0, 0, 0, 0, 0]
     nparts_this_file = [2, 0, 0, 0, 0, 0, 0]
     outfile["/Header"].attrs["NumPart_Total"] = nparts_total
-    outfile["/Header"].attrs["NumPart_ThisFile"] = nparts_this_file 
+    outfile["/Header"].attrs["NumPart_ThisFile"] = nparts_this_file
     outfile["/Header"].attrs["CanHaveTypes"] = [1, 0, 0, 0, 0, 0, 0]
 
     # Tidy up
