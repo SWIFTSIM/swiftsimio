@@ -394,7 +394,9 @@ def test_comoving_versus_physical(filename):
         img = func(data, resolution=64, project=None, region=region, parallel=True)
         assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
-        img = func(data, resolution=64, project="densities", region=region, parallel=True)
+        img = func(
+            data, resolution=64, project="densities", region=region, parallel=True
+        )
         assert data.gas.densities.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
         # try to mix comoving coordinates with a physical variable:
@@ -406,14 +408,22 @@ def test_comoving_versus_physical(filename):
             with pytest.warns(
                 UserWarning, match="Converting coordinate grid to physical."
             ):
-                img = func(data, resolution=64, project="densities", region=region, parallel=True)
+                img = func(
+                    data,
+                    resolution=64,
+                    project="densities",
+                    region=region,
+                    parallel=True,
+                )
         assert data.gas.densities.comoving is False and img.comoving is False
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
         # convert coordinates to physical (but not smoothing lengths):
         # the coordinates (copy) should convert back to comoving to match the masses
         data.gas.coordinates.convert_to_physical()
         with pytest.warns(UserWarning, match="Converting coordinate grid to comoving."):
-            img = func(data, resolution=64, project="masses", region=region, parallel=True)
+            img = func(
+                data, resolution=64, project="masses", region=region, parallel=True
+            )
         assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
         # also convert smoothing lengths to physical
@@ -425,12 +435,16 @@ def test_comoving_versus_physical(filename):
             with pytest.warns(
                 UserWarning, match="Converting coordinate grid to comoving."
             ):
-                img = func(data, resolution=64, project="masses", region=region, parallel=True)
+                img = func(
+                    data, resolution=64, project="masses", region=region, parallel=True
+                )
         assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
         # densities are physical, make sure this works with physical coordinates and
         # smoothing lengths
-        img = func(data, resolution=64, project="densities", region=region, parallel=True)
+        img = func(
+            data, resolution=64, project="densities", region=region, parallel=True
+        )
         assert data.gas.densities.comoving is False and img.comoving is False
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
         # now try again with comoving densities, should work and give a comoving img
@@ -442,7 +456,13 @@ def test_comoving_versus_physical(filename):
             with pytest.warns(
                 UserWarning, match="Converting coordinate grid to comoving."
             ):
-                img = func(data, resolution=64, project="densities", region=region, parallel=True)
+                img = func(
+                    data,
+                    resolution=64,
+                    project="densities",
+                    region=region,
+                    parallel=True,
+                )
         assert data.gas.densities.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
 
