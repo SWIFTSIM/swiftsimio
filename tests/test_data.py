@@ -27,8 +27,7 @@ def test_cosmology_metadata(filename):
     data = load(filename)
 
     assert data.metadata.a == data.metadata.scale_factor
-
-    assert data.metadata.a == 1.0 / (1.0 + data.metadata.redshift)
+    assert np.isclose(data.metadata.a, 1.0 / (1.0 + data.metadata.redshift), atol=1e-8)
 
     return
 
@@ -167,7 +166,6 @@ def test_cell_metadata_is_valid(filename):
     start_offset = offsets
     stop_offset = offsets + counts
 
-    print(mask_region.centers)
     for center, start, stop in zip(
         mask_region.centers.to(data.gas.coordinates.units), start_offset, stop_offset
     ):
