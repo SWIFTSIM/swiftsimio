@@ -9,7 +9,6 @@ from swiftsimio.visualisation.tools.cmaps import (
 import numpy as np
 from swiftsimio.visualisation._vistools import _get_projection_field
 from swiftsimio import load
-from tests.helper import requires
 
 
 def test_basic_linear_2d():
@@ -50,9 +49,8 @@ def test_apply_to_data_2d():
     return
 
 
-@requires("cosmo_volume_example.hdf5")
-def test_get_projection_field(filename):
-    sd = load(filename)
+def test_get_projection_field(cosmo_volume_example):
+    sd = load(cosmo_volume_example)
     expected_dataset = sd.gas.masses
     obtained_dataset = _get_projection_field(sd.gas, "masses")
     assert np.allclose(expected_dataset, obtained_dataset)

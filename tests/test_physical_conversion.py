@@ -1,6 +1,5 @@
 from swiftsimio import load
 from numpy import allclose
-from tests.helper import requires
 import unyt as u
 
 
@@ -25,12 +24,11 @@ def test_convert(cosmological_volume):
     return
 
 
-@requires("cosmological_volume.hdf5")
-def test_convert_to_value(filename):
+def test_convert_to_value(cosmological_volume):
     """
     Check that conversions to numerical values are correct.
     """
-    data = load(filename)
+    data = load(cosmological_volume)
     coords = data.gas.coordinates
     units = u.kpc
     assert units != coords.units  # ensure we make a non-trivial conversion
