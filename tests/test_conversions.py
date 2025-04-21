@@ -3,18 +3,16 @@ Tests conversions from SWIFT internals to astropy.
 """
 
 from swiftsimio.conversions import swift_cosmology_to_astropy
-from tests.helper import requires
 from swiftsimio import load
 from numpy import isclose
 
 
-@requires("cosmological_volume.hdf5")
-def test_basic_tcmb(filename):
+def test_basic_tcmb(cosmological_volume):
     """
     Tests we can recover omega_gamma = 0.0 and tcmb0 in the usual case.
     """
 
-    data = load(filename)
+    data = load(cosmological_volume)
 
     try:
         assert (
@@ -26,13 +24,12 @@ def test_basic_tcmb(filename):
         pass
 
 
-@requires("cosmological_volume.hdf5")
-def test_nonzero_tcmb(filename):
+def test_nonzero_tcmb(cosmological_volume):
     """
     Tests we can recover omega_gamma = 0.0 and tcmb0 in the usual case.
     """
 
-    data = load(filename)
+    data = load(cosmological_volume)
     units = data.metadata.units
 
     cosmo = data.metadata.cosmology_raw
