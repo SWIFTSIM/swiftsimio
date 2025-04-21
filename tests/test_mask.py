@@ -2,6 +2,7 @@
 Tests the masking using some test data.
 """
 
+import h5py
 from tests.helper import requires
 import pytest
 from swiftsimio import load, mask
@@ -162,7 +163,8 @@ def test_mask_periodic_wrapping(filename):
 def test_mask_pad_wrapping(filename):
     """
     When we mask all the way to the edge of the box, we should get a cell on the
-    opposite edge as padding in case particles have drifted out of their cell.
+    opposite edge as padding in case particles have drifted out of their cell,
+    unless the cell metadata with max positions is present.
     """
     mask_region_lower = mask(filename, spatial_only=True)
     mask_region_upper = mask(filename, spatial_only=True)
@@ -182,16 +184,29 @@ def test_mask_pad_wrapping(filename):
     selected_data_upper = load(filename, mask=mask_region_upper)
     selected_coordinates_lower = selected_data_lower.gas.coordinates
     selected_coordinates_upper = selected_data_upper.gas.coordinates
-    # extending upper mask to to 1.01 times the box size gives >32k particles
-    # we expect to get the same
-    assert (
-        selected_coordinates_lower < mask_region_lower.metadata.boxsize * 0.1
-    ).sum() > 10000
-    assert (
-        selected_coordinates_upper > mask_region_upper.metadata.boxsize * 0.9
-    ).sum() > 10000
-    # when extending this test:
-    # in the case where input file has cell bbox metadata expect to get a lot less
+    with h5py.File(filename, "r") as f:
+        if (
+            "MinPositions" in f["/Cells"].keys()
+            and "MaxPositions" in f["/Cells"].keys()
+        ):
+            # in the sample file with this metadata present, no particles have drifted
+            # out of their cells in this direction, so no particles on the other
+            # side of the box should be found.
+            def expected(n):
+                return n == 0
+
+        else:
+            # extending upper mask to a padding cell on the other side of the box
+            # should get a lot of particles
+            def expected(n):
+                return n > 10000
+
+    assert expected(
+        (selected_coordinates_lower < mask_region_lower.metadata.boxsize * 0.1).sum()
+    )
+    assert expected(
+        (selected_coordinates_upper > mask_region_upper.metadata.boxsize * 0.9).sum()
+    )
 
 
 @requires("cosmological_volume.hdf5")
