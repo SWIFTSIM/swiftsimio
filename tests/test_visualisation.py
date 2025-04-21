@@ -391,7 +391,7 @@ def test_comoving_versus_physical(filename):
         data = load(filename, mask=m)
         # we force the default (project="masses") to check the cosmo_factor
         # conversion in this case
-        img = func(data, resolution=64, project=None, region=region, parallel=True)
+        img = func(data, resolution=64, project="masses", region=region, parallel=True)
         assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
         img = func(
