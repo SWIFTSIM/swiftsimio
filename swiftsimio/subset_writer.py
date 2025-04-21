@@ -200,6 +200,12 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
     # Copy the cell centres and metadata
     infile.copy("/Cells/Centres", outfile, name="/Cells/Centres")
     infile.copy("/Cells/Meta-data", outfile, name="/Cells/Meta-data")
+    if (
+        "MinPositions" in infile["/Cells"].keys()
+        and "MaxPositions" in infile["/Cells"].keys()
+    ):
+        infile.copy("/Cells/MinPositions", outfile, name="/Cells/MinPositions")
+        infile.copy("/Cells/MaxPositions", outfile, name="/Cells/MaxPositions")
 
 
 def write_metadata(
