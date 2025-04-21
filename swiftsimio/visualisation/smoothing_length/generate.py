@@ -55,7 +55,10 @@ def generate_smoothing_lengths(
 
     number_of_parts = coordinates.shape[0]
 
-    tree = KDTree(coordinates.value, boxsize=boxsize.to(coordinates.units).value)
+    tree = KDTree(
+        coordinates.to_value(coordinates.units),
+        boxsize=boxsize.to_value(coordinates.units),
+    )
 
     smoothing_lengths = np.empty(number_of_parts, dtype=np.float32)
     smoothing_lengths[-1] = -0.1
@@ -86,7 +89,7 @@ def generate_smoothing_lengths(
 
         try:
             d, _ = tree.query(
-                coordinates[starting_index:ending_index].value,
+                coordinates[starting_index:ending_index].to_value(coordinates.units),
                 k=neighbours_search,
                 workers=-1,
             )
@@ -94,7 +97,7 @@ def generate_smoothing_lengths(
             # Backwards compatibility with older versions of
             # scipy.
             d, _ = tree.query(
-                coordinates[starting_index:ending_index].value,
+                coordinates[starting_index:ending_index].to_value(coordinates.units),
                 k=neighbours_search,
                 n_jobs=-1,
             )

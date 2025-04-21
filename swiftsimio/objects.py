@@ -10,7 +10,7 @@ helpers, wrappers and implementations that enable most :mod:`numpy` and
 """
 
 import unyt
-from unyt import unyt_array, unyt_quantity
+from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
 from typing import Iterable, Union, Tuple, Callable, Optional
@@ -1453,6 +1453,36 @@ class cosmo_array(unyt_array):
         copied_data.convert_to_comoving()
 
         return copied_data
+
+    def to_physical_value(self, units: Unit) -> np.ndarray:
+        """
+        Returns a copy of the array values in the specified physical units.
+
+        Parameters
+        ----------
+        units : unyt.unit_object.Unit
+
+        Returns
+        -------
+        out : np.ndarray
+            Copy of the array values in the specified physical units.
+        """
+        return self.to_physical().to_value(units)
+
+    def to_comoving_value(self, units: Unit) -> np.ndarray:
+        """
+        Returns a copy of the array values in the specified comoving units.
+
+        Parameters
+        ----------
+        units : unyt.unit_object.Unit
+
+        Returns
+        -------
+        out : np.ndarray
+            Copy of the array values in the specified comoving units.
+        """
+        return self.to_comoving().to_value(units)
 
     def compatible_with_comoving(self) -> bool:
         """

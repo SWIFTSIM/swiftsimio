@@ -103,11 +103,13 @@ if ASTROPY_AVAILABLE:
             # SWIFT provides Omega_r, but we need a consistent Tcmb0 for astropy.
             # This is an exact inversion of the procedure performed in astropy.
             critical_density_0 = astropy_units.Quantity(
-                critdens_const * H0.to("1/s").value ** 2,
+                critdens_const * H0.to_value("1/s") ** 2,
                 astropy_units.g / astropy_units.cm ** 3,
             )
 
-            Tcmb0 = (Omega_r * critical_density_0.value / a_B_c2) ** (1.0 / 4.0)
+            Tcmb0 = (Omega_r * critical_density_0.to_value("g/cm**3") / a_B_c2) ** (
+                1.0 / 4.0
+            )
 
         try:
             Neff = cosmo["N_eff"][0]

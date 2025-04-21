@@ -2,7 +2,9 @@
 Tests the smoothing length generation code.
 """
 
-from swiftsimio import load
+import numpy as np
+import unyt as u
+from swiftsimio import load, cosmo_array
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 
 from numpy import isclose
@@ -68,3 +70,22 @@ def test_generate_smoothing_length_faster(cosmological_volume):
     ).all()
 
     return
+
+
+def test_generate_smoothing_length_return_type():
+    x = cosmo_array(
+        np.arange(20), u.Mpc, comoving=False, scale_factor=0.5, scale_exponent=1
+    )
+    xgrid, ygrid, zgrid = np.meshgrid(x, x, x)
+    coords = np.vstack((xgrid.flatten(), ygrid.flatten(), zgrid.flatten())).T
+    lbox = cosmo_array(
+        [20, 20, 20], u.Mpc, comoving=False, scale_factor=0.5, scale_exponent=1
+    )
+    from_ca_input = generate_smoothing_lengths(coords, lbox, 1)
+    assert from_ca_input.units == coords.units
+    assert from_ca_input.comoving == coords.comoving
+    assert from_ca_input.cosmo_factor == coords.cosmo_factor
+    from_ua_input = generate_smoothing_lengths(u.unyt_array(coords), lbox, 1)
+    assert isinstance(from_ua_input, u.unyt_array) and not isinstance(
+        from_ua_input, cosmo_array
+    )

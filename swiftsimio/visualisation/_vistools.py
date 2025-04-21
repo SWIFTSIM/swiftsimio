@@ -1,15 +1,14 @@
 import numpy as np
 from warnings import warn
+from functools import reduce
 from swiftsimio.objects import cosmo_array
 from swiftsimio._array_functions import _copy_cosmo_array_attributes_if_present
 
 
 def _get_projection_field(data, field_name):
-    return (
-        getattr(data, field_name)
-        if field_name is not None
-        else np.ones_like(data.particle_ids)
-    )
+    if field_name is None:
+        return np.ones_like(data.particle_ids)
+    return reduce(getattr, field_name.split("."), data)
 
 
 def _get_region_info(data, region, require_cubic=False, periodic=True):
