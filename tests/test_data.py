@@ -56,7 +56,9 @@ def test_temperature_units(filename):
     """
 
     data = load(filename)
-    data.gas.temperatures.convert_to_units(K)
+    if hasattr(data.gas, "temperatures"):
+        # newer sample data doesn't store temperatures
+        data.gas.temperatures.convert_to_units(K)
 
     return
 
@@ -121,6 +123,15 @@ def test_units(filename):
         for property in properties:
             # Read the 0th element, and compare in CGS units.
             # We need to use doubles here as sometimes we can overflow!
+            if "temperature" in property and not hasattr(field, property):
+                # newer sample data doesn't have temperature field
+                continue
+            if "iron" in property and not hasattr(field, property):
+                # newer sample data doesn't have metals
+                continue
+            if "metal" in property and not hasattr(field, property):
+                # newer sample data doesn't have metals
+                continue
             our_units = getattr(field, property).astype(float64)[0]
 
             our_units.convert_to_cgs()
