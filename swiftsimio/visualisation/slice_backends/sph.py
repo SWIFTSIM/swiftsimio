@@ -1,5 +1,5 @@
 from typing import Union
-from math import sqrt
+from math import sqrt, ceil
 from numpy import float64, float32, int32, zeros, ndarray
 
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
@@ -134,20 +134,20 @@ def slice_scatter(
         xshift_min = 0
         xshift_max = 1
     else:
-        xshift_min = -1
-        xshift_max = 2
+        xshift_min = -1  # x_min is always at x=0
+        xshift_max = ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
-        yshift_min = -1
-        yshift_max = 2
+        yshift_min = -1  # y_min is always at y=0
+        yshift_max = ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
     if box_z == 0.0:
         zshift_min = 0
         zshift_max = 1
     else:
-        zshift_min = -1
-        zshift_max = 2
+        zshift_min = -1  # z_min is always at z=0
+        zshift_max = ceil(1 / box_z) + 1  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
         x, y, z, m, h
@@ -194,8 +194,9 @@ def slice_scatter(
                         # otherwise we'll segfault (oops).
                         min(particle_cell_x + cells_spanned, maximal_array_index + 1),
                     ):
-                        # The distance in x to our new favourite cell -- remember that our x, y
-                        # are all in a box of [0, 1]; calculate the distance to the cell centre
+                        # The distance in x to our new favourite cell -- remember that our
+                        # x, y are all in a box of [0, 1]; calculate the distance to the
+                        # cell centre
                         distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
                             x_pos
                         )
@@ -238,7 +239,8 @@ def slice_scatter_parallel(
     """
     Parallel implementation of slice_scatter
 
-    Creates a scatter plot of the given quantities for a particles in a data slice including periodic boundary effects.
+    Creates a scatter plot of the given quantities for a particles in a data slice
+    including periodic boundary effects.
 
     Parameters
     ----------

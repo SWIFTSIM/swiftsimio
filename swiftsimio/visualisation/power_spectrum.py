@@ -34,11 +34,14 @@ def deposit(
     Parameters
     ----------
     x : np.array[float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+        array of x-positions of the particles. Scaled by box_x by this
+        function, so ensure they have the same units.
     y: np.array[float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+        array of y-positions of the particles. Scaled by box_x by this
+        function, so ensure they have the same units.
     z: np.array[float64]
-        array of z-positions of the particles. Must be bounded by [0, 1].
+        array of z-positions of the particles. Scaled by box_x by this
+        function, so ensure they have the same units.
     m: np.array[float32]
         array of masses (or otherwise weights) of the particles
     res: int
@@ -48,7 +51,7 @@ def deposit(
         the number of times to fold the box. Note that this is the
         floating-point version (i.e. 2.0^folding).
     box_x: float64
-        box size in x, in the same rescaled length units as x, y, and z. c
+        box size in x, in the same rescaled length units as x, y, and z.
     box_y: float64
         box size in y, in the same rescaled length units as x, y, and z.
     box_z: float64
@@ -79,14 +82,14 @@ def deposit(
 
     for x_pos, y_pos, z_pos, mass in zip(x, y, z, m):
         # Fold the particles
-        x_pos = (x_pos % box_over_fold_x) * inv_box_over_fold_x
-        y_pos = (y_pos % box_over_fold_y) * inv_box_over_fold_y
-        z_pos = (z_pos % box_over_fold_z) * inv_box_over_fold_z
+        x_pos_scaled = (x_pos % box_over_fold_x) * inv_box_over_fold_x
+        y_pos_scaled = (y_pos % box_over_fold_y) * inv_box_over_fold_y
+        z_pos_scaled = (z_pos % box_over_fold_z) * inv_box_over_fold_z
 
         # Convert to grid position
-        x_pix = int32(x_pos * float_res)
-        y_pix = int32(y_pos * float_res)
-        z_pix = int32(z_pos * float_res)
+        x_pix = int32(x_pos_scaled * float_res)
+        y_pix = int32(y_pos_scaled * float_res)
+        z_pix = int32(z_pos_scaled * float_res)
 
         # Deposit the mass
         output[x_pix, y_pix, z_pix] += mass * inv_volume_element
@@ -114,11 +117,14 @@ def deposit_parallel(
     Parameters
     ----------
     x : np.array[float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+        array of x-positions of the particles. Scaled by box_x by this
+        function, so ensure they have the same units.
     y: np.array[float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+        array of y-positions of the particles. Scaled by box_x by this
+        function, so ensure they have the same units.
     z: np.array[float64]
-        array of z-positions of the particles. Must be bounded by [0, 1].
+        array of z-positions of the particles. Scaled by box_x by this
+        function, so ensure they have the same units.
     m: np.array[float32]
         array of masses (or otherwise weights) of the particles
     res: int
@@ -128,7 +134,7 @@ def deposit_parallel(
         the number of times to fold the box. Note that this is the
         floating-point version (i.e. 2.0^folding).
     box_x: float64
-        box size in x, in the same rescaled length units as x, y, and z. c
+        box size in x, in the same rescaled length units as x, y, and z.
     box_y: float64
         box size in y, in the same rescaled length units as x, y, and z.
     box_z: float64

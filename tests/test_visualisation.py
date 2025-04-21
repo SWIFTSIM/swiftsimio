@@ -39,6 +39,38 @@ except ImportError:
     pass
 
 
+def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
+    """
+    Compare array values in ``a`` and ``b``, return ``True`` if a fraction
+    ``frac`` of values are within a retlative tolerance ``tol`` of their
+    counterparts.
+
+    Paramters
+    ---------
+    a : ~swiftsimio.objects.cosmo_array
+        The first array to compare.
+    b : ~swiftsimio.objects.cosmo_array
+        The second array to compare
+    frac : float
+        The fraction of the values that must be within the tolerance.
+    tol : float
+        The relative tolerance for matching.
+
+    Returns
+    -------
+    out : bool
+        ``True`` if enough values match within the tolerance, ``False`` otherwise.
+    """
+    assert a.shape == b.shape
+
+    with np.testing.suppress_warnings() as sup:
+        sup.filter(RuntimeWarning, "divide by zero encountered in divide")
+        sup.filter(RuntimeWarning, "invalid value encountered in divide")
+        ratios = np.abs((a / b).to_value(unyt.dimensionless) - 1)
+    ratios[np.isnan(ratios)] = 0  # 0 == 0 is a match
+    return np.sum(ratios < tol) / a.size > frac
+
+
 class TestProjection:
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_scatter(self, backend, save=False):
@@ -46,6 +78,7 @@ class TestProjection:
         Tests the scatter functions from all backends.
         """
         if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
         try:
             image = projection_backends[backend](
@@ -136,11 +169,158 @@ class TestProjection:
         return
 
     @pytest.mark.parametrize("backend", projection_backends.keys())
+    def test_equivalent_regions(self, backend, cosmo_volume_example):
+        """
+        Here we test that various regions are (close enough to) equivalent.
+        The ref_img is just a projection through the whole box.
+        The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
+        as many times as we like.
+        The far_img is way, way outside the box, confirming that we can place the region
+        anywhere.
+        The depth_img is a reference image with limited projection depth in the box.
+        The neg_depth_img is as the depth_img but with the z range in negative values.
+        The wrap_depth_img is as the depth_img but with the z range beyond the box length.
+        The straddled_depth_img compares to the ref_img - it projects through the whole
+        box but straddling z=0 instead of starting there.
+        The edge_img is the only non-periodic case, framed to only partially contain the
+        box. We check that it matches the expected region of the ref_img (with the edges
+        trimmed a bit).
+        """
+        sd = load(cosmo_volume_example)
+        if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
+            pytest.xfail("gpu backend currently broken")
+        parallel = True
+        lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
+        box_res = 256
+        ref_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        big_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [0, 3 * lbox, 0, 3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res * 3,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        far_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        depth_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, 0, 0.3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        neg_depth_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, -lbox, -0.7 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        wrap_depth_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, lbox, 1.3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        straddled_depth_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, -0.5 * lbox, 0.5 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        edge_img = project_gas(
+            sd,
+            region=cosmo_array(
+                [-0.25 * lbox, 0.75 * lbox, 0.5 * lbox, 1.5 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=False,
+            backend=backend,
+        )
+        edge_mask = np.s_[box_res // 6 : -box_res // 6, box_res // 6 : -box_res // 6]
+        assert fraction_within_tolerance(
+            edge_img[box_res // 4 :, : box_res // 2][edge_mask],
+            ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
+        )
+        assert np.allclose(far_img, ref_img)
+        assert fraction_within_tolerance(
+            big_img, np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
+        )
+        assert np.allclose(depth_img, neg_depth_img)
+        assert np.allclose(depth_img, wrap_depth_img)
+        assert np.allclose(ref_img, straddled_depth_img)
+
+    @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
         """
         Test that periodic boundary wrapping works.
         """
         if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
 
         pixel_resolution = 100
@@ -264,6 +444,7 @@ class TestSlice:
     @pytest.mark.parametrize("backend", slice_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
         if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
 
         pixel_resolution = 100
@@ -309,6 +490,164 @@ class TestSlice:
         )
 
         assert (image1 == image2).all()
+
+    @pytest.mark.parametrize("backend", slice_backends.keys())
+    def test_equivalent_regions(self, backend, cosmo_volume_example):
+        """
+        Here we test that various regions are (close enough to) equivalent.
+        The ref_img is just a slice through the whole box at z=0.5 * lbox.
+        The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
+        as many times as we like.
+        The far_img is way, way outside the box, confirming that we can place the region
+        anywhere.
+        The neg_img places the slice at z=-0.5 * lbox.
+        The wrap_img places the slice at z=1.5 * lbox.
+        The edge_img is the only non-periodic case, framed to only partially contain the
+        box. We check that it matches the expected region of the ref_img (with the edges
+        trimmed a bit).
+        """
+        sd = load(cosmo_volume_example)
+        parallel = True
+        lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
+        box_res = 256
+        ref_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        big_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, 3 * lbox, 0, 3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res * 3,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        far_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+            backend=backend,
+        )
+        neg_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, -lbox, -0.7 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                -0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        wrap_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, lbox, 1.3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                1.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            backend=backend,
+        )
+        edge_img = slice_gas(
+            sd,
+            region=cosmo_array(
+                [-0.25 * lbox, 0.75 * lbox, 0.5 * lbox, 1.5 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            z_slice=cosmo_quantity(
+                0.5 * lbox,
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=False,
+            backend=backend,
+        )
+        edge_mask = np.s_[box_res // 6 : -box_res // 6, box_res // 6 : -box_res // 6]
+        assert fraction_within_tolerance(
+            edge_img[box_res // 4 :, : box_res // 2][edge_mask],
+            ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
+            frac={"nearest_neighbours": 0.8}.get(backend, 0.99),
+        )
+        assert np.allclose(far_img, ref_img)
+        assert fraction_within_tolerance(
+            big_img,
+            np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1),
+            frac={"nearest_neighbours": 0.8}.get(backend, 0.99),
+        )
+        assert np.allclose(neg_img, ref_img)
+        assert np.allclose(wrap_img, ref_img)
 
 
 class TestVolumeRender:
@@ -502,6 +841,119 @@ class TestVolumeRender:
         )
 
         assert (image1 == image2).all()
+
+    def test_equivalent_regions(self, cosmo_volume_example):
+        """
+        Here we test that various regions are (close enough to) equivalent.
+        The ref_img is just a render of the whole box.
+        The big_img is the box tiled 3x3x3 times, confirming that we can periodically wrap
+        as many times as we like.
+        The far_img is way, way outside the box, confirming that we can place the region
+        anywhere.
+        The straddled_img is offset by half a box length, the two halves of the result
+        should agree with the opposite halves of the ref_img.
+        The edge_img is the only non-periodic case, framed to only partially contain the
+        box. We check that it matches the expected region of the ref_img (with the edges
+        trimmed a bit).
+        """
+        sd = load(cosmo_volume_example)
+        parallel = False  # memory gets a bit out of hand otherwise
+        lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
+        box_res = 32
+        ref_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, 0, lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+        )
+        big_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [0, 3 * lbox, 0, 3 * lbox, 0, 3 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res * 3,
+            parallel=parallel,
+            periodic=True,
+        )
+        far_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=True,
+        )
+        straddled_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [0, lbox, 0, lbox, -0.5 * lbox, 0.5 * lbox],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+        )
+        edge_img = render_gas(
+            sd,
+            region=cosmo_array(
+                [
+                    -0.25 * lbox,
+                    0.75 * lbox,
+                    0.5 * lbox,
+                    1.5 * lbox,
+                    0.5 * lbox,
+                    1.5 * lbox,
+                ],
+                unyt.Mpc,
+                comoving=True,
+                scale_factor=sd.metadata.a,
+                scale_exponent=1,
+            ),
+            resolution=box_res,
+            parallel=parallel,
+            periodic=False,
+        )
+        edge_mask = np.s_[
+            box_res // 6 : -box_res // 6,
+            box_res // 6 : -box_res // 6,
+            box_res // 6 : -box_res // 6,
+        ]
+        assert fraction_within_tolerance(
+            edge_img[box_res // 4 :, : box_res // 2, : box_res // 2][edge_mask],
+            ref_img[: 3 * box_res // 4, box_res // 2 :, box_res // 2 :][edge_mask],
+        )
+        assert np.allclose(far_img, ref_img)
+        slab = np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
+        cube = np.concatenate([slab] * 3, axis=2)
+        assert fraction_within_tolerance(big_img, cube)
+        assert fraction_within_tolerance(
+            ref_img,
+            np.concatenate(
+                (
+                    straddled_img[..., box_res // 2 :],
+                    straddled_img[..., : box_res // 2],
+                ),
+                axis=-1,
+            ),
+        )
 
 
 def test_selection_render(cosmological_volume_no_legacy):

@@ -23,13 +23,14 @@ def test_project(cosmological_volume_no_legacy):
     create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
     data = load(output_filename)
 
+    unrotated = project_gas(
+        data, resolution=1024, project="masses", parallel=True, periodic=False
+    )
+
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    unrotated = project_gas(data, resolution=1024, project="masses", parallel=True)
-
     rotated = project_gas(
         data,
         resolution=1024,
@@ -37,6 +38,7 @@ def test_project(cosmological_volume_no_legacy):
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     assert array_equal(rotated, unrotated)
@@ -59,25 +61,28 @@ def test_slice(cosmological_volume_no_legacy):
     create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
     data = load(output_filename)
 
+    unrotated = slice_gas(
+        data,
+        resolution=1024,
+        z_slice=data.gas.coordinates[0, 2],
+        project="masses",
+        parallel=True,
+        periodic=False,
+    )
+
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    slice_z = centre[2]
-
-    unrotated = slice_gas(
-        data, resolution=1024, z_slice=slice_z, project="masses", parallel=True
-    )
-
     rotated = slice_gas(
         data,
         resolution=1024,
-        z_slice=0 * slice_z,
+        z_slice=0 * data.gas.coordinates[0, 2],
         project="masses",
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     # Check that we didn't miss the particle
@@ -104,13 +109,14 @@ def test_render(cosmological_volume_no_legacy):
     create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
     data = load(output_filename)
 
+    unrotated = render_gas(
+        data, resolution=256, project="masses", parallel=True, periodic=False
+    )
+
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    unrotated = render_gas(data, resolution=256, project="masses", parallel=True)
-
     rotated = render_gas(
         data,
         resolution=256,
@@ -118,6 +124,7 @@ def test_render(cosmological_volume_no_legacy):
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     assert array_equal(rotated, unrotated)

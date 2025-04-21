@@ -14,7 +14,7 @@ def test_convert(cosmological_volume_no_legacy):
     assert data.metadata.a != 1.0  # ensure we make a non-trivial conversion
     coords_physical = coords.to_physical()
 
-    # array_equal applied to cosmo_array's is aware of physical & comoving
+    # allclose applied to cosmo_array's is aware of physical & comoving
     # make sure to compare bare arrays:
     assert allclose(
         coords.to_value(units) * data.metadata.a,

@@ -17,7 +17,6 @@ packages = [
     "swiftsimio.visualisation.projection_backends",
     "swiftsimio.visualisation.slice_backends",
     "swiftsimio.visualisation.volume_render_backends",
-    "swiftsimio.visualisation.ray_trace_backends",
     "swiftsimio.visualisation.tools",
     "swiftsimio.visualisation.smoothing_length",
 ]
@@ -35,6 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
     "Operating System :: OS Independent",
 ]
