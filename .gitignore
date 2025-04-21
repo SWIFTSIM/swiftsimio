@@ -26,3 +26,6 @@ htmlcov/*
 
 # Formatting venv
 black_formatting_env/*
+
+# Leftovers
+*.png
