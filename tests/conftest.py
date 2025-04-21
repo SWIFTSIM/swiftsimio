@@ -36,8 +36,13 @@ def cosmo_volume_example():
     yield _requires("cosmo_volume_example.hdf5")
 
 
+@pytest.fixture(params=["cosmological_volume.hdf5", "legacy_cosmological_volume.hdf5"])
+def cosmological_volume(request):
+    yield _requires(request.param)
+
+
 @pytest.fixture
-def cosmological_volume():
+def cosmological_volume_no_legacy():
     yield _requires("cosmological_volume.hdf5")
 
 
