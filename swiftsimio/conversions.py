@@ -94,7 +94,8 @@ if ASTROPY_AVAILABLE:
 
         try:
             Tcmb0 = cosmo["T_CMB_0 [K]"][0]
-        except (IndexError, KeyError, AttributeError):
+            assert Tcmb0 != 0
+        except (IndexError, KeyError, AttributeError, AssertionError):
             # expressions taken directly from astropy, since they do no longer
             # allow access to these attributes (since version 5.1+)
             critdens_const = (3.0 / (8.0 * np.pi * const.G)).cgs.value
