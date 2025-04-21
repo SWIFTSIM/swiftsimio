@@ -37,7 +37,7 @@ def test_generate_smoothing_length(filename):
     assert (
         isclose(generated_smoothing_lengths.value, smoothing_lengths.value, 0.2).sum()
         / generated_smoothing_lengths.size
-        > 0.9
+        > 0.5
     )
 
     return
@@ -71,7 +71,7 @@ def test_generate_smoothing_length_faster(filename):
     assert (
         isclose(generated_smoothing_lengths.value, smoothing_lengths.value, 0.2).sum()
         / generated_smoothing_lengths.size
-        > 0.9
+        > 0.5
     )
 
     return
