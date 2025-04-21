@@ -8,19 +8,19 @@ from numpy import array_equal
 from os import remove
 
 
-def test_project(cosmological_volume):
+def test_project(cosmological_volume_no_legacy):
     """
     Checks that gas projection of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    cosmological_volume: str
+    cosmological_volume_no_legacy: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume, output_filename)
+    create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
     data = load(output_filename)
 
     # Compute rotation matrix for rotating around particle
@@ -44,19 +44,19 @@ def test_project(cosmological_volume):
     remove(output_filename)
 
 
-def test_slice(cosmological_volume):
+def test_slice(cosmological_volume_no_legacy):
     """
     Checks that a slice of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    cosmological_volume: str
+    cosmological_volume_no_legacy: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume, output_filename)
+    create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
     data = load(output_filename)
 
     # Compute rotation matrix for rotating around particle
@@ -89,19 +89,19 @@ def test_slice(cosmological_volume):
     remove(output_filename)
 
 
-def test_render(cosmological_volume):
+def test_render(cosmological_volume_no_legacy):
     """
     Checks that a volume render of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    cosmological_volume: str
+    cosmological_volume_no_legacy: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume, output_filename)
+    create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
     data = load(output_filename)
 
     # Compute rotation matrix for rotating around particle

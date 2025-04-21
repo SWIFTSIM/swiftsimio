@@ -120,15 +120,14 @@ def test_region_mask_intersection(cosmological_volume):
         ).all()
 
 
-@requires("cosmological_volume.hdf5")
-def test_mask_periodic_wrapping(filename):
+def test_mask_periodic_wrapping(cosmological_volume):
     """
     Check that a region that runs off the upper edge of the box gives the same
     mask as one that runs off the lower edge (they are chosen to be equivalent
     under periodic wrapping).
     """
-    mask_region_upper = mask(filename, spatial_only=True)
-    mask_region_lower = mask(filename, spatial_only=True)
+    mask_region_upper = mask(cosmological_volume, spatial_only=True)
+    mask_region_lower = mask(cosmological_volume, spatial_only=True)
     restrict_upper = cosmo_array(
         [
             mask_region_upper.metadata.boxsize * 0.8,
@@ -145,8 +144,8 @@ def test_mask_periodic_wrapping(filename):
     mask_region_upper.constrain_spatial(restrict=restrict_upper)
     mask_region_lower.constrain_spatial(restrict=restrict_lower)
 
-    selected_data_upper = load(filename, mask=mask_region_upper)
-    selected_data_lower = load(filename, mask=mask_region_lower)
+    selected_data_upper = load(cosmological_volume, mask=mask_region_upper)
+    selected_data_lower = load(cosmological_volume, mask=mask_region_lower)
 
     selected_coordinates_upper = selected_data_upper.gas.coordinates
     selected_coordinates_lower = selected_data_lower.gas.coordinates
@@ -154,15 +153,14 @@ def test_mask_periodic_wrapping(filename):
     assert np.array_equal(selected_coordinates_upper, selected_coordinates_lower)
 
 
-@requires("cosmological_volume.hdf5")
-def test_mask_pad_wrapping(filename):
+def test_mask_pad_wrapping(cosmological_volume):
     """
     When we mask all the way to the edge of the box, we should get a cell on the
     opposite edge as padding in case particles have drifted out of their cell,
     unless the cell metadata with max positions is present.
     """
-    mask_region_lower = mask(filename, spatial_only=True)
-    mask_region_upper = mask(filename, spatial_only=True)
+    mask_region_lower = mask(cosmological_volume, spatial_only=True)
+    mask_region_upper = mask(cosmological_volume, spatial_only=True)
     restrict_lower = cosmo_array(
         [mask_region_lower.metadata.boxsize * 0.8, mask_region_lower.metadata.boxsize]
     ).T
@@ -175,11 +173,11 @@ def test_mask_pad_wrapping(filename):
 
     mask_region_lower.constrain_spatial(restrict=restrict_lower)
     mask_region_upper.constrain_spatial(restrict=restrict_upper)
-    selected_data_lower = load(filename, mask=mask_region_lower)
-    selected_data_upper = load(filename, mask=mask_region_upper)
+    selected_data_lower = load(cosmological_volume, mask=mask_region_lower)
+    selected_data_upper = load(cosmological_volume, mask=mask_region_upper)
     selected_coordinates_lower = selected_data_lower.gas.coordinates
     selected_coordinates_upper = selected_data_upper.gas.coordinates
-    with h5py.File(filename, "r") as f:
+    with h5py.File(cosmological_volume, "r") as f:
         if (
             "MinPositions" in f["/Cells"].keys()
             and "MaxPositions" in f["/Cells"].keys()
@@ -204,12 +202,11 @@ def test_mask_pad_wrapping(filename):
     )
 
 
-@requires("cosmological_volume.hdf5")
-def test_mask_entire_box(filename):
+def test_mask_entire_box(cosmological_volume):
     """
     When we explicitly set the region to the whole box, we'd better get all of the cells!
     """
-    mask_region = mask(filename, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * 0.0, mask_region.metadata.boxsize]
     ).T
@@ -219,12 +216,11 @@ def test_mask_entire_box(filename):
         assert group_mask.all()
 
 
-@requires("cosmological_volume.hdf5")
-def test_invalid_mask_interval(filename):
+def test_invalid_mask_interval(cosmological_volume):
     """
     We should get an error if the mask boundaries go out of bounds.
     """
-    mask_region = mask(filename, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * -2, mask_region.metadata.boxsize * 2]
     ).T
@@ -232,15 +228,14 @@ def test_invalid_mask_interval(filename):
         mask_region.constrain_spatial(restrict=restrict)
 
 
-@requires("cosmological_volume.hdf5")
-def test_inverted_mask_boundaries(filename):
+def test_inverted_mask_boundaries(cosmological_volume):
     """
     Upper boundary can be below lower boundary, in that case we select wrapping
     in the other direction. Check this by making an "inverted" selection and
     comparing to the "uninverted" selection through the boundary.
     """
-    mask_region = mask(filename, spatial_only=True)
-    mask_region_inverted = mask(filename, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region_inverted = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [-mask_region.metadata.boxsize * 0.2, mask_region.metadata.boxsize * 0.2]
     ).T
@@ -250,8 +245,8 @@ def test_inverted_mask_boundaries(filename):
 
     mask_region.constrain_spatial(restrict=restrict)
     mask_region_inverted.constrain_spatial(restrict=restrict_inverted)
-    selected_data = load(filename, mask=mask_region)
-    selected_data_inverted = load(filename, mask=mask_region_inverted)
+    selected_data = load(cosmological_volume, mask=mask_region)
+    selected_data_inverted = load(cosmological_volume, mask=mask_region_inverted)
 
     selected_coordinates = selected_data.gas.coordinates
     selected_coordinates_inverted = selected_data_inverted.gas.coordinates

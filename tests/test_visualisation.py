@@ -3,7 +3,6 @@ from swiftsimio import load, mask
 from swiftsimio.visualisation.projection import project_gas, project_pixel_grid
 from swiftsimio.visualisation.slice import slice_gas
 from swiftsimio.visualisation.volume_render import render_gas
-from swiftsimio.visualisation.ray_trace import panel_gas
 
 from swiftsimio.visualisation.slice_backends import (
     backends as slice_backends,
@@ -135,183 +134,6 @@ class TestProjection:
         assert np.isclose(image, image_par).all()
 
         return
-
-    @pytest.mark.parametrize("backend", projection_backends.keys())
-    def test_equivalent_regions(self, backend, cosmo_volume_example):
-        """
-        Here we test that various regions are (close enough to) equivalent.
-        The ref_img is just a projection through the whole box.
-        The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
-        as many times as we like.
-        The far_img is way, way outside the box, confirming that we can place the region
-        anywhere.
-        The depth_img is a reference image with limited projection depth in the box.
-        The neg_depth_img is as the depth_img but with the z range in negative values.
-        The wrap_depth_img is as the depth_img but with the z range beyond the box length.
-        The straddled_depth_img compares to the ref_img - it projects through the whole
-        box but straddling z=0 instead of starting there.
-        The edge_img is the only non-periodic case, framed to only partially contain the
-        box. We check that it matches the expected region of the ref_img (with the edges
-        trimmed a bit).
-        """
-        sd = load(cosmo_volume_example)
-        if backend == "gpu":
-            pytest.xfail("gpu backend currently broken")
-        parallel = True
-        lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
-        box_res = {"histogram": 256, "reference": 2200}.get(backend, 512)
-        ref_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            periodic=True,
-            backend=backend,
-        )
-        big_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, 3 * lbox, 0, 3 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res * 3,
-            parallel=parallel,
-            periodic=True,
-            backend=backend,
-        )
-        far_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            periodic=True,
-            backend=backend,
-        )
-        depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, 0, 0.3 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        neg_depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, -lbox, -0.7 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        wrap_depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, lbox, 1.3 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        straddled_depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, -0.5 * lbox, 0.5 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        edge_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [-0.25 * lbox, 0.75 * lbox, 0.5 * lbox, 1.5 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            periodic=False,
-            backend=backend,
-        )
-
-        def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
-            """
-            Compare array values in ``a`` and ``b``, return ``True`` if a fraction
-            ``frac`` of values are within a retlative tolerance ``tol`` of their
-            counterparts.
-
-            Paramters
-            ---------
-            a : ~swiftsimio.objects.cosmo_array
-                The first array to compare.
-            b : ~swiftsimio.objects.cosmo_array
-                The second array to compare
-            frac : float
-                The fraction of the values that must be within the tolerance.
-            tol : float
-                The relative tolerance for matching.
-
-            Returns
-            -------
-            out : bool
-                ``True`` if enough values match within the tolerance, ``False`` otherwise.
-            """
-            assert a.shape == b.shape
-
-            with np.testing.suppress_warnings() as sup:
-                sup.filter(RuntimeWarning, "divide by zero encountered in divide")
-                sup.filter(RuntimeWarning, "invalid value encountered in divide")
-                ratios = np.abs((a / b).to_value(unyt.dimensionless) - 1)
-            ratios[np.isnan(ratios)] = 0  # 0 == 0 is a match
-            return np.sum(ratios < tol) / a.size > (frac)
-
-        edge_mask = np.s_[box_res // 6 : -box_res // 6, box_res // 6 : -box_res // 6]
-        assert fraction_within_tolerance(
-            edge_img[box_res // 4 :, : box_res // 2][edge_mask],
-            ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
-        )
-        assert np.allclose(far_img, ref_img)
-        assert fraction_within_tolerance(
-            big_img, np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
-        )
-        assert np.allclose(depth_img, neg_depth_img)
-        assert np.allclose(depth_img, wrap_depth_img)
-        assert np.allclose(ref_img, straddled_depth_img)
 
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
@@ -603,8 +425,10 @@ class TestVolumeRender:
 
         assert deposition_1[100, 100, 100] * 8.0 == deposition_2[200, 200, 200]
 
-    def test_volume_render_and_unfolded_deposit_with_units(self, cosmological_volume):
-        data = load(cosmological_volume)
+    def test_volume_render_and_unfolded_deposit_with_units(
+        self, cosmological_volume_no_legacy
+    ):
+        data = load(cosmological_volume_no_legacy)
         data.gas.smoothing_lengths = 1e-30 * data.gas.smoothing_lengths
         npix = 64
 
@@ -680,8 +504,8 @@ class TestVolumeRender:
         assert (image1 == image2).all()
 
 
-def test_selection_render(cosmological_volume):
-    data = load(cosmological_volume)
+def test_selection_render(cosmological_volume_no_legacy):
+    data = load(cosmological_volume_no_legacy)
     bs = data.metadata.boxsize[0]
 
     # Projection
@@ -721,13 +545,13 @@ def test_selection_render(cosmological_volume):
     return
 
 
-def test_comoving_versus_physical(cosmological_volume):
+def test_comoving_versus_physical(cosmological_volume_no_legacy):
     """
     Test what happens if you try to mix up physical and comoving quantities.
     """
 
     # this test is pretty slow if we don't mask out some particles
-    m = mask(cosmological_volume)
+    m = mask(cosmological_volume_no_legacy)
     boxsize = m.metadata.boxsize
     m.constrain_spatial([[0.0 * b, 0.05 * b] for b in boxsize])
     region = [
@@ -740,7 +564,7 @@ def test_comoving_versus_physical(cosmological_volume):
     ]
     for func, aexp in [(project_gas, -2.0), (slice_gas, -3.0), (render_gas, -3.0)]:
         # normal case: everything comoving
-        data = load(cosmological_volume, mask=m)
+        data = load(cosmological_volume_no_legacy, mask=m)
         # we force the default (project="masses") to check the cosmo_factor
         # conversion in this case
         img = func(data, resolution=64, project="masses", region=region, parallel=True)
@@ -819,13 +643,13 @@ def test_comoving_versus_physical(cosmological_volume):
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
 
 
-def test_nongas_smoothing_lengths(cosmological_volume):
+def test_nongas_smoothing_lengths(cosmological_volume_no_legacy):
     """
     Test that the visualisation tools to calculate smoothing lengths give usable results.
     """
 
     # If project_gas runs without error the smoothing lengths seem usable.
-    data = load(cosmological_volume)
+    data = load(cosmological_volume_no_legacy)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
     )

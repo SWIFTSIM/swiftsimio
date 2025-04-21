@@ -2,7 +2,7 @@ from swiftsimio import load
 from numpy import array_equal
 
 
-def test_convert(cosmological_volume):
+def test_convert(cosmological_volume_no_legacy):
     """
     Check that the conversion to physical units is done correctly
     """
