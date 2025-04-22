@@ -10,7 +10,6 @@ from swiftsimio.accelerated import (
 )
 
 import numpy as np
-import h5py
 
 from .helper import create_in_memory_hdf5
 
@@ -39,6 +38,18 @@ def test_ranges_from_array_non_contiguous():
     out = np.array(
         [[77, 78], [34483, 34484], [234582, 234583], [123412341324, 123412341325]]
     )
+
+    assert (ranges_from_array(my_array) == out).all()
+
+
+def test_ranges_from_array_empty():
+    """
+    Tests the ranges from array function when the array is empty.
+    """
+
+    my_array = np.array([], dtype=int)
+
+    out = np.array([[0, 0]])
 
     assert (ranges_from_array(my_array) == out).all()
 

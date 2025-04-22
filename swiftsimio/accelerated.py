@@ -62,6 +62,9 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     output = []
 
+    if len(array) == 0:
+        # the "empty" mask, from 0 to 0 gets 0 elements
+        return np.array([[0, 0]])
     start = array[0]
     stop = array[0]
 
@@ -243,7 +246,6 @@ def get_chunk_ranges(
 
     """
     chunk_ranges = []
-    n_ranges = len(ranges)
     for bounds in ranges:
         lower = (bounds[0] // chunk_size) * chunk_size
         upper = min(-((-bounds[1]) // chunk_size) * chunk_size, array_length)
@@ -411,7 +413,7 @@ def read_ranges_from_file_chunked(
 
     try:
         output_shape = (chunk_range_size, output_shape[1])
-    except:
+    except (TypeError, IndexError):
         # Output shape is just a number, we have a 1D array.
         output_shape = chunk_range_size
 
