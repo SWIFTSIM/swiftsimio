@@ -182,11 +182,11 @@ def test_mask_pad_wrapping(cosmological_volume):
             "MinPositions" in f["/Cells"].keys()
             and "MaxPositions" in f["/Cells"].keys()
         ):
-            # in the sample file with this metadata present, no particles have drifted
-            # out of their cells in this direction, so no particles on the other
-            # side of the box should be found.
+            # in the sample files with this metadata present, we should only pick up
+            # a small number of extra cells with particles that drifted into our
+            # region.
             def expected(n):
-                return n == 0
+                return n < 2000
 
         else:
             # extending upper mask to a padding cell on the other side of the box
