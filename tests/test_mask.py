@@ -2,11 +2,9 @@
 Tests the masking using some test data.
 """
 
-from swiftsimio import load, mask
+from swiftsimio import load, mask, cosmo_array, cosmo_quantity
 import numpy as np
-
-from unyt import dimensionless
-from swiftsimio import cosmo_array
+import unyt as u
 
 
 def test_reading_select_region_spatial(cosmological_volume):
@@ -64,7 +62,7 @@ def test_reading_select_region_half_box(cosmological_volume):
 
     # Some of these particles will be outside because of the periodic BCs
     assert (
-        (selected_coordinates / full_data.metadata.boxsize).to_value(dimensionless)
+        (selected_coordinates / full_data.metadata.boxsize).to_value(u.dimensionless)
         > 0.5
     ).sum() < 25
 
@@ -92,7 +90,6 @@ def test_region_mask_intersection(cosmological_volume):
     Tests that the intersection of two spatial mask regions includes the same cells as two
     separate masks of the same two regions.
     """
-
     mask_1 = mask(cosmological_volume, spatial_only=True)
     mask_2 = mask(cosmological_volume, spatial_only=True)
     mask_intersect = mask(cosmological_volume, spatial_only=True)
@@ -107,3 +104,34 @@ def test_region_mask_intersection(cosmological_volume):
     assert (
         np.logical_or(mask_1.cell_mask, mask_2.cell_mask) == mask_intersect.cell_mask
     ).all()
+
+
+def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_legacy
+    """
+    Tests that a mask containing no particles doesn't cause any problems.
+    """
+    empty_mask = mask(cosmological_volume, spatial_only=False)
+    # mask a region just to run faster:
+    region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]
+    empty_mask.constrain_spatial(region)
+    # pick some values that we'll never find:
+    empty_mask.constrain_mask(
+        "gas",
+        "pressures",
+        cosmo_quantity(
+            1e59,
+            u.solMass * u.Gyr ** -2 * u.Mpc ** -1,
+            comoving=False,
+            scale_factor=empty_mask.metadata.a,
+            scale_exponent=-5,
+        ),
+        cosmo_quantity(
+            1e60,
+            u.solMass * u.Gyr ** -2 * u.Mpc ** -1,
+            comoving=False,
+            scale_factor=empty_mask.metadata.a,
+            scale_exponent=-5,
+        ),
+    )
+    data = load(cosmological_volume, mask=empty_mask)
+    data.gas.masses
