@@ -3,11 +3,11 @@ from numpy import allclose
 import unyt as u
 
 
-def test_convert(cosmological_volume_no_legacy):
+def test_convert(cosmological_volume_only_single):
     """
     Check that the conversion to physical units is done correctly.
     """
-    data = load(cosmological_volume_no_legacy)
+    data = load(cosmological_volume_only_single)
     coords = data.gas.coordinates
     units = u.kpc
     assert units != coords.units  # ensure we make a non-trivial conversion
@@ -24,11 +24,11 @@ def test_convert(cosmological_volume_no_legacy):
     return
 
 
-def test_convert_to_value(cosmological_volume_no_legacy):
+def test_convert_to_value(cosmological_volume_only_single):
     """
     Check that conversions to numerical values are correct.
     """
-    data = load(cosmological_volume_no_legacy)
+    data = load(cosmological_volume_only_single)
     coords = data.gas.coordinates
     units = u.kpc
     assert units != coords.units  # ensure we make a non-trivial conversion

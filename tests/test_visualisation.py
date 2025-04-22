@@ -765,9 +765,9 @@ class TestVolumeRender:
         assert deposition_1[100, 100, 100] * 8.0 == deposition_2[200, 200, 200]
 
     def test_volume_render_and_unfolded_deposit_with_units(
-        self, cosmological_volume_no_legacy
+        self, cosmological_volume_only_single
     ):
-        data = load(cosmological_volume_no_legacy)
+        data = load(cosmological_volume_only_single)
         data.gas.smoothing_lengths = 1e-30 * data.gas.smoothing_lengths
         npix = 64
 
@@ -956,8 +956,8 @@ class TestVolumeRender:
         )
 
 
-def test_selection_render(cosmological_volume_no_legacy):
-    data = load(cosmological_volume_no_legacy)
+def test_selection_render(cosmological_volume_only_single):
+    data = load(cosmological_volume_only_single)
     bs = data.metadata.boxsize[0]
 
     # Projection
@@ -997,13 +997,13 @@ def test_selection_render(cosmological_volume_no_legacy):
     return
 
 
-def test_comoving_versus_physical(cosmological_volume_no_legacy):
+def test_comoving_versus_physical(cosmological_volume_only_single):
     """
     Test what happens if you try to mix up physical and comoving quantities.
     """
 
     # this test is pretty slow if we don't mask out some particles
-    m = mask(cosmological_volume_no_legacy)
+    m = mask(cosmological_volume_only_single)
     boxsize = m.metadata.boxsize
     m.constrain_spatial([[0.0 * b, 0.05 * b] for b in boxsize])
     region = [
@@ -1016,7 +1016,7 @@ def test_comoving_versus_physical(cosmological_volume_no_legacy):
     ]
     for func, aexp in [(project_gas, -2.0), (slice_gas, -3.0), (render_gas, -3.0)]:
         # normal case: everything comoving
-        data = load(cosmological_volume_no_legacy, mask=m)
+        data = load(cosmological_volume_only_single, mask=m)
         # we force the default (project="masses") to check the cosmo_factor
         # conversion in this case
         img = func(data, resolution=64, project="masses", region=region, parallel=True)
@@ -1095,13 +1095,13 @@ def test_comoving_versus_physical(cosmological_volume_no_legacy):
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
 
 
-def test_nongas_smoothing_lengths(cosmological_volume_no_legacy):
+def test_nongas_smoothing_lengths(cosmological_volume_only_single):
     """
     Test that the visualisation tools to calculate smoothing lengths give usable results.
     """
 
     # If project_gas runs without error the smoothing lengths seem usable.
-    data = load(cosmological_volume_no_legacy)
+    data = load(cosmological_volume_only_single)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
     )

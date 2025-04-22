@@ -8,19 +8,19 @@ from numpy import array_equal
 from os import remove
 
 
-def test_project(cosmological_volume_no_legacy):
+def test_project(cosmological_volume_only_single):
     """
     Checks that gas projection of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    cosmological_volume_no_legacy: str
+    cosmological_volume_only_single: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
+    create_single_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
 
     unrotated = project_gas(
@@ -46,19 +46,19 @@ def test_project(cosmological_volume_no_legacy):
     remove(output_filename)
 
 
-def test_slice(cosmological_volume_no_legacy):
+def test_slice(cosmological_volume_only_single):
     """
     Checks that a slice of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    cosmological_volume_no_legacy: str
+    cosmological_volume_only_single: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
+    create_single_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
 
     unrotated = slice_gas(
@@ -94,19 +94,19 @@ def test_slice(cosmological_volume_no_legacy):
     remove(output_filename)
 
 
-def test_render(cosmological_volume_no_legacy):
+def test_render(cosmological_volume_only_single):
     """
     Checks that a volume render of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    cosmological_volume_no_legacy: str
+    cosmological_volume_only_single: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume_no_legacy, output_filename)
+    create_single_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
 
     unrotated = render_gas(
