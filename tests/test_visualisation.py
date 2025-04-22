@@ -169,7 +169,7 @@ class TestProjection:
         return
 
     @pytest.mark.parametrize("backend", projection_backends.keys())
-    def test_equivalent_regions(self, backend, cosmo_volume_example):
+    def test_equivalent_regions(self, backend, cosmological_volume_no_legacy):
         """
         Here we test that various regions are (close enough to) equivalent.
         The ref_img is just a projection through the whole box.
@@ -186,7 +186,7 @@ class TestProjection:
         box. We check that it matches the expected region of the ref_img (with the edges
         trimmed a bit).
         """
-        sd = load(cosmo_volume_example)
+        sd = load(cosmological_volume_no_legacy)
         if backend == "gpu":
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
@@ -492,7 +492,7 @@ class TestSlice:
         assert (image1 == image2).all()
 
     @pytest.mark.parametrize("backend", slice_backends.keys())
-    def test_equivalent_regions(self, backend, cosmo_volume_example):
+    def test_equivalent_regions(self, backend, cosmological_volume_no_legacy):
         """
         Here we test that various regions are (close enough to) equivalent.
         The ref_img is just a slice through the whole box at z=0.5 * lbox.
@@ -506,7 +506,7 @@ class TestSlice:
         box. We check that it matches the expected region of the ref_img (with the edges
         trimmed a bit).
         """
-        sd = load(cosmo_volume_example)
+        sd = load(cosmological_volume_no_legacy)
         parallel = True
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
         box_res = 256
@@ -842,7 +842,7 @@ class TestVolumeRender:
 
         assert (image1 == image2).all()
 
-    def test_equivalent_regions(self, cosmo_volume_example):
+    def test_equivalent_regions(self, cosmological_volume_no_legacy):
         """
         Here we test that various regions are (close enough to) equivalent.
         The ref_img is just a render of the whole box.
@@ -856,7 +856,7 @@ class TestVolumeRender:
         box. We check that it matches the expected region of the ref_img (with the edges
         trimmed a bit).
         """
-        sd = load(cosmo_volume_example)
+        sd = load(cosmological_volume_no_legacy)
         parallel = False  # memory gets a bit out of hand otherwise
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
         box_res = 32
@@ -1124,8 +1124,10 @@ def test_nongas_smoothing_lengths(cosmological_volume_only_single):
 
 
 class TestPowerSpectrum:
-    def test_dark_matter_power_spectrum(self, cosmo_volume_example, save=False):
-        data = load(cosmo_volume_example)
+    def test_dark_matter_power_spectrum(
+        self, cosmological_volume_no_legacy, save=False
+    ):
+        data = load(cosmological_volume_no_legacy)
 
         data.dark_matter.smoothing_lengths = generate_smoothing_lengths(
             data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
