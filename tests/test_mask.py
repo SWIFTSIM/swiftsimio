@@ -4,11 +4,9 @@ Tests the masking using some test data.
 
 import h5py
 import pytest
-from swiftsimio import load, mask
+from swiftsimio import load, mask, cosmo_array, cosmo_quantity
 import numpy as np
-
-from unyt import dimensionless
-from swiftsimio import cosmo_array
+import unyt as u
 
 
 def test_reading_select_region_spatial(cosmological_volume):
@@ -55,7 +53,7 @@ def test_reading_select_region_half_box(cosmological_volume):
     # the region can be padded by a cell if min & max particle positions are absent
     # in metadata
     pad_frac = (mask_region.cell_size / mask_region.metadata.boxsize).to_value(
-        dimensionless
+        u.dimensionless
     )
     restrict = cosmo_array(
         [
@@ -71,7 +69,7 @@ def test_reading_select_region_half_box(cosmological_volume):
     selected_coordinates = selected_data.gas.coordinates
     # Some of these particles will be outside because of the periodic BCs
     assert (
-        (selected_coordinates / mask_region.metadata.boxsize).to_value(dimensionless)
+        (selected_coordinates / mask_region.metadata.boxsize).to_value(u.dimensionless)
         > 0.5 + pad_frac
     ).sum() < 25
     # make sure the test isn't trivially passed because we selected nothing:
@@ -101,7 +99,6 @@ def test_region_mask_intersection(cosmological_volume):
     Tests that the intersection of two spatial mask regions includes the same cells as two
     separate masks of the same two regions.
     """
-
     mask_1 = mask(cosmological_volume, spatial_only=True)
     mask_2 = mask(cosmological_volume, spatial_only=True)
     mask_intersect = mask(cosmological_volume, spatial_only=True)
@@ -250,6 +247,36 @@ def test_inverted_mask_boundaries(cosmological_volume):
 
     selected_coordinates = selected_data.gas.coordinates
     selected_coordinates_inverted = selected_data_inverted.gas.coordinates
-    print(selected_coordinates.size, selected_coordinates_inverted.size)
     assert selected_coordinates.size > 0  # check that we selected something
     assert np.array_equal(selected_coordinates, selected_coordinates_inverted)
+
+
+def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_legacy
+    """
+    Tests that a mask containing no particles doesn't cause any problems.
+    """
+    empty_mask = mask(cosmological_volume, spatial_only=False)
+    # mask a region just to run faster:
+    region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]
+    empty_mask.constrain_spatial(region)
+    # pick some values that we'll never find:
+    empty_mask.constrain_mask(
+        "gas",
+        "pressures",
+        cosmo_quantity(
+            1e59,
+            u.solMass * u.Gyr ** -2 * u.Mpc ** -1,
+            comoving=False,
+            scale_factor=empty_mask.metadata.a,
+            scale_exponent=-5,
+        ),
+        cosmo_quantity(
+            1e60,
+            u.solMass * u.Gyr ** -2 * u.Mpc ** -1,
+            comoving=False,
+            scale_factor=empty_mask.metadata.a,
+            scale_exponent=-5,
+        ),
+    )
+    data = load(cosmological_volume, mask=empty_mask)
+    assert data.gas.masses.size == 0
