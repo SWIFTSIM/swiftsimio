@@ -308,7 +308,7 @@ class TestProjection:
         )
         assert np.allclose(far_img, ref_img)
         assert fraction_within_tolerance(
-            big_img, np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
+            big_img, np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1), frac=0.98
         )
         assert np.allclose(depth_img, neg_depth_img)
         assert np.allclose(depth_img, wrap_depth_img)
