@@ -134,4 +134,4 @@ def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_
         ),
     )
     data = load(cosmological_volume, mask=empty_mask)
-    data.gas.masses
+    assert data.gas.masses.size == 0

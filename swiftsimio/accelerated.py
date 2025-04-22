@@ -62,6 +62,9 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     output = []
 
+    if len(array) == 0:
+        # the "empty" mask, from 0 to 0 gets 0 elements
+        return np.array([[0, 0]])
     start = array[0]
     stop = array[0]
 
