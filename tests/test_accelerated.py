@@ -47,7 +47,7 @@ def test_ranges_from_array_empty():
     Tests the ranges from array function when the array is empty.
     """
 
-    my_array = np.array([])
+    my_array = np.array([], dtype=int)
 
     out = np.array([[0, 0]])
 

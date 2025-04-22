@@ -413,7 +413,7 @@ def read_ranges_from_file_chunked(
 
     try:
         output_shape = (chunk_range_size, output_shape[1])
-    except TypeError:
+    except (TypeError, IndexError):
         # Output shape is just a number, we have a 1D array.
         output_shape = chunk_range_size
 
