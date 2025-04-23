@@ -244,7 +244,7 @@ class SWIFTMask(object):
         # Only want to compute this once (even if it is fast, we do not
         # have a reliable stable sort in the case where cells do not
         # contain at least one of each type of particle).
-        sort = None
+        self.cell_sort = None
 
         # Now perform sort:
         for key in self.offsets.keys():
@@ -252,17 +252,17 @@ class SWIFTMask(object):
             counts = self.counts[key]
 
             # When using MPI, we cannot assume that these are sorted.
-            if sort is None:
+            if self.cell_sort is None:
                 # Only compute once; not stable between particle
                 # types if some datasets do not have particles in a cell!
-                sort = np.argsort(offsets)
+                self.cell_sort = np.argsort(offsets)
 
-            self.offsets[key] = offsets[sort]
-            self.counts[key] = counts[sort]
+            self.offsets[key] = offsets[self.cell_sort]
+            self.counts[key] = counts[self.cell_sort]
 
         # Also need to sort centers in the same way
         self.centers = cosmo_array(
-            centers_handle[:][sort],
+            centers_handle[:][self.cell_sort],
             units=self.units.length,
             comoving=True,
             scale_factor=self.metadata.scale_factor,
@@ -271,7 +271,7 @@ class SWIFTMask(object):
         # And sort min & max positions, too.
         for k in self.minpositions.keys():
             self.minpositions[k] = cosmo_array(
-                self.minpositions[k][sort],
+                self.minpositions[k][self.cell_sort],
                 units=self.units.length,
                 comoving=True,
                 scale_factor=self.metadata.scale_factor,
@@ -279,7 +279,7 @@ class SWIFTMask(object):
             )
         for k in self.maxpositions.keys():
             self.maxpositions[k] = cosmo_array(
-                self.maxpositions[k][sort],
+                self.maxpositions[k][self.cell_sort],
                 units=self.units.length,
                 comoving=True,
                 scale_factor=self.metadata.scale_factor,
@@ -708,6 +708,7 @@ class SWIFTMask(object):
             arrays now storing the offset of the first particle in the cell.
 
         """
+
         if self.spatial_only:
             masked_counts = {}
             current_offsets = {}
@@ -719,7 +720,7 @@ class SWIFTMask(object):
             for part_type, counts in self.counts.items():
                 masked_counts[part_type] = counts * self.cell_mask[part_type]
 
-                current_offsets[part_type] = [0] * counts.size
+                current_offsets[part_type] = np.zeros(counts.size, dtype=np.int64)
                 running_sum = 0
                 for i in range(len(counts)):
                     current_offsets[part_type][i] = running_sum
