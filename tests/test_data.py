@@ -14,7 +14,7 @@ from unyt import K, Msun
 from numpy import logical_and, isclose, float64
 from numpy import array as numpy_array
 
-from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.objects import cosmo_array
 
 
 def test_cosmology_metadata(cosmological_volume):
@@ -197,12 +197,6 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
 
     cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.dark_matter.coordinates.units)
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
-    )
     offsets = mask_region.offsets["dark_matter"]
     counts = mask_region.counts["dark_matter"]
 
@@ -240,13 +234,9 @@ def test_reading_select_region_metadata(cosmological_volume):
     # Mask off the centre of the volume.
     mask_region = mask(cosmological_volume, spatial_only=True)
 
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        full_data.metadata.boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
-    )
-    restrict = cosmo_array([boxsize * 0.2, boxsize * 0.8]).T
+    restrict = cosmo_array(
+        [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]
+    ).T
 
     mask_region.constrain_spatial(restrict=restrict)
 
@@ -291,13 +281,9 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     # Mask off the centre of the volume.
     mask_region = mask(cosmological_volume, spatial_only=False)
 
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        full_data.metadata.boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
-    )
-    restrict = cosmo_array([boxsize * 0.26, boxsize * 0.74]).T
+    restrict = cosmo_array(
+        [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
+    ).T
 
     mask_region.constrain_spatial(restrict=restrict)
 
