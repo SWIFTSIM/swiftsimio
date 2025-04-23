@@ -10,14 +10,13 @@ with this. This functionality is provided through the :mod:`swiftsimio.masks`
 sub-module but is available easily through the :meth:`swiftsimio.mask`
 top-level function.
 
-This functionality is used heavily in our `VELOCIraptor integration library`_
-for only reading data that is near bound objects.
+This functionality is used heavily in `swiftgalaxy`_.
 
 There are two types of mask, with the default only allowing spatial masking.
 Full masks require significantly more memory overhead and are generally much
 slower than the spatial only mask.
 
-.. _`VELOCIraptor integration library`: https://github.com/swiftsim/velociraptor-python
+.. _`swiftgalaxy`: https://github.com/SWIFTSIM/swiftgalaxy
 
 Spatial-only masking
 --------------------
@@ -39,7 +38,7 @@ Example
 ^^^^^^^
 
 In this example we will use the :obj:`swiftsimio.masks.SWIFTMask` object
-to load the bottom left 'half' corner of the box.
+to load the the octant of the box closes to the origin.
 
 .. code-block:: python
 
@@ -69,8 +68,8 @@ that are much larger than the available memory on your machine and process them
 with ease.
 
 It is also possible to build up a region with a more complicated geometry by
-making repeated calls to :meth:`~swiftsimio.reader.SWIFTMask.constrain_spatial`
-and setting the optional argument `intersect=True`. By default any existing
+making repeated calls to :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial`
+and setting the optional argument ``intersect=True``. By default any existing
 selection of cells would be overwritten; this option adds any additional cells
 that need to be selected for the new region to the existing selection instead.
 For instance, to add the diagonally opposed octant to the selection made above
@@ -81,10 +80,126 @@ For instance, to add the diagonally opposed octant to the selection made above
    additional_region = [[0.5 * b, 1.0 * b] for b in boxsize]
    mask.constrain_spatial(additional_region, intersect=True)
 
-In the first call to :meth:`~swiftsimio.reader.SWIFTMask.constrain_spatial` the
-`intersect` argument can be set to `True` or left `False` (the default): since
+In the first call to :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` the
+``intersect`` argument can be set to ``True`` or left ``False`` (the default): since
 no mask yet exists both give the same result.
 
+Periodic boundaries
+^^^^^^^^^^^^^^^^^^^
+
+The mask region is aware of the periodic box boundaries. Let's take for example a
+region shaped like a "slab" in the :math:`x-y` plane with :math:`|z|<0.1L_\mathrm{box}`.
+One way to write this is by thinking of the :math:`z<0` part as
+lying at the upper edge of the box:
+
+.. code-block:: python
+
+   mask = sw.mask(filename)
+   mask.constrain_spatial(
+       [
+           None,
+           None,
+           [0.0 * mask.metadata.boxsize[2], 0.1 * mask.metadata.boxsize[2]],
+       ]
+   )
+   mask.constrain_spatial(
+       [
+           None,
+           None,
+           [0.9 * mask.metadata.boxsize[2], 1.0 * mask.metadata.boxsize[2]],
+       ],
+       intersect=True,
+   )
+
+This is a bit inconvenient though since the region is actually contiguous if we
+account for the periodic boundary. :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` allows us
+to select a region straddling the periodic boundary, for example this is an
+equivalent selection:
+
+.. code-block:: python
+
+   mask = sw.mask(filename)
+   mask.constrain_spatial(
+       [
+           None,
+	   None,
+	   [-0.1 * mask.metadata.boxsize[2], 0.1 * mask.metadata.boxsize[2]],
+       ]
+   )
+
+Note that masking never result in periodic copies of particles, nor does it shift
+particle coordinates to match the region defined; particle coordinates always
+lie in the range :math:`[-L_\mathrm{box}, L_\mathrm{box}]`. For example reading
+a region that extends beyond the box in all directions produces exactly one copy
+of every particle and is equivalent to providing no spatial mask:
+
+.. code-block:: python
+
+   mask = sw.mask(filename)
+   mask.constrain_spatial(
+       [
+           None,
+	   None,
+	   [-0.1 * mask.metadata.boxsize[2], 1.1 * mask.metadata.boxsize[2]],
+       ]
+   )
+
+Remember to wrap the coordinates yourself if relevant! Alternatively, the
+`swiftgalaxy`_ package offers support for coordinate transformations including
+periodic boundaries.
+
+Another equivalent region for the :math:`|z|<0.1L_\mathrm{box}` slab can be written
+by setting the lower bound to a greater value than the upper bound, the code will
+interpret this as a request to start at the lower bound, wrap through the upper
+periodic boundary and continue until the (numerically lower value of) the upper
+bound is reached:
+
+.. code-block:: python
+
+   mask = sw.mask(filename)
+   mask.constrain_spatial(
+       [
+           None,
+	   None,
+	   [0.9 * mask.metadata.boxsize[2], 0.1 * mask.metadata.boxsize[2]],
+       ]
+   )
+
+The coordinates defining the region must always be in the interval
+:math:`[-0.5L_\mathrm{box}, 1.5L_\mathrm{box}]`. This allows enough flexibility to
+define all possible regions.
+
+Implementation details
+^^^^^^^^^^^^^^^^^^^^^^
+
+SWIFT snapshots group particles according to the cell that they occupy so that
+particles belonging to a cell are stored contiguously. The cells form a regular grid
+covering the simulation domain. However, SWIFT does not guarantee that all particles
+that belong to a cell are within the boundaries of a cell at the time when a snapshot
+is produced (particles are moved between cells at intervals, but may drift outside of
+their current cell before being re-assigned). Snapshots contain metadata defining
+the "bounding box" of each cell that contains all particles assigned to it at the
+time that the snapshot was written. :mod:`swiftsimio` uses this information when
+deciding what cells to read, so you may find that the "extra" particles read in
+outside of the explicitly asked for have an irregular boundary with cuboid protrusions
+or indentations. This is normal: the cells read in are exactly those needed to
+guarantee that all particles in the specified region of interest are captured. It is
+therefore advantageous to make the region as small and tightly fit to the analysis
+task as possible - in particular, trying to align it with the cell boundaries will
+typically result in an I/O overhead as neighbouring cells with particles that have
+drifted into the region are read in. Unless these particles are actually needed, it
+is actually better for performance to *avoid* the cell boundaries when defining the
+region.
+
+Older SWIFT snapshots lack the metadata to know exactly how far particles have
+drifted out of their cells. If :mod:`swiftsimio` does not find this metadata, it
+will pad the region with an additional "layer" of cells to make sure that all
+particles in the region are included. This is new behaviour in ``v10.2.0``, you
+may notice some additional I/O overhead to read in the padding region. Older
+:mod:`swiftsimio` versions instead risk missing particles near the region boundary.
+In the unlikely case that particles drift more than a cell length away from their
+"home" cell and the cell bounding-box metadata is not present, some particles
+can be missed when applying a spatial mask.
 
 Full mask
 ---------
@@ -171,7 +286,7 @@ as follows
     sw.subset_writer.write_subset("test_subset.hdf5", mask)
 
 This will write a snapshot which contains the particles from the specified snapshot 
-whose *x*-coordinate is within the range [100, 1000] kpc. This function uses the 
+whose :math:`x`-coordinate is within the range [100, 1000] kpc. This function uses the 
 cell mask which encompases the specified spatial domain to successively read portions 
 of datasets from the input file and writes them to a new snapshot. 
 
