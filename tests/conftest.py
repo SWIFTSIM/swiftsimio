@@ -53,6 +53,11 @@ def cosmological_volume_only_single():
 
 
 @pytest.fixture
+def cosmological_volume_only_distributed():
+    yield _requires("EagleDistributed.hdf5")
+
+
+@pytest.fixture
 def cosmological_volume_dithered():
     yield _requires("LegacyCosmologicalVolumeDithered.hdf5")
 
