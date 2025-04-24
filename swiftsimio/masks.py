@@ -4,15 +4,12 @@ snapshots.
 """
 
 import warnings
-
 import h5py
-
 import numpy as np
+from typing import Union
 
 from swiftsimio.metadata.objects import SWIFTMetadata
-
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
-
 from swiftsimio.accelerated import ranges_from_array
 
 
@@ -25,7 +22,12 @@ class SWIFTMask(object):
     group_mapping: dict | None = None
     group_size_mapping: dict | None = None
 
-    def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
+    def __init__(
+        self,
+        metadata: SWIFTMetadata,
+        spatial_only=True,
+        safe_padding: Union[bool, float] = True,
+    ):
         """
         SWIFTMask constructor
 
@@ -45,11 +47,24 @@ class SWIFTMask(object):
             more memory efficient (~ bytes per cell, rather than
             ~ bytes per particle).
 
+        safe_padding : bool or float, optional
+            If snapshot does not specify bounding box of cell particles (MinPositions &
+            MaxPositions), pad the mask to gurantee that *all* particles in requested
+            spatial region(s) are selected. If the bounding box metadata is present, this
+            argument is ignored. The default (``True``) is to pad by one cell length.
+            Padding can be disabled (``False``) or set to a different fraction of the
+            cell length (e.g. ``0.2``). Only entire cells are loaded, but if the region
+            boundary is more than ``safe_padding`` from a cell boundary the neighbouring
+            cell is not read. Switching off can reduce I/O load by up to a factor of 10
+            in some cases (but a few particles in region could be missing). See
+            https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
+            details.
         """
 
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
+        self.safe_padding = safe_padding
 
         if not self.metadata.masking_valid:
             raise NotImplementedError(
@@ -189,7 +204,11 @@ class SWIFTMask(object):
         centers_handle = cell_handle["Centres"]
         # be conservative: pad by 1 cell in case particles drifed
         # (unless for group catalogues)
-        pad_cells = 0 if self.metadata.output_type in ["FOF", "SOAP"] else 1
+        pad_cells = (
+            0
+            if self.metadata.output_type in ["FOF", "SOAP"]
+            else float(self.safe_padding)
+        )
         if (
             "MinPositions" in cell_handle.keys()
             and "MaxPositions" in cell_handle.keys()

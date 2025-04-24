@@ -150,6 +150,47 @@ def test_mask_periodic_wrapping(cosmological_volume):
     assert np.array_equal(selected_coordinates_upper, selected_coordinates_lower)
 
 
+def test_mask_padding(cosmological_volume):
+    """
+    Check that the padding of a mask when we don't have cell bounding box metadata
+    works correctly.
+    """
+
+    with h5py.File(cosmological_volume, "r") as f:
+        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
+    # Mask off the lower bottom corner of the volume.
+    mask_pad_onecell = mask(cosmological_volume, spatial_only=True, safe_padding=True)
+    mask_pad_halfcell = mask(cosmological_volume, spatial_only=True, safe_padding=0.5)
+    mask_pad_off = mask(cosmological_volume, spatial_only=True, safe_padding=False)
+    assert mask_pad_onecell.safe_padding is True
+    assert mask_pad_halfcell.safe_padding == 0.5
+    assert mask_pad_off.safe_padding is False
+
+    cell_size = mask_pad_onecell.cell_size
+    region = cosmo_array([np.ones(3) * 3.8 * cell_size, np.ones(3) * 4.0 * cell_size]).T
+    mask_pad_onecell.constrain_spatial(region)
+    mask_pad_halfcell.constrain_spatial(region)
+    mask_pad_off.constrain_spatial(region)
+
+    if has_cell_bbox:
+        # We should ignore `safe_padding` and just read the cell.
+        # Note in case this test fails on a new snapshot:
+        # the assertions assume that the neighbouring cells don't
+        # have particles that have drifted into the target cell.
+        # For a different test snapshot this might not be true,
+        # so check for that if troubleshooting.
+        assert mask_pad_onecell.cell_mask["gas"].sum() == 1
+        assert mask_pad_halfcell.cell_mask["gas"].sum() == 1
+        assert mask_pad_off.cell_mask["gas"].sum() == 1
+    else:
+        # Padding by a cell length, we should read all 3x3x3 neighbours.
+        assert mask_pad_onecell.cell_mask["gas"].sum() == 27
+        # Padding by a half-cell length, we should read 2x2x2 cells near this corner.
+        assert mask_pad_halfcell.cell_mask["gas"].sum() == 8
+        # Padding switched off, read only this cell.
+        assert mask_pad_off.cell_mask["gas"].sum() == 1
+
+
 def test_mask_pad_wrapping(cosmological_volume):
     """
     When we mask all the way to the edge of the box, we should get a cell on the
