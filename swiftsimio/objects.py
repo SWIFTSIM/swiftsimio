@@ -103,6 +103,7 @@ from numpy._core.umath import _ones_like, clip
 from ._array_functions import (
     _propagate_cosmo_array_attributes_to_result,
     _ensure_result_is_cosmo_array_or_quantity,
+    _copy_cosmo_array_attributes_if_present,
     _sqrt_cosmo_factor,
     _multiply_cosmo_factor,
     _preserve_cosmo_factor,
@@ -1630,6 +1631,99 @@ class cosmo_array(unyt_array):
 
         return obj
 
+    @classmethod
+    def __unyt_ufunc_prepare__(cls, ufunc: np.ufunc, method: str, *inputs, **kwargs):
+        helper_result = _prepare_array_func_args(*inputs, **kwargs)
+        return ufunc, method, helper_result["args"], helper_result["kwargs"]
+
+    @classmethod
+    def __unyt_ufunc_finalize__(
+        cls, result, ufunc: np.ufunc, method: str, *inputs, **kwargs
+    ):
+        helper_result = _prepare_array_func_args(*inputs, **kwargs)
+        cfs = helper_result["cfs"]
+        # make sure we evaluate the cosmo_factor_ufunc_registry function:
+        # might raise/warn even if we're not returning a cosmo_array
+        if ufunc in (multiply, divide) and method == "reduce":
+            power_map = POWER_MAPPING[ufunc]
+            if "axis" in kwargs and kwargs["axis"] is not None:
+                ret_cf = _power_cosmo_factor(
+                    cfs[0], None, power=power_map(inputs[0].shape[kwargs["axis"]])
+                )
+            else:
+                ret_cf = _power_cosmo_factor(
+                    cfs[0], None, power=power_map(inputs[0].size)
+                )
+        elif (
+            ufunc in (logical_and, logical_or, logical_xor, logical_not)
+            and method == "reduce"
+        ):
+            ret_cf = _return_without_cosmo_factor(cfs[0])
+        else:
+            ret_cf = cls._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
+        # if we get a tuple we have multiple return values to deal with
+        if isinstance(result, tuple):
+            r = tuple(
+                (
+                    r.view(cosmo_quantity)
+                    if r.shape == ()
+                    else (
+                        r.view(cosmo_array)
+                        if isinstance(r, unyt_array) and not isinstance(r, cosmo_array)
+                        else r
+                    )
+                )
+                for r in result
+            )
+            for r in result:
+                if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
+                    r.comoving = helper_result["comoving"]
+                    r.cosmo_factor = ret_cf
+                    r.compression = helper_result["compression"]
+        elif isinstance(result, unyt_array):  # also recognizes cosmo_quantity
+            if not isinstance(result, cosmo_array):
+                result = (
+                    result.view(cosmo_quantity)
+                    if result.shape == ()
+                    else result.view(cosmo_array)
+                )
+            result.comoving = helper_result["comoving"]
+            result.cosmo_factor = ret_cf
+            result.compression = helper_result["compression"]
+        if "out" in kwargs:
+            out = kwargs.pop("out")
+            if ufunc not in multiple_output_operators:
+                out = out[0]
+                if isinstance(out, unyt_array) and not isinstance(out, cosmo_array):
+                    out = (
+                        out.view(cosmo_quantity)
+                        if out.shape == ()
+                        else out.view(cosmo_array)
+                    )
+                if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
+                    out.comoving = helper_result["comoving"]
+                    out.cosmo_factor = ret_cf
+                    out.compression = helper_result["compression"]
+            else:
+                out = tuple(
+                    (
+                        (
+                            o.view(cosmo_quantity)
+                            if o.shape == ()
+                            else o.view(cosmo_array)
+                        )
+                        if isinstance(o, unyt_array) and not isinstance(o, cosmo_array)
+                        else o
+                    )
+                    for o in out
+                )
+                for o in out:
+                    if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
+                        o.comoving = helper_result["comoving"]
+                        o.cosmo_factor = ret_cf
+                        o.compression = helper_result["compression"]
+        return result
+
     def __array_ufunc__(
         self, ufunc: np.ufunc, method: str, *inputs, **kwargs
     ) -> object:
@@ -1686,20 +1780,20 @@ class cosmo_array(unyt_array):
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
-        ret = _ensure_result_is_cosmo_array_or_quantity(super().__array_ufunc__)(
+        result = _ensure_result_is_cosmo_array_or_quantity(super().__array_ufunc__)(
             ufunc, method, *inputs, **kwargs
         )
         # if we get a tuple we have multiple return values to deal with
-        if isinstance(ret, tuple):
-            for r in ret:
+        if isinstance(result, tuple):
+            for r in result:
                 if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
                     r.comoving = helper_result["comoving"]
                     r.cosmo_factor = ret_cf
                     r.compression = helper_result["compression"]
-        elif isinstance(ret, cosmo_array):  # also recognizes cosmo_quantity
-            ret.comoving = helper_result["comoving"]
-            ret.cosmo_factor = ret_cf
-            ret.compression = helper_result["compression"]
+        elif isinstance(result, cosmo_array):  # also recognizes cosmo_quantity
+            result.comoving = helper_result["comoving"]
+            result.cosmo_factor = ret_cf
+            result.compression = helper_result["compression"]
         if "out" in kwargs:
             out = kwargs.pop("out")
             if ufunc not in multiple_output_operators:
@@ -1715,7 +1809,7 @@ class cosmo_array(unyt_array):
                         o.cosmo_factor = ret_cf
                         o.compression = helper_result["compression"]
 
-        return ret
+        return result
 
     def __array_function__(
         self, func: Callable, types: Collection, args: tuple, kwargs: dict
@@ -1803,10 +1897,15 @@ class cosmo_array(unyt_array):
         out : swiftsimio.objects.cosmo_array
             The result of the multiplication.
         """
-        if isinstance(b, unyt.unit_object.Unit):
-            retval = self.__copy__()
-            retval.units = retval.units * b
-            return retval
+        if getattr(b, "is_Unit", False):
+            return _copy_cosmo_array_attributes_if_present(
+                self,
+                _ensure_result_is_cosmo_array_or_quantity(b.__mul__)(
+                    self.view(unyt_quantity)
+                    if self.shape == ()
+                    else self.view(unyt_array)
+                ),
+            )
         else:
             return super().__mul__(b)
 
@@ -1819,12 +1918,6 @@ class cosmo_array(unyt_array):
         We delegate most cases to :mod:`unyt`, but we need to handle the case where the
         second argument is a :class:`~unyt.unit_object.Unit`.
 
-        .. note::
-
-            This function is never called when `b` is a :class:`unyt.unit_object.Unit`
-            because :mod:`unyt` handles the operation. This results in a silent demotion
-            to a :class:`unyt.array.unyt_array`.
-
         Parameters
         ----------
         b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
@@ -1836,66 +1929,10 @@ class cosmo_array(unyt_array):
         out : swiftsimio.objects.cosmo_array
             The result of the multiplication.
         """
-        if isinstance(b, unyt.unit_object.Unit):
+        if getattr(b, "is_Unit", False):
             return self.__mul__(b)
         else:
             return super().__rmul__(b)
-
-    def __truediv__(
-        self, b: Union[int, float, np.ndarray, unyt.unit_object.Unit]
-    ) -> "cosmo_array":
-        """
-        Divide this :class:`~swiftsimio.objects.cosmo_array`.
-
-        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
-        second argument is a :class:`~unyt.unit_object.Unit`.
-
-        Parameters
-        ----------
-        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
-        :class:`~unyt.unit_object.Unit`
-            The object to divide this one by.
-
-        Returns
-        -------
-        out : swiftsimio.objects.cosmo_array
-            The result of the division.
-        """
-        if isinstance(b, unyt.unit_object.Unit):
-            return self.__mul__(1 / b)
-        else:
-            return super().__truediv__(b)
-
-    def __rtruediv__(
-        self, b: Union[int, float, np.ndarray, unyt.unit_object.Unit]
-    ) -> "cosmo_array":
-        """
-        Divide this :class:`~swiftsimio.objects.cosmo_array` (as the right argument).
-
-        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
-        second argument is a :class:`~unyt.unit_object.Unit`.
-
-        .. note::
-
-            This function is never called when `b` is a :class:`unyt.unit_object.Unit`
-            because :mod:`unyt` handles the operation. This results in a silent demotion
-            to a :class:`unyt.array.unyt_array`.
-
-        Parameters
-        ----------
-        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
-        :class:`~unyt.unit_object.Unit`
-            The object to divide by this one.
-
-        Returns
-        -------
-        out : swiftsimio.objects.cosmo_array
-            The result of the division.
-        """
-        if isinstance(b, unyt.unit_object.Unit):
-            return (1 / self).__mul__(b)
-        else:
-            return super().__rtruediv__(b)
 
 
 class cosmo_quantity(cosmo_array, unyt_quantity):
@@ -2029,7 +2066,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             hdf5 file.
         """
         if bypass_validation is True:
-            ret = super().__new__(
+            result = super().__new__(
                 cls,
                 np.asarray(input_scalar),
                 units=units,
@@ -2069,7 +2106,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             if compression is None
             else compression
         )
-        ret = super().__new__(
+        result = super().__new__(
             cls,
             np.asarray(input_scalar),
             units=units,
@@ -2084,9 +2121,9 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
             valid_transform=valid_transform,
             compression=compression,
         )
-        if ret.size > 1:
+        if result.size > 1:
             raise RuntimeError("cosmo_quantity instances must be scalars")
-        return ret
+        return result
 
     __round__ = _propagate_cosmo_array_attributes_to_result(
         _ensure_result_is_cosmo_array_or_quantity(unyt_quantity.__round__)
