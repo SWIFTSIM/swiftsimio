@@ -7,6 +7,7 @@ be read in.
 
 import numpy as np
 from swiftsimio import load, mask
+from os import remove
 
 import h5py
 
@@ -204,7 +205,7 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
     boxsize = cosmo_array(
         boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, mask_region.metadata.a),
     )
     offsets = mask_region.offsets["dark_matter"]
     counts = mask_region.counts["dark_matter"]
@@ -247,7 +248,7 @@ def test_reading_select_region_metadata(cosmological_volume):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.2, boxsize * 0.8]).T
 
@@ -298,7 +299,7 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.26, boxsize * 0.74]).T
 
@@ -345,3 +346,4 @@ def test_reading_empty_dataset(cosmological_volume):
     data = load(output_filename)
     assert data.gas.masses.shape == (0,)
     assert data.gas.coordinates.shape == (0, 3)
+    remove(output_filename)
