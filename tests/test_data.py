@@ -205,7 +205,7 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
     boxsize = cosmo_array(
         boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a**1, mask_region.metadata.a),
+        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
     )
     offsets = mask_region.offsets["dark_matter"]
     counts = mask_region.counts["dark_matter"]
@@ -248,7 +248,7 @@ def test_reading_select_region_metadata(cosmological_volume):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.2, boxsize * 0.8]).T
 
@@ -299,7 +299,7 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     boxsize = cosmo_array(
         full_data.metadata.boxsize,
         comoving=True,
-        cosmo_factor=cosmo_factor(a**1, full_data.metadata.a),
+        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
     )
     restrict = cosmo_array([boxsize * 0.26, boxsize * 0.74]).T
 
