@@ -1,4 +1,4 @@
-from tests.helper import create_single_particle_dataset
+from tests.helper import create_n_particle_dataset
 from swiftsimio import load
 from swiftsimio.visualisation.projection import project_gas
 from swiftsimio.visualisation.slice import slice_gas
@@ -20,7 +20,7 @@ def test_project(cosmological_volume):
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume, output_filename)
+    create_n_particle_dataset(cosmological_volume, output_filename)
     data = load(output_filename)
 
     unrotated = project_gas(
@@ -58,7 +58,7 @@ def test_slice(cosmological_volume):
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume, output_filename)
+    create_n_particle_dataset(cosmological_volume, output_filename)
     data = load(output_filename)
 
     unrotated = slice_gas(
@@ -106,7 +106,7 @@ def test_render(cosmological_volume):
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(cosmological_volume, output_filename)
+    create_n_particle_dataset(cosmological_volume, output_filename)
     data = load(output_filename)
 
     unrotated = render_gas(
