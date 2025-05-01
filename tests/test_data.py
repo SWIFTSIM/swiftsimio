@@ -7,6 +7,7 @@ be read in.
 
 import numpy as np
 from swiftsimio import load, mask
+from os import remove
 
 import h5py
 
@@ -15,6 +16,7 @@ from numpy import logical_and, isclose, float64
 from numpy import array as numpy_array
 
 from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from tests.helper import create_n_particle_dataset
 
 
 def test_cosmology_metadata(cosmological_volume):
@@ -160,7 +162,6 @@ def test_cell_metadata_is_valid(cosmological_volume):
     start_offset = offsets
     stop_offset = offsets + counts
 
-    print(mask_region.centers)
     for center, start, stop in zip(
         mask_region.centers.to(data.gas.coordinates.units), start_offset, stop_offset
     ):
@@ -332,3 +333,17 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     ).all()
 
     return
+
+
+def test_reading_empty_dataset(cosmological_volume):
+    """
+    Test that we can read in a zero-particle dataset (e.g. Type4 or Type5 present in
+    snapshot but no particles exist yet). Here we make a snapshot file with Type1
+    present but empty.
+    """
+    output_filename = "zero_particle.hdf5"
+    create_n_particle_dataset(cosmological_volume, output_filename, num_parts=0)
+    data = load(output_filename)
+    assert data.gas.masses.shape == (0,)
+    assert data.gas.coordinates.shape == (0, 3)
+    remove(output_filename)
