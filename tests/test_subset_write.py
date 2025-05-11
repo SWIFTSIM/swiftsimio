@@ -1,6 +1,8 @@
 from swiftsimio.subset_writer import write_subset
 from swiftsimio import mask, load, metadata
 import os
+import h5py
+import pytest
 
 
 def compare_data_contents(A, B):
@@ -68,7 +70,15 @@ def test_subset_writer(cosmological_volume):
     outfile = "subset_cosmological_volume.hdf5"
 
     # Create a mask
-    full_mask = mask(cosmological_volume)
+    with h5py.File(cosmological_volume, "r") as f:
+        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
+    if has_cell_bbox:
+        full_mask = mask(cosmological_volume)
+    else:
+        with pytest.warns(
+            UserWarning, match="Snapshot does not contain Cells/MinPositions"
+        ):
+            full_mask = mask(cosmological_volume)
     load_region = [[0.25 * b, 0.75 * b] for b in full_mask.metadata.boxsize]
     full_mask.constrain_spatial(load_region)
 
@@ -78,7 +88,15 @@ def test_subset_writer(cosmological_volume):
     # Compare subset of written subset of snapshot against corresponding region in
     # full snapshot. This checks that both the metadata and dataset subsets are
     # written properly.
-    sub_mask = mask(outfile)
+    with h5py.File(cosmological_volume, "r") as f:
+        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
+    if has_cell_bbox:
+        sub_mask = mask(outfile)
+    else:
+        with pytest.warns(
+            UserWarning, match="Snapshot does not contain Cells/MinPositions"
+        ):
+            sub_mask = mask(outfile)
     sub_load_region = [[0.375 * b, 0.625 * b] for b in sub_mask.metadata.boxsize]
     sub_mask.constrain_spatial(sub_load_region)
     # Update the spatial region to match what we load from the subset.
