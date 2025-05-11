@@ -67,9 +67,12 @@ class SWIFTMask(object):
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
-        self.safe_padding = {True: _DEFAULT_SAFE_PADDING, False: 1.0}.get(
-            safe_padding, safe_padding
-        )
+        if safe_padding is True:
+            self.safe_padding = _DEFAULT_SAFE_PADDING
+        elif safe_padding is False:
+            self.safe_padding = 0.0
+        else:
+            self.safe_padding = safe_padding
 
         if not self.metadata.masking_valid:
             raise NotImplementedError(

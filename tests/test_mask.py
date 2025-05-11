@@ -159,17 +159,39 @@ def test_mask_padding(cosmological_volume):
     with h5py.File(cosmological_volume, "r") as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     # Mask off the lower bottom corner of the volume.
-    mask_pad_onecell = mask(cosmological_volume, spatial_only=True, safe_padding=True)
-    mask_pad_halfcell = mask(cosmological_volume, spatial_only=True, safe_padding=0.5)
-    mask_pad_off = mask(cosmological_volume, spatial_only=True, safe_padding=False)
-    assert mask_pad_onecell.safe_padding is True
-    assert mask_pad_halfcell.safe_padding == 0.5
-    assert mask_pad_off.safe_padding is False
+    if not has_cell_bbox:
+        with pytest.warns(
+            UserWarning, match="Snapshot does not contain Cells/MinPositions"
+        ):
+            mask_pad_onecell = mask(
+                cosmological_volume, spatial_only=True, safe_padding=1.0
+            )
+        with pytest.warns(
+            UserWarning, match="Snapshot does not contain Cells/MinPositions"
+        ):
+            mask_pad_fifthcell = mask(
+                cosmological_volume, spatial_only=True
+            )  # default 0.2
+        with pytest.warns(
+            UserWarning, match="Snapshot does not contain Cells/MinPositions"
+        ):
+            mask_pad_off = mask(
+                cosmological_volume, spatial_only=True, safe_padding=False
+            )
+    else:
+        mask_pad_onecell = mask(
+            cosmological_volume, spatial_only=True, safe_padding=1.0
+        )
+        mask_pad_fifthcell = mask(cosmological_volume, spatial_only=True)  # default 0.2
+        mask_pad_off = mask(cosmological_volume, spatial_only=True, safe_padding=False)
+    assert mask_pad_onecell.safe_padding == 1.0
+    assert mask_pad_fifthcell.safe_padding == 0.2
+    assert mask_pad_off.safe_padding == 0.0
 
     cell_size = mask_pad_onecell.cell_size
     region = cosmo_array([np.ones(3) * 3.8 * cell_size, np.ones(3) * 4.0 * cell_size]).T
     mask_pad_onecell.constrain_spatial(region)
-    mask_pad_halfcell.constrain_spatial(region)
+    mask_pad_fifthcell.constrain_spatial(region)
     mask_pad_off.constrain_spatial(region)
 
     if has_cell_bbox:
@@ -180,13 +202,13 @@ def test_mask_padding(cosmological_volume):
         # For a different test snapshot this might not be true,
         # so check for that if troubleshooting.
         assert mask_pad_onecell.cell_mask["gas"].sum() == 1
-        assert mask_pad_halfcell.cell_mask["gas"].sum() == 1
+        assert mask_pad_fifthcell.cell_mask["gas"].sum() == 1
         assert mask_pad_off.cell_mask["gas"].sum() == 1
     else:
         # Padding by a cell length, we should read all 3x3x3 neighbours.
         assert mask_pad_onecell.cell_mask["gas"].sum() == 27
         # Padding by a half-cell length, we should read 2x2x2 cells near this corner.
-        assert mask_pad_halfcell.cell_mask["gas"].sum() == 8
+        assert mask_pad_fifthcell.cell_mask["gas"].sum() == 8
         # Padding switched off, read only this cell.
         assert mask_pad_off.cell_mask["gas"].sum() == 1
 
