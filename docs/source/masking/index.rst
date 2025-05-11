@@ -1,4 +1,4 @@
-Masking
+	Masking
 =======
 
 :mod:`swiftsimio` provides unique functionality (when compared to other
@@ -192,14 +192,34 @@ is actually better for performance to *avoid* the cell boundaries when defining 
 region.
 
 Older SWIFT snapshots lack the metadata to know exactly how far particles have
-drifted out of their cells. If :mod:`swiftsimio` does not find this metadata, it
-will pad the region with an additional "layer" of cells to make sure that all
-particles in the region are included. This is new behaviour in ``v10.2.0``, you
-may notice some additional I/O overhead to read in the padding region. Older
-:mod:`swiftsimio` versions instead risk missing particles near the region boundary.
-In the unlikely case that particles drift more than a cell length away from their
-"home" cell and the cell bounding-box metadata is not present, some particles
-can be missed when applying a spatial mask.
+drifted out of their cells. In ``v10.2.0`` or newer, if :mod:`swiftsimio` does not
+find this metadata, it will pad the region (by 0.2 times the cell length by default).
+
+.. warning::
+
+   In the worst case that the region consists of one cell and the padding extends to all
+neighbouring cells, this can result in up to a factor of :math:`3^3=27` additional
+I/O overhead. Older :mod:`swiftsimio` versions instead risk missing particles near
+the region boundary.
+
+In the unlikely case that particles drift more than 0.2 times
+the cell length away from their "home" cell and the cell bounding-box metadata is not
+present, some particles can be missed when applying a spatial mask. The padding of
+the region can be extended or switched off with the ``safe_padding`` parameter:
+
+.. code-block:: python
+
+   mask = sw.mask(filename)
+   lbox = mask.metadata.boxsize
+   mask.constrain_spatial(
+       [[0.4 * lbox, 0.6 * lbox] for lbox in mask.metadata.boxsize],
+       safe_padding=False,  # padding switched off
+   )
+   mask.constrain_spatial(
+       [[0.4 * lbox, 0.6 * lbox] for lbox in mask.metadata.boxsize],
+       safe_padding=0.5,  # pad more, by 0.5 instead of 0.2 cell lengths
+   )
+
 
 Full mask
 ---------

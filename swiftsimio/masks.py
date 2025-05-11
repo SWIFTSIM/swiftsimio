@@ -12,6 +12,9 @@ from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 
+_DEFAULT_SAFE_PADDING = 0.2
+_GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
+
 
 class SWIFTMask(object):
     """
@@ -26,7 +29,7 @@ class SWIFTMask(object):
         self,
         metadata: SWIFTMetadata,
         spatial_only=True,
-        safe_padding: Union[bool, float] = True,
+        safe_padding: Union[bool, float] = _DEFAULT_SAFE_PADDING,
     ):
         """
         SWIFTMask constructor
@@ -48,23 +51,26 @@ class SWIFTMask(object):
             ~ bytes per particle).
 
         safe_padding : bool or float, optional
-            If snapshot does not specify bounding box of cell particles (MinPositions &
-            MaxPositions), pad the mask to gurantee that *all* particles in requested
+            If snapshot does not specify bounding box of cell particles (``MinPositions``,
+            ``MaxPositions``), pad the mask to gurantee that *all* particles in requested
             spatial region(s) are selected. If the bounding box metadata is present, this
-            argument is ignored. The default (``True``) is to pad by one cell length.
-            Padding can be disabled (``False``) or set to a different fraction of the
-            cell length (e.g. ``0.2``). Only entire cells are loaded, but if the region
-            boundary is more than ``safe_padding`` from a cell boundary the neighbouring
-            cell is not read. Switching off can reduce I/O load by up to a factor of 10
-            in some cases (but a few particles in region could be missing). See
-            https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
+            argument is ignored. The default (``0.2``) is to pad by 0.2 times the cell
+            length. Padding can be disabled (``False``) or set to a different fraction of
+            the cell length (e.g. ``0.5``). Only entire cells are loaded, but if the
+            region boundary is more than ``safe_padding`` from a cell boundary the
+            neighbouring cell is not read. Switching off can reduce I/O load by up to a
+            factor of 30 in some cases (but a few particles in region could be missing).
+            See https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
             details.
         """
 
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
-        self.safe_padding = safe_padding
+        self.safe_padding = {
+            True: _DEFAULT_SAFE_PADDING,
+            False: 1.0,
+        }.get(safe_padding, safe_padding)
 
         if not self.metadata.masking_valid:
             raise NotImplementedError(
@@ -202,13 +208,6 @@ class SWIFTMask(object):
         count_handle = cell_handle["Counts"]
         metadata_handle = cell_handle["Meta-data"]
         centers_handle = cell_handle["Centres"]
-        # be conservative: pad by 1 cell in case particles drifed
-        # (unless for group catalogues)
-        pad_cells = (
-            0
-            if self.metadata.output_type in ["FOF", "SOAP"]
-            else float(self.safe_padding)
-        )
         if (
             "MinPositions" in cell_handle.keys()
             and "MaxPositions" in cell_handle.keys()
@@ -254,6 +253,24 @@ class SWIFTMask(object):
                     maxpos_handle[group][:],
                 )
         else:
+            # be conservative: pad (default by 0.2 cell) in case particles drifed
+            # (unless for group catalogues)
+            pad_cells = (
+                0
+                if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES
+                else self.safe_padding
+            )
+            if self.metadata.output_type not in _GROUPCAT_OUTPUT_TYPES:
+                warnings.warn(
+                    "Snapshot does not contain Cells/MinPositions and Cells/MaxPositions"
+                    f" metadata. Padding region by {pad_cells} times cell length to"
+                    " account for drifted particles. This behaviour can be"
+                    " configured/disabled with the `safe_padding` parameter when creating"
+                    " the mask. See "
+                    "https://swiftsimio.readthedocs.io/en/latest/masking/index.html"
+                    " for further details."
+                )
+            # +/- 0.5 here is the cell size itself:
             self.minpositions["shared"] = (
                 centers_handle[:] - (pad_cells + 0.5) * metadata_handle.attrs["size"]
             )
@@ -453,7 +470,7 @@ class SWIFTMask(object):
             mask to indicate which cells are within the specified spatial range
         """
 
-        if self.metadata.output_type in ["SOAP", "FOF"]:
+        if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES:
             cell_mask = {"shared": np.ones(len(self.centers), dtype=bool)}
         else:
             # particles may drift from their cells, mask each type separately
@@ -491,7 +508,7 @@ class SWIFTMask(object):
                     upper += boxsize
             group_names = (
                 ["shared"]
-                if self.metadata.output_type in ["SOAP", "FOF"]
+                if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES
                 else self.metadata.present_group_names
             )
             for group_name in group_names:
