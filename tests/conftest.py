@@ -43,7 +43,7 @@ def cosmological_volume():
 
 @pytest.fixture
 def cosmological_volume_dithered():
-    yield _requires("cosmological_volume.hdf5")
+    yield _requires("cosmological_volume_dithered.hdf5")
 
 
 @pytest.fixture
