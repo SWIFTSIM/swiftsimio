@@ -4,9 +4,10 @@ Tests the masking using some test data.
 
 import h5py
 import pytest
-from swiftsimio import load, mask, cosmo_array, cosmo_quantity
+from swiftsimio import load, cosmo_array, cosmo_quantity
 import numpy as np
 import unyt as u
+from .helper import _mask_without_warning as mask
 
 
 def test_reading_select_region_spatial(cosmological_volume):
@@ -18,22 +19,8 @@ def test_reading_select_region_spatial(cosmological_volume):
     full_data = load(cosmological_volume)
 
     # Mask off the lower bottom corner of the volume.
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume, spatial_only=True)
-    if has_cell_bbox:
-        mask_region_nospatial = mask(cosmological_volume, spatial_only=False)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region_nospatial = mask(cosmological_volume, spatial_only=False)
+    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region_nospatial = mask(cosmological_volume, spatial_only=False)
 
     restrict = cosmo_array(
         [np.zeros_like(full_data.metadata.boxsize), full_data.metadata.boxsize * 0.5]
@@ -62,15 +49,7 @@ def test_reading_select_region_half_box(cosmological_volume):
     """
 
     # Mask off the lower bottom corner of the volume.
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
 
     # the region can be padded by a cell if min & max particle positions are absent
     # in metadata
@@ -105,15 +84,7 @@ def test_region_mask_not_modified(cosmological_volume):
     Checks if https://github.com/SWIFTSIM/swiftsimio/issues/22 is broken.
     """
 
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        this_mask = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            this_mask = mask(cosmological_volume, spatial_only=True)
+    this_mask = mask(cosmological_volume, spatial_only=True)
     bs = this_mask.metadata.boxsize
 
     read = [[0 * b, 0.5 * b] for b in bs]
@@ -129,29 +100,9 @@ def test_region_mask_intersection(cosmological_volume):
     Tests that the intersection of two spatial mask regions includes the same cells as two
     separate masks of the same two regions.
     """
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_1 = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_1 = mask(cosmological_volume, spatial_only=True)
-    if has_cell_bbox:
-        mask_2 = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_2 = mask(cosmological_volume, spatial_only=True)
-    if has_cell_bbox:
-        mask_intersect = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_intersect = mask(cosmological_volume, spatial_only=True)
+    mask_1 = mask(cosmological_volume, spatial_only=True)
+    mask_2 = mask(cosmological_volume, spatial_only=True)
+    mask_intersect = mask(cosmological_volume, spatial_only=True)
     bs = mask_intersect.metadata.boxsize
     region_1 = [[0 * b, 0.1 * b] for b in bs]
     region_2 = [[0.6 * b, 0.7 * b] for b in bs]
@@ -173,22 +124,8 @@ def test_mask_periodic_wrapping(cosmological_volume):
     mask as one that runs off the lower edge (they are chosen to be equivalent
     under periodic wrapping).
     """
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region_upper = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region_upper = mask(cosmological_volume, spatial_only=True)
-    if has_cell_bbox:
-        mask_region_lower = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region_lower = mask(cosmological_volume, spatial_only=True)
+    mask_region_upper = mask(cosmological_volume, spatial_only=True)
+    mask_region_lower = mask(cosmological_volume, spatial_only=True)
     restrict_upper = cosmo_array(
         [
             mask_region_upper.metadata.boxsize * 0.8,
@@ -220,44 +157,22 @@ def test_mask_padding(cosmological_volume):
     works correctly.
     """
 
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     # Mask off the lower bottom corner of the volume.
-    if not has_cell_bbox:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_pad_onecell = mask(
-                cosmological_volume, spatial_only=True, safe_padding=1.0
-            )
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_pad_fifthcell = mask(
-                cosmological_volume, spatial_only=True
-            )  # default 0.2
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_pad_off = mask(
-                cosmological_volume, spatial_only=True, safe_padding=False
-            )
-    else:
-        mask_pad_onecell = mask(
-            cosmological_volume, spatial_only=True, safe_padding=1.0
-        )
-        mask_pad_fifthcell = mask(cosmological_volume, spatial_only=True)  # default 0.2
-        mask_pad_off = mask(cosmological_volume, spatial_only=True, safe_padding=False)
+    mask_pad_onecell = mask(cosmological_volume, spatial_only=True, safe_padding=1.0)
+    mask_pad_tenthcell = mask(cosmological_volume, spatial_only=True)  # default 0.1
+    mask_pad_off = mask(cosmological_volume, spatial_only=True, safe_padding=False)
     assert mask_pad_onecell.safe_padding == 1.0
-    assert mask_pad_fifthcell.safe_padding == 0.2
+    assert mask_pad_tenthcell.safe_padding == 0.1
     assert mask_pad_off.safe_padding == 0.0
 
     cell_size = mask_pad_onecell.cell_size
     region = cosmo_array([np.ones(3) * 3.8 * cell_size, np.ones(3) * 4.0 * cell_size]).T
     mask_pad_onecell.constrain_spatial(region)
-    mask_pad_fifthcell.constrain_spatial(region)
+    mask_pad_tenthcell.constrain_spatial(region)
     mask_pad_off.constrain_spatial(region)
 
+    with h5py.File(cosmological_volume, "r") as f:
+        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     if has_cell_bbox:
         # We should ignore `safe_padding` and just read the cell.
         # Note in case this test fails on a new snapshot:
@@ -266,13 +181,13 @@ def test_mask_padding(cosmological_volume):
         # For a different test snapshot this might not be true,
         # so check for that if troubleshooting.
         assert mask_pad_onecell.cell_mask["gas"].sum() == 1
-        assert mask_pad_fifthcell.cell_mask["gas"].sum() == 1
+        assert mask_pad_tenthcell.cell_mask["gas"].sum() == 1
         assert mask_pad_off.cell_mask["gas"].sum() == 1
     else:
         # Padding by a cell length, we should read all 3x3x3 neighbours.
         assert mask_pad_onecell.cell_mask["gas"].sum() == 27
         # Padding by a half-cell length, we should read 2x2x2 cells near this corner.
-        assert mask_pad_fifthcell.cell_mask["gas"].sum() == 8
+        assert mask_pad_tenthcell.cell_mask["gas"].sum() == 8
         # Padding switched off, read only this cell.
         assert mask_pad_off.cell_mask["gas"].sum() == 1
 
@@ -284,22 +199,8 @@ def test_mask_pad_wrapping(cosmological_volume):
     unless the cell metadata with max positions is present.
     """
 
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region_upper = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region_upper = mask(cosmological_volume, spatial_only=True)
-    if has_cell_bbox:
-        mask_region_lower = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region_lower = mask(cosmological_volume, spatial_only=True)
+    mask_region_upper = mask(cosmological_volume, spatial_only=True)
+    mask_region_lower = mask(cosmological_volume, spatial_only=True)
     restrict_lower = cosmo_array(
         [mask_region_lower.metadata.boxsize * 0.8, mask_region_lower.metadata.boxsize]
     ).T
@@ -345,15 +246,7 @@ def test_mask_entire_box(cosmological_volume):
     """
     When we explicitly set the region to the whole box, we'd better get all of the cells!
     """
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * 0.0, mask_region.metadata.boxsize]
     ).T
@@ -367,15 +260,7 @@ def test_invalid_mask_interval(cosmological_volume):
     """
     We should get an error if the mask boundaries go out of bounds.
     """
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * -2, mask_region.metadata.boxsize * 2]
     ).T
@@ -389,22 +274,8 @@ def test_inverted_mask_boundaries(cosmological_volume):
     in the other direction. Check this by making an "inverted" selection and
     comparing to the "uninverted" selection through the boundary.
     """
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume, spatial_only=True)
-    if has_cell_bbox:
-        mask_region_inverted = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region_inverted = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region_inverted = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [-mask_region.metadata.boxsize * 0.2, mask_region.metadata.boxsize * 0.2]
     ).T
@@ -427,15 +298,7 @@ def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_
     """
     Tests that a mask containing no particles doesn't cause any problems.
     """
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        empty_mask = mask(cosmological_volume, spatial_only=False)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            empty_mask = mask(cosmological_volume, spatial_only=False)
+    empty_mask = mask(cosmological_volume, spatial_only=False)
     # mask a region just to run faster:
     region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]
     empty_mask.constrain_spatial(region)

@@ -6,10 +6,9 @@ be read in.
 """
 
 import numpy as np
-from swiftsimio import load, mask
+from swiftsimio import load
+from .helper import _mask_without_warning as mask
 from os import remove
-
-import pytest
 
 import h5py
 
@@ -143,15 +142,7 @@ def test_cell_metadata_is_valid(cosmological_volume):
 
     I.e. that it sets the particles contained in a top-level cell.
     """
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume)
+    mask_region = mask(cosmological_volume)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
     mask_region.constrain_spatial(
@@ -196,15 +187,7 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
     I.e. that it sets the particles contained in a top-level cell.
     """
 
-    with h5py.File(cosmological_volume_dithered, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume_dithered)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume_dithered)
+    mask_region = mask(cosmological_volume_dithered)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
     mask_region.constrain_spatial(
@@ -251,15 +234,7 @@ def test_reading_select_region_metadata(cosmological_volume):
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume, spatial_only=True)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=True)
 
     restrict = cosmo_array(
         [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]
@@ -306,15 +281,7 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        mask_region = mask(cosmological_volume, spatial_only=False)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            mask_region = mask(cosmological_volume, spatial_only=False)
+    mask_region = mask(cosmological_volume, spatial_only=False)
 
     restrict = cosmo_array(
         [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
@@ -359,15 +326,7 @@ def test_reading_empty_dataset(cosmological_volume):
     present but empty.
     """
     output_filename = "zero_particle.hdf5"
-    with h5py.File(cosmological_volume, "r") as f:
-        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
-        create_n_particle_dataset(cosmological_volume, output_filename, num_parts=0)
-    else:
-        with pytest.warns(
-            UserWarning, match="Snapshot does not contain Cells/MinPositions"
-        ):
-            create_n_particle_dataset(cosmological_volume, output_filename, num_parts=0)
+    create_n_particle_dataset(cosmological_volume, output_filename, num_parts=0)
     data = load(output_filename)
     assert data.gas.masses.shape == (0,)
     assert data.gas.coordinates.shape == (0, 3)

@@ -2,10 +2,23 @@
 Contains helper functions for the test routines.
 """
 
+import pytest
 import h5py
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
 from numpy import mean, zeros_like
+
+
+def _mask_without_warning(fname, **kwargs):
+    with h5py.File(fname, "r") as f:
+        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
+    if has_cell_bbox:
+        return mask(fname, **kwargs)
+    else:
+        with pytest.warns(
+            UserWarning, match="Snapshot does not contain Cells/MinPositions"
+        ):
+            return mask(fname, **kwargs)
 
 
 def create_in_memory_hdf5(filename="f1"):
@@ -30,7 +43,7 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
         number of particles to create (default: 2)
     """
     # Create a dummy mask in order to write metadata
-    data_mask = mask(filename)
+    data_mask = _mask_without_warning(filename)
     boxsize = data_mask.metadata.boxsize
     region = [[zeros_like(b), b] for b in boxsize]
     data_mask.constrain_spatial(region)
