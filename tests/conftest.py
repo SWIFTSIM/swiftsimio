@@ -3,7 +3,7 @@ import subprocess
 import pytest
 
 webstorage_location = (
-    "http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2025/"
+    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2025/"
 )
 test_data_location = "test_data/"
 
