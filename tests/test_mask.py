@@ -2,6 +2,7 @@
 Tests the masking using some test data.
 """
 
+import warnings
 import h5py
 import pytest
 from swiftsimio import load, cosmo_array, cosmo_quantity
@@ -323,3 +324,26 @@ def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_
     )
     data = load(cosmological_volume, mask=empty_mask)
     assert data.gas.masses.size == 0
+
+
+def test_mask_pad_warning(cosmological_volume):
+    """
+    Test that the user gets a warning when masking a snapshot without cell bbox metadata
+    and doesn't otherwise. The ``cosmological_volume`` fixture will run this with both
+    recent (with bbox metadata) and legacy (without bbox metadata) snapshots.
+    """
+    from swiftsimio import mask  # not the helper that silences warnings!
+
+    with h5py.File(cosmological_volume, "r") as f:
+        has_cell_bbox = "MinPositions" in f["/Cells"].keys()
+    if has_cell_bbox:
+        with warnings.catch_warnings():
+            # fail if there's a warning when the metadata is present
+            warnings.simplefilter("error")
+            mask(cosmological_volume)
+    else:
+        # fail if there's no warning when metadata is absent
+        with pytest.warns(
+            UserWarning, match="Snapshot does not contain Cells/MinPositions"
+        ):
+            mask(cosmological_volume)
