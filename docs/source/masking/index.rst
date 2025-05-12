@@ -1,4 +1,4 @@
-	Masking
+Masking
 =======
 
 :mod:`swiftsimio` provides unique functionality (when compared to other
@@ -129,7 +129,7 @@ equivalent selection:
 
 Note that masking never result in periodic copies of particles, nor does it shift
 particle coordinates to match the region defined; particle coordinates always
-lie in the range :math:`[-L_\mathrm{box}, L_\mathrm{box}]`. For example reading
+lie in the range :math:`[0, L_\mathrm{box}]`. For example reading
 a region that extends beyond the box in all directions produces exactly one copy
 of every particle and is equivalent to providing no spatial mask:
 
@@ -137,11 +137,7 @@ of every particle and is equivalent to providing no spatial mask:
 
    mask = sw.mask(filename)
    mask.constrain_spatial(
-       [
-           None,
-	   None,
-	   [-0.1 * mask.metadata.boxsize[2], 1.1 * mask.metadata.boxsize[2]],
-       ]
+       [[-0.1 * lbox, 1.1 * lbox] for lbox in mask.metadata.boxsize]
    )
 
 Remember to wrap the coordinates yourself if relevant! Alternatively, the
@@ -193,14 +189,15 @@ region.
 
 Older SWIFT snapshots lack the metadata to know exactly how far particles have
 drifted out of their cells. In ``v10.2.0`` or newer, if :mod:`swiftsimio` does not
-find this metadata, it will pad the region (by 0.2 times the cell length by default).
+find this metadata, it will pad the region (by 0.2 times the cell length by default),
+and issue a `UserWarning` indicating this.
 
 .. warning::
 
    In the worst case that the region consists of one cell and the padding extends to all
-neighbouring cells, this can result in up to a factor of :math:`3^3=27` additional
-I/O overhead. Older :mod:`swiftsimio` versions instead risk missing particles near
-the region boundary.
+   neighbouring cells, this can result in up to a factor of :math:`3^3=27` additional
+   I/O overhead. Older :mod:`swiftsimio` versions instead risk missing particles near
+   the region boundary.
 
 In the unlikely case that particles drift more than 0.2 times
 the cell length away from their "home" cell and the cell bounding-box metadata is not
