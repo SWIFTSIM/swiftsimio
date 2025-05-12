@@ -193,114 +193,117 @@ class TestProjection:
         parallel = True
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
         box_res = 256
-        ref_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            periodic=True,
-            backend=backend,
-        )
-        big_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, 3 * lbox, 0, 3 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res * 3,
-            parallel=parallel,
-            periodic=True,
-            backend=backend,
-        )
-        far_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            periodic=True,
-            backend=backend,
-        )
-        depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, 0, 0.3 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        neg_depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, -lbox, -0.7 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        wrap_depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, lbox, 1.3 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        straddled_depth_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [0, lbox, 0, lbox, -0.5 * lbox, 0.5 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            backend=backend,
-        )
-        edge_img = project_gas(
-            sd,
-            region=cosmo_array(
-                [-0.25 * lbox, 0.75 * lbox, 0.5 * lbox, 1.5 * lbox],
-                unyt.Mpc,
-                comoving=True,
-                scale_factor=sd.metadata.a,
-                scale_exponent=1,
-            ),
-            resolution=box_res,
-            parallel=parallel,
-            periodic=False,
-            backend=backend,
-        )
+        with np.errstate(
+            invalid="ignore"
+        ):  # invalid value encountered in divide happens sometimes
+            ref_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [0, lbox, 0, lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res,
+                parallel=parallel,
+                periodic=True,
+                backend=backend,
+            )
+            big_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [0, 3 * lbox, 0, 3 * lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res * 3,
+                parallel=parallel,
+                periodic=True,
+                backend=backend,
+            )
+            far_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [50 * lbox, 51 * lbox, 50 * lbox, 51 * lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res,
+                parallel=parallel,
+                periodic=True,
+                backend=backend,
+            )
+            depth_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [0, lbox, 0, lbox, 0, 0.3 * lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res,
+                parallel=parallel,
+                backend=backend,
+            )
+            neg_depth_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [0, lbox, 0, lbox, -lbox, -0.7 * lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res,
+                parallel=parallel,
+                backend=backend,
+            )
+            wrap_depth_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [0, lbox, 0, lbox, lbox, 1.3 * lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res,
+                parallel=parallel,
+                backend=backend,
+            )
+            straddled_depth_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [0, lbox, 0, lbox, -0.5 * lbox, 0.5 * lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res,
+                parallel=parallel,
+                backend=backend,
+            )
+            edge_img = project_gas(
+                sd,
+                region=cosmo_array(
+                    [-0.25 * lbox, 0.75 * lbox, 0.5 * lbox, 1.5 * lbox],
+                    unyt.Mpc,
+                    comoving=True,
+                    scale_factor=sd.metadata.a,
+                    scale_exponent=1,
+                ),
+                resolution=box_res,
+                parallel=parallel,
+                periodic=False,
+                backend=backend,
+            )
         edge_mask = np.s_[box_res // 6 : -box_res // 6, box_res // 6 : -box_res // 6]
         assert fraction_within_tolerance(
             edge_img[box_res // 4 :, : box_res // 2][edge_mask],
