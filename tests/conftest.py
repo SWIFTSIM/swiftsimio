@@ -2,7 +2,7 @@ import os
 import subprocess
 import pytest
 
-webstorage_location = "http://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/"
+webstorage_location = "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/"
 test_data_location = "test_data/"
 
 
@@ -43,7 +43,7 @@ def cosmological_volume():
 
 @pytest.fixture
 def cosmological_volume_dithered():
-    yield _requires("cosmological_volume.hdf5")
+    yield _requires("cosmological_volume_dithered.hdf5")
 
 
 @pytest.fixture
