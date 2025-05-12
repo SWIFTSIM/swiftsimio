@@ -12,7 +12,7 @@ from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 
-_DEFAULT_SAFE_PADDING = 0.2
+_DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
 
 
@@ -54,7 +54,7 @@ class SWIFTMask(object):
             If snapshot does not specify bounding box of cell particles (``MinPositions``,
             ``MaxPositions``), pad the mask to gurantee that *all* particles in requested
             spatial region(s) are selected. If the bounding box metadata is present, this
-            argument is ignored. The default (``0.2``) is to pad by 0.2 times the cell
+            argument is ignored. The default (``0.1``) is to pad by 0.1 times the cell
             length. Padding can be disabled (``False``) or set to a different fraction of
             the cell length (e.g. ``0.5``). Only entire cells are loaded, but if the
             region boundary is more than ``safe_padding`` from a cell boundary the
@@ -255,7 +255,7 @@ class SWIFTMask(object):
                     maxpos_handle[group][:],
                 )
         else:
-            # be conservative: pad (default by 0.2 cell) in case particles drifed
+            # be conservative: pad (default by 0.1 cell) in case particles drifed
             # (unless for group catalogues)
             pad_cells = (
                 0

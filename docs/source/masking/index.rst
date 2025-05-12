@@ -189,7 +189,7 @@ region.
 
 Older SWIFT snapshots lack the metadata to know exactly how far particles have
 drifted out of their cells. In ``v10.2.0`` or newer, if :mod:`swiftsimio` does not
-find this metadata, it will pad the region (by 0.2 times the cell length by default),
+find this metadata, it will pad the region (by 0.1 times the cell length by default),
 and issue a `UserWarning` indicating this.
 
 .. warning::
@@ -199,7 +199,7 @@ and issue a `UserWarning` indicating this.
    I/O overhead. Older :mod:`swiftsimio` versions instead risk missing particles near
    the region boundary.
 
-In the unlikely case that particles drift more than 0.2 times
+In the unlikely case that particles drift more than 0.1 times
 the cell length away from their "home" cell and the cell bounding-box metadata is not
 present, some particles can be missed when applying a spatial mask. The padding of
 the region can be extended or switched off with the ``safe_padding`` parameter:
@@ -214,7 +214,7 @@ the region can be extended or switched off with the ``safe_padding`` parameter:
    )
    mask.constrain_spatial(
        [[0.4 * lbox, 0.6 * lbox] for lbox in mask.metadata.boxsize],
-       safe_padding=0.5,  # pad more, by 0.5 instead of 0.2 cell lengths
+       safe_padding=1.0,  # pad more, by 1.0 instead of 0.1 cell lengths
    )
 
 
