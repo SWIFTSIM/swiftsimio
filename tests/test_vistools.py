@@ -49,8 +49,8 @@ def test_apply_to_data_2d():
     return
 
 
-def test_get_projection_field(cosmo_volume_example):
-    sd = load(cosmo_volume_example)
+def test_get_projection_field(cosmological_volume_only_single):
+    sd = load(cosmological_volume_only_single)
     expected_dataset = sd.gas.masses
     obtained_dataset = _get_projection_field(sd.gas, "masses")
     assert np.allclose(expected_dataset, obtained_dataset)

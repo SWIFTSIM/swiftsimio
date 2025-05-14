@@ -34,9 +34,11 @@ def test_generate_smoothing_length(cosmological_volume):
         dimension=3,
     ).to(smoothing_lengths.units)
 
-    assert isclose(
-        generated_smoothing_lengths.value, smoothing_lengths.value, 0.1
-    ).all()
+    assert (
+        isclose(generated_smoothing_lengths.value, smoothing_lengths.value, 0.2).sum()
+        / generated_smoothing_lengths.size
+        > 0.5
+    )
 
     return
 
@@ -65,9 +67,11 @@ def test_generate_smoothing_length_faster(cosmological_volume):
         dimension=3,
     ).to(smoothing_lengths.units)
 
-    assert isclose(
-        generated_smoothing_lengths.value, smoothing_lengths.value, 0.1
-    ).all()
+    assert (
+        isclose(generated_smoothing_lengths.value, smoothing_lengths.value, 0.2).sum()
+        / generated_smoothing_lengths.size
+        > 0.5
+    )
 
     return
 

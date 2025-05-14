@@ -1,5 +1,6 @@
 from swiftsimio.subset_writer import write_subset
-import swiftsimio as sw
+from swiftsimio import load, metadata
+from .helper import _mask_without_warning as mask
 import os
 
 
@@ -25,9 +26,10 @@ def compare_data_contents(A, B):
         bad_compares.append("metadata")
 
     # Compare datasets
+    test_was_trivial = True  # make sure we match at least some non-empty arrays
     for part_type in filter(
         lambda x: hasattr(A, x),
-        sw.metadata.particle_types.particle_name_underscores.values(),
+        metadata.particle_types.particle_name_underscores.values(),
     ):
         A_type = getattr(A, part_type)
         B_type = getattr(B, part_type)
@@ -38,14 +40,22 @@ def compare_data_contents(A, B):
         for attr in particle_dataset_field_names:
             param_A = getattr(A_type, attr)
             param_B = getattr(B_type, attr)
-            try:
-                if not (param_A == param_B):
+            if len(param_A) == 0 and len(param_B) == 0:
+                # both arrays are empty, counts as a match
+                continue
+            else:
+                # compared at least one non-empty data array
+                test_was_trivial = False
+            comparison = param_A == param_B
+            if type(comparison) is bool:  # guards len in elif, don't merge nested if
+                if not comparison:
                     bad_compares.append(f"{part_type} {attr}")
-            except ValueError:
-                if not (param_A == param_B).all():
+            elif len(comparison) > 1:
+                if not comparison.all():
                     bad_compares.append(f"{part_type} {attr}")
 
     assert bad_compares == [], f"compare failed on {bad_compares}"
+    assert not test_was_trivial
 
 
 def test_subset_writer(cosmological_volume):
@@ -59,27 +69,24 @@ def test_subset_writer(cosmological_volume):
     outfile = "subset_cosmological_volume.hdf5"
 
     # Create a mask
-    mask = sw.mask(cosmological_volume)
-
-    boxsize = mask.metadata.boxsize
-
-    # Decide which region we want to load
-    load_region = [[0.25 * b, 0.75 * b] for b in boxsize]
-    mask.constrain_spatial(load_region)
+    full_mask = mask(cosmological_volume)
+    load_region = [[0.25 * b, 0.75 * b] for b in full_mask.metadata.boxsize]
+    full_mask.constrain_spatial(load_region)
 
     # Write the subset
-    write_subset(outfile, mask)
+    write_subset(outfile, full_mask)
 
     # Compare subset of written subset of snapshot against corresponding region in
     # full snapshot. This checks that both the metadata and dataset subsets are
     # written properly.
-    sub_mask = sw.mask(outfile)
-    sub_load_region = [[0.375 * b, 0.625 * b] for b in boxsize]
+    sub_mask = mask(outfile)
+    sub_load_region = [[0.375 * b, 0.625 * b] for b in sub_mask.metadata.boxsize]
     sub_mask.constrain_spatial(sub_load_region)
-    mask.constrain_spatial(sub_load_region)
+    # Update the spatial region to match what we load from the subset.
+    full_mask.constrain_spatial(sub_load_region)
 
-    snapshot = sw.load(cosmological_volume, mask)
-    sub_snapshot = sw.load(outfile, sub_mask)
+    snapshot = load(cosmological_volume, full_mask)
+    sub_snapshot = load(outfile, sub_mask)
 
     compare_data_contents(snapshot, sub_snapshot)
 

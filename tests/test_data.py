@@ -6,7 +6,8 @@ be read in.
 """
 
 import numpy as np
-from swiftsimio import load, mask
+from swiftsimio import load
+from .helper import _mask_without_warning as mask
 from os import remove
 
 import h5py
@@ -15,7 +16,7 @@ from unyt import K, Msun
 from numpy import logical_and, isclose, float64
 from numpy import array as numpy_array
 
-from swiftsimio.objects import cosmo_array, cosmo_factor, a
+from swiftsimio.objects import cosmo_array
 from tests.helper import create_n_particle_dataset
 
 
@@ -27,8 +28,7 @@ def test_cosmology_metadata(cosmological_volume):
     data = load(cosmological_volume)
 
     assert data.metadata.a == data.metadata.scale_factor
-
-    assert data.metadata.a == 1.0 / (1.0 + data.metadata.redshift)
+    assert np.isclose(data.metadata.a, 1.0 / (1.0 + data.metadata.redshift), atol=1e-8)
 
     return
 
@@ -56,7 +56,6 @@ def test_temperature_units(cosmological_volume):
 
     data = load(cosmological_volume)
     data.gas.temperatures.convert_to_units(K)
-
     return
 
 
@@ -143,7 +142,6 @@ def test_cell_metadata_is_valid(cosmological_volume):
 
     I.e. that it sets the particles contained in a top-level cell.
     """
-
     mask_region = mask(cosmological_volume)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
@@ -201,12 +199,6 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
 
     cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.dark_matter.coordinates.units)
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, mask_region.metadata.a),
-    )
     offsets = mask_region.offsets["dark_matter"]
     counts = mask_region.counts["dark_matter"]
 
@@ -244,13 +236,9 @@ def test_reading_select_region_metadata(cosmological_volume):
     # Mask off the centre of the volume.
     mask_region = mask(cosmological_volume, spatial_only=True)
 
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        full_data.metadata.boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
-    )
-    restrict = cosmo_array([boxsize * 0.2, boxsize * 0.8]).T
+    restrict = cosmo_array(
+        [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]
+    ).T
 
     mask_region.constrain_spatial(restrict=restrict)
 
@@ -295,13 +283,9 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     # Mask off the centre of the volume.
     mask_region = mask(cosmological_volume, spatial_only=False)
 
-    # can be removed when issue #128 resolved:
-    boxsize = cosmo_array(
-        full_data.metadata.boxsize,
-        comoving=True,
-        cosmo_factor=cosmo_factor(a ** 1, full_data.metadata.a),
-    )
-    restrict = cosmo_array([boxsize * 0.26, boxsize * 0.74]).T
+    restrict = cosmo_array(
+        [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
+    ).T
 
     mask_region.constrain_spatial(restrict=restrict)
 

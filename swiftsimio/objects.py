@@ -812,7 +812,18 @@ class cosmo_factor(object):
         """
         if not isinstance(b, cosmo_factor):
             raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
-        return (self.scale_factor == b.scale_factor) and (self.a_factor == b.a_factor)
+        scale_factor_match = self.scale_factor == b.scale_factor
+        if self.a_factor is None and b.a_factor is None:
+            # guards passing None to isclose
+            a_factor_match = True
+        elif self.a_factor is None or b.a_factor is None:
+            # we know they're not both None from previous case
+            a_factor_match = False
+        elif np.isclose(self.a_factor, b.a_factor, rtol=1e-9):
+            a_factor_match = True
+        else:
+            a_factor_match = False
+        return scale_factor_match and a_factor_match
 
     def __ne__(self, b: "cosmo_factor") -> bool:
         """

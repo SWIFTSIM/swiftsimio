@@ -162,7 +162,8 @@ def find_links(
 
 def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask):
     """
-    Recalculates the cell particle counts and offsets based on the particles present in the subset
+    Recalculates the cell particle counts and offsets based on the particles present in
+    the subset.
 
     Parameters
     ----------
@@ -199,7 +200,18 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
 
     # Copy the cell centres and metadata
     infile.copy("/Cells/Centres", outfile, name="/Cells/Centres")
+    outfile["/Cells/Centres"][...] = outfile["/Cells/Centres"][...][mask.cell_sort,]
     infile.copy("/Cells/Meta-data", outfile, name="/Cells/Meta-data")
+    if (
+        "MinPositions" in infile["/Cells"].keys()
+        and "MaxPositions" in infile["/Cells"].keys()
+    ):
+        infile.copy("/Cells/MinPositions", outfile, name="/Cells/MinPositions")
+        infile.copy("/Cells/MaxPositions", outfile, name="/Cells/MaxPositions")
+        for k, v in outfile["/Cells/MinPositions"].items():
+            outfile[f"/Cells/MinPositions/{k}"][...] = v[...][mask.cell_sort,]
+        for k, v in outfile["/Cells/MaxPositions"].items():
+            outfile[f"/Cells/MaxPositions/{k}"][...] = v[...][mask.cell_sort,]
 
 
 def write_metadata(

@@ -2,7 +2,9 @@ import os
 import subprocess
 import pytest
 
-webstorage_location = "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/"
+webstorage_location = (
+    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2025/"
+)
 test_data_location = "test_data/"
 
 
@@ -31,21 +33,35 @@ def _requires(filename):
         return file_location
 
 
-@pytest.fixture
-def cosmo_volume_example():
-    yield _requires("cosmo_volume_example.hdf5")
+@pytest.fixture(
+    params=[
+        "EagleDistributed.hdf5",
+        "EagleSingle.hdf5",
+        "LegacyCosmologicalVolume.hdf5",
+    ]
+)
+def cosmological_volume(request):
+    if request.param == "EagleDistributed.hdf5":
+        _requires("eagle_0025.0.hdf5")
+        _requires("eagle_0025.1.hdf5")
+    yield _requires(request.param)
 
 
 @pytest.fixture
-def cosmological_volume():
-    yield _requires("cosmological_volume.hdf5")
+def cosmological_volume_only_single():
+    yield _requires("EagleSingle.hdf5")
+
+
+@pytest.fixture
+def cosmological_volume_only_distributed():
+    yield _requires("EagleDistributed.hdf5")
 
 
 @pytest.fixture
 def cosmological_volume_dithered():
-    yield _requires("cosmological_volume_dithered.hdf5")
+    yield _requires("LegacyCosmologicalVolumeDithered.hdf5")
 
 
 @pytest.fixture
 def soap_example():
-    yield _requires("soap_example.hdf5")
+    yield _requires("SoapExample.hdf5")

@@ -1,3 +1,5 @@
+from typing import Optional as _Optional, Union as _Union
+
 from .reader import *
 from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
@@ -17,7 +19,7 @@ import swiftsimio.statistics as statistics
 name = "swiftsimio"
 
 
-def validate_file(filename):
+def validate_file(filename: str):
     """
     Checks that the provided file is a SWIFT dataset.
 
@@ -47,7 +49,9 @@ def validate_file(filename):
     return True
 
 
-def mask(filename, spatial_only=True) -> SWIFTMask:
+def mask(
+    filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True
+) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
     metadata available.
@@ -60,6 +64,19 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
         Flag for only spatial masking, this is much faster but will not
         allow you to use masking on other variables (e.g. density).
         Defaults to True.
+
+    safe_padding : bool or float, optional
+        If snapshot does not specify bounding box of cell particles (MinPositions &
+        MaxPositions), pad the mask to gurantee that *all* particles in requested
+        spatial region(s) are selected. If the bounding box metadata is present, this
+        argument is ignored. The default (``True``) is to pad by one cell length.
+        Padding can be disabled (``False``) or set to a different fraction of the
+        cell length (e.g. ``0.2``). Only entire cells are loaded, but if the region
+        boundary is more than ``safe_padding`` from a cell boundary the neighbouring
+        cell is not read. Switching off can reduce I/O load by up to a factor of 10
+        in some cases (but a few particles in region could be missing). See
+        https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
+        details.
 
     Returns
     -------
@@ -78,10 +95,12 @@ def mask(filename, spatial_only=True) -> SWIFTMask:
     units = SWIFTUnits(filename)
     metadata = metadata_discriminator(filename, units)
 
-    return SWIFTMask(metadata=metadata, spatial_only=spatial_only)
+    return SWIFTMask(
+        metadata=metadata, spatial_only=spatial_only, safe_padding=safe_padding
+    )
 
 
-def load(filename, mask=None) -> SWIFTDataset:
+def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
 
@@ -96,7 +115,7 @@ def load(filename, mask=None) -> SWIFTDataset:
     return SWIFTDataset(filename, mask=mask)
 
 
-def load_statistics(filename) -> SWIFTStatisticsFile:
+def load_statistics(filename: str) -> SWIFTStatisticsFile:
     """
     Loads a SWIFT statistics file (``SFR.txt``, ``energy.txt``).
 
