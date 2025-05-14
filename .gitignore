@@ -30,3 +30,4 @@ black_formatting_env/*
 # Leftovers
 *.png
 *.hdf5
+*.pkl

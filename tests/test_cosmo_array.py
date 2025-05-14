@@ -8,6 +8,7 @@ import warnings
 import numpy as np
 import unyt as u
 from copy import copy, deepcopy
+import pickle
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 
 savetxt_file = "saved_array.txt"
@@ -1129,3 +1130,26 @@ class TestMultiplicationByUnyt:
                 multiplied_by_unyt.to_value(multiplied_by_quantity.units),
                 multiplied_by_quantity.to_value(multiplied_by_quantity.units),
             )
+
+
+class TestPickle:
+    """
+    Test that the cosmo_array attributes survive being pickled and unpickled.
+    """
+
+    def test_pickle(self):
+        attrs = {
+            "comoving": False,
+            "cosmo_factor": cosmo_factor(a ** 1, 0.5),
+            "compression": "FMantissa9",
+            "valid_transform": True,
+        }
+        ca = cosmo_array([123, 456], u.Mpc, **attrs)
+        try:
+            pickle.dump(ca, open("ca.pkl", "wb"))
+            unpickled_ca = pickle.load(open("ca.pkl", "rb"))
+        finally:
+            if os.path.isfile("ca.pkl"):
+                os.remove("ca.pkl")
+        for attr_name, attr_value in attrs.items():
+            assert getattr(unpickled_ca, attr_name) == attr_value
