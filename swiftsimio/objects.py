@@ -1343,7 +1343,15 @@ class cosmo_array(unyt_array):
         np_ret = super(cosmo_array, self).__reduce__()
         obj_state = np_ret[2]
         cosmo_state = (
-            ((self.cosmo_factor, self.comoving, self.valid_transform),) + obj_state[:],
+            (
+                (
+                    self.cosmo_factor,
+                    self.comoving,
+                    self.compression,
+                    self.valid_transform,
+                ),
+            )
+            + obj_state[:],
         )
         new_ret = np_ret[:2] + cosmo_state + np_ret[3:]
         return new_ret
@@ -1361,7 +1369,9 @@ class cosmo_array(unyt_array):
             A :obj:`tuple` containing the extra state information.
         """
         super(cosmo_array, self).__setstate__(state[1:])
-        self.cosmo_factor, self.comoving, self.valid_transform = state[0]
+        self.cosmo_factor, self.comoving, self.compression, self.valid_transform = state[
+            0
+        ]
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
