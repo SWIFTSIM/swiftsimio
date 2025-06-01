@@ -821,3 +821,26 @@ class TestCosmoArrayUfuncs:
         )
         res = inp1 > inp2
         assert res.all()
+
+
+class TestComovingConversion:
+
+    def test_conversion_happens(self):
+        """
+        Given a physical and a comoving input to e.g. addition, conversion
+        should happen and we should get a correct result.
+        """
+        inp1 = cosmo_array(
+            [1, 2, 3],
+            u.kpc,
+            comoving=True,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
+        )
+        inp2 = cosmo_array(
+            [1, 2, 3],
+            u.Mpc,  # different units, expect conversion
+            comoving=False,  # different comoving, expect conversion
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),  # not z=0
+        )
+        result = inp1 + inp2
+        assert np.allclose(result.to_comoving_value(u.kpc), np.array([2001, 4002, 6003]))
