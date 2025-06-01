@@ -824,7 +824,6 @@ class TestCosmoArrayUfuncs:
 
 
 class TestComovingConversion:
-
     def test_conversion_happens(self):
         """
         Given a physical and a comoving input to e.g. addition, conversion
@@ -843,4 +842,6 @@ class TestComovingConversion:
             cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),  # not z=0
         )
         result = inp1 + inp2
-        assert np.allclose(result.to_comoving_value(u.kpc), np.array([2001, 4002, 6003]))
+        assert np.allclose(
+            result.to_comoving_value(u.kpc), np.array([2001, 4002, 6003])
+        )
