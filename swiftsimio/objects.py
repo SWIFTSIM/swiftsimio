@@ -1708,7 +1708,7 @@ class cosmo_array(unyt_array):
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
         ret = _ensure_result_is_cosmo_array_or_quantity(super().__array_ufunc__)(
-            ufunc, method, *inputs, **kwargs
+            ufunc, method, *helper_result["args"], **helper_result["kwargs"]
         )
         # if we get a tuple we have multiple return values to deal with
         if isinstance(ret, tuple):
