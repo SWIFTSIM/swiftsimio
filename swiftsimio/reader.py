@@ -20,7 +20,6 @@ from swiftsimio.metadata.objects import (
     SWIFTGroupMetadata,
 )
 
-import h5py
 import unyt
 import numpy as np
 
@@ -29,6 +28,7 @@ from typing import Union, List
 
 def generate_getter(
     filename,
+    opener,
     name: str,
     field: str,
     unit: unyt.unyt_quantity,
@@ -133,7 +133,7 @@ def generate_getter(
         if current_value is not None:
             return current_value
         else:
-            with h5py.File(filename, "r") as handle:
+            with opener.open(filename, "r") as handle:
                 try:
                     if mask is not None:
                         output_type = handle[field].dtype
@@ -381,7 +381,7 @@ class __SWIFTNamedColumnDataset(object):
         return self.named_columns == other.named_columns and self.name == other.name
 
 
-def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
+def generate_datasets(group_metadata: SWIFTGroupMetadata, opener, mask):
     """
     Generates a SWIFTGroupDatasets _class_ that corresponds to the
     particle type given.
@@ -463,6 +463,7 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
             field_property = property(
                 generate_getter(
                     filename,
+                    opener,
                     field_name,
                     field_path,
                     unit=field_unit,
@@ -491,6 +492,7 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
                 this_named_column_dataset_dict[column] = property(
                     generate_getter(
                         filename,
+                        opener,
                         column,
                         field_path,
                         unit=field_unit,
@@ -558,7 +560,7 @@ class SWIFTDataset(object):
         are specified in metadata.particle_types.
     """
 
-    def __init__(self, filename, mask=None):
+    def __init__(self, filename, opener, mask=None):
         """
         Constructor for SWIFTDataset class
 
@@ -570,6 +572,7 @@ class SWIFTDataset(object):
             mask object containing dataset to selected particles
         """
         self.filename = filename
+        self.opener = opener
         self.mask = mask
 
         if mask is not None:
@@ -600,7 +603,7 @@ class SWIFTDataset(object):
         this function again if you mess things up.
         """
 
-        self.units = SWIFTUnits(self.filename)
+        self.units = SWIFTUnits(self.filename, self.opener)
 
         return
 
@@ -632,7 +635,7 @@ class SWIFTDataset(object):
                 self,
                 group_name,
                 generate_datasets(
-                    getattr(self.metadata, f"{group_name}_properties"), self.mask
+                    getattr(self.metadata, f"{group_name}_properties"), self.opener, self.mask
                 ),
             )
 

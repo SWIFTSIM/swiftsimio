@@ -6,6 +6,7 @@ from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
 from .__version__ import __version__
 from .__cite__ import __cite__
+from .opener import FileOpener
 
 import swiftsimio.metadata as metadata
 import swiftsimio.accelerated as accelerated
@@ -100,7 +101,7 @@ def mask(
     )
 
 
-def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
+def load(filename: str, mask: _Optional[SWIFTMask] = None, server: _Optional[str] = None) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
 
@@ -110,9 +111,11 @@ def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
         SWIFT snapshot file to read
     mask : SWIFTMask, optional
         mask to apply when reading dataset
+    server : str, optional
+        if not None, read files from hdfstream server
     """
 
-    return SWIFTDataset(filename, mask=mask)
+    return SWIFTDataset(filename, FileOpener(server), mask=mask)
 
 
 def load_statistics(filename: str) -> SWIFTStatisticsFile:

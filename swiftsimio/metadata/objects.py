@@ -13,6 +13,7 @@ import h5py
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
 from swiftsimio.objects import cosmo_array, cosmo_factor
+from swiftsimio.opener import FileOpener
 from abc import ABC, abstractmethod
 
 import re
@@ -811,7 +812,7 @@ class SWIFTUnits(object):
 
     """
 
-    def __init__(self, filename: Path, handle: Optional[h5py.File] = None):
+    def __init__(self, filename: Path, opener : FileOpener, handle: Optional[h5py.File] = None):
         """
         SWIFTUnits constructor
 
@@ -829,6 +830,7 @@ class SWIFTUnits(object):
 
         """
         self.filename = filename
+        self.opener = opener
         self._handle = handle
 
         self.get_unit_dictionary()
@@ -842,7 +844,7 @@ class SWIFTUnits(object):
         with other objects for efficiency reasons.
         """
         if not self._handle:  # if self._handle is None, or if file closed (h5py #1363)
-            self._handle = h5py.File(self.filename, "r")
+            self._handle = self.opener.open(self.filename, "r")
 
         return self._handle
 
