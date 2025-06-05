@@ -51,8 +51,8 @@ def validate_file(filename: str):
 
 
 def mask(
-    filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True
-) -> SWIFTMask:
+        filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True,
+        server: _Optional[str] = None) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
     metadata available.
@@ -93,7 +93,7 @@ def mask(
     spatial_only=False version).
     """
 
-    units = SWIFTUnits(filename)
+    units = SWIFTUnits(filename, FileOpener(server))
     metadata = metadata_discriminator(filename, units)
 
     return SWIFTMask(
