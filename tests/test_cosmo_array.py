@@ -1146,8 +1146,10 @@ class TestPickle:
         }
         ca = cosmo_array([123, 456], u.Mpc, **attrs)
         try:
-            pickle.dump(ca, open("ca.pkl", "wb"))
-            unpickled_ca = pickle.load(open("ca.pkl", "rb"))
+            with open("ca.pkl", "wb") as pickle_handle:
+                pickle.dump(ca, pickle_handle)
+            with open("ca.pkl", "rb") as pickle_handle:
+                unpickled_ca = pickle.load(pickle_handle)
         finally:
             if os.path.isfile("ca.pkl"):
                 os.remove("ca.pkl")
