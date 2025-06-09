@@ -39,6 +39,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "astropy>=5.0",
     "numpy>=2.1.0",
     "h5py",
     "unyt>=3.0.4",

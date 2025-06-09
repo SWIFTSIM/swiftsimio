@@ -8,7 +8,7 @@ from swiftsimio.objects import cosmo_quantity
 
 if ASTROPY_AVAILABLE:
     from astropy.cosmology import w0waCDM
-    from astropy.cosmology.core import Cosmology
+    from astropy.cosmology import Cosmology
     import astropy.constants as const
     import astropy.units as astropy_units
     import numpy as np
