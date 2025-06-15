@@ -814,7 +814,7 @@ class TestCosmoArrayUfuncs:
             comoving=False,
             cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
-        inp2 = cosmo_array(
+        inp2 = cosmo_quantity(
             0,
             u.kpc,
             comoving=False,
