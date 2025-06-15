@@ -8,11 +8,12 @@ object notation (e.g. PartType0/Coordinates -> gas.coordinates).
 
 import numpy as np
 import unyt
+from unyt.array import _iterable
 
 import h5py
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
-from swiftsimio.objects import cosmo_array, cosmo_factor
+from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor
 from abc import ABC, abstractmethod
 
 import re
@@ -113,12 +114,14 @@ class SWIFTMetadata(ABC):
         # items including the scale factor.
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
             try:
@@ -164,25 +167,34 @@ class SWIFTMetadata(ABC):
             self.scale_factor = 1.0
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
-        header_unpack_arrays_cosmo_args = metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
-            self.scale_factor
+        header_unpack_arrays_cosmo_args = (
+            metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
+                self.scale_factor
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
             try:
                 if name in header_unpack_arrays_units.keys():
                     if name in header_unpack_arrays_cosmo_args.keys():
+                        unpack_class = (
+                            cosmo_array
+                            if _iterable(self.header[field])
+                            else cosmo_quantity
+                        )
                         setattr(
                             self,
                             name,
-                            cosmo_array(
+                            unpack_class(
                                 self.header[field],
                                 units=header_unpack_arrays_units[name],
                                 **header_unpack_arrays_cosmo_args[name],
@@ -604,7 +616,7 @@ class SWIFTGroupMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
+                        units *= unit**unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
