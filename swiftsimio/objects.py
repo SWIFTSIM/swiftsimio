@@ -1291,6 +1291,11 @@ class cosmo_array(unyt_array):
             )
             # valid_transform has a non-None default, so we have to decide to always
             # respect it
+        else:
+            # if the input isn't even iterable, this is an error
+            raise ValueError(
+                "cosmo_array data must be iterable (for scalar input use cosmo_quantity)."
+            )
 
         obj = super().__new__(
             cls,
