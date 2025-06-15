@@ -114,14 +114,12 @@ class SWIFTMetadata(ABC):
         # items including the scale factor.
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = (
-            metadata.metadata_fields.generate_units_header_unpack_single_float(
-                m=self.units.mass,
-                l=self.units.length,
-                t=self.units.time,
-                I=self.units.current,
-                T=self.units.temperature,
-            )
+        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
         )
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
             try:
@@ -167,19 +165,15 @@ class SWIFTMetadata(ABC):
             self.scale_factor = 1.0
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = (
-            metadata.metadata_fields.generate_units_header_unpack_arrays(
-                m=self.units.mass,
-                l=self.units.length,
-                t=self.units.time,
-                I=self.units.current,
-                T=self.units.temperature,
-            )
+        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
+            m=self.units.mass,
+            l=self.units.length,
+            t=self.units.time,
+            I=self.units.current,
+            T=self.units.temperature,
         )
-        header_unpack_arrays_cosmo_args = (
-            metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
-                self.scale_factor
-            )
+        header_unpack_arrays_cosmo_args = metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
+            self.scale_factor
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -616,7 +610,7 @@ class SWIFTGroupMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit**unit_exponent
+                        units *= unit ** unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
