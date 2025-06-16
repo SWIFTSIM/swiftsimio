@@ -1263,7 +1263,7 @@ class cosmo_array(unyt_array):
                 scale_exponent=scale_exponent,
             )
 
-        elif _iterable(input_array) and input_array:
+        elif _iterable(input_array):
             # if _prepare_array_func_args finds cosmo_array input it will convert to:
             default_cm = comoving if comoving is not None else True
 
@@ -1283,7 +1283,7 @@ class cosmo_array(unyt_array):
             )
             cosmo_factor = (
                 _preserve_cosmo_factor(*helper_result["cfs"])
-                if cosmo_factor is None
+                if cosmo_factor is None and len(helper_result["cfs"])
                 else cosmo_factor
             )
             compression = (
@@ -1291,6 +1291,11 @@ class cosmo_array(unyt_array):
             )
             # valid_transform has a non-None default, so we have to decide to always
             # respect it
+        else:
+            # if the input isn't even iterable, this is an error
+            raise ValueError(
+                "cosmo_array data must be iterable (for scalar input use cosmo_quantity)."
+            )
 
         obj = super().__new__(
             cls,

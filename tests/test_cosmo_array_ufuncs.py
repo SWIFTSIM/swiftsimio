@@ -7,6 +7,7 @@ import numpy as np
 import unyt as u
 from swiftsimio.objects import (
     cosmo_array,
+    cosmo_quantity,
     cosmo_factor,
     a,
     multiple_output_operators,
@@ -799,7 +800,7 @@ class TestCosmoArrayUfuncs:
             comoving=False,
             cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
-        inp2 = cosmo_array(
+        inp2 = cosmo_quantity(
             1,
             u.kpc,
             comoving=False,
@@ -813,7 +814,7 @@ class TestCosmoArrayUfuncs:
             comoving=False,
             cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
-        inp2 = cosmo_array(
+        inp2 = cosmo_quantity(
             0,
             u.kpc,
             comoving=False,
