@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "~3.13.0 < 3.13.3 || ~3.13.5"]  # exclude 3.13.4
 
     steps:
     - name: Checkout swiftsimio
