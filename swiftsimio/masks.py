@@ -419,7 +419,7 @@ class SWIFTMask(object):
 
         # Load in the relevant data.
 
-        with self.units.opener(self.metadata.filename, "r") as file:
+        with self.units.opener.open(self.metadata.filename, "r") as file:
             # Surprisingly this is faster than just using the boolean
             # indexing because h5py has slow indexing routines.
             data = cosmo_array(
