@@ -635,7 +635,9 @@ class SWIFTDataset(object):
                 self,
                 group_name,
                 generate_datasets(
-                    getattr(self.metadata, f"{group_name}_properties"), self.opener, self.mask
+                    getattr(self.metadata, f"{group_name}_properties"),
+                    self.opener,
+                    self.mask,
                 ),
             )
 

@@ -812,7 +812,9 @@ class SWIFTUnits(object):
 
     """
 
-    def __init__(self, filename: Path, opener : FileOpener, handle: Optional[h5py.File] = None):
+    def __init__(
+        self, filename: Path, opener: FileOpener, handle: Optional[h5py.File] = None
+    ):
         """
         SWIFTUnits constructor
 

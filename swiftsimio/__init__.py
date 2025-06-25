@@ -51,8 +51,11 @@ def validate_file(filename: str):
 
 
 def mask(
-        filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True,
-        server: _Optional[str] = None) -> SWIFTMask:
+    filename: str,
+    spatial_only: bool = True,
+    safe_padding: _Union[bool, float] = True,
+    server: _Optional[str] = None,
+) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
     metadata available.
@@ -101,7 +104,9 @@ def mask(
     )
 
 
-def load(filename: str, mask: _Optional[SWIFTMask] = None, server: _Optional[str] = None) -> SWIFTDataset:
+def load(
+    filename: str, mask: _Optional[SWIFTMask] = None, server: _Optional[str] = None
+) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
 
