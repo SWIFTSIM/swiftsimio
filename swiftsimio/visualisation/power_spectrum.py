@@ -385,6 +385,9 @@ def folded_depositions_to_power_spectrum(
             folded_counts,
         ) = deposition_to_power_spectrum(
             deposition=depositions[folding],
+            cross_deposition=None
+            if not cross_depositions
+            else cross_depositions[folding],
             boxsize=boxsize,
             folding=folding,
             wavenumber_bins=wavenumber_bins,
@@ -410,8 +413,10 @@ def folded_depositions_to_power_spectrum(
                     folded_wavenumber_centers[use_bins]
                 )
                 cutoff_wavenumber = np.min(
-                    cutoff_above_wavenumber_fraction * maximally_sampled_wavenumber,
-                    cutoff_above_wavenumber_fraction * cutoff_wavenumber,
+                    [
+                        cutoff_above_wavenumber_fraction * maximally_sampled_wavenumber,
+                        cutoff_above_wavenumber_fraction * cutoff_wavenumber,
+                    ]
                 )
 
             use_bins = np.logical_and(
