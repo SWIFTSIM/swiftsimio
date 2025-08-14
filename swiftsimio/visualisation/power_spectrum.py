@@ -386,7 +386,7 @@ def folded_depositions_to_power_spectrum(
         ) = deposition_to_power_spectrum(
             deposition=depositions[folding],
             cross_deposition=None
-            if not cross_depositions
+            if cross_depositions is None
             else cross_depositions[folding],
             boxsize=boxsize,
             folding=folding,
