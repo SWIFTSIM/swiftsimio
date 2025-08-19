@@ -9,6 +9,11 @@ from h5py._hl.dataset import Dataset
 from typing import Tuple, Union, List
 
 try:
+    import hdfstream
+except ImportError:
+    hdfstream = None
+
+try:
     from numba import jit, prange
     from numba.core.config import NUMBA_NUM_THREADS as NUM_THREADS
 except (ImportError, ModuleNotFoundError):
@@ -459,6 +464,72 @@ def read_ranges_from_file_chunked(
         return output
 
 
+def read_ranges_from_hdfstream(
+    handle: Dataset,
+    ranges: np.ndarray,
+    output_shape: Tuple,
+    output_type: type = np.float64,
+    columns: slice = np.s_[:],
+) -> np.array:
+    """
+    Takes a hdfstream remote dataset, and the set of ranges from
+    ranges_from_array, and sends a http request for those ranges.
+
+    Parameters
+    ----------
+
+    handle: Dataset
+        HDF5 dataset to slice data from
+
+    ranges: np.ndarray
+        Array of ranges (see :func:`ranges_from_array`)
+
+    output_shape: Tuple
+        Resultant shape of output.
+
+    output_type: type, optional
+        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+
+    columns: slice, optional
+        Selector for columns if using a multi-dimensional array. If the array is only
+        a single dimension this is not used.
+
+
+    Returns
+    -------
+
+    array: np.ndarray
+        Result from reading only the relevant values from ``handle``.
+    """
+
+    # Construct list of slices to read
+    slices = []
+    for read_start, read_end in ranges:
+        if handle.ndim > 1:
+            this_slice = np.s_[read_start:read_end, columns]
+        else:
+            this_slice = np.s_[read_start:read_end]
+        slices.append(this_slice)
+
+    # Request the slice data as a single ndarray. Here we read into an existing
+    # buffer so that we should get an exception if the data type or shape is
+    # not what we expected.
+    output = np.empty(output_shape, dtype=output_type)
+    handle.request_slices(slices, dest=output)
+
+    if not output.dtype.isnative:
+        # The data type we have read in is the opposite endian-ness to the
+        # machine we're on. Convert it here, to save pain down the line.
+        output = output.byteswap(inplace=True).newbyteorder()
+
+        if not output.dtype.isnative:
+            raise RuntimeError(
+                "Unable to find a native type that is a match to read data."
+            )
+
+    return output
+
+
 def read_ranges_from_file(
     handle: Dataset,
     ranges: np.ndarray,
@@ -515,6 +586,12 @@ def read_ranges_from_file(
         if handle.chunks is not None and average_range_size < cross_over_range_size
         else read_ranges_from_file_unchunked
     )
+
+    # Catch the case where we're reading a hdfstream.RemoteDataset.
+    # We can fetch all of the ranges with a single http request.
+    if hdfstream is not None:
+        if isinstance(handle, hdfstream.RemoteDataset):
+            read_ranges = read_ranges_from_hdfstream
 
     return read_ranges(handle, ranges, output_shape, output_type, columns)
 
