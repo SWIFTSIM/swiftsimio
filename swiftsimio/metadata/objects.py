@@ -8,11 +8,12 @@ object notation (e.g. PartType0/Coordinates -> gas.coordinates).
 
 import numpy as np
 import unyt
+from unyt.array import _iterable
 
 import h5py
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
-from swiftsimio.objects import cosmo_array, cosmo_factor
+from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor
 from swiftsimio.opener import FileOpener
 from abc import ABC, abstractmethod
 
@@ -180,10 +181,15 @@ class SWIFTMetadata(ABC):
             try:
                 if name in header_unpack_arrays_units.keys():
                     if name in header_unpack_arrays_cosmo_args.keys():
+                        unpack_class = (
+                            cosmo_array
+                            if _iterable(self.header[field])
+                            else cosmo_quantity
+                        )
                         setattr(
                             self,
                             name,
-                            cosmo_array(
+                            unpack_class(
                                 self.header[field],
                                 units=header_unpack_arrays_units[name],
                                 **header_unpack_arrays_cosmo_args[name],

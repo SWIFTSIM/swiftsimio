@@ -357,17 +357,16 @@ smoothing lengths, and smoothed quantities, to generate a pixel grid that
 represents the smoothed version of the data.
 
 This API is available through
-:obj:`swiftsimio.visualisation.projection_backends.backends["scatter"]` and
-:obj:`swiftsimio.visualisation.projection_backends.backends_parallel["scatter"]` for the parallel
-version. The parallel version uses significantly more memory as it allocates
+:obj:`swiftsimio.visualisation.projection_backends.backends` and
+:obj:`swiftsimio.visualisation.projection_backends.backends_parallel` for parallel implementations. The parallel versions use significantly more memory as they allocate
 a thread-local image array for each thread, summing them in the end. Here we
-will only describe the ``scatter`` variant, but they behave in the exact same way.
+will only describe the ``fast`` variant, but they behave in the exact same way.
 
-By default this uses the "fast" backend. To use the others, you can select them
+The default backend used by :mod:`swiftsimio` is ``fast``. To use the others (e.g. ``histogram``, ``subsampled``, ``gpu``, etc.), you can select them
 manually from the module, or by using the ``backends`` and ``backends_parallel``
 dictionaries in :mod:`swiftsimio.visualisation.projection_backends`.
 
-To use this function, you will need:
+To use these functions, you will need:
 
 + x-positions of all of your particles, ``x``.
 + y-positions of all of your particles, ``y``.
@@ -385,12 +384,13 @@ they will not crash the code, and may even contribute to the image if their
 smoothing lengths overlap with [0, 1]. You will need to re-scale your data
 such that it lives within this range. You should also pass raw numpy arrays (not
 :class:`~swiftsimio.objects.cosmo_array` or :class:`~unyt.array.unyt_array`, the
-inputs are dimensionless). Then you may use the function as follows:
+inputs are dimensionless). Then you may use the functions as follows:
 
 .. code-block:: python
 
-   from swiftsimio.visualisation.projection import scatter
+   from swiftsimio.visualisation.projection_backends import backends
 
+   scatter = backends["fast"]
    # Using the variable names from above
    out = scatter(x=x, y=y, h=h, m=m, res=res)
 

@@ -294,6 +294,15 @@ class TestCosmoArrayInit:
                 scale_exponent=1,
             )
 
+    def test_init_from_not_iterable_invalid(self):
+        """
+        cosmo_array data must be iterable (scalar handled by cosmo_quantity).
+        """
+        with pytest.raises(ValueError, match="cosmo_array data must be iterable"):
+            cosmo_array(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
+        # make sure inheriting class doesn't do anything silly:
+        cosmo_quantity(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
+
 
 class TestNumpyFunctions:
     """
@@ -1146,8 +1155,10 @@ class TestPickle:
         }
         ca = cosmo_array([123, 456], u.Mpc, **attrs)
         try:
-            pickle.dump(ca, open("ca.pkl", "wb"))
-            unpickled_ca = pickle.load(open("ca.pkl", "rb"))
+            with open("ca.pkl", "wb") as pickle_handle:
+                pickle.dump(ca, pickle_handle)
+            with open("ca.pkl", "rb") as pickle_handle:
+                unpickled_ca = pickle.load(pickle_handle)
         finally:
             if os.path.isfile("ca.pkl"):
                 os.remove("ca.pkl")
