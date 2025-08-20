@@ -509,13 +509,17 @@ def read_ranges_from_hdfstream(
             this_slice = np.s_[read_start:read_end, columns]
         else:
             this_slice = np.s_[read_start:read_end]
-        slices.append(this_slice)
+        # Skip any zero length slices
+        if read_end > read_start:
+            slices.append(this_slice)
 
     # Request the slice data as a single ndarray. Here we read into an existing
     # buffer so that we should get an exception if the data type or shape is
     # not what we expected.
     output = np.empty(output_shape, dtype=output_type)
-    handle.request_slices(slices, dest=output)
+    if len(slices) > 0:
+        # Requesting zero slices does not work (what shape would the result be?)
+        handle.request_slices(slices, dest=output)
 
     if not output.dtype.isnative:
         # The data type we have read in is the opposite endian-ness to the
