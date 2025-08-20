@@ -464,6 +464,31 @@ def read_ranges_from_file_chunked(
         return output
 
 
+def eliminate_zero_sized_and_merge(ranges):
+
+    # First eliminate any zero length ranges
+    non_zero_size = (ranges[:,1] - ranges[:,0]) > 0
+    ranges = ranges[non_zero_size,:]
+
+    # We might now have no ranges left
+    if len(ranges) == 0:
+        return np.empty((0, 2), dtype=ranges.dtype)
+
+    # Otherwise we always store the first range
+    merged = [ranges[0]]
+
+    # Check if any subsequent ranges are adjacent
+    for current in ranges[1:]:
+        last = merged[-1]
+        if last[1] == current[0]:
+            # Ranges are adjacent, so merge this range with the previous one
+            assert current[1] > last[1]
+            last[1] = current[1]
+        else:
+            merged.append(current.copy())
+    return np.array(merged)
+
+
 def read_ranges_from_hdfstream(
     handle: Dataset,
     ranges: np.ndarray,
@@ -501,6 +526,10 @@ def read_ranges_from_hdfstream(
     array: np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
+
+    # Merge any adjacent ranges: input may contain a range for every cell,
+    # even if we're reading the whole array.
+    ranges = eliminate_zero_sized_and_merge(ranges)
 
     # Construct list of slices to read
     slices = []

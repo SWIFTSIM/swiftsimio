@@ -11,7 +11,7 @@ from swiftsimio.opener import FileOpener
 
 def _mask_without_warning(filename, **kwargs):
 
-    with FileOpener(**kwargs).open(filename, "r") as f:
+    with FileOpener(kwargs.get("server")).open(filename, "r") as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     if has_cell_bbox:
         return mask(filename, **kwargs)
