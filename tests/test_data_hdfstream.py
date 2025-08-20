@@ -48,6 +48,7 @@ def cosmological_volume_dithered():
     yield {"filename" : f"{test_data_path}/LegacyCosmologicalVolumeDithered.hdf5", "server" : server}
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_cosmology_metadata(cosmological_volume):
     """
     Tests to see if we get the unpacked cosmology metadata correct.
@@ -61,6 +62,7 @@ def test_cosmology_metadata(cosmological_volume):
     return
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_time_metadata(cosmological_volume):
     """
     This tests the time metadata and also tests the ability to include two items at once
@@ -76,6 +78,7 @@ def test_time_metadata(cosmological_volume):
     return
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_temperature_units(cosmological_volume):
     """
     This tests checks if we correctly read in temperature units. Based
@@ -87,6 +90,7 @@ def test_temperature_units(cosmological_volume):
     return
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_initial_mass_table(cosmological_volume):
     """
     This tests checks if we correctly read in the initial mass table. Based
@@ -99,6 +103,7 @@ def test_initial_mass_table(cosmological_volume):
     return
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_units(cosmological_volume):
     """
     Tests that these fields have the same units within SWIFTsimIO as they
@@ -134,38 +139,38 @@ def test_units(cosmological_volume):
         "dark_matter": shared,
     }
 
-    for ptype, properties in to_test.items():
-        field = getattr(data, ptype)
+    server = cosmological_volume.get("server")
+    filename = cosmological_volume.get("filename")
+    with FileOpener(server).open(filename, "r") as handle:
 
-        # Now need to extract the particle paths in the original hdf5 file
-        # for comparison...
-        paths = numpy_array(field.group_metadata.field_paths)
-        names = numpy_array(field.group_metadata.field_names)
+        for ptype, properties in to_test.items():
+            field = getattr(data, ptype)
 
-        for property in properties:
-            # Read the 0th element, and compare in CGS units.
-            # We need to use doubles here as sometimes we can overflow!
-            our_units = getattr(field, property).astype(float64)[0]
+            # Now need to extract the particle paths in the original hdf5 file
+            # for comparison...
+            paths = numpy_array(field.group_metadata.field_paths)
+            names = numpy_array(field.group_metadata.field_names)
 
-            our_units.convert_to_cgs()
+            for property in properties:
+                # Read the 0th element, and compare in CGS units.
+                # We need to use doubles here as sometimes we can overflow!
+                our_units = getattr(field, property).astype(float64)[0]
 
-            # Find the path in the HDF5 for our linked dataset
-            path = paths[names == property][0]
+                our_units.convert_to_cgs()
 
-            server = cosmological_volume.get("server")
-            filename = cosmological_volume.get("filename")
-            with FileOpener(server).open(filename, "r") as handle:
+                # Find the path in the HDF5 for our linked dataset
+                path = paths[names == property][0]
                 swift_units = handle[path].attrs[
                     "Conversion factor to CGS (not including cosmological corrections)"
                 ][0]
                 swift_value = swift_units * handle[path][0]
-
-            assert isclose(swift_value, our_units.value, 5e-5).all()
+                assert isclose(swift_value, our_units.value, 5e-5).all()
 
     # If we didn't crash out, we gucci.
     return
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_cell_metadata_is_valid(cosmological_volume):
     """
     Test that the metadata does what we think it does!
@@ -209,6 +214,7 @@ def test_cell_metadata_is_valid(cosmological_volume):
             assert min > lower * 0.95
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
     """
     Test that the metadata does what we think it does, in the
@@ -256,6 +262,7 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
             assert min > lower * 0.95
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_reading_select_region_metadata(cosmological_volume):
     """
     Tests reading select regions of the volume.
@@ -303,6 +310,7 @@ def test_reading_select_region_metadata(cosmological_volume):
     return
 
 
+@pytest.mark.skipif(hdfstream is None, reason="hdfstream is not available")
 def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     """
     The same as test_reading_select_region_metadata but for spatial_only=False.
