@@ -7,18 +7,19 @@ import h5py
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
 from numpy import mean, zeros_like
+from swiftsimio.opener import FileOpener
 
+def _mask_without_warning(filename, **kwargs):
 
-def _mask_without_warning(fname, **kwargs):
-    with h5py.File(fname, "r") as f:
+    with FileOpener(**kwargs).open(filename, "r") as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     if has_cell_bbox:
-        return mask(fname, **kwargs)
+        return mask(filename, **kwargs)
     else:
         with pytest.warns(
             UserWarning, match="Snapshot does not contain Cells/MinPositions"
         ):
-            return mask(fname, **kwargs)
+            return mask(filename, **kwargs)
 
 
 def create_in_memory_hdf5(filename="f1"):
