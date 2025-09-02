@@ -58,7 +58,7 @@ def compare_data_contents(A, B):
     assert not test_was_trivial
 
 
-def test_subset_writer(cosmological_volume):
+def test_subset_writer(cosmological_volume_params):
     """
     Test to make sure subset writing works as intended
 
@@ -69,7 +69,7 @@ def test_subset_writer(cosmological_volume):
     outfile = "subset_cosmological_volume.hdf5"
 
     # Create a mask
-    full_mask = mask(cosmological_volume)
+    full_mask = mask(**cosmological_volume_params)
     load_region = [[0.25 * b, 0.75 * b] for b in full_mask.metadata.boxsize]
     full_mask.constrain_spatial(load_region)
 
@@ -85,7 +85,7 @@ def test_subset_writer(cosmological_volume):
     # Update the spatial region to match what we load from the subset.
     full_mask.constrain_spatial(sub_load_region)
 
-    snapshot = load(cosmological_volume, full_mask)
+    snapshot = load(**cosmological_volume_params, mask=full_mask)
     sub_snapshot = load(outfile, sub_mask)
 
     compare_data_contents(snapshot, sub_snapshot)
