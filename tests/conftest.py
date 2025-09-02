@@ -66,10 +66,19 @@ def cosmological_volume_dithered():
 def soap_example():
     yield _requires("SoapExample.hdf5")
 
-# Fixture for tests of remote data access with hdfstream:
+#
+# Fixtures for tests of remote data access with hdfstream:
 # Some tests can be repeated using remote versions of the same snapshots.
+#
 server = "https://dataweb.cosma.dur.ac.uk:8443/hdfstream"
-server_test_data_path = "SWIFT/test_data/IOExamples/ssio_ci_04_2025"
+server_test_data_path = "Tests/SWIFT/IOExamples/ssio_ci_04_2025"
+def test_data_parameters(request):
+    if "server" in request.param:
+        return request.param
+    else:
+        return {"filename" : _requires(request.param["filename"])}
+
+# Fixture which returns load parameters for the cosmological volume
 @pytest.fixture(
     params=[
         # Local files
@@ -82,11 +91,17 @@ server_test_data_path = "SWIFT/test_data/IOExamples/ssio_ci_04_2025"
         {"filename" : f"{server_test_data_path}/LegacyCosmologicalVolume.hdf5", "server" : server},
     ]
 )
-def cosmological_volume_inc_hdfstream(request):
-    """
-    Return a dict of params which can be passed to swiftsimio.load()
-    """
-    if "server" in request.param:
-        yield request.param
-    else:
-        yield {"filename" : _requires(request.param["filename"])}
+def cosmological_volume_params(request):
+    return test_data_parameters(request)
+
+# Fixture which returns load parameters for the dithered cosmological volume
+@pytest.fixture(
+    params=[
+        # Local files
+        {"filename" : f"LegacyCosmologicalVolumeDithered.hdf5"},
+        # Remote files
+        {"filename" : f"{server_test_data_path}/LegacyCosmologicalVolumeDithered.hdf5", "server" : server},
+    ]
+)
+def cosmological_volume_dithered_params(request):
+    return test_data_parameters(request)

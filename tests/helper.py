@@ -106,3 +106,13 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
     outfile.close()
 
     return
+
+
+def open_test_data_file(params):
+    """
+    Open a local or remote hdf5 file, given test parameters
+
+    If params includes a server URL we open the file with hdfstream,
+    otherwise we use h5py.
+    """
+    return FileOpener(params.get("server", None)).open(params["filename"])
