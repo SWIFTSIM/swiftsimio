@@ -3,25 +3,25 @@ Tests the masking using some test data.
 """
 
 import warnings
-import h5py
 import pytest
 from swiftsimio import load, cosmo_array, cosmo_quantity
 import numpy as np
 import unyt as u
 from .helper import _mask_without_warning as mask
+from .helper import open_test_data_file
 
 
-def test_reading_select_region_spatial(cosmological_volume):
+def test_reading_select_region_spatial(cosmological_volume_params):
     """
     Tests reading select regions of the volume, comparing the masks attained with
     spatial_only = True and spatial_only = False.
     """
 
-    full_data = load(cosmological_volume)
+    full_data = load(**cosmological_volume_params)
 
     # Mask off the lower bottom corner of the volume.
-    mask_region = mask(cosmological_volume, spatial_only=True)
-    mask_region_nospatial = mask(cosmological_volume, spatial_only=False)
+    mask_region = mask(**cosmological_volume_params, spatial_only=True)
+    mask_region_nospatial = mask(**cosmological_volume_params, spatial_only=False)
 
     restrict = cosmo_array(
         [np.zeros_like(full_data.metadata.boxsize), full_data.metadata.boxsize * 0.5]
@@ -30,8 +30,8 @@ def test_reading_select_region_spatial(cosmological_volume):
     mask_region.constrain_spatial(restrict=restrict)
     mask_region_nospatial.constrain_spatial(restrict=restrict)
 
-    selected_data = load(cosmological_volume, mask=mask_region)
-    selected_data_nospatial = load(cosmological_volume, mask=mask_region_nospatial)
+    selected_data = load(**cosmological_volume_params, mask=mask_region)
+    selected_data_nospatial = load(**cosmological_volume_params, mask=mask_region_nospatial)
 
     selected_coordinates = selected_data.gas.coordinates
     selected_coordinates_nospatial = selected_data_nospatial.gas.coordinates
@@ -41,7 +41,7 @@ def test_reading_select_region_spatial(cosmological_volume):
     return
 
 
-def test_reading_select_region_half_box(cosmological_volume):
+def test_reading_select_region_half_box(cosmological_volume_params):
     """
     Tests reading the spatial region and sees if it lies within the region
     we told it to!
@@ -50,7 +50,7 @@ def test_reading_select_region_half_box(cosmological_volume):
     """
 
     # Mask off the lower bottom corner of the volume.
-    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(**cosmological_volume_params, spatial_only=True)
 
     # the region can be padded by a cell if min & max particle positions are absent
     # in metadata
@@ -66,7 +66,7 @@ def test_reading_select_region_half_box(cosmological_volume):
 
     mask_region.constrain_spatial(restrict=restrict)
 
-    selected_data = load(cosmological_volume, mask=mask_region)
+    selected_data = load(**cosmological_volume_params, mask=mask_region)
 
     selected_coordinates = selected_data.gas.coordinates
     # Some of these particles will be outside because of the periodic BCs
@@ -78,14 +78,14 @@ def test_reading_select_region_half_box(cosmological_volume):
     assert selected_coordinates.size > 0
 
 
-def test_region_mask_not_modified(cosmological_volume):
+def test_region_mask_not_modified(cosmological_volume_params):
     """
     Tests if a mask region is modified during the course of its use.
 
     Checks if https://github.com/SWIFTSIM/swiftsimio/issues/22 is broken.
     """
 
-    this_mask = mask(cosmological_volume, spatial_only=True)
+    this_mask = mask(**cosmological_volume_params, spatial_only=True)
     bs = this_mask.metadata.boxsize
 
     read = [[0 * b, 0.5 * b] for b in bs]
@@ -96,14 +96,14 @@ def test_region_mask_not_modified(cosmological_volume):
     assert read == read_constant
 
 
-def test_region_mask_intersection(cosmological_volume):
+def test_region_mask_intersection(cosmological_volume_params):
     """
     Tests that the intersection of two spatial mask regions includes the same cells as two
     separate masks of the same two regions.
     """
-    mask_1 = mask(cosmological_volume, spatial_only=True)
-    mask_2 = mask(cosmological_volume, spatial_only=True)
-    mask_intersect = mask(cosmological_volume, spatial_only=True)
+    mask_1 = mask(**cosmological_volume_params, spatial_only=True)
+    mask_2 = mask(**cosmological_volume_params, spatial_only=True)
+    mask_intersect = mask(**cosmological_volume_params, spatial_only=True)
     bs = mask_intersect.metadata.boxsize
     region_1 = [[0 * b, 0.1 * b] for b in bs]
     region_2 = [[0.6 * b, 0.7 * b] for b in bs]
@@ -119,14 +119,14 @@ def test_region_mask_intersection(cosmological_volume):
         ).all()
 
 
-def test_mask_periodic_wrapping(cosmological_volume):
+def test_mask_periodic_wrapping(cosmological_volume_params):
     """
     Check that a region that runs off the upper edge of the box gives the same
     mask as one that runs off the lower edge (they are chosen to be equivalent
     under periodic wrapping).
     """
-    mask_region_upper = mask(cosmological_volume, spatial_only=True)
-    mask_region_lower = mask(cosmological_volume, spatial_only=True)
+    mask_region_upper = mask(**cosmological_volume_params, spatial_only=True)
+    mask_region_lower = mask(**cosmological_volume_params, spatial_only=True)
     restrict_upper = cosmo_array(
         [
             mask_region_upper.metadata.boxsize * 0.8,
@@ -143,8 +143,8 @@ def test_mask_periodic_wrapping(cosmological_volume):
     mask_region_upper.constrain_spatial(restrict=restrict_upper)
     mask_region_lower.constrain_spatial(restrict=restrict_lower)
 
-    selected_data_upper = load(cosmological_volume, mask=mask_region_upper)
-    selected_data_lower = load(cosmological_volume, mask=mask_region_lower)
+    selected_data_upper = load(**cosmological_volume_params, mask=mask_region_upper)
+    selected_data_lower = load(**cosmological_volume_params, mask=mask_region_lower)
 
     selected_coordinates_upper = selected_data_upper.gas.coordinates
     selected_coordinates_lower = selected_data_lower.gas.coordinates
@@ -152,16 +152,16 @@ def test_mask_periodic_wrapping(cosmological_volume):
     assert np.array_equal(selected_coordinates_upper, selected_coordinates_lower)
 
 
-def test_mask_padding(cosmological_volume):
+def test_mask_padding(cosmological_volume_params):
     """
     Check that the padding of a mask when we don't have cell bounding box metadata
     works correctly.
     """
 
     # Mask off the lower bottom corner of the volume.
-    mask_pad_onecell = mask(cosmological_volume, spatial_only=True, safe_padding=1.0)
-    mask_pad_tenthcell = mask(cosmological_volume, spatial_only=True)  # default 0.1
-    mask_pad_off = mask(cosmological_volume, spatial_only=True, safe_padding=False)
+    mask_pad_onecell = mask(**cosmological_volume_params, spatial_only=True, safe_padding=1.0)
+    mask_pad_tenthcell = mask(**cosmological_volume_params, spatial_only=True)  # default 0.1
+    mask_pad_off = mask(**cosmological_volume_params, spatial_only=True, safe_padding=False)
     assert mask_pad_onecell.safe_padding == 1.0
     assert mask_pad_tenthcell.safe_padding == 0.1
     assert mask_pad_off.safe_padding == 0.0
@@ -172,7 +172,7 @@ def test_mask_padding(cosmological_volume):
     mask_pad_tenthcell.constrain_spatial(region)
     mask_pad_off.constrain_spatial(region)
 
-    with h5py.File(cosmological_volume, "r") as f:
+    with open_test_data_file(cosmological_volume_params) as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     if has_cell_bbox:
         # We should ignore `safe_padding` and just read the cell.
@@ -193,15 +193,15 @@ def test_mask_padding(cosmological_volume):
         assert mask_pad_off.cell_mask["gas"].sum() == 1
 
 
-def test_mask_pad_wrapping(cosmological_volume):
+def test_mask_pad_wrapping(cosmological_volume_params):
     """
     When we mask all the way to the edge of the box, we should get a cell on the
     opposite edge as padding in case particles have drifted out of their cell,
     unless the cell metadata with max positions is present.
     """
 
-    mask_region_upper = mask(cosmological_volume, spatial_only=True)
-    mask_region_lower = mask(cosmological_volume, spatial_only=True)
+    mask_region_upper = mask(**cosmological_volume_params, spatial_only=True)
+    mask_region_lower = mask(**cosmological_volume_params, spatial_only=True)
     restrict_lower = cosmo_array(
         [mask_region_lower.metadata.boxsize * 0.8, mask_region_lower.metadata.boxsize]
     ).T
@@ -214,11 +214,11 @@ def test_mask_pad_wrapping(cosmological_volume):
 
     mask_region_lower.constrain_spatial(restrict=restrict_lower)
     mask_region_upper.constrain_spatial(restrict=restrict_upper)
-    selected_data_lower = load(cosmological_volume, mask=mask_region_lower)
-    selected_data_upper = load(cosmological_volume, mask=mask_region_upper)
+    selected_data_lower = load(**cosmological_volume_params, mask=mask_region_lower)
+    selected_data_upper = load(**cosmological_volume_params, mask=mask_region_upper)
     selected_coordinates_lower = selected_data_lower.gas.coordinates
     selected_coordinates_upper = selected_data_upper.gas.coordinates
-    with h5py.File(cosmological_volume, "r") as f:
+    with open_test_data_file(cosmological_volume_params) as f:
         if (
             "MinPositions" in f["/Cells"].keys()
             and "MaxPositions" in f["/Cells"].keys()
@@ -243,11 +243,11 @@ def test_mask_pad_wrapping(cosmological_volume):
     )
 
 
-def test_mask_entire_box(cosmological_volume):
+def test_mask_entire_box(cosmological_volume_params):
     """
     When we explicitly set the region to the whole box, we'd better get all of the cells!
     """
-    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(**cosmological_volume_params, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * 0.0, mask_region.metadata.boxsize]
     ).T
@@ -257,11 +257,11 @@ def test_mask_entire_box(cosmological_volume):
         assert group_mask.all()
 
 
-def test_invalid_mask_interval(cosmological_volume):
+def test_invalid_mask_interval(cosmological_volume_params):
     """
     We should get an error if the mask boundaries go out of bounds.
     """
-    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(**cosmological_volume_params, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * -2, mask_region.metadata.boxsize * 2]
     ).T
@@ -269,14 +269,14 @@ def test_invalid_mask_interval(cosmological_volume):
         mask_region.constrain_spatial(restrict=restrict)
 
 
-def test_inverted_mask_boundaries(cosmological_volume):
+def test_inverted_mask_boundaries(cosmological_volume_params):
     """
     Upper boundary can be below lower boundary, in that case we select wrapping
     in the other direction. Check this by making an "inverted" selection and
     comparing to the "uninverted" selection through the boundary.
     """
-    mask_region = mask(cosmological_volume, spatial_only=True)
-    mask_region_inverted = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(**cosmological_volume_params, spatial_only=True)
+    mask_region_inverted = mask(**cosmological_volume_params, spatial_only=True)
     restrict = cosmo_array(
         [-mask_region.metadata.boxsize * 0.2, mask_region.metadata.boxsize * 0.2]
     ).T
@@ -286,8 +286,8 @@ def test_inverted_mask_boundaries(cosmological_volume):
 
     mask_region.constrain_spatial(restrict=restrict)
     mask_region_inverted.constrain_spatial(restrict=restrict_inverted)
-    selected_data = load(cosmological_volume, mask=mask_region)
-    selected_data_inverted = load(cosmological_volume, mask=mask_region_inverted)
+    selected_data = load(**cosmological_volume_params, mask=mask_region)
+    selected_data_inverted = load(**cosmological_volume_params, mask=mask_region_inverted)
 
     selected_coordinates = selected_data.gas.coordinates
     selected_coordinates_inverted = selected_data_inverted.gas.coordinates
@@ -295,11 +295,11 @@ def test_inverted_mask_boundaries(cosmological_volume):
     assert np.array_equal(selected_coordinates, selected_coordinates_inverted)
 
 
-def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_legacy
+def test_empty_mask(cosmological_volume_params):  # replace with cosmoogical_volume_no_legacy
     """
     Tests that a mask containing no particles doesn't cause any problems.
     """
-    empty_mask = mask(cosmological_volume, spatial_only=False)
+    empty_mask = mask(**cosmological_volume_params, spatial_only=False)
     # mask a region just to run faster:
     region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]
     empty_mask.constrain_spatial(region)
@@ -322,28 +322,28 @@ def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_
             scale_exponent=-5,
         ),
     )
-    data = load(cosmological_volume, mask=empty_mask)
+    data = load(**cosmological_volume_params, mask=empty_mask)
     assert data.gas.masses.size == 0
 
 
-def test_mask_pad_warning(cosmological_volume):
+def test_mask_pad_warning(cosmological_volume_params):
     """
     Test that the user gets a warning when masking a snapshot without cell bbox metadata
-    and doesn't otherwise. The ``cosmological_volume`` fixture will run this with both
+    and doesn't otherwise. The ``cosmological_volume_params`` fixture will run this with both
     recent (with bbox metadata) and legacy (without bbox metadata) snapshots.
     """
     from swiftsimio import mask  # not the helper that silences warnings!
 
-    with h5py.File(cosmological_volume, "r") as f:
+    with open_test_data_file(cosmological_volume_params) as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     if has_cell_bbox:
         with warnings.catch_warnings():
             # fail if there's a warning when the metadata is present
             warnings.simplefilter("error")
-            mask(cosmological_volume)
+            mask(**cosmological_volume_params)
     else:
         # fail if there's no warning when metadata is absent
         with pytest.warns(
             UserWarning, match="Snapshot does not contain Cells/MinPositions"
         ):
-            mask(cosmological_volume)
+            mask(**cosmological_volume_params)
