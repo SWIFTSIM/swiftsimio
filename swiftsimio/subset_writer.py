@@ -12,6 +12,46 @@ import numpy as np
 from typing import Optional, List
 
 
+def is_soft_link(obj):
+    """
+    Return True if obj is a soft link
+
+    Parameters
+    ----------
+
+    obj : Group, Dataset or SoftLink
+        object returned by Group.get(key, getlink=True)
+    """
+    try:
+        import hdfstream
+    except ImportError:
+        hdfstream= None
+    else:
+        if isinstance(obj, hdfstream.SoftLink):
+            return True
+    return isinstance(obj, h5py.SoftLink)
+
+
+def is_dataset(obj):
+    """
+    Return True if obj is a dataset
+
+    Parameters
+    ----------
+
+    obj : Group, Dataset or SoftLink
+        object returned by Group.get(key, getlink=True)
+    """
+    try:
+        import hdfstream
+    except ImportError:
+        hdfstream= None
+    else:
+        if isinstance(obj, hdfstream.RemoteDataset):
+            return True
+    return isinstance(obj, h5py.Dataset)
+
+
 def get_swift_name(name: str) -> str:
     """
     Returns the particle type name used in SWIFT
@@ -103,7 +143,7 @@ def find_datasets(
 
     for key in keys:
         subpath = f"{path}/{key}"
-        if isinstance(input_file[subpath], h5py.Dataset):
+        if is_dataset(input_file[subpath]):
             dataset_names.append(subpath)
         elif input_file[subpath].keys() is not None:
             find_datasets(input_file, dataset_names, subpath, recurse=True)
@@ -147,7 +187,7 @@ def find_links(
     for key in keys:
         subpath = f"{path}/{key}"
         dataset = input_file.get(subpath, getlink=True)
-        if isinstance(dataset, h5py.SoftLink):
+        if is_soft_link(dataset) :
             link_names.append(subpath.lstrip("/"))
             link_paths.append(dataset.path)
         else:
@@ -327,14 +367,14 @@ def write_subset(output_file: str, mask: SWIFTMask):
     """
     # Open the files
     infile = mask.metadata.units.opener.open(mask.metadata.filename, "r")
-    outfile = h5py.File(output_file, "w")
 
-    # Write metadata and data subset
-    list_of_links, list_of_link_paths = find_links(infile)
-    write_metadata(infile, outfile, list_of_links, mask)
-    write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
-    connect_links(outfile, list_of_links, list_of_link_paths)
+    with h5py.File(output_file, "w") as outfile:
+
+        # Write metadata and data subset
+        list_of_links, list_of_link_paths = find_links(infile)
+        write_metadata(infile, outfile, list_of_links, mask)
+        write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
+        connect_links(outfile, list_of_links, list_of_link_paths)
 
     # Clean up
     infile.close()
-    outfile.close()
