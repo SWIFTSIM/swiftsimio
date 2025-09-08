@@ -69,4 +69,4 @@ def is_hdfstream_dataset(obj):
     if hdfstream is None:
         return False
     else:
-        return isinstance(handle, hdfstream.RemoteDataset)
+        return isinstance(obj, hdfstream.RemoteDataset)
