@@ -7,11 +7,12 @@ except ImportError:
 
 
 class FileOpener:
-    def __init__(self, server=None):
+    def __init__(self, server=None, user=None, password=None):
         self.server = server
         if server is not None:
             self.root = hdfstream.open(
-                server, "/", max_depth=3, data_size_limit=10 * 1024 * 1024
+                server, "/", max_depth=3, data_size_limit=10 * 1024 * 1024,
+                user=user, password=password
             )
 
     def open(self, filename, mode="r"):

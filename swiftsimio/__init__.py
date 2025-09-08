@@ -55,6 +55,8 @@ def mask(
     spatial_only: bool = True,
     safe_padding: _Union[bool, float] = True,
     server: _Optional[str] = None,
+    user: _Optional[str] = None,
+    password: _Optional[str] = None,
 ) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
@@ -82,6 +84,13 @@ def mask(
         https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
         details.
 
+    server : str, optional
+        server URL if opening a remote snapshot
+    user : str, optional
+        username if opening a remote snapshot
+    password : str, optional
+        password if opening a remote snapshot
+
     Returns
     -------
     SWIFTMask
@@ -96,7 +105,7 @@ def mask(
     spatial_only=False version).
     """
 
-    units = SWIFTUnits(filename, FileOpener(server))
+    units = SWIFTUnits(filename, FileOpener(server, user, password))
     metadata = metadata_discriminator(filename, units)
 
     return SWIFTMask(
@@ -105,7 +114,8 @@ def mask(
 
 
 def load(
-    filename: str, mask: _Optional[SWIFTMask] = None, server: _Optional[str] = None
+        filename: str, mask: _Optional[SWIFTMask] = None, server: _Optional[str] = None,
+        user: _Optional[str] = None, password: _Optional[str] = None,
 ) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
@@ -118,9 +128,13 @@ def load(
         mask to apply when reading dataset
     server : str, optional
         if not None, read files from hdfstream server
+    user : str, optional
+        username if opening a remote snapshot
+    password : str, optional
+        password if opening a remote snapshot
     """
 
-    return SWIFTDataset(filename, FileOpener(server), mask=mask)
+    return SWIFTDataset(filename, FileOpener(server, user, password), mask=mask)
 
 
 def load_statistics(filename: str) -> SWIFTStatisticsFile:
