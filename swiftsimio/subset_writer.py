@@ -5,51 +5,12 @@ it to a new file.
 
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
+from swiftsimio.file_utils import is_dataset, is_soft_link
 import swiftsimio.metadata as metadata
 
 import h5py
 import numpy as np
 from typing import Optional, List
-
-
-def is_soft_link(obj):
-    """
-    Return True if obj is a soft link
-
-    Parameters
-    ----------
-
-    obj : Group, Dataset or SoftLink
-        object returned by Group.get(key, getlink=True)
-    """
-    try:
-        import hdfstream
-    except ImportError:
-        hdfstream= None
-    else:
-        if isinstance(obj, hdfstream.SoftLink):
-            return True
-    return isinstance(obj, h5py.SoftLink)
-
-
-def is_dataset(obj):
-    """
-    Return True if obj is a dataset
-
-    Parameters
-    ----------
-
-    obj : Group, Dataset or SoftLink
-        object returned by Group.get(key, getlink=True)
-    """
-    try:
-        import hdfstream
-    except ImportError:
-        hdfstream= None
-    else:
-        if isinstance(obj, hdfstream.RemoteDataset):
-            return True
-    return isinstance(obj, h5py.Dataset)
 
 
 def get_swift_name(name: str) -> str:

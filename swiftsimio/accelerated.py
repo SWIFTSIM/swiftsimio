@@ -7,11 +7,7 @@ import numpy as np
 from h5py._hl.dataset import Dataset
 
 from typing import Tuple, Union, List
-
-try:
-    import hdfstream
-except ImportError:
-    hdfstream = None
+from .file_utils import is_hdfstream_dataset
 
 try:
     from numba import jit, prange
@@ -622,9 +618,8 @@ def read_ranges_from_file(
 
     # Catch the case where we're reading a hdfstream.RemoteDataset.
     # We can fetch all of the ranges with a single http request.
-    if hdfstream is not None:
-        if isinstance(handle, hdfstream.RemoteDataset):
-            read_ranges = read_ranges_from_hdfstream
+    if is_hdfstream_dataset(handle):
+        read_ranges = read_ranges_from_hdfstream
 
     return read_ranges(handle, ranges, output_shape, output_type, columns)
 
