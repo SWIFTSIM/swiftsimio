@@ -463,8 +463,8 @@ def read_ranges_from_file_chunked(
 def eliminate_zero_sized_and_merge(ranges):
 
     # First eliminate any zero length ranges
-    non_zero_size = (ranges[:,1] - ranges[:,0]) > 0
-    ranges = ranges[non_zero_size,:]
+    non_zero_size = (ranges[:, 1] - ranges[:, 0]) > 0
+    ranges = ranges[non_zero_size, :]
 
     # We might now have no ranges left
     if len(ranges) == 0:

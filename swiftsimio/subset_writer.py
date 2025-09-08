@@ -148,7 +148,7 @@ def find_links(
     for key in keys:
         subpath = f"{path}/{key}"
         dataset = input_file.get(subpath, getlink=True)
-        if is_soft_link(dataset) :
+        if is_soft_link(dataset):
             link_names.append(subpath.lstrip("/"))
             link_paths.append(dataset.path)
         else:

@@ -11,8 +11,12 @@ class FileOpener:
         self.server = server
         if server is not None:
             self.root = hdfstream.open(
-                server, "/", max_depth=3, data_size_limit=10 * 1024 * 1024,
-                user=user, password=password
+                server,
+                "/",
+                max_depth=3,
+                data_size_limit=10 * 1024 * 1024,
+                user=user,
+                password=password,
             )
 
     def open(self, filename, mode="r"):
@@ -66,4 +70,3 @@ def is_hdfstream_dataset(obj):
         return False
     else:
         return isinstance(handle, hdfstream.RemoteDataset)
-

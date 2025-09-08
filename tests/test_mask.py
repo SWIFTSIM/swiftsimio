@@ -31,7 +31,9 @@ def test_reading_select_region_spatial(cosmological_volume_params):
     mask_region_nospatial.constrain_spatial(restrict=restrict)
 
     selected_data = load(**cosmological_volume_params, mask=mask_region)
-    selected_data_nospatial = load(**cosmological_volume_params, mask=mask_region_nospatial)
+    selected_data_nospatial = load(
+        **cosmological_volume_params, mask=mask_region_nospatial
+    )
 
     selected_coordinates = selected_data.gas.coordinates
     selected_coordinates_nospatial = selected_data_nospatial.gas.coordinates
@@ -159,9 +161,15 @@ def test_mask_padding(cosmological_volume_params):
     """
 
     # Mask off the lower bottom corner of the volume.
-    mask_pad_onecell = mask(**cosmological_volume_params, spatial_only=True, safe_padding=1.0)
-    mask_pad_tenthcell = mask(**cosmological_volume_params, spatial_only=True)  # default 0.1
-    mask_pad_off = mask(**cosmological_volume_params, spatial_only=True, safe_padding=False)
+    mask_pad_onecell = mask(
+        **cosmological_volume_params, spatial_only=True, safe_padding=1.0
+    )
+    mask_pad_tenthcell = mask(
+        **cosmological_volume_params, spatial_only=True
+    )  # default 0.1
+    mask_pad_off = mask(
+        **cosmological_volume_params, spatial_only=True, safe_padding=False
+    )
     assert mask_pad_onecell.safe_padding == 1.0
     assert mask_pad_tenthcell.safe_padding == 0.1
     assert mask_pad_off.safe_padding == 0.0
@@ -287,7 +295,9 @@ def test_inverted_mask_boundaries(cosmological_volume_params):
     mask_region.constrain_spatial(restrict=restrict)
     mask_region_inverted.constrain_spatial(restrict=restrict_inverted)
     selected_data = load(**cosmological_volume_params, mask=mask_region)
-    selected_data_inverted = load(**cosmological_volume_params, mask=mask_region_inverted)
+    selected_data_inverted = load(
+        **cosmological_volume_params, mask=mask_region_inverted
+    )
 
     selected_coordinates = selected_data.gas.coordinates
     selected_coordinates_inverted = selected_data_inverted.gas.coordinates
@@ -295,7 +305,9 @@ def test_inverted_mask_boundaries(cosmological_volume_params):
     assert np.array_equal(selected_coordinates, selected_coordinates_inverted)
 
 
-def test_empty_mask(cosmological_volume_params):  # replace with cosmoogical_volume_no_legacy
+def test_empty_mask(
+    cosmological_volume_params
+):  # replace with cosmoogical_volume_no_legacy
     """
     Tests that a mask containing no particles doesn't cause any problems.
     """

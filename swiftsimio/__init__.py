@@ -114,8 +114,11 @@ def mask(
 
 
 def load(
-        filename: str, mask: _Optional[SWIFTMask] = None, server: _Optional[str] = None,
-        user: _Optional[str] = None, password: _Optional[str] = None,
+    filename: str,
+    mask: _Optional[SWIFTMask] = None,
+    server: _Optional[str] = None,
+    user: _Optional[str] = None,
+    password: _Optional[str] = None,
 ) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
