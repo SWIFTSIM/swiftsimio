@@ -7,7 +7,7 @@ import h5py
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
 from numpy import mean, zeros_like
-from swiftsimio.opener import FileOpener
+from swiftsimio.file_utils import FileOpener
 
 def _mask_without_warning(filename, **kwargs):
 

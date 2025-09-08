@@ -366,7 +366,7 @@ def write_subset(output_file: str, mask: SWIFTMask):
         the mask used to define subset that is written to new snapshot
     """
     # Open the files
-    infile = mask.metadata.units.opener.open(mask.metadata.filename, "r")
+    infile = mask.metadata.units.file_opener.open(mask.metadata.filename, "r")
 
     with h5py.File(output_file, "w") as outfile:
 

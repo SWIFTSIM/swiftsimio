@@ -6,7 +6,7 @@ from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
 from .__version__ import __version__
 from .__cite__ import __cite__
-from .opener import FileOpener
+from .file_utils import FileOpener
 
 import swiftsimio.metadata as metadata
 import swiftsimio.accelerated as accelerated
