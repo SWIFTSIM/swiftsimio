@@ -63,7 +63,7 @@ def write_and_check_subset(infile):
     and compares result against masked load of the original file.
     """
     # Specify output filepath
-    outfile = f"subset_{infile}"
+    outfile = infile.replace(".hdf5", "_subset.hdf5")
 
     # Create a mask
     full_mask = mask(infile)
