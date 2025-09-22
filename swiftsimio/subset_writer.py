@@ -201,7 +201,7 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
     for part_type in particle_offsets:
         for dset in offsets_dsets:
             if mask.metadata.shared_cell_counts:
-                outfile[dset] = particle_counts[part_type]
+                outfile[dset] = particle_offsets[part_type]
             else:
                 if get_swift_name(part_type) in dset:
                     outfile[dset] = particle_offsets[part_type]

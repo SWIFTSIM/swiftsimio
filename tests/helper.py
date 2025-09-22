@@ -12,7 +12,8 @@ from numpy import mean, zeros_like
 def _mask_without_warning(fname, **kwargs):
     with h5py.File(fname, "r") as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-    if has_cell_bbox:
+        is_soap = f["/Header"].attrs.get("OutputType", "FullVolume") == "SOAP"
+    if has_cell_bbox or is_soap:
         return mask(fname, **kwargs)
     else:
         with pytest.warns(

@@ -20,24 +20,21 @@ def compare_data_contents(A, B):
     # Initialise a list to store fields that differ
     bad_compares = []
 
-    # Compare metadata - this is non-trivial so we just compare the time as a
+    # Compare metadata - this is non-trivial so we just compare the redshift as a
     # sanity check.
-    if A.metadata.time != B.metadata.time:
+    if A.metadata.redshift != B.metadata.redshift:
         bad_compares.append("metadata")
 
     # Compare datasets
     test_was_trivial = True  # make sure we match at least some non-empty arrays
-    for part_type in filter(
-        lambda x: hasattr(A, x),
-        metadata.particle_types.particle_name_underscores.values(),
-    ):
-        A_type = getattr(A, part_type)
-        B_type = getattr(B, part_type)
-        particle_dataset_field_names = set(
+    for group_name in A.metadata.present_group_names:
+        A_type = getattr(A, group_name)
+        B_type = getattr(B, group_name)
+        dataset_field_names = set(
             A_type.group_metadata.field_names + B_type.group_metadata.field_names
         )
 
-        for attr in particle_dataset_field_names:
+        for attr in dataset_field_names:
             param_A = getattr(A_type, attr)
             param_B = getattr(B_type, attr)
             if len(param_A) == 0 and len(param_B) == 0:
@@ -49,27 +46,27 @@ def compare_data_contents(A, B):
             comparison = param_A == param_B
             if type(comparison) is bool:  # guards len in elif, don't merge nested if
                 if not comparison:
-                    bad_compares.append(f"{part_type} {attr}")
+                    bad_compares.append(f"{group_name} {attr}")
             elif len(comparison) > 1:
                 if not comparison.all():
-                    bad_compares.append(f"{part_type} {attr}")
+                    bad_compares.append(f"{group_name} {attr}")
 
     assert bad_compares == [], f"compare failed on {bad_compares}"
     assert not test_was_trivial
 
 
-def test_subset_writer(cosmological_volume):
+def write_and_check_subset(infile):
     """
     Test to make sure subset writing works as intended
 
-    Writes a subset of the cosmological volume to a snapshot file
+    Writes a subset of the input file to a new file
     and compares result against masked load of the original file.
     """
     # Specify output filepath
-    outfile = "subset_cosmological_volume.hdf5"
+    outfile = f"subset_{infile}"
 
     # Create a mask
-    full_mask = mask(cosmological_volume)
+    full_mask = mask(infile)
     load_region = [[0.25 * b, 0.75 * b] for b in full_mask.metadata.boxsize]
     full_mask.constrain_spatial(load_region)
 
@@ -85,7 +82,7 @@ def test_subset_writer(cosmological_volume):
     # Update the spatial region to match what we load from the subset.
     full_mask.constrain_spatial(sub_load_region)
 
-    snapshot = load(cosmological_volume, full_mask)
+    snapshot = load(infile, full_mask)
     sub_snapshot = load(outfile, sub_mask)
 
     compare_data_contents(snapshot, sub_snapshot)
@@ -94,3 +91,11 @@ def test_subset_writer(cosmological_volume):
     os.remove(outfile)
 
     return
+
+
+def test_snapshot_subset_writer(cosmological_volume):
+    write_and_check_subset(cosmological_volume)
+
+
+def test_soap_subset_writer(soap_example):
+    write_and_check_subset(soap_example)
