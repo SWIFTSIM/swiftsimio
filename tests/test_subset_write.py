@@ -55,7 +55,7 @@ def compare_data_contents(A, B):
     assert not test_was_trivial
 
 
-def test_subset_writer(snapshot_and_soap):
+def test_subset_writer(snapshot_or_soap):
     """
     Test to make sure subset writing works as intended
 
@@ -63,10 +63,10 @@ def test_subset_writer(snapshot_and_soap):
     and compares result against masked load of the original file.
     """
     # Specify output filepath
-    outfile = snapshot_and_soap.replace(".hdf5", "_subset.hdf5")
+    outfile = snapshot_or_soap.replace(".hdf5", "_subset.hdf5")
 
     # Create a mask
-    full_mask = mask(snapshot_and_soap)
+    full_mask = mask(snapshot_or_soap)
     load_region = [[0.25 * b, 0.75 * b] for b in full_mask.metadata.boxsize]
     full_mask.constrain_spatial(load_region)
 
@@ -82,7 +82,7 @@ def test_subset_writer(snapshot_and_soap):
     # Update the spatial region to match what we load from the subset.
     full_mask.constrain_spatial(sub_load_region)
 
-    snapshot = load(snapshot_and_soap, full_mask)
+    snapshot = load(snapshot_or_soap, full_mask)
     sub_snapshot = load(outfile, sub_mask)
 
     compare_data_contents(snapshot, sub_snapshot)

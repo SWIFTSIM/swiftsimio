@@ -76,5 +76,5 @@ def soap_example():
         "SoapExample.hdf5",
     ]
 )
-def snapshot_and_soap(request):
+def snapshot_or_soap(request):
     yield _requires(request.param)
