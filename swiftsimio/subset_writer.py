@@ -192,9 +192,8 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
         for dset in counts_dsets:
             if mask.metadata.shared_cell_counts:
                 outfile[dset] = particle_counts[part_type]
-            else:
-                if get_swift_name(part_type) in dset:
-                    outfile[dset] = particle_counts[part_type]
+            elif get_swift_name(part_type) in dset:
+                outfile[dset] = particle_counts[part_type]
 
     # Loop over each particle type in the cells and update their offsets
     offsets_dsets = find_datasets(infile, path=offsets_path)
@@ -202,9 +201,8 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
         for dset in offsets_dsets:
             if mask.metadata.shared_cell_counts:
                 outfile[dset] = particle_offsets[part_type]
-            else:
-                if get_swift_name(part_type) in dset:
-                    outfile[dset] = particle_offsets[part_type]
+            elif get_swift_name(part_type) in dset:
+                outfile[dset] = particle_offsets[part_type]
 
     # Copy the cell centres and metadata
     infile.copy("/Cells/Centres", outfile, name="/Cells/Centres")
