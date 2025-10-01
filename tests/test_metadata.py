@@ -2,7 +2,8 @@
 Tests some known good states with the metadata.
 """
 
-from swiftsimio import metadata
+from swiftsimio import metadata, load, SWIFTUnits
+from swiftsimio.metadata.objects import SWIFTSnapshotMetadata
 
 
 def test_same_contents():
@@ -30,3 +31,26 @@ def test_same_contents():
         assert list(cosmology[ptype].keys()) == list(particle[ptype].values())
 
     return
+
+
+def test_file_handle_cleanup(cosmological_volume_only_single):
+    """
+    Check that file handle is cleaned up when no longer needed.
+
+    https://github.com/SWIFTSIM/swiftsimio/pull/155 introduced using a single file
+    handle for all metadata reading to prevent too many file requests to file metadata
+    servers when applicable (e.g. on cosma). This risks leaving the file handle open,
+    which can lead to e.g. being unable to delete a file at the OS level on some
+    platforms, like Windows.
+
+    This tests that the file handle is released by the time constructing a SWIFTUnits,
+    SWIFTMetadata or SWIFTDataset object is finished.
+    """
+    units = SWIFTUnits(cosmological_volume_only_single)
+    assert not units._handle  # asserts True if file open, False if closed
+
+    metadata = SWIFTSnapshotMetadata(cosmological_volume_only_single)
+    assert not metadata.units._handle
+
+    data = load(cosmological_volume_only_single)
+    assert not data.metadata.units._handle
