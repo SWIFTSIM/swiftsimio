@@ -10,6 +10,10 @@ test_data_location = "test_data/"
 
 def _requires(filename):
 
+    if filename == "EagleDistributed.hdf5":
+        _requires("eagle_0025.0.hdf5")
+        _requires("eagle_0025.1.hdf5")
+
     # First check if the test data directory exists
     if not os.path.exists(test_data_location):
         os.mkdir(test_data_location)
@@ -41,9 +45,6 @@ def _requires(filename):
     ]
 )
 def cosmological_volume(request):
-    if request.param == "EagleDistributed.hdf5":
-        _requires("eagle_0025.0.hdf5")
-        _requires("eagle_0025.1.hdf5")
     yield _requires(request.param)
 
 
@@ -60,7 +61,6 @@ def cosmological_volume_only_distributed():
 @pytest.fixture
 def cosmological_volume_dithered():
     yield _requires("LegacyCosmologicalVolumeDithered.hdf5")
-
 
 #
 # Allow enabling remote file tests with a command line flag
@@ -130,4 +130,16 @@ def cosmological_volume_dithered_params(request):
     ])
 )
 def soap_example_params(request):
+    return test_data_parameters(request)
+
+
+@pytest.fixture(
+    params=repeat_tests([
+        "EagleDistributed.hdf5",
+        "EagleSingle.hdf5",
+        "LegacyCosmologicalVolume.hdf5",
+        "SoapExample.hdf5",
+    ])
+)
+def snapshot_or_soap_params(request):
     return test_data_parameters(request)
