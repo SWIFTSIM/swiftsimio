@@ -62,6 +62,7 @@ def cosmological_volume_only_distributed():
 def cosmological_volume_dithered():
     yield _requires("LegacyCosmologicalVolumeDithered.hdf5")
 
+
 #
 # Allow enabling remote file tests with a command line flag
 #
@@ -84,9 +85,11 @@ def repeat_tests(params):
     all_params = []
     for param in params:
         # Add local version of this file
-        all_params.append({"filename" : param})
+        all_params.append({"filename": param})
         # Add remote version of this file
-        all_params.append({"filename" : f"{server_test_data_path}/{param}", "server" : server})
+        all_params.append(
+            {"filename": f"{server_test_data_path}/{param}", "server": server}
+        )
     return all_params
 
 
@@ -105,41 +108,33 @@ def test_data_parameters(request):
 
 # Fixture which returns load parameters for the cosmological volume
 @pytest.fixture(
-    params=repeat_tests([
-        "EagleDistributed.hdf5",
-        "EagleSingle.hdf5",
-        "LegacyCosmologicalVolume.hdf5",
-    ])
+    params=repeat_tests(
+        ["EagleDistributed.hdf5", "EagleSingle.hdf5", "LegacyCosmologicalVolume.hdf5"]
+    )
 )
 def cosmological_volume_params(request):
     return test_data_parameters(request)
 
 
-@pytest.fixture(
-    params=repeat_tests([
-        "LegacyCosmologicalVolumeDithered.hdf5",
-    ])
-)
+@pytest.fixture(params=repeat_tests(["LegacyCosmologicalVolumeDithered.hdf5"]))
 def cosmological_volume_dithered_params(request):
     return test_data_parameters(request)
 
 
-@pytest.fixture(
-    params=repeat_tests([
-        "SoapExample.hdf5",
-    ])
-)
+@pytest.fixture(params=repeat_tests(["SoapExample.hdf5"]))
 def soap_example_params(request):
     return test_data_parameters(request)
 
 
 @pytest.fixture(
-    params=repeat_tests([
-        "EagleDistributed.hdf5",
-        "EagleSingle.hdf5",
-        "LegacyCosmologicalVolume.hdf5",
-        "SoapExample.hdf5",
-    ])
+    params=repeat_tests(
+        [
+            "EagleDistributed.hdf5",
+            "EagleSingle.hdf5",
+            "LegacyCosmologicalVolume.hdf5",
+            "SoapExample.hdf5",
+        ]
+    )
 )
 def snapshot_or_soap_params(request):
     return test_data_parameters(request)
