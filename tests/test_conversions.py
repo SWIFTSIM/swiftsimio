@@ -7,12 +7,12 @@ from swiftsimio import load
 from numpy import isclose
 
 
-def test_basic_tcmb(cosmological_volume):
+def test_basic_tcmb(cosmological_volume_params):
     """
     Tests we can recover omega_gamma = 0.0 and tcmb0 in the usual case.
     """
 
-    data = load(cosmological_volume)
+    data = load(**cosmological_volume_params)
 
     try:
         assert (
@@ -24,12 +24,12 @@ def test_basic_tcmb(cosmological_volume):
         pass
 
 
-def test_nonzero_tcmb(cosmological_volume):
+def test_nonzero_tcmb(cosmological_volume_params):
     """
     Tests we can recover omega_gamma = 0.0 and tcmb0 in the usual case.
     """
 
-    data = load(cosmological_volume)
+    data = load(**cosmological_volume_params)
     units = data.metadata.units
 
     cosmo = data.metadata.cosmology_raw

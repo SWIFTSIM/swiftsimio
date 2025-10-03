@@ -5,6 +5,7 @@ it to a new file.
 
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
+from swiftsimio.file_utils import is_dataset, is_soft_link
 import swiftsimio.metadata as metadata
 
 import h5py
@@ -105,7 +106,7 @@ def find_datasets(
 
     for key in keys:
         subpath = f"{path}/{key}"
-        if isinstance(input_file[subpath], h5py.Dataset):
+        if is_dataset(input_file[subpath]):
             dataset_names.append(subpath)
         elif input_file[subpath].keys() is not None:
             find_datasets(input_file, dataset_names, subpath, recurse=True)
@@ -149,7 +150,7 @@ def find_links(
     for key in keys:
         subpath = f"{path}/{key}"
         dataset = input_file.get(subpath, getlink=True)
-        if isinstance(dataset, h5py.SoftLink):
+        if is_soft_link(dataset):
             link_names.append(subpath.lstrip("/"))
             link_paths.append(dataset.path)
         else:
@@ -340,15 +341,15 @@ def write_subset(output_file: str, mask: SWIFTMask):
         the mask used to define subset that is written to new snapshot
     """
     # Open the files
-    infile = h5py.File(mask.metadata.filename, "r")
-    outfile = h5py.File(output_file, "w")
+    infile = mask.metadata.units.file_opener.open(mask.metadata.filename, "r")
 
-    # Write metadata and data subset
-    list_of_links, list_of_link_paths = find_links(infile)
-    write_metadata(infile, outfile, list_of_links, mask)
-    write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
-    connect_links(outfile, list_of_links, list_of_link_paths)
+    with h5py.File(output_file, "w") as outfile:
+
+        # Write metadata and data subset
+        list_of_links, list_of_link_paths = find_links(infile)
+        write_metadata(infile, outfile, list_of_links, mask)
+        write_datasubset(infile, outfile, mask, find_datasets(infile), list_of_links)
+        connect_links(outfile, list_of_links, list_of_link_paths)
 
     # Clean up
     infile.close()
-    outfile.close()

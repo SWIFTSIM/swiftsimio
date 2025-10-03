@@ -7,19 +7,24 @@ import h5py
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
 from numpy import mean, zeros_like
+from swiftsimio.file_utils import FileOpener
 
 
-def _mask_without_warning(fname, **kwargs):
-    with h5py.File(fname, "r") as f:
+def _mask_without_warning(filename, **kwargs):
+
+    opener = FileOpener(
+        kwargs.get("server"), user=kwargs.get("user"), password=kwargs.get("password")
+    )
+    with opener.open(filename, "r") as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
         is_soap = f["/Header"].attrs.get("OutputType", "FullVolume") == "SOAP"
     if has_cell_bbox or is_soap:
-        return mask(fname, **kwargs)
+        return mask(filename, **kwargs)
     else:
         with pytest.warns(
             UserWarning, match="Snapshot does not contain Cells/MinPositions"
         ):
-            return mask(fname, **kwargs)
+            return mask(filename, **kwargs)
 
 
 def create_in_memory_hdf5(filename="f1"):
@@ -106,3 +111,13 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
     outfile.close()
 
     return
+
+
+def open_test_data_file(params):
+    """
+    Open a local or remote hdf5 file, given test parameters
+
+    If params includes a server URL we open the file with hdfstream,
+    otherwise we use h5py.
+    """
+    return FileOpener(params.get("server", None)).open(params["filename"])

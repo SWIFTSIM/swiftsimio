@@ -8,6 +8,7 @@ be read in.
 import numpy as np
 from swiftsimio import load
 from .helper import _mask_without_warning as mask
+from .helper import open_test_data_file
 from os import remove
 
 import h5py
@@ -20,12 +21,12 @@ from swiftsimio.objects import cosmo_array
 from tests.helper import create_n_particle_dataset
 
 
-def test_cosmology_metadata(cosmological_volume):
+def test_cosmology_metadata(cosmological_volume_params):
     """
     Tests to see if we get the unpacked cosmology metadata correct.
     """
 
-    data = load(cosmological_volume)
+    data = load(**cosmological_volume_params)
 
     assert data.metadata.a == data.metadata.scale_factor
     assert np.isclose(data.metadata.a, 1.0 / (1.0 + data.metadata.redshift), atol=1e-8)
@@ -33,13 +34,13 @@ def test_cosmology_metadata(cosmological_volume):
     return
 
 
-def test_time_metadata(cosmological_volume):
+def test_time_metadata(cosmological_volume_params):
     """
     This tests the time metadata and also tests the ability to include two items at once
     from the same header attribute.
     """
 
-    data = load(cosmological_volume)
+    data = load(**cosmological_volume_params)
 
     assert data.metadata.z == data.metadata.redshift
 
@@ -48,36 +49,36 @@ def test_time_metadata(cosmological_volume):
     return
 
 
-def test_temperature_units(cosmological_volume):
+def test_temperature_units(cosmological_volume_params):
     """
     This tests checks if we correctly read in temperature units. Based
     on a past bug, to make sure we never break this again.
     """
 
-    data = load(cosmological_volume)
+    data = load(**cosmological_volume_params)
     data.gas.temperatures.convert_to_units(K)
     return
 
 
-def test_initial_mass_table(cosmological_volume):
+def test_initial_mass_table(cosmological_volume_params):
     """
     This tests checks if we correctly read in the initial mass table. Based
     on a past bug, to make sure we never break this again.
     """
 
-    data = load(cosmological_volume)
+    data = load(**cosmological_volume_params)
     data.metadata.initial_mass_table.gas.convert_to_units(Msun)
 
     return
 
 
-def test_units(cosmological_volume):
+def test_units(cosmological_volume_params):
     """
     Tests that these fields have the same units within SWIFTsimIO as they
     do in the SWIFT code itself.
     """
 
-    data = load(cosmological_volume)
+    data = load(**cosmological_volume_params)
 
     shared = ["coordinates", "masses", "particle_ids", "velocities"]
 
@@ -106,43 +107,43 @@ def test_units(cosmological_volume):
         "dark_matter": shared,
     }
 
-    for ptype, properties in to_test.items():
-        field = getattr(data, ptype)
+    with open_test_data_file(cosmological_volume_params) as handle:
+        for ptype, properties in to_test.items():
+            field = getattr(data, ptype)
 
-        # Now need to extract the particle paths in the original hdf5 file
-        # for comparison...
-        paths = numpy_array(field.group_metadata.field_paths)
-        names = numpy_array(field.group_metadata.field_names)
+            # Now need to extract the particle paths in the original hdf5 file
+            # for comparison...
+            paths = numpy_array(field.group_metadata.field_paths)
+            names = numpy_array(field.group_metadata.field_names)
 
-        for property in properties:
-            # Read the 0th element, and compare in CGS units.
-            # We need to use doubles here as sometimes we can overflow!
-            our_units = getattr(field, property).astype(float64)[0]
+            for property in properties:
+                # Read the 0th element, and compare in CGS units.
+                # We need to use doubles here as sometimes we can overflow!
+                our_units = getattr(field, property).astype(float64)[0]
 
-            our_units.convert_to_cgs()
+                our_units.convert_to_cgs()
 
-            # Find the path in the HDF5 for our linked dataset
-            path = paths[names == property][0]
+                # Find the path in the HDF5 for our linked dataset
+                path = paths[names == property][0]
 
-            with h5py.File(cosmological_volume, "r") as handle:
                 swift_units = handle[path].attrs[
                     "Conversion factor to CGS (not including cosmological corrections)"
                 ][0]
                 swift_value = swift_units * handle[path][0]
 
-            assert isclose(swift_value, our_units.value, 5e-5).all()
+                assert isclose(swift_value, our_units.value, 5e-5).all()
 
     # If we didn't crash out, we gucci.
     return
 
 
-def test_cell_metadata_is_valid(cosmological_volume):
+def test_cell_metadata_is_valid(cosmological_volume_params):
     """
     Test that the metadata does what we think it does!
 
     I.e. that it sets the particles contained in a top-level cell.
     """
-    mask_region = mask(cosmological_volume)
+    mask_region = mask(**cosmological_volume_params)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
     mask_region.constrain_spatial(
@@ -150,7 +151,7 @@ def test_cell_metadata_is_valid(cosmological_volume):
             [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
         ).T
     )
-    data = load(cosmological_volume, mask=mask_region)
+    data = load(**cosmological_volume_params, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.gas.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.gas.coordinates.units)
@@ -179,7 +180,7 @@ def test_cell_metadata_is_valid(cosmological_volume):
             assert min > lower * 0.95
 
 
-def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
+def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered_params):
     """
     Test that the metadata does what we think it does, in the
     dithered case.
@@ -187,7 +188,7 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
     I.e. that it sets the particles contained in a top-level cell.
     """
 
-    mask_region = mask(cosmological_volume_dithered)
+    mask_region = mask(**cosmological_volume_dithered_params)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
     mask_region.constrain_spatial(
@@ -195,7 +196,7 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
             [np.zeros_like(mask_region.metadata.boxsize), mask_region.metadata.boxsize]
         ).T
     )
-    data = load(cosmological_volume_dithered, mask=mask_region)
+    data = load(**cosmological_volume_dithered_params, mask=mask_region)
 
     cell_size = mask_region.cell_size.to(data.dark_matter.coordinates.units)
     boxsize = mask_region.metadata.boxsize[0].to(data.dark_matter.coordinates.units)
@@ -226,15 +227,15 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
             assert min > lower * 0.95
 
 
-def test_reading_select_region_metadata(cosmological_volume):
+def test_reading_select_region_metadata(cosmological_volume_params):
     """
     Tests reading select regions of the volume.
     """
 
-    full_data = load(cosmological_volume)
+    full_data = load(**cosmological_volume_params)
 
     # Mask off the centre of the volume.
-    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(**cosmological_volume_params, spatial_only=True)
 
     restrict = cosmo_array(
         [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]
@@ -242,11 +243,11 @@ def test_reading_select_region_metadata(cosmological_volume):
 
     mask_region.constrain_spatial(restrict=restrict)
 
-    selected_data = load(cosmological_volume, mask=mask_region)
+    selected_data = load(**cosmological_volume_params, mask=mask_region)
 
     selected_coordinates = selected_data.gas.coordinates
 
-    # Now need to repeat teh selection by hand:
+    # Now need to repeat the selection by hand:
 
     subset_mask = logical_and.reduce(
         [
@@ -273,15 +274,15 @@ def test_reading_select_region_metadata(cosmological_volume):
     return
 
 
-def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
+def test_reading_select_region_metadata_not_spatial_only(cosmological_volume_params):
     """
     The same as test_reading_select_region_metadata but for spatial_only=False.
     """
 
-    full_data = load(cosmological_volume)
+    full_data = load(**cosmological_volume_params)
 
     # Mask off the centre of the volume.
-    mask_region = mask(cosmological_volume, spatial_only=False)
+    mask_region = mask(**cosmological_volume_params, spatial_only=False)
 
     restrict = cosmo_array(
         [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
@@ -289,7 +290,7 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
 
     mask_region.constrain_spatial(restrict=restrict)
 
-    selected_data = load(cosmological_volume, mask=mask_region)
+    selected_data = load(**cosmological_volume_params, mask=mask_region)
 
     selected_coordinates = selected_data.gas.coordinates
 
@@ -324,6 +325,8 @@ def test_reading_empty_dataset(cosmological_volume):
     Test that we can read in a zero-particle dataset (e.g. Type4 or Type5 present in
     snapshot but no particles exist yet). Here we make a snapshot file with Type1
     present but empty.
+
+    This test can't be run on remote snapshots because we can't write to the server.
     """
     output_filename = "zero_particle.hdf5"
     create_n_particle_dataset(cosmological_volume, output_filename, num_parts=0)

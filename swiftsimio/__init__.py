@@ -6,6 +6,7 @@ from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
 from .__version__ import __version__
 from .__cite__ import __cite__
+from .file_utils import FileOpener
 
 import swiftsimio.metadata as metadata
 import swiftsimio.accelerated as accelerated
@@ -50,7 +51,12 @@ def validate_file(filename: str):
 
 
 def mask(
-    filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True
+    filename: str,
+    spatial_only: bool = True,
+    safe_padding: _Union[bool, float] = True,
+    server: _Optional[str] = None,
+    user: _Optional[str] = None,
+    password: _Optional[str] = None,
 ) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
@@ -78,6 +84,13 @@ def mask(
         https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
         details.
 
+    server : str, optional
+        server URL if opening a remote snapshot
+    user : str, optional
+        username if opening a remote snapshot
+    password : str, optional
+        password if opening a remote snapshot
+
     Returns
     -------
     SWIFTMask
@@ -92,7 +105,7 @@ def mask(
     spatial_only=False version).
     """
 
-    units = SWIFTUnits(filename)
+    units = SWIFTUnits(filename, FileOpener(server, user, password))
     metadata = metadata_discriminator(filename, units)
 
     return SWIFTMask(
@@ -100,7 +113,13 @@ def mask(
     )
 
 
-def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
+def load(
+    filename: str,
+    mask: _Optional[SWIFTMask] = None,
+    server: _Optional[str] = None,
+    user: _Optional[str] = None,
+    password: _Optional[str] = None,
+) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
 
@@ -110,9 +129,15 @@ def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
         SWIFT snapshot file to read
     mask : SWIFTMask, optional
         mask to apply when reading dataset
+    server : str, optional
+        if not None, read files from hdfstream server
+    user : str, optional
+        username if opening a remote snapshot
+    password : str, optional
+        password if opening a remote snapshot
     """
 
-    return SWIFTDataset(filename, mask=mask)
+    return SWIFTDataset(filename, FileOpener(server, user, password), mask=mask)
 
 
 def load_statistics(filename: str) -> SWIFTStatisticsFile:
