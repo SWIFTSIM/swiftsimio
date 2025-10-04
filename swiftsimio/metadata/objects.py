@@ -22,7 +22,40 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from typing import List, Optional
+from typing import List
+
+
+def _set_filename_and_handle(self, file_name_or_handle: Path | h5py.File) -> None:
+    """
+    Makes sure we have an open handle on an hdf5 file to work with.
+
+    If input is a filename then open the file. If input is a file handle make sure
+    it's open. In both cases we set the attributes ``_handle`` and ``_filename``.
+    We also set ``_opened_file_handle`` so that we can check whether this instance
+    "owns" its file handle.
+
+    This function is a helper designed to be assigned as a method of a class.
+
+    Parameters
+    ----------
+    file_name_or_handle : Path or h5py.File
+        File name or open ``h5py.File`` handle to read from.
+
+    Raises
+    ------
+    RuntimeError
+        If a closed file handle is received.
+    """
+    if open_file_handle := not isinstance(file_name_or_handle, h5py.File):
+        self._handle = h5py.File(file_name_or_handle, "r")
+        self.filename = file_name_or_handle
+    else:
+        if not file_name_or_handle:  # handle is closed
+            raise RuntimeError(f"{self.__class__} got a closed hdf5 file handle.")
+        self._handle = file_name_or_handle
+        self.filename = file_name_or_handle.filename
+    self._opened_file_handle = open_file_handle
+    return
 
 
 class SWIFTMetadata(ABC):
@@ -31,7 +64,9 @@ class SWIFTMetadata(ABC):
     """
 
     # Underlying path to the file that this metadata is associated with.
-    filename: str
+    filename: Path
+    # Handle for the hdf5 file
+    _handle: h5py.File
     # The units object associated with this file. All SWIFT metadata objects
     # must use this units system.
     units: "SWIFTUnits"
@@ -51,15 +86,26 @@ class SWIFTMetadata(ABC):
     # in masking as everyone uses the same _shared mask!
     homogeneous_arrays: bool = False
 
-    @abstractmethod
-    def __init__(self, filename, units: "SWIFTUnits"):
-        raise NotImplementedError
+    set_filename_and_handle = _set_filename_and_handle
 
-    @property
-    def handle(self):
-        # Handle, which is shared with units. Units handles
-        # file opening and closing.
-        return self.units.handle
+    def __init__(
+        self, file_name_or_handle: Path | h5py.File, units: "SWIFTUnits" = None
+    ):
+        self.set_filename_and_handle(file_name_or_handle)
+        if units is not None:
+            self.units = units
+        else:
+            self.units = SWIFTUnits(self._handle)
+        return
+
+    def __del__(self):
+        """
+        Cleanup: if this instance opened its own handle on the hdf5 file (i.e. didn't
+        receive an already open handle) then close it.
+        """
+        if self._opened_file_handle:
+            self._handle.close()
+        return
 
     def load_groups(self):
         """
@@ -99,7 +145,7 @@ class SWIFTMetadata(ABC):
 
         for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
             try:
-                setattr(self, name, dict(self.handle[field].attrs))
+                setattr(self, name, dict(self._handle[field].attrs))
             except KeyError:
                 setattr(self, name, None)
 
@@ -114,12 +160,14 @@ class SWIFTMetadata(ABC):
         # items including the scale factor.
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
             try:
@@ -165,15 +213,19 @@ class SWIFTMetadata(ABC):
             self.scale_factor = 1.0
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                m=self.units.mass,
+                l=self.units.length,
+                t=self.units.time,
+                I=self.units.current,
+                T=self.units.temperature,
+            )
         )
-        header_unpack_arrays_cosmo_args = metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
-            self.scale_factor
+        header_unpack_arrays_cosmo_args = (
+            metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
+                self.scale_factor
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -286,7 +338,7 @@ class SWIFTMetadata(ABC):
         # get photon group edges RT dataset from the SubgridScheme group
         try:
             self.photon_group_edges = (
-                self.handle["SubgridScheme/PhotonGroupEdges"][:] / self.units.time
+                self._handle["SubgridScheme/PhotonGroupEdges"][:] / self.units.time
             )
         except KeyError:
             self.photon_group_edges = None
@@ -294,7 +346,7 @@ class SWIFTMetadata(ABC):
         # get reduced speed of light RT dataset from the SubgridScheme group
         try:
             self.reduced_lightspeed = (
-                self.handle["SubgridScheme/ReducedLightspeed"][0]
+                self._handle["SubgridScheme/ReducedLightspeed"][0]
                 * self.units.length
                 / self.units.time
             )
@@ -579,7 +631,7 @@ class SWIFTGroupMetadata(object):
         # Skip fields which are groups themselves
         self.field_paths = []
         self.field_names = []
-        for item in self.metadata.handle[f"{self.group}"].keys():
+        for item in self.metadata._handle[f"{self.group}"].keys():
             # Skip fields which are groups themselves
             if f"{self.group}/{item}" not in self.metadata.present_groups:
                 self.field_paths.append(f"{self.group}/{item}")
@@ -610,7 +662,7 @@ class SWIFTGroupMetadata(object):
                     # Need to check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
+                        units *= unit**unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
@@ -623,7 +675,7 @@ class SWIFTGroupMetadata(object):
             return units
 
         self.field_units = [
-            get_units(self.metadata.handle[x].attrs) for x in self.field_paths
+            get_units(self.metadata._handle[x].attrs) for x in self.field_paths
         ]
 
         return
@@ -657,7 +709,7 @@ class SWIFTGroupMetadata(object):
             return description + mask_str
 
         self.field_descriptions = [
-            get_desc(self.metadata.handle[x]) for x in self.field_paths
+            get_desc(self.metadata._handle[x]) for x in self.field_paths
         ]
 
         return
@@ -685,7 +737,7 @@ class SWIFTGroupMetadata(object):
             return comp if is_compressed else "Not compressed."
 
         self.field_compressions = [
-            get_comp(self.metadata.handle[x]) for x in self.field_paths
+            get_comp(self.metadata._handle[x]) for x in self.field_paths
         ]
 
         return
@@ -707,7 +759,7 @@ class SWIFTGroupMetadata(object):
             return cosmo_factor.create(current_scale_factor, cosmo_exponent)
 
         self.field_cosmologies = [
-            get_cosmo(self.metadata.handle[x]) for x in self.field_paths
+            get_cosmo(self.metadata._handle[x]) for x in self.field_paths
         ]
 
         return
@@ -725,7 +777,7 @@ class SWIFTGroupMetadata(object):
             return physical
 
         self.field_physicals = [
-            get_physical(self.metadata.handle[x]) for x in self.field_paths
+            get_physical(self.metadata._handle[x]) for x in self.field_paths
         ]
 
         return
@@ -745,7 +797,7 @@ class SWIFTGroupMetadata(object):
             return valid_transform
 
         self.field_valid_transforms = [
-            get_valid_transform(self.metadata.handle[x]) for x in self.field_paths
+            get_valid_transform(self.metadata._handle[x]) for x in self.field_paths
         ]
 
         return
@@ -817,7 +869,9 @@ class SWIFTUnits(object):
 
     """
 
-    def __init__(self, filename: Path, handle: Optional[h5py.File] = None):
+    set_filename_and_handle = _set_filename_and_handle
+
+    def __init__(self, file_name_or_handle: Path | h5py.File):
         """
         SWIFTUnits constructor
 
@@ -826,31 +880,25 @@ class SWIFTUnits(object):
         Parameters
         ----------
 
-        filename : Path
-            Name of file to read units from
-
-        handle: h5py.File, optional
-            The h5py file handle, optional. Will open a new handle with the
-            filename if required.
+        file_name_or_handle : Path or h5py.File
+            Name of file to read units from, or an open h5py file handle.
 
         """
-        self.filename = filename
-        self._handle = handle
-
+        self.set_filename_and_handle(file_name_or_handle)
         self.get_unit_dictionary()
+        if self._opened_file_handle:
+            self._handle.close()  # we're done with it after reading units
 
         return
 
-    @property
-    def handle(self):
+    def __del__(self):
         """
-        Property that gets the file handle, which can be shared
-        with other objects for efficiency reasons.
+        Cleanup: if this instance opened its own handle on the hdf5 file (i.e. didn't
+        receive an already open handle) then close it.
         """
-        if not self._handle:  # if self._handle is None, or if file closed (h5py #1363)
-            self._handle = h5py.File(self.filename, "r")
-
-        return self._handle
+        if self._opened_file_handle:
+            self._handle.close()
+        return
 
     def get_unit_dictionary(self):
         """
@@ -865,7 +913,7 @@ class SWIFTUnits(object):
             name: unyt.unyt_quantity(
                 value[0], units=metadata.unit_types.unit_names_to_unyt[name]
             )
-            for name, value in self.handle["Units"].attrs.items()
+            for name, value in self._handle["Units"].attrs.items()
         }
 
         # We now unpack this into variables.
@@ -884,10 +932,6 @@ class SWIFTUnits(object):
         self.temperature = metadata.unit_types.find_nearest_base_unit(
             self.units["Unit temperature in cgs (U_T)"], "temperature"
         )
-
-    def __del__(self):
-        if isinstance(self._handle, h5py.File):
-            self._handle.close()
 
 
 def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
@@ -912,7 +956,7 @@ def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
         The appropriate metadata object for the file type
     """
     # Old snapshots did not have this attribute, so we need to default to FullVolume
-    file_type = units.handle["Header"].attrs.get("OutputType", "FullVolume")
+    file_type = units._handle["Header"].attrs.get("OutputType", "FullVolume")
 
     if isinstance(file_type, bytes):
         file_type = file_type.decode("utf-8")
@@ -936,21 +980,22 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     masking_valid: bool = True
 
-    def __init__(self, filename, units: SWIFTUnits):
+    def __init__(self, file_name_or_handle: Path | h5py.File, units: SWIFTUnits = None):
         """
         Constructor for SWIFTMetadata object
 
         Parameters
         ----------
 
-        filename : str
-            name of file to read from
+        file_name_or_handle : Path or h5py.File
+            name of file to read from or open h5py file handle
 
         units : SWIFTUnits
             the units being used
         """
-        self.filename = filename
-        self.units = units
+        super().__init__(
+            file_name_or_handle, units
+        )  # sets self.filename, self._handle and self.units
 
         self.get_metadata()
         self.get_named_column_metadata()
@@ -961,8 +1006,8 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         self.load_groups()
         self.extract_cosmology()
 
-        # After we've loaded all this metadata, we can safely release the file handle.
-        self.handle.close()
+        if self._opened_file_handle:
+            self._handle.close()  # we're done with it after loading all this metadata
 
         return
 
@@ -973,7 +1018,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         """
 
         try:
-            data = self.handle["SubgridScheme/NamedColumns"]
+            data = self._handle["SubgridScheme/NamedColumns"]
 
             self.named_columns = {
                 k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
@@ -994,11 +1039,11 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         """
 
         try:
-            possible_keys = self.handle["SubgridScheme"].keys()
+            possible_keys = self._handle["SubgridScheme"].keys()
 
             available_keys = [key for key in possible_keys if key.endswith("Mapping")]
             available_data = [
-                self.handle[f"SubgridScheme/{key}"][:] for key in available_keys
+                self._handle[f"SubgridScheme/{key}"][:] for key in available_keys
             ]
         except KeyError:
             available_keys = []
@@ -1234,13 +1279,23 @@ class SWIFTFOFMetadata(SWIFTMetadata):
     SWIFT Metadata for a snapshot-style file containing particle
     information. For more documentation, see the main :cls:`SWIFTMetadata`
     class.
+
+    Parameters
+    ----------
+
+    file_name_or_handle : Path or h5py.File
+        name of file to read from or open h5py file handle
+
+    units : SWIFTUnits
+        the units being used
     """
 
     homogeneous_arrays: bool = True
 
-    def __init__(self, filename: str, units: SWIFTUnits):
-        self.filename = filename
-        self.units = units
+    def __init__(self, file_name_or_handle: Path | h5py.File, units: SWIFTUnits = None):
+        super().__init__(
+            file_name_or_handle, units
+        )  # sets self.filename, self._handle and self.units
 
         self.get_metadata()
         self.postprocess_header()
@@ -1249,7 +1304,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
         self.extract_cosmology()
 
         # After we've loaded all this metadata, we can safely release the file handle.
-        self.handle.close()
+        self._handle.close()
 
         return
 
@@ -1277,15 +1332,26 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
     SWIFT Metadata for a snapshot-style file containing particle
     information. For more documentation, see the main :cls:`SWIFTMetadata`
     class.
+
+    Parameters
+    ----------
+
+    file_name_or_handle : Path or h5py.File
+        name of file to read from or open h5py file handle
+
+    units : SWIFTUnits
+        the units being used
+
     """
 
     masking_valid: bool = True
     shared_cell_counts: str = "Subhalos"
     homogeneous_arrays: bool = True
 
-    def __init__(self, filename: str, units: SWIFTUnits):
-        self.filename = filename
-        self.units = units
+    def __init__(self, file_name_or_handle: Path | h5py.File, units: SWIFTUnits = None):
+        super().__init__(
+            file_name_or_handle, units
+        )  # sets self.filename, self._handle and self.units
 
         self.get_metadata()
         self.postprocess_header()
@@ -1295,7 +1361,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
         self.extract_cosmology()
 
         # After we've loaded all this metadata, we can safely release the file handle.
-        self.handle.close()
+        self._handle.close()
 
         return
 

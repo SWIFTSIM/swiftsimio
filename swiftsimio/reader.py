@@ -18,6 +18,7 @@ from swiftsimio.metadata.objects import (
     metadata_discriminator,
     SWIFTUnits,
     SWIFTGroupMetadata,
+    _set_filename_and_handle,
 )
 
 import h5py
@@ -295,7 +296,7 @@ class __SWIFTGroupDataset(object):
         for field_name, field_path in zip(
             self.group_metadata.field_names, self.group_metadata.field_paths
         ):
-            if field_path in self.metadata.handle:
+            if field_path in self.metadata._handle:
                 setattr(self, f"_{field_name}", None)
             else:
                 raise AttributeError(
@@ -558,7 +559,9 @@ class SWIFTDataset(object):
         are specified in metadata.particle_types.
     """
 
-    def __init__(self, filename, mask=None):
+    set_filename_and_handle = _set_filename_and_handle
+
+    def __init__(self, file_name_or_handle, mask=None):
         """
         Constructor for SWIFTDataset class
 
@@ -569,16 +572,27 @@ class SWIFTDataset(object):
         mask : np.ndarray, optional
             mask object containing dataset to selected particles
         """
-        self.filename = filename
-        self.mask = mask
+        self.set_filename_and_handle(file_name_or_handle)
 
         if mask is not None:
             self.mask.convert_masks_to_ranges()
+        self.mask = mask
 
         self.get_units()
         self.get_metadata()
         self.create_datasets()
+        if self._opened_file_handle:
+            self._handle.close()  # we're done with it after reading units & metadata
 
+        return
+
+    def __del__(self):
+        """
+        Cleanup: if this instance opened its own handle on the hdf5 file (i.e. didn't
+        receive an already open handle) then close it.
+        """
+        if self._opened_file_handle:
+            self._handle.close()
         return
 
     def __str__(self):
@@ -600,7 +614,7 @@ class SWIFTDataset(object):
         this function again if you mess things up.
         """
 
-        self.units = SWIFTUnits(self.filename)
+        self.units = SWIFTUnits(self._handle)
 
         return
 
@@ -612,7 +626,7 @@ class SWIFTDataset(object):
         this function again if you mess things up.
         """
 
-        self.metadata = metadata_discriminator(self.filename, self.units)
+        self.metadata = metadata_discriminator(self._handle, self.units)
 
         return
 
