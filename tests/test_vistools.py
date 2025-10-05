@@ -37,7 +37,7 @@ def test_apply_to_data_2d():
         return abs(1.0 - 2.0 * x)
 
     def horizontal_func(y):
-        return y ** 2
+        return y**2
 
     raster_at = np.linspace(0, 1, 1024)
 
