@@ -17,35 +17,9 @@ import swiftsimio.visualisation as visualisation
 import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
+from swiftsimio.metadata.objects import _get_file_handle
 
 name = "swiftsimio"
-
-
-def _get_file_handle(
-    file_name_or_handle: str | Path | h5py.File,
-) -> Tuple[h5py.File, bool]:
-    """
-    file_name_or_handle : str or Path or h5py.File
-        Name of hdf5 file to open, or an open ``h5py.File`` handle.
-
-    Returns
-    -------
-    out : 2-tuple containing an h5py.File and a bool
-        First element is the open file handle. Second element is ``True`` if this function
-        opened the file handle, ``False`` otherwise.
-
-    Raises
-    ------
-    RuntimeError
-        If a closed file handle is received.
-    """
-    if open_file_handle := not isinstance(file_name_or_handle, h5py.File):
-        handle = h5py.File(file_name_or_handle, "r")
-    else:
-        if not file_name_or_handle:  # handle is closed
-            raise RuntimeError("Got a closed h5py.File handle.")
-        handle = file_name_or_handle
-    return handle, open_file_handle
 
 
 def validate_file(filename: str):

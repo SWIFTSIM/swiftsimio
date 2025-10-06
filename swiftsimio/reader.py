@@ -269,7 +269,7 @@ class __SWIFTGroupDataset(object):
         self, file_name_or_handle: Path | h5py.File, group_metadata: SWIFTGroupMetadata
     ):
         """
-        Constructor for SWIFTGroupDatasets class
+        Constructor for SWIFTGroupDataset class
 
         This function primarily calls the generate_empty_properties
         function to ensure that defaults are set correctly.
@@ -336,7 +336,7 @@ class __SWIFTGroupDataset(object):
 class __SWIFTNamedColumnDataset(object):
     """
     Holder class for individual named datasets. Very similar to
-    __SWIFTGroupDatasets but much simpler.
+    __SWIFTGroupDataset but much simpler.
     """
 
     def __init__(self, field_path: str, named_columns: List[str], name: str):
@@ -395,9 +395,11 @@ class __SWIFTNamedColumnDataset(object):
         return self.named_columns == other.named_columns and self.name == other.name
 
 
-def generate_datasets(handle, group_metadata: SWIFTGroupMetadata, mask: SWIFTMask):
+def generate_dataset(
+    handle, group_metadata: SWIFTGroupMetadata, mask: SWIFTMask
+) -> __SWIFTGroupDataset:
     """
-    Generates a SWIFTGroupDatasets _class_ that corresponds to the
+    Generates a SWIFTGroupDataset _class_ that corresponds to the
     particle type given.
 
     We _must_ do the following _outside_ of the class itself, as one
@@ -407,7 +409,7 @@ def generate_datasets(handle, group_metadata: SWIFTGroupMetadata, mask: SWIFTMas
     Here we loop through all of the possible properties in the metadata file.
     We then use the builtin property() function and some generators to
     create setters and getters for those properties. This will allow them
-    to be accessed from outside by using SWIFTGroupDatasets.name, where
+    to be accessed from outside by using SWIFTGroupDataset.name, where
     the name is, for example, coordinates.
 
     Parameters
@@ -549,7 +551,7 @@ class SWIFTDataset(object):
 
     + SWIFTUnits,
     + SWIFTMetadata,
-    + SWIFTGroupDatasets
+    + SWIFTGroupDataset
 
     This object, in essence, completely represents a SWIFT snapshot. You can access
     the different particles as follows:
@@ -663,7 +665,7 @@ class SWIFTDataset(object):
             setattr(
                 self,
                 group_name,
-                generate_datasets(
+                generate_dataset(
                     self._handle,
                     getattr(self.metadata, f"{group_name}_properties"),
                     self.mask,

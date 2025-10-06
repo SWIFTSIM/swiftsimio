@@ -22,7 +22,34 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from typing import List
+from typing import List, Tuple
+
+
+def _get_file_handle(
+    file_name_or_handle: str | Path | h5py.File,
+) -> Tuple[h5py.File, bool]:
+    """
+    file_name_or_handle : str or Path or h5py.File
+        Name of hdf5 file to open, or an open ``h5py.File`` handle.
+
+    Returns
+    -------
+    out : 2-tuple containing an h5py.File and a bool
+        First element is the open file handle. Second element is ``True`` if this function
+        opened the file handle, ``False`` otherwise.
+
+    Raises
+    ------
+    RuntimeError
+        If a closed file handle is received.
+    """
+    if opened_file_handle := not isinstance(file_name_or_handle, h5py.File):
+        handle = h5py.File(file_name_or_handle, "r")
+    else:
+        if not file_name_or_handle:  # handle is closed
+            raise RuntimeError("Got a closed h5py.File handle.")
+        handle = file_name_or_handle
+    return handle, opened_file_handle
 
 
 def _set_filename_and_handle(self, file_name_or_handle: Path | h5py.File) -> None:
@@ -40,21 +67,11 @@ def _set_filename_and_handle(self, file_name_or_handle: Path | h5py.File) -> Non
     ----------
     file_name_or_handle : Path or h5py.File
         File name or open ``h5py.File`` handle to read from.
-
-    Raises
-    ------
-    RuntimeError
-        If a closed file handle is received.
     """
-    if open_file_handle := not isinstance(file_name_or_handle, h5py.File):
-        self._handle = h5py.File(file_name_or_handle, "r")
-        self.filename = file_name_or_handle
-    else:
-        if not file_name_or_handle:  # handle is closed
-            raise RuntimeError(f"{self.__class__} got a closed hdf5 file handle.")
-        self._handle = file_name_or_handle
-        self.filename = file_name_or_handle.filename
-    self._opened_file_handle = open_file_handle
+    handle, opened_file_handle = _get_file_handle(file_name_or_handle)
+    self._handle = handle
+    self.filename = handle.filename
+    self._opened_file_handle = opened_file_handle
     return
 
 
@@ -946,12 +963,7 @@ def metadata_discriminator(
     SWIFTMetadata
         The appropriate metadata object for the file type
     """
-    if open_file_handle := not isinstance(file_name_or_handle, h5py.File):
-        handle = h5py.File(file_name_or_handle, "r")
-    else:
-        if not file_name_or_handle:  # handle is closed
-            raise RuntimeError(f"metadata_discriminator got a closed hdf5 file handle.")
-        handle = file_name_or_handle
+    handle, opened_file_handle = _get_file_handle(file_name_or_handle)
     # Old snapshots did not have this attribute, so we need to default to FullVolume
     file_type = handle["Header"].attrs.get("OutputType", "FullVolume")
 
@@ -966,7 +978,7 @@ def metadata_discriminator(
         return SWIFTFOFMetadata(handle, units)
     else:
         raise ValueError(f"File type {file_type} not recognised.")
-    if open_file_handle:
+    if opened_file_handle:
         handle.close()
 
 
