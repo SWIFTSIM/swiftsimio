@@ -1,4 +1,6 @@
-from typing import Optional as _Optional, Union as _Union
+from typing import Optional as _Optional, Union as _Union, Tuple
+from pathlib import Path
+import h5py
 
 from .reader import *
 from .snapshot_writer import SWIFTSnapshotWriter
@@ -17,6 +19,33 @@ import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
 
 name = "swiftsimio"
+
+
+def _get_file_handle(
+    file_name_or_handle: str | Path | h5py.File,
+) -> Tuple[h5py.File, bool]:
+    """
+    file_name_or_handle : str or Path or h5py.File
+        Name of hdf5 file to open, or an open ``h5py.File`` handle.
+
+    Returns
+    -------
+    out : 2-tuple containing an h5py.File and a bool
+        First element is the open file handle. Second element is ``True`` if this function
+        opened the file handle, ``False`` otherwise.
+
+    Raises
+    ------
+    RuntimeError
+        If a closed file handle is received.
+    """
+    if open_file_handle := not isinstance(file_name_or_handle, h5py.File):
+        handle = h5py.File(file_name_or_handle, "r")
+    else:
+        if not file_name_or_handle:  # handle is closed
+            raise RuntimeError("Got a closed h5py.File handle.")
+        handle = file_name_or_handle
+    return handle, open_file_handle
 
 
 def validate_file(filename: str):
@@ -50,7 +79,9 @@ def validate_file(filename: str):
 
 
 def mask(
-    filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True
+    filename: str | Path | h5py.File,
+    spatial_only: bool = True,
+    safe_padding: _Union[bool, float] = True,
 ) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
@@ -58,8 +89,9 @@ def mask(
 
     Parameters
     ----------
-    filename : str
-        SWIFT data file to read from
+    filename : str or Path or h5py.File
+        SWIFT data file to read from. Can also be an open h5py.File handle.
+
     spatial_only : bool, optional
         Flag for only spatial masking, this is much faster but will not
         allow you to use masking on other variables (e.g. density).
@@ -92,12 +124,15 @@ def mask(
     spatial_only=False version).
     """
 
-    units = SWIFTUnits(filename)
-    metadata = metadata_discriminator(filename, units)
-
-    return SWIFTMask(
-        metadata=metadata, spatial_only=spatial_only, safe_padding=safe_padding
+    handle, opened_handle = _get_file_handle(filename)
+    units = SWIFTUnits(handle)
+    metadata = metadata_discriminator(handle, units)
+    mask = SWIFTMask(
+        handle, metadata=metadata, spatial_only=spatial_only, safe_padding=safe_padding
     )
+    if opened_handle:
+        handle.close()
+    return mask
 
 
 def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
@@ -106,13 +141,22 @@ def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
 
     Parameters
     ----------
-    filename : str
-        SWIFT snapshot file to read
+    filename : str or Path or h5py.File
+        SWIFT data file to read from. Can also be an open h5py.File handle.
+
     mask : SWIFTMask, optional
         mask to apply when reading dataset
-    """
 
-    return SWIFTDataset(filename, mask=mask)
+    Returns
+    -------
+    SWIFTDataset
+        dataset object providing an interface to the data file.
+    """
+    handle, opened_handle = _get_file_handle(filename)
+    data = SWIFTDataset(handle, mask=mask)
+    if opened_handle:
+        handle.close()
+    return data
 
 
 def load_statistics(filename: str) -> SWIFTStatisticsFile:

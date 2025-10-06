@@ -13,7 +13,7 @@ This file contains four major objects:
 
 from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor
-
+from swiftsimio.masks import SWIFTMask
 from swiftsimio.metadata.objects import (
     metadata_discriminator,
     SWIFTUnits,
@@ -26,6 +26,7 @@ import unyt
 import numpy as np
 
 from typing import Union, List
+from pathlib import Path
 
 
 def generate_getter(
@@ -259,7 +260,14 @@ class __SWIFTGroupDataset(object):
         creates empty properties to be accessed through setter and getter functions
     """
 
-    def __init__(self, group_metadata: SWIFTGroupMetadata):
+    filename: Path
+    _handle: h5py.File
+    _opened_file_handle: bool
+    set_filename_and_handle = _set_filename_and_handle
+
+    def __init__(
+        self, file_name_or_handle: Path | h5py.File, group_metadata: SWIFTGroupMetadata
+    ):
         """
         Constructor for SWIFTGroupDatasets class
 
@@ -268,10 +276,13 @@ class __SWIFTGroupDataset(object):
 
         Parameters
         ----------
+        file_name_or_handle: Path or h5py.File
+            File name or open ``h5py.File`` handle to read from.
+
         group_metadata : SWIFTGroupMetadata
             the metadata used to generate empty properties
         """
-        self.filename = group_metadata.filename
+        self.set_filename_and_handle(file_name_or_handle)
         self.units = group_metadata.units
 
         self.group = group_metadata.group
@@ -281,6 +292,8 @@ class __SWIFTGroupDataset(object):
         self.metadata = group_metadata.metadata
 
         self.generate_empty_properties()
+        if self._opened_file_handle:
+            self._handle.close()
 
         return
 
@@ -296,13 +309,13 @@ class __SWIFTGroupDataset(object):
         for field_name, field_path in zip(
             self.group_metadata.field_names, self.group_metadata.field_paths
         ):
-            if field_path in self.metadata._handle:
+            if field_path in self._handle:
                 setattr(self, f"_{field_name}", None)
             else:
                 raise AttributeError(
                     (
                         f"Cannot find attribute {field_path} in file although"
-                        "it was present when searching initially."
+                        " it was present when searching initially."
                     )
                 )
 
@@ -382,7 +395,7 @@ class __SWIFTNamedColumnDataset(object):
         return self.named_columns == other.named_columns and self.name == other.name
 
 
-def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
+def generate_datasets(handle, group_metadata: SWIFTGroupMetadata, mask: SWIFTMask):
     """
     Generates a SWIFTGroupDatasets _class_ that corresponds to the
     particle type given.
@@ -399,6 +412,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
 
     Parameters
     ----------
+    handle : h5py.File
+        file handle to read metadata
     group_metadata : SWIFTGroupMetadata
         the metadata for the group
     mask : SWIFTMask
@@ -523,7 +538,7 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     ThisDataset = type(
         f"{group_nice_name}Dataset", this_dataset_bases, this_dataset_dict
     )
-    empty_dataset = ThisDataset(group_metadata)
+    empty_dataset = ThisDataset(handle, group_metadata)
 
     return empty_dataset
 
@@ -559,40 +574,36 @@ class SWIFTDataset(object):
         are specified in metadata.particle_types.
     """
 
+    filename: Path
+    _handle: h5py.File
+    _opened_file_handle: bool
     set_filename_and_handle = _set_filename_and_handle
 
-    def __init__(self, file_name_or_handle, mask=None):
+    def __init__(
+        self, file_name_or_handle: Path | h5py.File, mask: SWIFTMask = None
+    ) -> None:
         """
         Constructor for SWIFTDataset class
 
         Parameters
         ----------
-        filename : str
-            name of file containing snapshot
+        file_name_or_handle : Path | h5py.File
+            File name or open ``h5py.File`` handle to read from.
         mask : np.ndarray, optional
             mask object containing dataset to selected particles
         """
         self.set_filename_and_handle(file_name_or_handle)
 
+        self.mask = mask
         if mask is not None:
             self.mask.convert_masks_to_ranges()
-        self.mask = mask
 
         self.get_units()
         self.get_metadata()
         self.create_datasets()
         if self._opened_file_handle:
-            self._handle.close()  # we're done with it after reading units & metadata
+            self._handle.close()  # we're done with it after reading metadata
 
-        return
-
-    def __del__(self):
-        """
-        Cleanup: if this instance opened its own handle on the hdf5 file (i.e. didn't
-        receive an already open handle) then close it.
-        """
-        if self._opened_file_handle:
-            self._handle.close()
         return
 
     def __str__(self):
@@ -626,7 +637,14 @@ class SWIFTDataset(object):
         this function again if you mess things up.
         """
 
-        self.metadata = metadata_discriminator(self._handle, self.units)
+        if self.mask is not None:
+            # we can save ourselves the trouble of reading it again
+            assert (
+                self.filename == self.mask.filename
+            ), "Mask is for {self.mask.filename} but dataset is for {self.filename}."
+            self.metadata = self.mask.metadata
+        else:
+            self.metadata = metadata_discriminator(self._handle, self.units)
 
         return
 
@@ -646,7 +664,9 @@ class SWIFTDataset(object):
                 self,
                 group_name,
                 generate_datasets(
-                    getattr(self.metadata, f"{group_name}_properties"), self.mask
+                    self._handle,
+                    getattr(self.metadata, f"{group_name}_properties"),
+                    self.mask,
                 ),
             )
 

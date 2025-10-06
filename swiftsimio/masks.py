@@ -7,8 +7,9 @@ import warnings
 import h5py
 import numpy as np
 from typing import Union
+from pathlib import Path
 
-from swiftsimio.metadata.objects import SWIFTMetadata
+from swiftsimio.metadata.objects import SWIFTMetadata, _set_filename_and_handle
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 
@@ -24,10 +25,16 @@ class SWIFTMask(object):
 
     group_mapping: dict | None = None
     group_size_mapping: dict | None = None
+    filename: Path
+    _handle: h5py.File
+    _opened_file_handle: bool
+    set_filename_and_handle = _set_filename_and_handle
 
     def __init__(
         self,
+        file_name_or_handle: Path | h5py.File,
         metadata: SWIFTMetadata,
+        *,
         spatial_only=True,
         safe_padding: Union[bool, float] = _DEFAULT_SAFE_PADDING,
     ):
@@ -41,6 +48,9 @@ class SWIFTMask(object):
 
         Parameters
         ----------
+        file_name_or_handle : Path or h5py.File
+            File name or open ``h5py.File`` handle to read from.
+
         metadata : SWIFTMetadata
             Metadata specifying masking for reading of snapshots
 
@@ -63,7 +73,7 @@ class SWIFTMask(object):
             See https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
             details.
         """
-
+        self.set_filename_and_handle(file_name_or_handle)
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
@@ -89,6 +99,8 @@ class SWIFTMask(object):
 
         if not spatial_only:
             self._generate_empty_masks()
+        if self._opened_file_handle:
+            self._handle.close()
 
     def _generate_mapping_dictionary(self) -> dict[str, str]:
         """
@@ -206,7 +218,7 @@ class SWIFTMask(object):
         self.minpositions = {}
         self.maxpositions = {}
 
-        cell_handle = self.units.handle["Cells"]
+        cell_handle = self._handle["Cells"]
         count_handle = cell_handle["Counts"]
         metadata_handle = cell_handle["Meta-data"]
         centers_handle = cell_handle["Centres"]
@@ -419,11 +431,11 @@ class SWIFTMask(object):
 
         # Load in the relevant data.
 
-        with h5py.File(self.metadata.filename, "r") as file:
+        with h5py.File(self.metadata.filename, "r") as h5file:
             # Surprisingly this is faster than just using the boolean
             # indexing because h5py has slow indexing routines.
             data = cosmo_array(
-                np.take(file[handle], np.where(current_mask)[0], axis=0),
+                np.take(h5file[handle], np.where(current_mask)[0], axis=0),
                 units=unit,
                 comoving=not physical,
                 cosmo_factor=cosmology_factor,
