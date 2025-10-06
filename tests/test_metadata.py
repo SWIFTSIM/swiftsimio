@@ -7,6 +7,7 @@ import h5py
 from swiftsimio import metadata, load, mask, SWIFTUnits, cosmo_array
 from swiftsimio.metadata.objects import SWIFTSnapshotMetadata
 
+
 def _is_closed_hdf5_file(handle):
     return isinstance(handle, h5py.File) and not handle
 
@@ -50,9 +51,11 @@ def test_file_handle_cleanup(cosmological_volume_only_single):
 
     This tests that the file handle is released by the time constructing a SWIFTUnits,
     SWIFTMetadata or SWIFTDataset object is finished.
-    """    
+    """
     units = SWIFTUnits(cosmological_volume_only_single)
-    assert _is_closed_hdf5_file(units._handle)  # asserts True if file open, False if closed
+    assert _is_closed_hdf5_file(
+        units._handle
+    )  # asserts True if file open, False if closed
 
     metadata = SWIFTSnapshotMetadata(cosmological_volume_only_single)
     assert _is_closed_hdf5_file(metadata._handle)
@@ -87,8 +90,8 @@ def test_mask_and_dataset_share_metadata(cosmological_volume_only_single):
     # check that this wasn't trivial for good measure
     unmasked_data = load(cosmological_volume_only_single)
     assert unmasked_data.metadata is not m.metadata
-    
-    
+
+
 def test_file_handle_shared(cosmological_volume_only_single):
     """
     Check that file handles are shared across objects.
@@ -135,5 +138,3 @@ def test_file_handle_shared_when_masked(cosmological_volume_only_single):
         assert data.metadata.units._handle is not f
         assert data.gas._handle is f
         assert data.gas.metadata._handle is not f
-
-
