@@ -627,7 +627,14 @@ class SWIFTDataset(object):
         this function again if you mess things up.
         """
 
-        self.units = SWIFTUnits(self._handle)
+        if self.mask is not None:
+            # we can save ourselves the trouble of reading it again
+            assert (
+                self.filename == self.mask.filename
+            ), "Mask is for {self.mask.filename} but dataset is for {self.filename}."
+            self.units = self.mask.units
+        else:
+            self.units = SWIFTUnits(self._handle)
 
         return
 
