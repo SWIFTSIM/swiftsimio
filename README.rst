@@ -39,7 +39,8 @@ system such as :mod:`yt`; however these either are unsatisfactory
 (e.g. a lack of unit information in reading HDF5), or too complex for
 most use-cases. :mod:`swiftsimio` provides an object-oriented API to
 dynamically read data from SWIFT outputs, including FOF and SOAP
-catalogues.
+catalogues. An extension module for :mod:`swiftsimio` for using
+catalogues and snapshots in tandem is available: :mod:`swiftgalaxy`.
 
 Getting set up with :mod:`swiftsimio` is easy; it (by design) has very few
 requirements. There are a number of optional packages that you can install
