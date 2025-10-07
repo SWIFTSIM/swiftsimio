@@ -1,5 +1,4 @@
 # Development
-numba
 pytest
 black
 matplotlib

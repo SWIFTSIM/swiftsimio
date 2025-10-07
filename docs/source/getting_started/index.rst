@@ -18,9 +18,8 @@ are detailed below.
 Requirements
 ------------
 
-This requires ``python`` ``v3.8.0`` or higher. Unfortunately it is not
+![Python version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSWIFTSIM%2Fswiftsimio%2Fmaster%2Fpyproject.toml) is required. Unfortunately it is not
 possible to support :mod:`swiftsimio` on versions of python lower than this.
-It is important that you upgrade if you are still a ``python2`` user.
 
 Python packages
 ^^^^^^^^^^^^^^^
@@ -28,12 +27,13 @@ Python packages
 + ``numpy``, required for the core numerical routines.
 + ``h5py``, required to read data from the SWIFT HDF5 output files.
 + ``unyt``, required for symbolic unit calculations (depends on ``sympy``).
++ ``astropy``, required to represent cosmology information.
++ ``numba``, highly recommended should you wish to use the in-built visualisation
+  tools.
 
 Optional packages
 ^^^^^^^^^^^^^^^^^
 
-+ ``numba``, highly recommended should you wish to use the in-built visualisation
-  tools.
 + ``scipy``, required if you wish to generate smoothing lengths for particle types
   that do not store this variable in the snapshots (e.g. dark matter)
 + ``tqdm``, required for progress bars for some long-running tasks. If not installed

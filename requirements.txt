@@ -1,5 +1,5 @@
 astropy
-numpy
 h5py
 numba
+numpy
 unyt

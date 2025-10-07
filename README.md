@@ -1,9 +1,13 @@
 SWIFTsimIO
 ==========
 
+![Python version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSWIFTSIM%2Fswiftsimio%2Fmaster%2Fpyproject.toml)
+[![PyPI version](https://img.shields.io/pypi/v/swiftsimio)](https://pypi.org/project/swiftsimio)
+[![Proect Status: Active - The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 ![Build Status](https://github.com/swiftsim/swiftsimio/actions/workflows/pytest.yml/badge.svg)
 [![Documentation Status](https://readthedocs.org/projects/swiftsimio/badge/?version=latest)](https://swiftsimio.readthedocs.io/en/latest/?badge=latest)
 [![JOSS Status](https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331/status.svg)](https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331)
+[![Code style - Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
 The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used
@@ -24,9 +28,8 @@ to make the experience better and these are recommended.
 Requirements
 ------------
 
-This requires `python` `v3.10.0` or higher. Unfortunately it is not
+![Python version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSWIFTSIM%2Fswiftsimio%2Fmaster%2Fpyproject.toml) is required. Unfortunately it is not
 possible to support `swiftsimio` on versions of python lower than this.
-It is important that you upgrade if you are still a `python2` user.
 
 ### Python packages
 
@@ -34,12 +37,13 @@ It is important that you upgrade if you are still a `python2` user.
 + `numpy`, required for the core numerical routines.
 + `h5py`, required to read data from the SWIFT HDF5 output files.
 + `unyt`, required for symbolic unit calculations (depends on sympy`).
++ `astropy`, required to represent cosmology information.
++ `numba`, highly recommended should you wish to use the in-built visualisation
+  tools.
 
 ### Optional packages
 
 
-+ `numba`, highly recommended should you wish to use the in-built visualisation
-  tools.
 + `scipy`, required if you wish to generate smoothing lengths for particle types
   that do not store this variable in the snapshots (e.g. dark matter)
 + `tqdm`, required for progress bars for some long-running tasks. If not installed
