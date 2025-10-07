@@ -28,7 +28,7 @@ authors = [
     { name="Josh Borrow", email="josh@joshborrow.com" },
 ]
 description="SWIFTsim (swiftsim.com) i/o routines for python."
-readme = "README.md"
+readme = "README.rst"
 requires-python = ">3.10.0"
 classifiers = [
     "Programming Language :: Python :: 3.10",
