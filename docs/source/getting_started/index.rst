@@ -12,6 +12,8 @@ Requirements
    :start-after: REQS_START_LABEL
    :end-before: REQS_END_LABEL
 
+.. |Python version| image:: https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSWIFTSIM%2Fswiftsimio%2Fmaster%2Fpyproject.toml
+
 Installing
 ----------
 
