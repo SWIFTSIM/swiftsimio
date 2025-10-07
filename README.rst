@@ -26,15 +26,20 @@ SWIFTsimIO
 
 .. INTRO_START_LABEL
 
-The SWIFT_ astrophysical simulation code is used
-widely. There exists many ways of reading the data from SWIFT, which outputs
-HDF5 files. These range from reading directly using :mod:`h5py` to using a complex
-system such as :mod:`yt`; however these either are unsatisfactory (e.g. a lack of
-unit information in reading HDF5), or too complex for most use-cases. 
-:mod:`swiftsimio` provides an object-oriented API to dynamically read data
-from SWIFT outputs, including FOF and SOAP catalogues.
+:mod:`swiftsimio` is a toolkit for reading data produced by the SWIFT_
+astrophysics simulation code. It is used to ensure that all data have a
+symbolic unit attached, and can be used for visualisation. Another key
+feature is the use of the cell metadata in ``SWIFT`` snapshots to enable
+efficient reading of sub-regions.
 
-Full documentation is available at [ReadTheDocs](http://swiftsimio.readthedocs.org).
+The SWIFT_ astrophysical simulation code is used widely. There exists
+many ways of reading the data from SWIFT, which outputs HDF5 files.
+These range from reading directly using :mod:`h5py` to using a complex
+system such as :mod:`yt`; however these either are unsatisfactory
+(e.g. a lack of unit information in reading HDF5), or too complex for
+most use-cases. :mod:`swiftsimio` provides an object-oriented API to
+dynamically read data from SWIFT outputs, including FOF and SOAP
+catalogues.
 
 Getting set up with :mod:`swiftsimio` is easy; it (by design) has very few
 requirements. There are a number of optional packages that you can install
@@ -44,7 +49,8 @@ to make the experience better and these are recommended.
 
 .. INTRO_END_LABEL
 
-
+Full documentation is available at [ReadTheDocs](http://swiftsimio.readthedocs.org).
+   
 Requirements
 ------------
 
@@ -164,7 +170,7 @@ ADS cannot track conference proceedings well.
 
 .. code-block:: bibtex
 
-   @article{Borrow2021
+   @article{Borrow2021,
      title={Projecting SPH Particles in Adaptive Environments}, 
      author={Josh Borrow and Ashley J. Kelly},
      year={2021},
