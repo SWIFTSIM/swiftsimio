@@ -340,12 +340,7 @@ def test_reading_empty_dataset(cosmological_volume):
     # masked case
     m = mask(output_filename)
     m.constrain_spatial(
-        cosmo_array(
-            [
-                np.zeros_like(m.metadata.boxsize),
-                0.5 * m.metadata.boxsize,
-            ]
-        ).T
+        cosmo_array([np.zeros_like(m.metadata.boxsize), 0.5 * m.metadata.boxsize]).T
     )
     masked_data = load(output_filename, mask=m)
     assert masked_data.gas.masses.shape == (0,)
