@@ -162,12 +162,6 @@ def generate_getter(
                             ),
                         )
                     else:
-                        # we explicitly reshape to handle the zero-length case
-                        output_shape = (
-                            handle[field][:, columns].shape
-                            if handle[field].ndim > 1
-                            else handle[field].shape
-                        )
                         setattr(
                             self,
                             f"_{name}",
@@ -178,7 +172,7 @@ def generate_getter(
                                     handle[field][:, columns]
                                     if handle[field].ndim > 1
                                     else handle[field][:]
-                                ).reshape(output_shape),
+                                ),
                                 unit,
                                 cosmo_factor=cosmo_factor,
                                 name=description,

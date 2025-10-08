@@ -325,9 +325,36 @@ def test_reading_empty_dataset(cosmological_volume):
     snapshot but no particles exist yet). Here we make a snapshot file with Type1
     present but empty.
     """
+    # unmasked case
     output_filename = "zero_particle.hdf5"
     create_n_particle_dataset(cosmological_volume, output_filename, num_parts=0)
     data = load(output_filename)
     assert data.gas.masses.shape == (0,)
     assert data.gas.coordinates.shape == (0, 3)
+    try:
+        assert data.gas.element_mass_fractions.hydrogen.shape == (0,)
+    except AttributeError:
+        # in the LegacyCosmologicalVolume case
+        assert data.gas.element_mass_fractions.shape == (0, 9)
+
+    # masked case
+    m = mask(output_filename)
+    m.constrain_spatial(
+        cosmo_array(
+            [
+                np.zeros_like(m.metadata.boxsize),
+                0.5 * m.metadata.boxsize,
+            ]
+        ).T
+    )
+    masked_data = load(output_filename, mask=m)
+    assert masked_data.gas.masses.shape == (0,)
+    assert masked_data.gas.coordinates.shape == (0, 3)
+    try:
+        assert masked_data.gas.element_mass_fractions.hydrogen.shape == (0,)
+    except AttributeError:
+        # in the LegacyCosmologicalVolume case
+        assert masked_data.gas.element_mass_fractions.shape == (0, 9)
+
+    # clean up
     remove(output_filename)
