@@ -41,6 +41,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
+    "sphinx_design",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -108,4 +109,5 @@ intersphinx_mapping = dict(
     scipy=("https://docs.scipy.org/doc/scipy/", None),
     swiftgalaxy=("https://swiftsimio.readthedocs.io/en/latest/", None),
     velociraptor=("https://velociraptor-python.readthedocs.io/en/latest/", None),
+    astropy=("https://docs.astropy.org/en/stable/", None),
 )
