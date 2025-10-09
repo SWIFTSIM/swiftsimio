@@ -3,11 +3,11 @@ Contains helper functions for the test routines.
 """
 
 import pytest
+import numpy as np
 import h5py
 import unyt as u
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
-from numpy import mean, zeros_like
 
 
 def _mask_without_warning(fname, **kwargs):
@@ -44,10 +44,18 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
     num_parts: int
         number of particles to create (default: 2)
     """
-    # Create a dummy mask in order to write metadata
-    data_mask = _mask_without_warning(filename)
+    # Create a mask:
+    # - in order to write metadata
+    # - to find the relevant cell in the cell metadata
+    data_mask = _mask_without_warning(filename, safe_padding=False)
     boxsize = data_mask.metadata.boxsize
-    region = [[zeros_like(b), b] for b in boxsize]
+    region = cosmo_array(
+        [[0.999, 1.001]] * 3,
+        data_mask.metadata.units.length,
+        comoving=True,
+        scale_factor=data_mask.metadata.a,
+        scale_exponent=1,
+    )
     data_mask.constrain_spatial(region)
 
     # Write the metadata
@@ -61,7 +69,7 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
         [[1, 1, 1]] * num_parts, data_mask.metadata.units.length
     )
     particle_masses = cosmo_array([1] * num_parts, data_mask.metadata.units.mass)
-    mean_h = mean(infile["/PartType0/SmoothingLengths"])
+    mean_h = np.mean(infile["/PartType0/SmoothingLengths"])
     particle_h = cosmo_array([mean_h] * num_parts, data_mask.metadata.units.length)
     particle_ids = list(range(1, num_parts + 1))
     particle_element_mass_fractions = cosmo_array(
@@ -101,13 +109,10 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
         element_mass_fractions.attrs.create(name, value)
 
     # Get rid of all traces of DM
-    outfile["/Cells/Counts/PartType0"][...] = 0
     del outfile["/Cells/Counts/PartType1"]
     if "Offsets" in outfile["/Cells"].keys():
-        outfile["/Cells/Offsets/PartType0"][...] = 0
         del outfile["/Cells/Offsets/PartType1"]
     if "OffsetsInFile" in outfile["/Cells"].keys():
-        outfile["/Cells/OffsetsInFile/PartType0"][...] = 0
         del outfile["/Cells/OffsetsInFile/PartType1"]
     nparts_total = [num_parts, 0, 0, 0, 0, 0, 0]
     nparts_this_file = [num_parts, 0, 0, 0, 0, 0, 0]
@@ -118,11 +123,19 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
 
     # re-write the cell metadata
     # currently only valid for n=0!!!
-    outfile["/Cells/Counts/PartType0"][...] = 0
+    outfile["/Cells/Counts/PartType0"][...] = np.where(
+        data_mask.cell_mask["gas"], num_parts, 0
+    )
     if "Offsets" in outfile["/Cells"].keys():
         outfile["/Cells/Offsets/PartType0"][...] = 0
+        outfile["/Cells/Offsets/PartType0"][
+            np.argwhere(data_mask.cell_mask["gas"]).squeeze() + 1 :
+        ] = num_parts
     if "OffsetsInFile" in outfile["/Cells"].keys():
         outfile["/Cells/OffsetsInFile/PartType0"][...] = 0
+        outfile["/Cells/OffsetsInFile/PartType0"][
+            np.argwhere(data_mask.cell_mask["gas"]).squeeze() + 1 :
+        ] = num_parts
 
     # Tidy up
     infile.close()
