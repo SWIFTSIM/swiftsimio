@@ -122,7 +122,6 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
     outfile["/Header"].attrs["CanHaveTypes"] = can_have_types
 
     # re-write the cell metadata
-    # currently only valid for n=0!!!
     outfile["/Cells/Counts/PartType0"][...] = np.where(
         data_mask.cell_mask["gas"], num_parts, 0
     )
