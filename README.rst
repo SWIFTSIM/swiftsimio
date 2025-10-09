@@ -57,7 +57,7 @@ Requirements
 
 .. REQS_START_LABEL
 
-![Python version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSWIFTSIM%2Fswiftsimio%2Fmaster%2Fpyproject.toml) is required. Unfortunately it is not
+|Python version| is required. Unfortunately it is not
 possible to support :mod:`swiftsimio` on versions of python lower than this.
 
 Python packages
