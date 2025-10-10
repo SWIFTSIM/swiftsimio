@@ -24,7 +24,7 @@ def getfunc(fname):
     return func
 
 
-def cosmo_obect(x, unit=u.Mpc):
+def cosmo_object(x, unit=u.Mpc):
     """
     Helper for our tests: turn an array into a cosmo_array.
     """
@@ -120,7 +120,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             np.ones(5),
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            cosmo_factor=cosmo_factor(a**1, 1.0),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -145,7 +145,7 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [1, 1, 1, 1, 1],
             units=u.Mpc,
-            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            cosmo_factor=cosmo_factor(a**1, 1.0),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -168,7 +168,7 @@ class TestCosmoArrayInit:
         # also with a cosmo_factor argument instead of scale_factor & scale_exponent
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=u.Mpc),
-            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            cosmo_factor=cosmo_factor(a**1, 1.0),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -194,7 +194,7 @@ class TestCosmoArrayInit:
         # also with a cosmo_factor argument instead of scale_factor & scale_exponent
         arr = cosmo_array(
             [u.unyt_array(1, units=u.Mpc) for _ in range(5)],
-            cosmo_factor=cosmo_factor(a ** 1, 1.0),
+            cosmo_factor=cosmo_factor(a**1, 1.0),
             comoving=False,
         )
         assert hasattr(arr, "cosmo_factor")
@@ -218,7 +218,7 @@ class TestCosmoArrayInit:
         )
         assert isinstance(arr, cosmo_array)
         assert hasattr(arr, "cosmo_factor") and arr.cosmo_factor == cosmo_factor(
-            a ** 1, 1
+            a**1, 1
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
         # also with a cosmo_factor argument instead of scale_factor & scale_exponent
@@ -228,14 +228,14 @@ class TestCosmoArrayInit:
                     [1],
                     units=u.Mpc,
                     comoving=False,
-                    cosmo_factor=cosmo_factor(a ** 1, 1.0),
+                    cosmo_factor=cosmo_factor(a**1, 1.0),
                 )
                 for _ in range(5)
             ]
         )
         assert isinstance(arr, cosmo_array)
         assert hasattr(arr, "cosmo_factor") and arr.cosmo_factor == cosmo_factor(
-            a ** 1, 1
+            a**1, 1
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
 
@@ -329,281 +329,291 @@ class TestNumpyFunctions:
 
         functions_to_check = {
             # FUNCTIONS UNYT HANDLES EXPLICITLY:
-            "array2string": (cosmo_obect(np.arange(3)),),
-            "dot": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "vdot": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "inner": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "outer": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "kron": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "histogram_bin_edges": (cosmo_obect(np.arange(3)),),
-            "linalg.inv": (cosmo_obect(np.eye(3)),),
-            "linalg.tensorinv": (cosmo_obect(np.eye(9).reshape((3, 3, 3, 3))),),
-            "linalg.pinv": (cosmo_obect(np.eye(3)),),
-            "linalg.svd": (cosmo_obect(np.eye(3)),),
-            "histogram": (cosmo_obect(np.arange(3)),),
-            "histogram2d": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "histogramdd": (cosmo_obect(np.arange(3)).reshape((1, 3)),),
-            "concatenate": (cosmo_obect(np.eye(3)),),
-            "cross": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "intersect1d": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "union1d": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "linalg.norm": (cosmo_obect(np.arange(3)),),
-            "vstack": (cosmo_obect(np.arange(3)),),
-            "hstack": (cosmo_obect(np.arange(3)),),
-            "dstack": (cosmo_obect(np.arange(3)),),
-            "column_stack": (cosmo_obect(np.arange(3)),),
-            "stack": (cosmo_obect(np.arange(3)),),
-            "around": (cosmo_obect(np.arange(3)),),
-            "block": ([[cosmo_obect(np.arange(3))], [cosmo_obect(np.arange(3))]],),
-            "fft.fft": (cosmo_obect(np.arange(3)),),
-            "fft.fft2": (cosmo_obect(np.eye(3)),),
-            "fft.fftn": (cosmo_obect(np.arange(3)),),
-            "fft.hfft": (cosmo_obect(np.arange(3)),),
-            "fft.rfft": (cosmo_obect(np.arange(3)),),
-            "fft.rfft2": (cosmo_obect(np.eye(3)),),
-            "fft.rfftn": (cosmo_obect(np.arange(3)),),
-            "fft.ifft": (cosmo_obect(np.arange(3)),),
-            "fft.ifft2": (cosmo_obect(np.eye(3)),),
-            "fft.ifftn": (cosmo_obect(np.arange(3)),),
-            "fft.ihfft": (cosmo_obect(np.arange(3)),),
-            "fft.irfft": (cosmo_obect(np.arange(3)),),
-            "fft.irfft2": (cosmo_obect(np.eye(3)),),
-            "fft.irfftn": (cosmo_obect(np.arange(3)),),
-            "fft.fftshift": (cosmo_obect(np.arange(3)),),
-            "fft.ifftshift": (cosmo_obect(np.arange(3)),),
-            "sort_complex": (cosmo_obect(np.arange(3)),),
-            "isclose": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "allclose": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "array_equal": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "array_equiv": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
+            "array2string": (cosmo_object(np.arange(3)),),
+            "dot": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "vdot": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "inner": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "outer": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "kron": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "histogram_bin_edges": (cosmo_object(np.arange(3)),),
+            "linalg.inv": (cosmo_object(np.eye(3)),),
+            "linalg.tensorinv": (cosmo_object(np.eye(9).reshape((3, 3, 3, 3))),),
+            "linalg.pinv": (cosmo_object(np.eye(3)),),
+            "linalg.svd": (cosmo_object(np.eye(3)),),
+            "histogram": (cosmo_object(np.arange(3)),),
+            "histogram2d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "histogramdd": (cosmo_object(np.arange(3)).reshape((1, 3)),),
+            "concatenate": (cosmo_object(np.eye(3)),),
+            "cross": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "intersect1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "union1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "linalg.norm": (cosmo_object(np.arange(3)),),
+            "vstack": (cosmo_object(np.arange(3)),),
+            "hstack": (cosmo_object(np.arange(3)),),
+            "dstack": (cosmo_object(np.arange(3)),),
+            "column_stack": (cosmo_object(np.arange(3)),),
+            "stack": (cosmo_object(np.arange(3)),),
+            "around": (cosmo_object(np.arange(3)),),
+            "block": ([[cosmo_object(np.arange(3))], [cosmo_object(np.arange(3))]],),
+            "fft.fft": (cosmo_object(np.arange(3)),),
+            "fft.fft2": (cosmo_object(np.eye(3)),),
+            "fft.fftn": (cosmo_object(np.arange(3)),),
+            "fft.hfft": (cosmo_object(np.arange(3)),),
+            "fft.rfft": (cosmo_object(np.arange(3)),),
+            "fft.rfft2": (cosmo_object(np.eye(3)),),
+            "fft.rfftn": (cosmo_object(np.arange(3)),),
+            "fft.ifft": (cosmo_object(np.arange(3)),),
+            "fft.ifft2": (cosmo_object(np.eye(3)),),
+            "fft.ifftn": (cosmo_object(np.arange(3)),),
+            "fft.ihfft": (cosmo_object(np.arange(3)),),
+            "fft.irfft": (cosmo_object(np.arange(3)),),
+            "fft.irfft2": (cosmo_object(np.eye(3)),),
+            "fft.irfftn": (cosmo_object(np.arange(3)),),
+            "fft.fftshift": (cosmo_object(np.arange(3)),),
+            "fft.ifftshift": (cosmo_object(np.arange(3)),),
+            "sort_complex": (cosmo_object(np.arange(3)),),
+            "isclose": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "allclose": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "array_equal": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "array_equiv": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
             "linspace": (cq(1), cq(2)),
             "logspace": (cq(1, unit=u.dimensionless), cq(2, unit=u.dimensionless)),
             "geomspace": (cq(1), cq(1)),
-            "copyto": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "prod": (cosmo_obect(np.arange(3)),),
-            "var": (cosmo_obect(np.arange(3)),),
-            "trace": (cosmo_obect(np.eye(3)),),
-            "percentile": (cosmo_obect(np.arange(3)), 30),
-            "quantile": (cosmo_obect(np.arange(3)), 0.3),
-            "nanpercentile": (cosmo_obect(np.arange(3)), 30),
-            "nanquantile": (cosmo_obect(np.arange(3)), 0.3),
-            "linalg.det": (cosmo_obect(np.eye(3)),),
-            "diff": (cosmo_obect(np.arange(3)),),
-            "ediff1d": (cosmo_obect(np.arange(3)),),
-            "ptp": (cosmo_obect(np.arange(3)),),
-            "cumprod": (cosmo_obect(np.arange(3)),),
-            "pad": (cosmo_obect(np.arange(3)), 3),
-            "choose": (np.arange(3), cosmo_obect(np.eye(3))),
-            "insert": (cosmo_obect(np.arange(3)), 1, cq(1)),
-            "linalg.lstsq": (cosmo_obect(np.eye(3)), cosmo_obect(np.eye(3))),
-            "linalg.solve": (cosmo_obect(np.eye(3)), cosmo_obect(np.eye(3))),
+            "copyto": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "prod": (cosmo_object(np.arange(3)),),
+            "var": (cosmo_object(np.arange(3)),),
+            "trace": (cosmo_object(np.eye(3)),),
+            "percentile": (cosmo_object(np.arange(3)), 30),
+            "quantile": (cosmo_object(np.arange(3)), 0.3),
+            "nanpercentile": (cosmo_object(np.arange(3)), 30),
+            "nanquantile": (cosmo_object(np.arange(3)), 0.3),
+            "linalg.det": (cosmo_object(np.eye(3)),),
+            "diff": (cosmo_object(np.arange(3)),),
+            "ediff1d": (cosmo_object(np.arange(3)),),
+            "ptp": (cosmo_object(np.arange(3)),),
+            "cumprod": (cosmo_object(np.arange(3)),),
+            "pad": (cosmo_object(np.arange(3)), 3),
+            "choose": (np.arange(3), cosmo_object(np.eye(3))),
+            "insert": (cosmo_object(np.arange(3)), 1, cq(1)),
+            "linalg.lstsq": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
+            "linalg.solve": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
             "linalg.tensorsolve": (
-                cosmo_obect(np.eye(24).reshape((6, 4, 2, 3, 4))),
-                cosmo_obect(np.ones((6, 4))),
+                cosmo_object(np.eye(24).reshape((6, 4, 2, 3, 4))),
+                cosmo_object(np.ones((6, 4))),
             ),
-            "linalg.eig": (cosmo_obect(np.eye(3)),),
-            "linalg.eigh": (cosmo_obect(np.eye(3)),),
-            "linalg.eigvals": (cosmo_obect(np.eye(3)),),
-            "linalg.eigvalsh": (cosmo_obect(np.eye(3)),),
-            "savetxt": (savetxt_file, cosmo_obect(np.arange(3))),
-            "fill_diagonal": (cosmo_obect(np.eye(3)), cosmo_obect(np.arange(3))),
-            "apply_over_axes": (lambda x, axis: x, cosmo_obect(np.eye(3)), (0, 1)),
-            "isin": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
+            "linalg.eig": (cosmo_object(np.eye(3)),),
+            "linalg.eigh": (cosmo_object(np.eye(3)),),
+            "linalg.eigvals": (cosmo_object(np.eye(3)),),
+            "linalg.eigvalsh": (cosmo_object(np.eye(3)),),
+            "savetxt": (savetxt_file, cosmo_object(np.arange(3))),
+            "fill_diagonal": (cosmo_object(np.eye(3)), cosmo_object(np.arange(3))),
+            "apply_over_axes": (lambda x, axis: x, cosmo_object(np.eye(3)), (0, 1)),
+            "isin": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
             "place": (
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
                 np.arange(3) > 0,
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
             ),
-            "put": (cosmo_obect(np.arange(3)), np.arange(3), cosmo_obect(np.arange(3))),
-            "put_along_axis": (
-                cosmo_obect(np.arange(3)),
+            "put": (
+                cosmo_object(np.arange(3)),
                 np.arange(3),
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
+            ),
+            "put_along_axis": (
+                cosmo_object(np.arange(3)),
+                np.arange(3),
+                cosmo_object(np.arange(3)),
                 0,
             ),
             "putmask": (
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
                 np.arange(3),
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
             ),
-            "searchsorted": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
+            "searchsorted": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
             "select": (
                 [np.arange(3) < 1, np.arange(3) > 1],
-                [cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))],
+                [cosmo_object(np.arange(3)), cosmo_object(np.arange(3))],
                 cq(1),
             ),
-            "setdiff1d": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3, 6))),
-            "sinc": (cosmo_obect(np.arange(3)),),
-            "clip": (cosmo_obect(np.arange(3)), cq(1), cq(2)),
+            "setdiff1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3, 6))),
+            "sinc": (cosmo_object(np.arange(3)),),
+            "clip": (cosmo_object(np.arange(3)), cq(1), cq(2)),
             "where": (
-                cosmo_obect(np.arange(3)),
-                cosmo_obect(np.arange(3)),
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
+                cosmo_object(np.arange(3)),
+                cosmo_object(np.arange(3)),
             ),
-            "triu": (cosmo_obect(np.ones((3, 3))),),
-            "tril": (cosmo_obect(np.ones((3, 3))),),
-            "einsum": ("ii->i", cosmo_obect(np.eye(3))),
-            "convolve": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "correlate": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "tensordot": (cosmo_obect(np.eye(3)), cosmo_obect(np.eye(3))),
-            "unwrap": (cosmo_obect(np.arange(3)),),
+            "triu": (cosmo_object(np.ones((3, 3))),),
+            "tril": (cosmo_object(np.ones((3, 3))),),
+            "einsum": ("ii->i", cosmo_object(np.eye(3))),
+            "convolve": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "correlate": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "tensordot": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
+            "unwrap": (cosmo_object(np.arange(3)),),
             "interp": (
-                cosmo_obect(np.arange(3)),
-                cosmo_obect(np.arange(3)),
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
+                cosmo_object(np.arange(3)),
+                cosmo_object(np.arange(3)),
             ),
-            "array_repr": (cosmo_obect(np.arange(3)),),
-            "linalg.outer": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "trapezoid": (cosmo_obect(np.arange(3)),),
+            "array_repr": (cosmo_object(np.arange(3)),),
+            "linalg.outer": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "trapezoid": (cosmo_object(np.arange(3)),),
             "in1d": (
-                cosmo_obect(np.arange(3)),
-                cosmo_obect(np.arange(3)),
+                cosmo_object(np.arange(3)),
+                cosmo_object(np.arange(3)),
             ),  # np deprecated
-            "take": (cosmo_obect(np.arange(3)), np.arange(3)),
+            "take": (cosmo_object(np.arange(3)), np.arange(3)),
             # FUNCTIONS THAT UNYT DOESN'T HANDLE EXPLICITLY (THEY "JUST WORK"):
-            "all": (cosmo_obect(np.arange(3)),),
-            "amax": (cosmo_obect(np.arange(3)),),  # implemented via max
-            "amin": (cosmo_obect(np.arange(3)),),  # implemented via min
+            "all": (cosmo_object(np.arange(3)),),
+            "amax": (cosmo_object(np.arange(3)),),  # implemented via max
+            "amin": (cosmo_object(np.arange(3)),),  # implemented via min
             "angle": (cq(complex(1, 1)),),
-            "any": (cosmo_obect(np.arange(3)),),
-            "append": (cosmo_obect(np.arange(3)), cq(1)),
-            "apply_along_axis": (lambda x: x, 0, cosmo_obect(np.eye(3))),
-            "argmax": (cosmo_obect(np.arange(3)),),  # implemented via max
-            "argmin": (cosmo_obect(np.arange(3)),),  # implemented via min
-            "argpartition": (cosmo_obect(np.arange(3)), 1),  # implemented via partition
-            "argsort": (cosmo_obect(np.arange(3)),),  # implemented via sort
-            "argwhere": (cosmo_obect(np.arange(3)),),
-            "array_str": (cosmo_obect(np.arange(3)),),
-            "atleast_1d": (cosmo_obect(np.arange(3)),),
-            "atleast_2d": (cosmo_obect(np.arange(3)),),
-            "atleast_3d": (cosmo_obect(np.arange(3)),),
-            "average": (cosmo_obect(np.arange(3)),),
-            "can_cast": (cosmo_obect(np.arange(3)), np.float64),
-            "common_type": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "result_type": (cosmo_obect(np.ones(3)), cosmo_obect(np.ones(3))),
-            "iscomplex": (cosmo_obect(np.arange(3)),),
-            "iscomplexobj": (cosmo_obect(np.arange(3)),),
-            "isreal": (cosmo_obect(np.arange(3)),),
-            "isrealobj": (cosmo_obect(np.arange(3)),),
-            "nan_to_num": (cosmo_obect(np.arange(3)),),
-            "nanargmax": (cosmo_obect(np.arange(3)),),  # implemented via max
-            "nanargmin": (cosmo_obect(np.arange(3)),),  # implemented via min
-            "nanmax": (cosmo_obect(np.arange(3)),),  # implemented via max
-            "nanmean": (cosmo_obect(np.arange(3)),),  # implemented via mean
-            "nanmedian": (cosmo_obect(np.arange(3)),),  # implemented via median
-            "nanmin": (cosmo_obect(np.arange(3)),),  # implemented via min
-            "trim_zeros": (cosmo_obect(np.arange(3)),),
-            "max": (cosmo_obect(np.arange(3)),),
-            "mean": (cosmo_obect(np.arange(3)),),
-            "median": (cosmo_obect(np.arange(3)),),
-            "min": (cosmo_obect(np.arange(3)),),
-            "ndim": (cosmo_obect(np.arange(3)),),
-            "shape": (cosmo_obect(np.arange(3)),),
-            "size": (cosmo_obect(np.arange(3)),),
-            "sort": (cosmo_obect(np.arange(3)),),
-            "sum": (cosmo_obect(np.arange(3)),),
-            "repeat": (cosmo_obect(np.arange(3)), 2),
-            "tile": (cosmo_obect(np.arange(3)), 2),
-            "shares_memory": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "nonzero": (cosmo_obect(np.arange(3)),),
-            "count_nonzero": (cosmo_obect(np.arange(3)),),
-            "flatnonzero": (cosmo_obect(np.arange(3)),),
-            "isneginf": (cosmo_obect(np.arange(3)),),
-            "isposinf": (cosmo_obect(np.arange(3)),),
-            "empty_like": (cosmo_obect(np.arange(3)),),
-            "full_like": (cosmo_obect(np.arange(3)), cq(1)),
-            "ones_like": (cosmo_obect(np.arange(3)),),
-            "zeros_like": (cosmo_obect(np.arange(3)),),
-            "copy": (cosmo_obect(np.arange(3)),),
-            "meshgrid": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "transpose": (cosmo_obect(np.eye(3)),),
-            "reshape": (cosmo_obect(np.arange(3)), (3,)),
-            "resize": (cosmo_obect(np.arange(3)), 6),
-            "roll": (cosmo_obect(np.arange(3)), 1),
-            "rollaxis": (cosmo_obect(np.arange(3)), 0),
-            "rot90": (cosmo_obect(np.eye(3)),),
-            "expand_dims": (cosmo_obect(np.arange(3)), 0),
-            "squeeze": (cosmo_obect(np.arange(3)),),
-            "flip": (cosmo_obect(np.eye(3)),),
-            "fliplr": (cosmo_obect(np.eye(3)),),
-            "flipud": (cosmo_obect(np.eye(3)),),
-            "delete": (cosmo_obect(np.arange(3)), 0),
-            "partition": (cosmo_obect(np.arange(3)), 1),
-            "broadcast_to": (cosmo_obect(np.arange(3)), 3),
-            "broadcast_arrays": (cosmo_obect(np.arange(3)),),
-            "split": (cosmo_obect(np.arange(3)), 1),
-            "array_split": (cosmo_obect(np.arange(3)), 1),
-            "dsplit": (cosmo_obect(np.arange(27)).reshape(3, 3, 3), 1),
-            "hsplit": (cosmo_obect(np.arange(3)), 1),
-            "vsplit": (cosmo_obect(np.eye(3)), 1),
-            "swapaxes": (cosmo_obect(np.eye(3)), 0, 1),
-            "moveaxis": (cosmo_obect(np.eye(3)), 0, 1),
-            "nansum": (cosmo_obect(np.arange(3)),),  # implemented via sum
-            "std": (cosmo_obect(np.arange(3)),),
-            "nanstd": (cosmo_obect(np.arange(3)),),
-            "nanvar": (cosmo_obect(np.arange(3)),),
-            "nanprod": (cosmo_obect(np.arange(3)),),
-            "diag": (cosmo_obect(np.eye(3)),),
-            "diag_indices_from": (cosmo_obect(np.eye(3)),),
-            "diagflat": (cosmo_obect(np.eye(3)),),
-            "diagonal": (cosmo_obect(np.eye(3)),),
-            "ravel": (cosmo_obect(np.arange(3)),),
+            "any": (cosmo_object(np.arange(3)),),
+            "append": (cosmo_object(np.arange(3)), cq(1)),
+            "apply_along_axis": (lambda x: x, 0, cosmo_object(np.eye(3))),
+            "argmax": (cosmo_object(np.arange(3)),),  # implemented via max
+            "argmin": (cosmo_object(np.arange(3)),),  # implemented via min
+            "argpartition": (
+                cosmo_object(np.arange(3)),
+                1,
+            ),  # implemented via partition
+            "argsort": (cosmo_object(np.arange(3)),),  # implemented via sort
+            "argwhere": (cosmo_object(np.arange(3)),),
+            "array_str": (cosmo_object(np.arange(3)),),
+            "atleast_1d": (cosmo_object(np.arange(3)),),
+            "atleast_2d": (cosmo_object(np.arange(3)),),
+            "atleast_3d": (cosmo_object(np.arange(3)),),
+            "average": (cosmo_object(np.arange(3)),),
+            "can_cast": (cosmo_object(np.arange(3)), np.float64),
+            "common_type": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "result_type": (cosmo_object(np.ones(3)), cosmo_object(np.ones(3))),
+            "iscomplex": (cosmo_object(np.arange(3)),),
+            "iscomplexobj": (cosmo_object(np.arange(3)),),
+            "isreal": (cosmo_object(np.arange(3)),),
+            "isrealobj": (cosmo_object(np.arange(3)),),
+            "nan_to_num": (cosmo_object(np.arange(3)),),
+            "nanargmax": (cosmo_object(np.arange(3)),),  # implemented via max
+            "nanargmin": (cosmo_object(np.arange(3)),),  # implemented via min
+            "nanmax": (cosmo_object(np.arange(3)),),  # implemented via max
+            "nanmean": (cosmo_object(np.arange(3)),),  # implemented via mean
+            "nanmedian": (cosmo_object(np.arange(3)),),  # implemented via median
+            "nanmin": (cosmo_object(np.arange(3)),),  # implemented via min
+            "trim_zeros": (cosmo_object(np.arange(3)),),
+            "max": (cosmo_object(np.arange(3)),),
+            "mean": (cosmo_object(np.arange(3)),),
+            "median": (cosmo_object(np.arange(3)),),
+            "min": (cosmo_object(np.arange(3)),),
+            "ndim": (cosmo_object(np.arange(3)),),
+            "shape": (cosmo_object(np.arange(3)),),
+            "size": (cosmo_object(np.arange(3)),),
+            "sort": (cosmo_object(np.arange(3)),),
+            "sum": (cosmo_object(np.arange(3)),),
+            "repeat": (cosmo_object(np.arange(3)), 2),
+            "tile": (cosmo_object(np.arange(3)), 2),
+            "shares_memory": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "nonzero": (cosmo_object(np.arange(3)),),
+            "count_nonzero": (cosmo_object(np.arange(3)),),
+            "flatnonzero": (cosmo_object(np.arange(3)),),
+            "isneginf": (cosmo_object(np.arange(3)),),
+            "isposinf": (cosmo_object(np.arange(3)),),
+            "empty_like": (cosmo_object(np.arange(3)),),
+            "full_like": (cosmo_object(np.arange(3)), cq(1)),
+            "ones_like": (cosmo_object(np.arange(3)),),
+            "zeros_like": (cosmo_object(np.arange(3)),),
+            "copy": (cosmo_object(np.arange(3)),),
+            "meshgrid": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "transpose": (cosmo_object(np.eye(3)),),
+            "reshape": (cosmo_object(np.arange(3)), (3,)),
+            "resize": (cosmo_object(np.arange(3)), 6),
+            "roll": (cosmo_object(np.arange(3)), 1),
+            "rollaxis": (cosmo_object(np.arange(3)), 0),
+            "rot90": (cosmo_object(np.eye(3)),),
+            "expand_dims": (cosmo_object(np.arange(3)), 0),
+            "squeeze": (cosmo_object(np.arange(3)),),
+            "flip": (cosmo_object(np.eye(3)),),
+            "fliplr": (cosmo_object(np.eye(3)),),
+            "flipud": (cosmo_object(np.eye(3)),),
+            "delete": (cosmo_object(np.arange(3)), 0),
+            "partition": (cosmo_object(np.arange(3)), 1),
+            "broadcast_to": (cosmo_object(np.arange(3)), 3),
+            "broadcast_arrays": (cosmo_object(np.arange(3)),),
+            "split": (cosmo_object(np.arange(3)), 1),
+            "array_split": (cosmo_object(np.arange(3)), 1),
+            "dsplit": (cosmo_object(np.arange(27)).reshape(3, 3, 3), 1),
+            "hsplit": (cosmo_object(np.arange(3)), 1),
+            "vsplit": (cosmo_object(np.eye(3)), 1),
+            "swapaxes": (cosmo_object(np.eye(3)), 0, 1),
+            "moveaxis": (cosmo_object(np.eye(3)), 0, 1),
+            "nansum": (cosmo_object(np.arange(3)),),  # implemented via sum
+            "std": (cosmo_object(np.arange(3)),),
+            "nanstd": (cosmo_object(np.arange(3)),),
+            "nanvar": (cosmo_object(np.arange(3)),),
+            "nanprod": (cosmo_object(np.arange(3)),),
+            "diag": (cosmo_object(np.eye(3)),),
+            "diag_indices_from": (cosmo_object(np.eye(3)),),
+            "diagflat": (cosmo_object(np.eye(3)),),
+            "diagonal": (cosmo_object(np.eye(3)),),
+            "ravel": (cosmo_object(np.arange(3)),),
             "ravel_multi_index": (np.eye(2, dtype=int), (2, 2)),
             "unravel_index": (np.arange(3), (3,)),
-            "fix": (cosmo_obect(np.arange(3)),),
-            "round": (cosmo_obect(np.arange(3)),),  # implemented via around
-            "may_share_memory": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "linalg.matrix_power": (cosmo_obect(np.eye(3)), 2),
-            "linalg.cholesky": (cosmo_obect(np.eye(3)),),
-            "linalg.multi_dot": ((cosmo_obect(np.eye(3)), cosmo_obect(np.eye(3))),),
-            "linalg.matrix_rank": (cosmo_obect(np.eye(3)),),
-            "linalg.qr": (cosmo_obect(np.eye(3)),),
-            "linalg.slogdet": (cosmo_obect(np.eye(3)),),
-            "linalg.cond": (cosmo_obect(np.eye(3)),),
-            "gradient": (cosmo_obect(np.arange(3)),),
-            "cumsum": (cosmo_obect(np.arange(3)),),
-            "nancumsum": (cosmo_obect(np.arange(3)),),
-            "nancumprod": (cosmo_obect(np.arange(3)),),
-            "bincount": (cosmo_obect(np.arange(3)),),
-            "unique": (cosmo_obect(np.arange(3)),),
-            "min_scalar_type": (cosmo_obect(np.arange(3)),),
-            "extract": (0, cosmo_obect(np.arange(3))),
-            "setxor1d": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "lexsort": (cosmo_obect(np.arange(3)),),
-            "digitize": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "tril_indices_from": (cosmo_obect(np.eye(3)),),
-            "triu_indices_from": (cosmo_obect(np.eye(3)),),
-            "imag": (cosmo_obect(np.arange(3)),),
-            "real": (cosmo_obect(np.arange(3)),),
-            "real_if_close": (cosmo_obect(np.arange(3)),),
+            "fix": (cosmo_object(np.arange(3)),),
+            "round": (cosmo_object(np.arange(3)),),  # implemented via around
+            "may_share_memory": (
+                cosmo_object(np.arange(3)),
+                cosmo_object(np.arange(3)),
+            ),
+            "linalg.matrix_power": (cosmo_object(np.eye(3)), 2),
+            "linalg.cholesky": (cosmo_object(np.eye(3)),),
+            "linalg.multi_dot": ((cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),),
+            "linalg.matrix_rank": (cosmo_object(np.eye(3)),),
+            "linalg.qr": (cosmo_object(np.eye(3)),),
+            "linalg.slogdet": (cosmo_object(np.eye(3)),),
+            "linalg.cond": (cosmo_object(np.eye(3)),),
+            "gradient": (cosmo_object(np.arange(3)),),
+            "cumsum": (cosmo_object(np.arange(3)),),
+            "nancumsum": (cosmo_object(np.arange(3)),),
+            "nancumprod": (cosmo_object(np.arange(3)),),
+            "bincount": (cosmo_object(np.arange(3)),),
+            "unique": (cosmo_object(np.arange(3)),),
+            "min_scalar_type": (cosmo_object(np.arange(3)),),
+            "extract": (0, cosmo_object(np.arange(3))),
+            "setxor1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "lexsort": (cosmo_object(np.arange(3)),),
+            "digitize": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "tril_indices_from": (cosmo_object(np.eye(3)),),
+            "triu_indices_from": (cosmo_object(np.eye(3)),),
+            "imag": (cosmo_object(np.arange(3)),),
+            "real": (cosmo_object(np.arange(3)),),
+            "real_if_close": (cosmo_object(np.arange(3)),),
             "einsum_path": (
                 "ij,jk->ik",
-                cosmo_obect(np.eye(3)),
-                cosmo_obect(np.eye(3)),
+                cosmo_object(np.eye(3)),
+                cosmo_object(np.eye(3)),
             ),
-            "cov": (cosmo_obect(np.arange(3)),),
-            "corrcoef": (cosmo_obect(np.arange(3)),),
-            "compress": (np.zeros(3), cosmo_obect(np.arange(3))),
-            "take_along_axis": (cosmo_obect(np.arange(3)), np.ones(3, dtype=int), 0),
-            "linalg.cross": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "linalg.diagonal": (cosmo_obect(np.eye(3)),),
-            "linalg.matmul": (cosmo_obect(np.eye(3)), cosmo_obect(np.eye(3))),
-            "linalg.matrix_norm": (cosmo_obect(np.eye(3)),),
-            "linalg.matrix_transpose": (cosmo_obect(np.eye(3)),),
-            "linalg.svdvals": (cosmo_obect(np.eye(3)),),
-            "linalg.tensordot": (cosmo_obect(np.eye(3)), cosmo_obect(np.eye(3))),
-            "linalg.trace": (cosmo_obect(np.eye(3)),),
-            "linalg.vecdot": (cosmo_obect(np.arange(3)), cosmo_obect(np.arange(3))),
-            "linalg.vector_norm": (cosmo_obect(np.arange(3)),),
-            "astype": (cosmo_obect(np.arange(3)), float),
-            "matrix_transpose": (cosmo_obect(np.eye(3)),),
-            "unique_all": (cosmo_obect(np.arange(3)),),
-            "unique_counts": (cosmo_obect(np.arange(3)),),
-            "unique_inverse": (cosmo_obect(np.arange(3)),),
-            "unique_values": (cosmo_obect(np.arange(3)),),
-            "cumulative_sum": (cosmo_obect(np.arange(3)),),
-            "cumulative_prod": (cosmo_obect(np.arange(3)),),
-            "unstack": (cosmo_obect(np.arange(3)),),
+            "cov": (cosmo_object(np.arange(3)),),
+            "corrcoef": (cosmo_object(np.arange(3)),),
+            "compress": (np.zeros(3), cosmo_object(np.arange(3))),
+            "take_along_axis": (cosmo_object(np.arange(3)), np.ones(3, dtype=int), 0),
+            "linalg.cross": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "linalg.diagonal": (cosmo_object(np.eye(3)),),
+            "linalg.matmul": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
+            "linalg.matrix_norm": (cosmo_object(np.eye(3)),),
+            "linalg.matrix_transpose": (cosmo_object(np.eye(3)),),
+            "linalg.svdvals": (cosmo_object(np.eye(3)),),
+            "linalg.tensordot": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
+            "linalg.trace": (cosmo_object(np.eye(3)),),
+            "linalg.vecdot": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "linalg.vector_norm": (cosmo_object(np.arange(3)),),
+            "astype": (cosmo_object(np.arange(3)), float),
+            "matrix_transpose": (cosmo_object(np.eye(3)),),
+            "unique_all": (cosmo_object(np.arange(3)),),
+            "unique_counts": (cosmo_object(np.arange(3)),),
+            "unique_inverse": (cosmo_object(np.arange(3)),),
+            "unique_values": (cosmo_object(np.arange(3)),),
+            "cumulative_sum": (cosmo_object(np.arange(3)),),
+            "cumulative_prod": (cosmo_object(np.arange(3)),),
+            "unstack": (cosmo_object(np.arange(3)),),
         }
         functions_checked = list()
         bad_funcs = dict()
@@ -713,7 +723,7 @@ class TestNumpyFunctions:
         - Remove this test.
         """
         assert isinstance(
-            np.block([[cosmo_obect(np.arange(3))], [cosmo_obect(np.arange(3))]]),
+            np.block([[cosmo_object(np.arange(3))], [cosmo_object(np.arange(3))]]),
             cosmo_array,
         )
 
@@ -792,7 +802,7 @@ class TestNumpyFunctions:
             np.array([1, 2, 3]),
         ),
     )
-    @pytest.mark.parametrize("bins_type", ("int", "np", "cosmo_obect"))
+    @pytest.mark.parametrize("bins_type", ("int", "np", "cosmo_object"))
     @pytest.mark.parametrize("density", (None, True))
     def test_histograms(self, func_args, weights, bins_type, density):
         """
@@ -806,7 +816,7 @@ class TestNumpyFunctions:
         bins = {
             "int": 10,
             "np": [np.linspace(0, 5, 11)] * 3,
-            "cosmo_obect": [
+            "cosmo_object": [
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.kpc,
@@ -838,7 +848,7 @@ class TestNumpyFunctions:
                     np.histogramdd: np.s_[:],
                 }[func]
             ]
-            if bins_type in ("np", "cosmo_obect")
+            if bins_type in ("np", "cosmo_object")
             else bins
         )
         result = func(*args, bins=bins, density=density, weights=weights)
@@ -873,9 +883,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a ** -1, 1.0),
-                    np.histogram2d: cosmo_factor(a ** -3, 1.0),
-                    np.histogramdd: cosmo_factor(a ** -6, 1.0),
+                    np.histogram: cosmo_factor(a**-1, 1.0),
+                    np.histogram2d: cosmo_factor(a**-3, 1.0),
+                    np.histogramdd: cosmo_factor(a**-6, 1.0),
                 }[func]
             )
         elif density and isinstance(weights, cosmo_array):
@@ -883,9 +893,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a ** 0, 1.0),
-                    np.histogram2d: cosmo_factor(a ** -2, 1.0),
-                    np.histogramdd: cosmo_factor(a ** -5, 1.0),
+                    np.histogram: cosmo_factor(a**0, 1.0),
+                    np.histogram2d: cosmo_factor(a**-2, 1.0),
+                    np.histogramdd: cosmo_factor(a**-5, 1.0),
                 }[func]
             )
         elif not density and isinstance(weights, cosmo_array):
@@ -893,9 +903,9 @@ class TestNumpyFunctions:
             assert (
                 result[0].cosmo_factor
                 == {
-                    np.histogram: cosmo_factor(a ** 1, 1.0),
-                    np.histogram2d: cosmo_factor(a ** 1, 1.0),
-                    np.histogramdd: cosmo_factor(a ** 1, 1.0),
+                    np.histogram: cosmo_factor(a**1, 1.0),
+                    np.histogram2d: cosmo_factor(a**1, 1.0),
+                    np.histogramdd: cosmo_factor(a**1, 1.0),
                 }[func]
             )
         ret_bins = {
@@ -907,9 +917,9 @@ class TestNumpyFunctions:
             ret_bins,
             (
                 [
-                    cosmo_factor(a ** 1, 1.0),
-                    cosmo_factor(a ** 2, 1.0),
-                    cosmo_factor(a ** 3, 1.0),
+                    cosmo_factor(a**1, 1.0),
+                    cosmo_factor(a**2, 1.0),
+                    cosmo_factor(a**3, 1.0),
                 ]
             ),
         ):
@@ -920,29 +930,29 @@ class TestNumpyFunctions:
         """
         Make sure that we don't degrade to an ndarray on slicing.
         """
-        assert isinstance(cosmo_obect(np.arange(3))[0], cosmo_quantity)
+        assert isinstance(cosmo_object(np.arange(3))[0], cosmo_quantity)
 
     def test_reshape_to_scalar(self):
         """
         Make sure that we convert to a cosmo_quantity when we reshape to a scalar.
         """
-        assert isinstance(cosmo_obect(np.ones(1)).reshape(tuple()), cosmo_quantity)
+        assert isinstance(cosmo_object(np.ones(1)).reshape(tuple()), cosmo_quantity)
 
     def test_iter(self):
         """
         Make sure that we get cosmo_quantity's when iterating over a cosmo_array.
         """
-        for cq in cosmo_obect(np.arange(3)):
+        for cq in cosmo_object(np.arange(3)):
             assert isinstance(cq, cosmo_quantity)
 
     def test_dot(self):
         """
         Make sure that we get a cosmo_array when we use array attribute dot.
         """
-        res = cosmo_obect(np.arange(3)).dot(cosmo_obect(np.arange(3)))
+        res = cosmo_object(np.arange(3)).dot(cosmo_object(np.arange(3)))
         assert isinstance(res, cosmo_quantity)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a ** 2, 0.5)
+        assert res.cosmo_factor == cosmo_factor(a**2, 0.5)
         assert res.valid_transform is True
 
 
@@ -982,7 +992,7 @@ class TestCosmoQuantity:
         )
         res = getattr(cq, func)(*args)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
         assert res.valid_transform is True
 
     def test_round(self):
@@ -1000,7 +1010,7 @@ class TestCosmoQuantity:
         res = round(cq)
         assert res.value == 1.0
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
         assert res.valid_transform is True
 
     def test_scalar_return_func(self):
@@ -1008,7 +1018,7 @@ class TestCosmoQuantity:
         Make sure that default-wrapped functions that take a cosmo_array and return a
         scalar convert to a cosmo_quantity.
         """
-        cosmo_obect = cosmo_array(
+        cosmo_object = cosmo_array(
             np.arange(3),
             u.m,
             comoving=False,
@@ -1016,7 +1026,7 @@ class TestCosmoQuantity:
             scale_exponent=1,
             valid_transform=True,
         )
-        res = np.min(cosmo_obect)
+        res = np.min(cosmo_object)
         assert isinstance(res, cosmo_quantity)
 
     @pytest.mark.parametrize("prop", ["T", "ua", "unit_array"])
@@ -1034,7 +1044,7 @@ class TestCosmoQuantity:
         )
         res = getattr(cq, prop)
         assert res.comoving is False
-        assert res.cosmo_factor == cosmo_factor(a ** 1, 1.0)
+        assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
         assert res.valid_transform is True
 
     def test_multiply_quantities(self):
@@ -1052,8 +1062,8 @@ class TestCosmoQuantity:
         multiplied = cq * cq
         assert type(multiplied) is cosmo_quantity
         assert multiplied.comoving is False
-        assert multiplied.cosmo_factor == cosmo_factor(a ** 2, 0.5)
-        assert multiplied.to_value(u.m ** 2) == 4
+        assert multiplied.cosmo_factor == cosmo_factor(a**2, 0.5)
+        assert multiplied.to_value(u.m**2) == 4
 
 
 class TestCosmoArrayCopy:
