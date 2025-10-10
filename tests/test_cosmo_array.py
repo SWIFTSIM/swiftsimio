@@ -8,6 +8,7 @@ import warnings
 import numpy as np
 import unyt as u
 from copy import copy, deepcopy
+import pickle
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 
 savetxt_file = "saved_array.txt"
@@ -292,6 +293,15 @@ class TestCosmoArrayInit:
                 scale_factor=1.0,
                 scale_exponent=1,
             )
+
+    def test_init_from_not_iterable_invalid(self):
+        """
+        cosmo_array data must be iterable (scalar handled by cosmo_quantity).
+        """
+        with pytest.raises(ValueError, match="cosmo_array data must be iterable"):
+            cosmo_array(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
+        # make sure inheriting class doesn't do anything silly:
+        cosmo_quantity(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
 
 
 class TestNumpyFunctions:
@@ -1168,24 +1178,42 @@ class TestMultiplicationByUnyt:
         rmultiplied_by_quantity = (
             1 * u.Mpc
         ) * cosmo_object  # parentheses very important here
-        assert rmultiplied_by_quantity.comoving
         rmultiplied_by_unyt = u.Mpc * cosmo_object
-        assert isinstance(rmultiplied_by_quantity, cosmo_array)
-        assert isinstance(rmultiplied_by_unyt, cosmo_array)
-        assert rmultiplied_by_unyt.comoving == rmultiplied_by_quantity.comoving
-        assert np.allclose(
-            rmultiplied_by_unyt.to_value(rmultiplied_by_quantity.units),
-            rmultiplied_by_quantity.to_value(rmultiplied_by_quantity.units),
-        )
-
         rdivided_by_quantity = (
             1 * u.Mpc
         ) / cosmo_object  # parentheses very important here
         rdivided_by_unyt = u.Mpc / cosmo_object
-        assert isinstance(rdivided_by_quantity, cosmo_array)
-        assert isinstance(rdivided_by_unyt, cosmo_array)
-        assert rdivided_by_unyt.comoving == rdivided_by_quantity.comoving
-        assert np.allclose(
-            rdivided_by_unyt.to_value(rdivided_by_quantity.units),
-            rdivided_by_quantity.to_value(rdivided_by_quantity.units),
-        )
+        assert rmultiplied_by_quantity.comoving
+        for multiplied_by_unyt in (rmultiplied_by_unyt, rdivided_by_unyt):
+            assert isinstance(multiplied_by_quantity, cosmo_array)
+            assert isinstance(multiplied_by_unyt, cosmo_array)
+            assert multiplied_by_unyt.comoving == multiplied_by_quantity.comoving
+            assert np.allclose(
+                multiplied_by_unyt.to_value(multiplied_by_quantity.units),
+                multiplied_by_quantity.to_value(multiplied_by_quantity.units),
+            )
+
+
+class TestPickle:
+    """
+    Test that the cosmo_array attributes survive being pickled and unpickled.
+    """
+
+    def test_pickle(self):
+        attrs = {
+            "comoving": False,
+            "cosmo_factor": cosmo_factor(a ** 1, 0.5),
+            "compression": "FMantissa9",
+            "valid_transform": True,
+        }
+        ca = cosmo_array([123, 456], u.Mpc, **attrs)
+        try:
+            with open("ca.pkl", "wb") as pickle_handle:
+                pickle.dump(ca, pickle_handle)
+            with open("ca.pkl", "rb") as pickle_handle:
+                unpickled_ca = pickle.load(pickle_handle)
+        finally:
+            if os.path.isfile("ca.pkl"):
+                os.remove("ca.pkl")
+        for attr_name, attr_value in attrs.items():
+            assert getattr(unpickled_ca, attr_name) == attr_value

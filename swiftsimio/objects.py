@@ -10,7 +10,7 @@ helpers, wrappers and implementations that enable most :mod:`numpy` and
 """
 
 import unyt
-from unyt import unyt_array, unyt_quantity
+from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
 from typing import Iterable, Union, Tuple, Callable, Optional
@@ -813,7 +813,18 @@ class cosmo_factor(object):
         """
         if not isinstance(b, cosmo_factor):
             raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
-        return (self.scale_factor == b.scale_factor) and (self.a_factor == b.a_factor)
+        scale_factor_match = self.scale_factor == b.scale_factor
+        if self.a_factor is None and b.a_factor is None:
+            # guards passing None to isclose
+            a_factor_match = True
+        elif self.a_factor is None or b.a_factor is None:
+            # we know they're not both None from previous case
+            a_factor_match = False
+        elif np.isclose(self.a_factor, b.a_factor, rtol=1e-9):
+            a_factor_match = True
+        else:
+            a_factor_match = False
+        return scale_factor_match and a_factor_match
 
     def __ne__(self, b: "cosmo_factor") -> bool:
         """
@@ -1253,7 +1264,7 @@ class cosmo_array(unyt_array):
                 scale_exponent=scale_exponent,
             )
 
-        elif _iterable(input_array) and input_array:
+        elif _iterable(input_array):
             # if _prepare_array_func_args finds cosmo_array input it will convert to:
             default_cm = comoving if comoving is not None else True
 
@@ -1273,7 +1284,7 @@ class cosmo_array(unyt_array):
             )
             cosmo_factor = (
                 _preserve_cosmo_factor(*helper_result["cfs"])
-                if cosmo_factor is None
+                if cosmo_factor is None and len(helper_result["cfs"])
                 else cosmo_factor
             )
             compression = (
@@ -1281,6 +1292,11 @@ class cosmo_array(unyt_array):
             )
             # valid_transform has a non-None default, so we have to decide to always
             # respect it
+        else:
+            # if the input isn't even iterable, this is an error
+            raise ValueError(
+                "cosmo_array data must be iterable (for scalar input use cosmo_quantity)."
+            )
 
         obj = super().__new__(
             cls,
@@ -1344,7 +1360,15 @@ class cosmo_array(unyt_array):
         np_ret = super(cosmo_array, self).__reduce__()
         obj_state = np_ret[2]
         cosmo_state = (
-            ((self.cosmo_factor, self.comoving, self.valid_transform),) + obj_state[:],
+            (
+                (
+                    self.cosmo_factor,
+                    self.comoving,
+                    self.compression,
+                    self.valid_transform,
+                ),
+            )
+            + obj_state[:],
         )
         new_ret = np_ret[:2] + cosmo_state + np_ret[3:]
         return new_ret
@@ -1362,7 +1386,9 @@ class cosmo_array(unyt_array):
             A :obj:`tuple` containing the extra state information.
         """
         super(cosmo_array, self).__setstate__(state[1:])
-        self.cosmo_factor, self.comoving, self.valid_transform = state[0]
+        self.cosmo_factor, self.comoving, self.compression, self.valid_transform = state[
+            0
+        ]
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:
@@ -1454,6 +1480,36 @@ class cosmo_array(unyt_array):
         copied_data.convert_to_comoving()
 
         return copied_data
+
+    def to_physical_value(self, units: Unit) -> np.ndarray:
+        """
+        Returns a copy of the array values in the specified physical units.
+
+        Parameters
+        ----------
+        units : unyt.unit_object.Unit
+
+        Returns
+        -------
+        out : np.ndarray
+            Copy of the array values in the specified physical units.
+        """
+        return self.to_physical().to_value(units)
+
+    def to_comoving_value(self, units: Unit) -> np.ndarray:
+        """
+        Returns a copy of the array values in the specified comoving units.
+
+        Parameters
+        ----------
+        units : unyt.unit_object.Unit
+
+        Returns
+        -------
+        out : np.ndarray
+            Copy of the array values in the specified comoving units.
+        """
+        return self.to_comoving().to_value(units)
 
     def compatible_with_comoving(self) -> bool:
         """
@@ -1751,7 +1807,7 @@ class cosmo_array(unyt_array):
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
         result = _ensure_result_is_cosmo_array_or_quantity(super().__array_ufunc__)(
-            ufunc, method, *inputs, **kwargs
+            ufunc, method, *helper_result["args"], **helper_result["kwargs"]
         )
         # if we get a tuple we have multiple return values to deal with
         if isinstance(result, tuple):

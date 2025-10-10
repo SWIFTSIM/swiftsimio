@@ -138,7 +138,7 @@ the above example is shown below.
        rotation_matrix=matrix,
        rotation_center=center,
        parallel=True,
-       periodic=False, # disable periodic boundaries for rotations
+       periodic=False,  # disable periodic boundaries for rotations
    )
    
    # Map in msun * K / mpc^3
@@ -280,11 +280,11 @@ smoothing lengths, and smoothed quantities, to generate a pixel grid that
 represents the smoothed, volume rendered, version of the data.
 
 This API is available through
-:func:`swiftsimio.visualisation.volume_render_backends.backends["scatter"]` and
-:func:`swiftsimio.visualisation.volume_render_backends.backends_parallel["scatter"]` for the parallel
-version. The parallel version uses significantly more memory as it allocates
+:obj:`swiftsimio.visualisation.volume_render_backends.backends` and
+:obj:`swiftsimio.visualisation.volume_render_backends.backends_parallel` for parallel
+implementations. The parallel versions use significantly more memory as they allocate
 a thread-local image array for each thread, summing them in the end. Here we
-will only describe the ``scatter`` variant, but they behave in the exact same way.
+will only describe the ``scatter`` variant (currently the only option).
 
 To use this function, you will need:
 
@@ -309,10 +309,11 @@ Then you may use the function as follows:
 
 .. code-block:: python
 
-   from swiftsimio.visualisation.volume_render import scatter
+   from swiftsimio.visualisation.volume_render_backends import backends
 
+   volume_render_scatter = backends["scatter"]
    # Using the variable names from above
-   out = scatter(x=x, y=y, z=z, h=h, m=m, res=res)
+   out = volume_render_scatter(x=x, y=y, z=z, h=h, m=m, res=res)
 
 ``out`` will be a 3D :class:`~numpy.ndarray` grid of shape ``[res, res, res]``. You will
 need to re-scale this back to your original dimensions to get it in the

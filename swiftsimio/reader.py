@@ -136,18 +136,12 @@ def generate_getter(
             with h5py.File(filename, "r") as handle:
                 try:
                     if mask is not None:
-                        # First, need to calculate data shape (which may be
-                        # non-trivial), so we read in the first value
-                        first_value = handle[field][0]
-
-                        output_type = first_value.dtype
-                        output_size = first_value.size
-
-                        if output_size != 1 and not use_columns:
-                            output_shape = (mask_size, output_size)
-                        else:
-                            output_shape = mask_size
-
+                        output_type = handle[field].dtype
+                        output_shape = (
+                            (mask_size, handle[field].shape[1])
+                            if handle[field].ndim > 1 and not use_columns
+                            else mask_size
+                        )
                         setattr(
                             self,
                             f"_{name}",

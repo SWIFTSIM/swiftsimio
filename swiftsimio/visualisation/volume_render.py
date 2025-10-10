@@ -16,7 +16,7 @@ from swiftsimio.visualisation.volume_render_backends import backends, backends_p
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
-    _get_rotated_coordinates,
+    _get_rotated_and_wrapped_coordinates,
     backend_restore_cosmo_and_units,
 )
 
@@ -38,7 +38,7 @@ def render_gas(
     Parameters
     ----------
     data : SWIFTDataset
-        Dataset from which slice is extracted
+        Dataset from which render is extracted
 
     resolution : int
         Specifies size of return np.array
@@ -92,14 +92,24 @@ def render_gas(
     data = data.gas
 
     m = _get_projection_field(data, project)
-    region_info = _get_region_info(data, region, require_cubic=True)
+    region_info = _get_region_info(data, region, require_cubic=True, periodic=periodic)
     hsml = backends_get_hsml["sph"](data)
-    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    x, y, z = _get_rotated_and_wrapped_coordinates(
+        data, rotation_matrix, rotation_center, periodic
+    )
 
+    normed_x = (x - region_info["x_min"]) / region_info["x_range"]
+    normed_y = (y - region_info["y_min"]) / region_info["y_range"]
+    normed_z = (z - region_info["z_min"]) / region_info["z_range"]
+    if periodic:
+        # place everything in the region inside [0, 1], the backend will tile as needed
+        normed_x %= region_info["periodic_box_x"]
+        normed_y %= region_info["periodic_box_y"]
+        normed_z %= region_info["periodic_box_z"]
     kwargs = dict(
-        x=(x - region_info["x_min"]) / region_info["x_range"],
-        y=(y - region_info["y_min"]) / region_info["y_range"],
-        z=(z - region_info["z_min"]) / region_info["z_range"],
+        x=normed_x,
+        y=normed_y,
+        z=normed_z,
         m=m,
         h=hsml / region_info["x_range"],  # cubic so x_range == y_range == z_range
         res=resolution,

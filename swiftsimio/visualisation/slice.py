@@ -10,7 +10,7 @@ from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
-    _get_rotated_coordinates,
+    _get_rotated_and_wrapped_coordinates,
     backend_restore_cosmo_and_units,
 )
 
@@ -97,9 +97,11 @@ def slice_gas(
     z_slice = np.zeros_like(data.metadata.boxsize[0]) if z_slice is None else z_slice
 
     m = _get_projection_field(data, project)
-    region_info = _get_region_info(data, region, z_slice=z_slice, periodic=periodic)
+    region_info = _get_region_info(data, region, periodic=periodic)
     hsml = backends_get_hsml[backend](data)
-    x, y, z = _get_rotated_coordinates(data, rotation_matrix, rotation_center)
+    x, y, z = _get_rotated_and_wrapped_coordinates(
+        data, rotation_matrix, rotation_center, periodic
+    )
     z_center = (
         rotation_center[2]
         if rotation_center is not None
@@ -107,24 +109,33 @@ def slice_gas(
     )
 
     # determine the effective number of pixels for each dimension
-    xres = int(resolution * region_info["x_range"] / region_info["max_range"])
-    yres = int(resolution * region_info["y_range"] / region_info["max_range"])
+    xres = int(np.ceil(resolution * region_info["x_range"] / region_info["max_range"]))
+    yres = int(np.ceil(resolution * region_info["y_range"] / region_info["max_range"]))
 
+    normed_x = (x - region_info["x_min"]) / region_info["max_range"]
+    normed_y = (y - region_info["y_min"]) / region_info["max_range"]
+    normed_z = z / region_info["max_range"]
+    normed_z_slice = (z_slice + z_center) / region_info["max_range"]
+    if periodic:
+        # place everything in the region inside [0, 1], the backend will tile as needed
+        normed_x %= region_info["periodic_box_x"]
+        normed_y %= region_info["periodic_box_y"]
+        normed_z %= region_info["periodic_box_z"]
+        normed_z_slice %= region_info["periodic_box_z"]
     kwargs = dict(
-        x=(x - region_info["x_min"]) / region_info["max_range"],
-        y=(y - region_info["y_min"]) / region_info["max_range"],
-        z=z / region_info["max_range"],
+        x=normed_x,
+        y=normed_y,
+        z=normed_z,
         m=m,
         h=hsml / region_info["max_range"],
-        z_slice=(z_center + z_slice) / region_info["max_range"],
+        z_slice=normed_z_slice,
         xres=xres,
         yres=yres,
         box_x=region_info["periodic_box_x"],
         box_y=region_info["periodic_box_y"],
         box_z=region_info["periodic_box_z"],
     )
-    norm = region_info["x_range"] * region_info["y_range"] * region_info["z_range"]
+    norm = region_info["max_range"] ** 3
     backend_func = (backends_parallel if parallel else backends)[backend]
     image = backend_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
-
     return image

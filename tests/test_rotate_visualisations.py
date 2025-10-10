@@ -1,4 +1,4 @@
-from tests.helper import requires, create_single_particle_dataset
+from tests.helper import create_n_particle_dataset
 from swiftsimio import load
 from swiftsimio.visualisation.projection import project_gas
 from swiftsimio.visualisation.slice import slice_gas
@@ -8,29 +8,29 @@ from numpy import array_equal
 from os import remove
 
 
-@requires("cosmological_volume.hdf5")
-def test_project(filename):
+def test_project(cosmological_volume_only_single):
     """
     Checks that gas projection of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    filename: str
+    cosmological_volume_only_single: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(filename, output_filename)
+    create_n_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
+
+    unrotated = project_gas(
+        data, resolution=1024, project="masses", parallel=True, periodic=False
+    )
 
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    unrotated = project_gas(data, resolution=1024, project="masses", parallel=True)
-
     rotated = project_gas(
         data,
         resolution=1024,
@@ -38,6 +38,7 @@ def test_project(filename):
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     assert array_equal(rotated, unrotated)
@@ -45,41 +46,43 @@ def test_project(filename):
     remove(output_filename)
 
 
-@requires("cosmological_volume.hdf5")
-def test_slice(filename):
+def test_slice(cosmological_volume_only_single):
     """
     Checks that a slice of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    filename: str
+    cosmological_volume_only_single: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(filename, output_filename)
+    create_n_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
+
+    unrotated = slice_gas(
+        data,
+        resolution=1024,
+        z_slice=data.gas.coordinates[0, 2],
+        project="masses",
+        parallel=True,
+        periodic=False,
+    )
 
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    slice_z = centre[2]
-
-    unrotated = slice_gas(
-        data, resolution=1024, z_slice=slice_z, project="masses", parallel=True
-    )
-
     rotated = slice_gas(
         data,
         resolution=1024,
-        z_slice=0 * slice_z,
+        z_slice=0 * data.gas.coordinates[0, 2],
         project="masses",
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     # Check that we didn't miss the particle
@@ -91,29 +94,29 @@ def test_slice(filename):
     remove(output_filename)
 
 
-@requires("cosmological_volume.hdf5")
-def test_render(filename):
+def test_render(cosmological_volume_only_single):
     """
     Checks that a volume render of a single particle snapshot is invariant under
     rotations around the particle
 
     Parameters
     ----------
-    filename: str
+    cosmological_volume_only_single: str
         name of file providing metadata to copy
     """
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
-    create_single_particle_dataset(filename, output_filename)
+    create_n_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
+
+    unrotated = render_gas(
+        data, resolution=256, project="masses", parallel=True, periodic=False
+    )
 
     # Compute rotation matrix for rotating around particle
     centre = data.gas.coordinates[0]
     rotate_vec = [0.5, 0.5, 0.5]
     matrix = rotation_matrix_from_vector(rotate_vec, axis="z")
-
-    unrotated = render_gas(data, resolution=256, project="masses", parallel=True)
-
     rotated = render_gas(
         data,
         resolution=256,
@@ -121,6 +124,7 @@ def test_render(filename):
         rotation_center=centre,
         rotation_matrix=matrix,
         parallel=True,
+        periodic=False,
     )
 
     assert array_equal(rotated, unrotated)

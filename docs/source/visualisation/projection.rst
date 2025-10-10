@@ -38,15 +38,17 @@ Example
        periodic=True,
    )
 
-   # Let's say we wish to save it as msun / kpc^2,
+   # Let's say we wish to save it as msun / kpc^2 (physical, not comoving),
    from unyt import msun, kpc
-   mass_map.convert_to_units(msun / kpc**2)
-
    from matplotlib.pyplot import imsave
    from matplotlib.colors import LogNorm
 
    # Normalize and save
-   imsave("gas_surface_dens_map.png", LogNorm()(mass_map.value), cmap="viridis")
+   imsave(
+       "gas_surface_dens_map.png",
+       LogNorm()(mass_map.to_physical_value(msun / kpc**2)),
+       cmap="viridis",
+   )
 
 
 This basic demonstration creates a mass surface density map.
@@ -86,13 +88,15 @@ this:
    temp_map = mass_weighted_temp_map / mass_map
 
    from unyt import K
-   temp_map.convert_to_units(K)
-
    from matplotlib.pyplot import imsave
    from matplotlib.colors import LogNorm
 
    # Normalize and save
-   imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
+   imsave(
+       "temp_map.png",
+       LogNorm()(temp_map.to_physical_value(K)),
+       cmap="twilight",
+   )
 
 
 The output from this example, when used with the example data provided in the
@@ -222,7 +226,7 @@ is shown in the ``velociraptor`` section.
    
    # The angular momentum vector will point perpendicular to the galaxy disk.
    # If your simulation contains stars, use lx_star
-   angular_momentum_vector = np.array([lx.value, ly.value, lz.value])
+   angular_momentum_vector = cosmo_array([lx, ly, lz])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
    
    face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
@@ -353,17 +357,16 @@ smoothing lengths, and smoothed quantities, to generate a pixel grid that
 represents the smoothed version of the data.
 
 This API is available through
-:obj:`swiftsimio.visualisation.projection_backends.backends["scatter"]` and
-:obj:`swiftsimio.visualisation.projection_backends.backends_parallel["scatter"]` for the parallel
-version. The parallel version uses significantly more memory as it allocates
+:obj:`swiftsimio.visualisation.projection_backends.backends` and
+:obj:`swiftsimio.visualisation.projection_backends.backends_parallel` for parallel implementations. The parallel versions use significantly more memory as they allocate
 a thread-local image array for each thread, summing them in the end. Here we
-will only describe the ``scatter`` variant, but they behave in the exact same way.
+will only describe the ``fast`` variant, but they behave in the exact same way.
 
-By default this uses the "fast" backend. To use the others, you can select them
+The default backend used by :mod:`swiftsimio` is ``fast``. To use the others (e.g. ``histogram``, ``subsampled``, ``gpu``, etc.), you can select them
 manually from the module, or by using the ``backends`` and ``backends_parallel``
 dictionaries in :mod:`swiftsimio.visualisation.projection_backends`.
 
-To use this function, you will need:
+To use these functions, you will need:
 
 + x-positions of all of your particles, ``x``.
 + y-positions of all of your particles, ``y``.
@@ -381,12 +384,13 @@ they will not crash the code, and may even contribute to the image if their
 smoothing lengths overlap with [0, 1]. You will need to re-scale your data
 such that it lives within this range. You should also pass raw numpy arrays (not
 :class:`~swiftsimio.objects.cosmo_array` or :class:`~unyt.array.unyt_array`, the
-inputs are dimensionless). Then you may use the function as follows:
+inputs are dimensionless). Then you may use the functions as follows:
 
 .. code-block:: python
 
-   from swiftsimio.visualisation.projection import scatter
+   from swiftsimio.visualisation.projection_backends import backends
 
+   scatter = backends["fast"]
    # Using the variable names from above
    out = scatter(x=x, y=y, h=h, m=m, res=res)
 

@@ -4,16 +4,16 @@ snapshots.
 """
 
 import warnings
-
 import h5py
-
 import numpy as np
+from typing import Union
 
 from swiftsimio.metadata.objects import SWIFTMetadata
-
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
-
 from swiftsimio.accelerated import ranges_from_array
+
+_DEFAULT_SAFE_PADDING = 0.1
+_GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
 
 
 class SWIFTMask(object):
@@ -25,7 +25,12 @@ class SWIFTMask(object):
     group_mapping: dict | None = None
     group_size_mapping: dict | None = None
 
-    def __init__(self, metadata: SWIFTMetadata, spatial_only=True):
+    def __init__(
+        self,
+        metadata: SWIFTMetadata,
+        spatial_only=True,
+        safe_padding: Union[bool, float] = _DEFAULT_SAFE_PADDING,
+    ):
         """
         SWIFTMask constructor
 
@@ -45,11 +50,29 @@ class SWIFTMask(object):
             more memory efficient (~ bytes per cell, rather than
             ~ bytes per particle).
 
+        safe_padding : bool or float, optional
+            If snapshot does not specify bounding box of cell particles (``MinPositions``,
+            ``MaxPositions``), pad the mask to gurantee that *all* particles in requested
+            spatial region(s) are selected. If the bounding box metadata is present, this
+            argument is ignored. The default (``0.1``) is to pad by 0.1 times the cell
+            length. Padding can be disabled (``False``) or set to a different fraction of
+            the cell length (e.g. ``0.5``). Only entire cells are loaded, but if the
+            region boundary is more than ``safe_padding`` from a cell boundary the
+            neighbouring cell is not read. Switching off can reduce I/O load by up to a
+            factor of 30 in some cases (but a few particles in region could be missing).
+            See https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
+            details.
         """
 
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
+        if safe_padding is True:
+            self.safe_padding = _DEFAULT_SAFE_PADDING
+        elif safe_padding is False:
+            self.safe_padding = 0.0
+        else:
+            self.safe_padding = safe_padding
 
         if not self.metadata.masking_valid:
             raise NotImplementedError(
@@ -180,11 +203,22 @@ class SWIFTMask(object):
 
         self.counts = {}
         self.offsets = {}
+        self.minpositions = {}
+        self.maxpositions = {}
 
         cell_handle = self.units.handle["Cells"]
         count_handle = cell_handle["Counts"]
         metadata_handle = cell_handle["Meta-data"]
         centers_handle = cell_handle["Centres"]
+        if (
+            "MinPositions" in cell_handle.keys()
+            and "MaxPositions" in cell_handle.keys()
+        ):
+            # Older versions of SWIFT don't have this information
+            minpos_handle = cell_handle["MinPositions"]
+            maxpos_handle = cell_handle["MaxPositions"]
+        else:
+            minpos_handle, maxpos_handle = None, None
 
         try:
             offset_handle = cell_handle["OffsetsInFile"]
@@ -201,16 +235,54 @@ class SWIFTMask(object):
             for group, group_name in zip(
                 self.metadata.present_groups, self.metadata.present_group_names
             ):
-                counts = count_handle[group][:]
-                offsets = offset_handle[group][:]
-
                 self.offsets[group_name] = offset_handle[group][:]
                 self.counts[group_name] = count_handle[group][:]
 
+        if minpos_handle is not None and maxpos_handle is not None:
+            for group, group_name in zip(
+                self.metadata.present_groups, self.metadata.present_group_names
+            ):
+                self.minpositions[group_name] = np.where(
+                    centers_handle[:] - 0.5 * metadata_handle.attrs["size"]
+                    < minpos_handle[group][:],
+                    centers_handle[:] - 0.5 * metadata_handle.attrs["size"],
+                    minpos_handle[group][:],
+                )
+                self.maxpositions[group_name] = np.where(
+                    centers_handle[:] + 0.5 * metadata_handle.attrs["size"]
+                    > maxpos_handle[group][:],
+                    centers_handle[:] + 0.5 * metadata_handle.attrs["size"],
+                    maxpos_handle[group][:],
+                )
+        else:
+            # be conservative: pad (default by 0.1 cell) in case particles drifed
+            # (unless for group catalogues)
+            pad_cells = (
+                0
+                if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES
+                else self.safe_padding
+            )
+            if self.metadata.output_type not in _GROUPCAT_OUTPUT_TYPES:
+                warnings.warn(
+                    "Snapshot does not contain Cells/MinPositions and Cells/MaxPositions"
+                    f" metadata. Padding region by {pad_cells} times cell length to"
+                    " account for drifted particles. This behaviour can be"
+                    " configured/disabled with the `safe_padding` parameter when creating"
+                    " the mask. See "
+                    "https://swiftsimio.readthedocs.io/en/latest/masking/index.html"
+                    " for further details."
+                )
+            # +/- 0.5 here is the cell size itself:
+            self.minpositions["shared"] = (
+                centers_handle[:] - (pad_cells + 0.5) * metadata_handle.attrs["size"]
+            )
+            self.maxpositions["shared"] = (
+                centers_handle + (pad_cells + 0.5) * metadata_handle.attrs["size"]
+            )
         # Only want to compute this once (even if it is fast, we do not
         # have a reliable stable sort in the case where cells do not
         # contain at least one of each type of particle).
-        sort = None
+        self.cell_sort = None
 
         # Now perform sort:
         for key in self.offsets.keys():
@@ -218,22 +290,43 @@ class SWIFTMask(object):
             counts = self.counts[key]
 
             # When using MPI, we cannot assume that these are sorted.
-            if sort is None:
+            if self.cell_sort is None:
                 # Only compute once; not stable between particle
                 # types if some datasets do not have particles in a cell!
-                sort = np.argsort(offsets)
+                self.cell_sort = np.argsort(offsets)
 
-            self.offsets[key] = offsets[sort]
-            self.counts[key] = counts[sort]
+            self.offsets[key] = offsets[self.cell_sort]
+            self.counts[key] = counts[self.cell_sort]
 
         # Also need to sort centers in the same way
         self.centers = cosmo_array(
-            centers_handle[:][sort],
+            centers_handle[:][self.cell_sort],
             units=self.units.length,
             comoving=True,
             scale_factor=self.metadata.scale_factor,
             scale_exponent=1,
         )
+        # And sort min & max positions, too.
+        for k in self.minpositions.keys():
+            self.minpositions[k] = cosmo_array(
+                self.minpositions[k][self.cell_sort],
+                units=self.units.length,
+                comoving=True,
+                scale_factor=self.metadata.scale_factor,
+                scale_exponent=1,
+            )
+        for k in self.maxpositions.keys():
+            self.maxpositions[k] = cosmo_array(
+                self.maxpositions[k][self.cell_sort],
+                units=self.units.length,
+                comoving=True,
+                scale_factor=self.metadata.scale_factor,
+                scale_exponent=1,
+            )
+        if minpos_handle is None and maxpos_handle is None:
+            for group_name in self.metadata.present_group_names:
+                self.minpositions[group_name] = self.minpositions["shared"]
+                self.maxpositions[group_name] = self.maxpositions["shared"]
 
         # Note that we cannot assume that these are cubic, unfortunately.
         self.cell_size = cosmo_array(
@@ -367,6 +460,11 @@ class SWIFTMask(object):
 
             These values must have units associated with them.
 
+        Raises
+        ------
+        ValueError
+            If the mask boundaries are outside the interval [-Lbox/2, 3*Lbox/2].
+
         Returns
         -------
 
@@ -374,52 +472,71 @@ class SWIFTMask(object):
             mask to indicate which cells are within the specified spatial range
         """
 
-        cell_mask = np.ones(len(self.centers), dtype=bool)
+        if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES:
+            cell_mask = {"shared": np.ones(len(self.centers), dtype=bool)}
+        else:
+            # particles may drift from their cells, mask each type separately
+            cell_mask = {
+                group_name: np.ones(len(self.centers), dtype=bool)
+                for group_name in self.metadata.present_group_names
+            }
 
         for dimension in range(0, 3):
-            if restrict[dimension] is None:
-                continue
-
-            # Include the cell size so it's easier to find the overlap
-            lower = restrict[dimension][0] - 0.5 * self.cell_size[dimension]
-            upper = restrict[dimension][1] + 0.5 * self.cell_size[dimension]
+            lower = restrict[dimension][0]
+            upper = restrict[dimension][1]
             boxsize = self.metadata.boxsize[dimension]
-
-            # Now need to deal with the three wrapping cases:
-            if lower.value < 0.0:
-                # Wrap lower -> high
-                lower += boxsize
-
+            if np.logical_or.reduce(
+                (
+                    lower < -boxsize / 2,
+                    upper < -boxsize / 2,
+                    lower > 3 * boxsize / 2,
+                    upper > 3 * boxsize / 2,
+                )
+            ):
+                # because we're only going to make one periodic copy on either side,
+                # we're in trouble
+                raise ValueError(
+                    "Mask region boundaries must be in interval [-boxsize/2, 3*boxsize/2]"
+                    f" along {'xyz'[dimension]}-axis."
+                )
+            if restrict[dimension] is None or np.abs(upper - lower) > boxsize:
+                # keep everything along this axis
+                continue
+            if upper < lower:
+                # inverted case, convert to a "normal" case in target window
+                if lower > boxsize / 2:
+                    lower -= boxsize
+                elif upper < boxsize / 2:  # don't shift both else we get the whole box!
+                    upper += boxsize
+            group_names = (
+                ["shared"]
+                if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES
+                else self.metadata.present_group_names
+            )
+            for group_name in group_names:
+                # selection intersects one of the 3 periodic copies of a cell:
                 this_mask = np.logical_or.reduce(
                     [
-                        self.centers[cell_mask, dimension] > lower,
-                        self.centers[cell_mask, dimension] <= upper,
+                        np.logical_and(
+                            self.maxpositions[group_name][
+                                cell_mask[group_name], dimension
+                            ]
+                            + shift * boxsize
+                            > lower,
+                            self.minpositions[group_name][
+                                cell_mask[group_name], dimension
+                            ]
+                            + shift * boxsize
+                            < upper,
+                        )
+                        for shift in (-1, 0, 1)
                     ]
                 )
-            elif upper > boxsize:
-                # Wrap high -> lower
-                upper -= boxsize
-
-                this_mask = np.logical_or.reduce(
-                    [
-                        self.centers[cell_mask, dimension] > lower,
-                        self.centers[cell_mask, dimension] <= upper,
-                    ]
-                )
-            else:
-                # No wrapping required
-                this_mask = np.logical_and.reduce(
-                    [
-                        self.centers[cell_mask, dimension] > lower,
-                        self.centers[cell_mask, dimension] <= upper,
-                    ]
-                )
-
-            cell_mask[cell_mask] = this_mask
+                cell_mask[group_name][cell_mask[group_name]] = this_mask
 
         return cell_mask
 
-    def _update_spatial_mask(self, restrict, data_name: str, cell_mask: np.array):
+    def _update_spatial_mask(self, restrict, data_name: str, cell_mask: dict):
         """
         Updates the particle mask using the cell mask.
 
@@ -436,30 +553,31 @@ class SWIFTMask(object):
         data_name : str
             underlying data to update (e.g. _gas, _shared)
 
-        cell_mask : np.array
+        cell_mask : dict
             cell mask used to update the particle mask
         """
 
         count_name = data_name[1:]  # Remove the underscore
 
-        if self.spatial_only:
-            counts = self.counts[count_name][cell_mask]
-            offsets = self.offsets[count_name][cell_mask]
+        for group_name in self.metadata.present_group_names:
+            if self.spatial_only:
+                counts = self.counts[count_name][cell_mask[count_name]]
+                offsets = self.offsets[count_name][cell_mask[count_name]]
 
-            this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
+                this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
 
-            setattr(self, data_name, np.array(this_mask))
-            setattr(self, f"{data_name}_size", np.sum(counts))
+                setattr(self, data_name, np.array(this_mask))
+                setattr(self, f"{data_name}_size", np.sum(counts))
 
-        else:
-            counts = self.counts[count_name][~cell_mask]
-            offsets = self.offsets[count_name][~cell_mask]
+            else:
+                counts = self.counts[count_name][~cell_mask[count_name]]
+                offsets = self.offsets[count_name][~cell_mask[count_name]]
 
-            # We must do the whole boolean mask business.
-            this_mask = getattr(self, data_name)
+                # We must do the whole boolean mask business.
+                this_mask = getattr(self, data_name)
 
-            for count, offset in zip(counts, offsets):
-                this_mask[offset : count + offset] = False
+                for count, offset in zip(counts, offsets):
+                    this_mask[offset : count + offset] = False
 
         return
 
@@ -499,9 +617,11 @@ class SWIFTMask(object):
 
         if hasattr(self, "cell_mask") and intersect:
             # we already have a mask and are in intersect mode
-            self.cell_mask = np.logical_or(
-                self.cell_mask, self._generate_cell_mask(restrict)
-            )
+            new_mask = self._generate_cell_mask(restrict)
+            for group_name in self.metadata.present_group_names:
+                self.cell_mask[group_name] = np.logical_or(
+                    self.cell_mask[group_name], new_mask[group_name]
+                )
         else:
             # we just make a new mask
             self.cell_mask = self._generate_cell_mask(restrict)
@@ -626,6 +746,7 @@ class SWIFTMask(object):
             arrays now storing the offset of the first particle in the cell.
 
         """
+
         if self.spatial_only:
             masked_counts = {}
             current_offsets = {}
@@ -635,9 +756,9 @@ class SWIFTMask(object):
                     "constrain_spatial with a suitable restrict array to generate one."
                 )
             for part_type, counts in self.counts.items():
-                masked_counts[part_type] = counts * self.cell_mask
+                masked_counts[part_type] = counts * self.cell_mask[part_type]
 
-                current_offsets[part_type] = [0] * counts.size
+                current_offsets[part_type] = np.zeros(counts.size, dtype=np.int64)
                 running_sum = 0
                 for i in range(len(counts)):
                     current_offsets[part_type][i] = running_sum

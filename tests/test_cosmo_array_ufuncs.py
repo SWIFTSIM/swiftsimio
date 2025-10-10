@@ -7,6 +7,7 @@ import numpy as np
 import unyt as u
 from swiftsimio.objects import (
     cosmo_array,
+    cosmo_quantity,
     cosmo_factor,
     a,
     multiple_output_operators,
@@ -799,7 +800,7 @@ class TestCosmoArrayUfuncs:
             comoving=False,
             cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
-        inp2 = cosmo_array(
+        inp2 = cosmo_quantity(
             1,
             u.kpc,
             comoving=False,
@@ -813,7 +814,7 @@ class TestCosmoArrayUfuncs:
             comoving=False,
             cosmo_factor=cosmo_factor(a ** 1, scale_factor=1.0),
         )
-        inp2 = cosmo_array(
+        inp2 = cosmo_quantity(
             0,
             u.kpc,
             comoving=False,
@@ -821,3 +822,27 @@ class TestCosmoArrayUfuncs:
         )
         res = inp1 > inp2
         assert res.all()
+
+
+class TestComovingConversion:
+    def test_conversion_happens(self):
+        """
+        Given a physical and a comoving input to e.g. addition, conversion
+        should happen and we should get a correct result.
+        """
+        inp1 = cosmo_array(
+            [1, 2, 3],
+            u.kpc,
+            comoving=True,
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),
+        )
+        inp2 = cosmo_array(
+            [1, 2, 3],
+            u.Mpc,  # different units, expect conversion
+            comoving=False,  # different comoving, expect conversion
+            cosmo_factor=cosmo_factor(a ** 1, scale_factor=0.5),  # not z=0
+        )
+        result = inp1 + inp2
+        assert np.allclose(
+            result.to_comoving_value(u.kpc), np.array([2001, 4002, 6003])
+        )

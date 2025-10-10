@@ -1,21 +1,81 @@
-.. SWIFTsimIO documentation master file, created by
-   sphinx-quickstart on Sat Nov 23 15:40:41 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to SWIFTsimIO's documentation!
 ======================================
 
-``swiftsimio`` is a toolkit for reading SWIFT_ data, an astrophysics
-simulation code. It is used to ensure that everything that you read has a
-symbolic unit attached, and  can be used for visualisation. The final key
-feature that it enables is the use of the cell metadata in ``SWIFT``
-snapshots to enable partial reading.
+.. include:: ../../README.rst
+   :start-after: INTRO_START_LABEL
+   :end-before: INTRO_END_LABEL
+
+.. grid:: 1 2 1 2
+    :margin: 5 5 0 0
+    :padding: 0 0 0 0
+    :gutter: 4
+
+    .. grid-item-card:: :octicon:`info` Getting started
+        :text-align: center
+        :class-title: sd-fs-5
+        :class-card: sd-p-3
+
+        .. button-ref:: getting_started/index
+            :color: primary
+            :outline:
+            :expand:
+
+	    installation & quick-start
+
+	    
+    .. grid-item-card:: :octicon:`code-square` Contributing
+        :text-align: center
+        :class-title: sd-fs-5
+        :class-card: sd-p-3
+
+        .. button-ref:: community/index
+            :color: primary
+            :outline:
+            :expand:
+
+            information for developers
+
+	.. button-link:: https://github.com/SWIFTSIM/swiftsimio
+            :color: primary
+            :outline:
+            :expand:
+
+            :octicon:`mark-github` source code :octicon:`link-external`
+
+    .. grid-item-card:: :octicon:`file-badge` Reference documentation
+        :text-align: center
+        :class-title: sd-fs-5
+        :class-card: sd-p-3
+
+        .. button-ref:: modules/index
+            :click-parent:
+            :color: primary
+            :outline:
+            :expand:
+
+	    lists of modules and functions
+
+    .. grid-item-card:: :octicon:`bookmark` Publishing?
+        :text-align: center
+        :class-title: sd-fs-5
+        :class-card: sd-p-3
+
+        .. button-ref:: citing/index
+	    :click-parent:
+            :color: primary
+            :outline:
+            :expand:
+
+	    citation information
+
+Documentation contents
+----------------------
 
 .. toctree::
    :maxdepth: 2
 
    getting_started/index
+   citing/index
    loading_data/index
    cosmo_array/index
    masking/index
@@ -25,49 +85,10 @@ snapshots to enable partial reading.
    creating_initial_conditions/index
    statistics/index
    command_line/index
+   community/index
 
    modules/index
 
-
-Citing SWIFTsimIO
-=================
-
-Please cite ``swiftsimio`` using the JOSS paper_:
-
-.. code-block:: bibtex
-
-    @article{Borrow2020,
-      doi = {10.21105/joss.02430},
-      url = {https://doi.org/10.21105/joss.02430},
-      year = {2020},
-      publisher = {The Open Journal},
-      volume = {5},
-      number = {52},
-      pages = {2430},
-      author = {Josh Borrow and Alexei Borrisov},
-      title = {swiftsimio: A Python library for reading SWIFT data},
-      journal = {Journal of Open Source Software}
-    }
-    
-If you use any of the subsampled projection backends, we ask that you cite our relevant
-SPHERIC article_. Note that citing the arXiv version here is recommended as the ADS
-cannot track conference proceedings well.
-
-.. code-block:: bibtex
-
-    @article{Borrow2021,
-      title={Projecting SPH Particles in Adaptive Environments}, 
-      author={Josh Borrow and Ashley J. Kelly},
-      year={2021},
-      eprint={2106.05281},
-      archivePrefix={arXiv},
-      primaryClass={astro-ph.GA}
-    }
-
-
-.. _SWIFT: http://www.swiftsim.com
-.. _paper: https://joss.theoj.org/papers/10.21105/joss.02430
-.. _article: https://ui.adsabs.harvard.edu/abs/2021arXiv210605281B/abstract
 
 Indices and tables
 ==================

@@ -176,7 +176,7 @@ the above example is shown below.
        rotation_matrix=matrix,
        rotation_center=center,
        parallel=True,
-       periodic=False, # disable periodic boundaries when using rotations
+       periodic=False,  # disable periodic boundaries when using rotations
    )
    
    # Map in msun * K / mpc^3
@@ -211,11 +211,11 @@ smoothing lengths, and smoothed quantities, to generate a pixel grid that
 represents the smoothed, sliced, version of the data.
 
 This API is available through
-:func:`swiftsimio.visualisation.slice_backends.backends["sph"]` and
-:func:`swiftsimio.visualisation.slice_backends.backends_parallel["sph"]` for the parallel
-version. The parallel version uses significantly more memory as it allocates
+:obj:`swiftsimio.visualisation.slice_backends.backends` and
+:obj:`swiftsimio.visualisation.slice_backends.backends_parallel` for parallel
+implementations. The parallel versions uses significantly more memory as they allocate
 a thread-local image array for each thread, summing them in the end. Here we
-will only describe the ``scatter`` variant, but they behave in the exact same way.
+will only describe the ``sph`` variant, but they behave in the exact same way.
 
 To use this function, you will need:
 
@@ -243,8 +243,9 @@ Then you may use the function as follows:
 
 .. code-block:: python
 
-   from swiftsimio.visualisation.slice import slice_scatter
+   from swiftsimio.visualisation.slice_backends import backends
 
+   slice_scatter = backends["sph"]
    # Using the variable names from above
    out = slice_scatter(x=x, y=y, z=z, h=h, m=m, z_slice=z_slice, res=res)
 

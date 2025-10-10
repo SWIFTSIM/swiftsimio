@@ -1,118 +1,56 @@
 Getting Started
 ===============
 
-The SWIFT astrophysical simulation code (http://swift.dur.ac.uk) is used
-widely. There exists many ways of reading the data from SWIFT, which outputs
-HDF5 files. These range from reading directly using :mod:`h5py` to using a
-complex system such as :mod:`yt`; however these either are unsatisfactory
-(e.g. a lack of unit information in reading HDF5), or too complex for most
-use-cases. This (thin) wrapper provides an object-oriented API to read
-(dynamically) data from SWIFT.
-
-Getting set up with :mod:`swiftsimio` is easy; it (by design) has very few
-requirements. There are a number of optional packages that you can install
-to make the experience better and these are recommended. All requirements
-are detailed below.
-
+.. include:: ../../../README.rst
+   :start-after: INTRO_START_LABEL
+   :end-before: INTRO_END_LABEL
 
 Requirements
 ------------
 
-This requires ``python`` ``v3.8.0`` or higher. Unfortunately it is not
-possible to support :mod:`swiftsimio` on versions of python lower than this.
-It is important that you upgrade if you are still a ``python2`` user.
+.. include:: ../../../README.rst
+   :start-after: REQS_START_LABEL
+   :end-before: REQS_END_LABEL
 
-Python packages
-^^^^^^^^^^^^^^^
-
-+ ``numpy``, required for the core numerical routines.
-+ ``h5py``, required to read data from the SWIFT HDF5 output files.
-+ ``unyt``, required for symbolic unit calculations (depends on ``sympy``).
-
-Optional packages
-^^^^^^^^^^^^^^^^^
-
-+ ``numba``, highly recommended should you wish to use the in-built visualisation
-  tools.
-+ ``scipy``, required if you wish to generate smoothing lengths for particle types
-  that do not store this variable in the snapshots (e.g. dark matter)
-+ ``tqdm``, required for progress bars for some long-running tasks. If not installed
-  no progress bar will be shown.
-
+.. |Python version| image:: https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSWIFTSIM%2Fswiftsimio%2Fmaster%2Fpyproject.toml
 
 Installing
 ----------
 
-:mod:`swiftsimio` can be installed using the python packaging manager, ``pip``,
-or any other packaging manager that you wish to use:
+.. include:: ../../../README.rst
+   :start-after: INSTALL_START_LABEL
+   :end-before: INSTALL_END_LABEL
 
-``pip install swiftsimio``
-
-Note that this will install any required packages for you.
+Development environment
+^^^^^^^^^^^^^^^^^^^^^^^
 
 To set up the code for development, first clone the latest master from GitHub:
 
-``git clone https://github.com/SWIFTSIM/swiftsimio.git``
+.. code-block::
+   
+   git clone https://github.com/SWIFTSIM/swiftsimio.git
 
-and install with ``pip`` using the ``-e`` flag,
+and install with ``pip`` using the ``-e`` ("editable") flag,
 
-``cd swiftsimio``
+.. code-block::
 
-``pip install -e .``
+   cd swiftsimio
+   pip install -e .
 
-.. TODO: Add contribution guide.
+Then install the optioanl dependencies for the code and the documentation:
 
-Usage
------
+.. code-block::
 
-There are many examples of using :mod:`swiftsimio` available in the
-swiftsimio_examples_ repository, which also includes examples for reading
-older (e.g. EAGLE) datasets.
+   pip install -r optional_requirements.txt
+   pip install -r docs/requirements.txt
 
-Example usage is shown below, which plots a density-temperature phase
-diagram, with density and temperature given in CGS units:
+.. include:: ../../../README.rst
+   :start-after: COMMUNITY_START_LABEL
+   :end-before: COMMUNITY_END_LABEL
 
-.. code-block:: python
+Usage example
+-------------
 
-   import swiftsimio as sw
-
-   # This loads all metadata but explicitly does _not_ read any particle data yet
-   data = sw.load("/path/to/swift/output")
-
-   import matplotlib.pyplot as plt
-
-   data.gas.densities.convert_to_cgs()
-   data.gas.temperatures.convert_to_cgs()
-
-   plt.loglog()
-
-   plt.scatter(
-      data.gas.densities,
-      data.gas.temperatures,
-      s=1
-   )
-
-   plt.xlabel(fr"Gas density $\left[{data.gas.densities.units.latex_repr}\right]$")
-   plt.ylabel(fr"Gas temperature $\left[{data.gas.temperatures.units.latex_repr}\right]$")
-
-   plt.tight_layout()
-
-   plt.savefig("test_plot.png", dpi=300)
-
-
-Don't worry too much about this for now if you can't understand it, we will
-get into this much more heavily in the next section.
-
-In the above it's important to note the following:
-
-+ All metadata is read in when the :meth:`swiftsimio.load` function is called.
-+ Only the density and temperatures (corresponding to the ``PartType0/Densities`` and
-  ``PartType0/Temperatures``) datasets are read in.
-+ That data is only read in once the
-  :meth:`~swiftsimio.objects.cosmo_array.convert_to_cgs` method is called.
-+ :meth:`~swiftsimio.objects.cosmo_array.convert_to_cgs` converts data in-place;
-  i.e. it returns `None`.
-+ The data is cached and not re-read in when ``plt.scatter`` is called.
-
-
-.. _swiftsimio_examples: https://github.com/swiftsim/swiftsimio-examples
+.. include:: ../../../README.rst
+   :start-after: USAGE_START_LABEL
+   :end-before: USAGE_END_LABEL

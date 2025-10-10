@@ -1,18 +1,17 @@
 import numpy as np
 from warnings import warn
+from functools import reduce
 from swiftsimio.objects import cosmo_array
 from swiftsimio._array_functions import _copy_cosmo_array_attributes_if_present
 
 
 def _get_projection_field(data, field_name):
-    return (
-        getattr(data, field_name)
-        if field_name is not None
-        else np.ones_like(data.particle_ids)
-    )
+    if field_name is None:
+        return np.ones_like(data.particle_ids)
+    return reduce(getattr, field_name.split("."), data)
 
 
-def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=True):
+def _get_region_info(data, region, require_cubic=False, periodic=True):
     boxsize = data.metadata.boxsize
     if region is not None:
         region = cosmo_array(region)
@@ -24,24 +23,20 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
         boxsize.convert_to_physical()
         if region is not None:
             region.convert_to_physical()
-    z_slice_included = z_slice is not None
-    if not z_slice_included:
-        z_slice = np.zeros_like(boxsize[0])
     box_x, box_y, box_z = boxsize
     if region is not None:
         x_min, x_max, y_min, y_max = region[:4]
         if len(region) == 6:
-            z_slice_included = True
+            region_includes_z = True
             z_min, z_max = region[4:]
         else:
+            region_includes_z = False
             z_min, z_max = np.zeros_like(box_z), box_z
     else:
+        region_includes_z = False
         x_min, x_max = np.zeros_like(box_x), box_x
         y_min, y_max = np.zeros_like(box_y), box_y
         z_min, z_max = np.zeros_like(box_z), box_z
-
-    if z_slice_included and (z_slice > box_z) or (z_slice < np.zeros_like(box_z)):
-        raise ValueError("Please enter a slice value inside the box.")
 
     x_range = x_max - x_min
     y_range = y_max - y_min
@@ -70,28 +65,35 @@ def _get_region_info(data, region, z_slice=None, require_cubic=False, periodic=T
         "y_range": y_range,
         "z_range": z_range,
         "max_range": max_range,
-        "z_slice_included": z_slice_included,
+        "region_includes_z": region_includes_z,
         "periodic_box_x": periodic_box_x,
         "periodic_box_y": periodic_box_y,
         "periodic_box_z": periodic_box_z,
     }
 
 
-def _get_rotated_coordinates(data, rotation_matrix, rotation_center):
+def _get_rotated_and_wrapped_coordinates(
+    data, rotation_matrix, rotation_center, periodic
+):
+    if rotation_center is not None and periodic is True:
+        raise ValueError(
+            "Rotation and periodic boundaries in visualisation are incompatible."
+        )
     if rotation_center is not None:
         if data.coordinates.comoving:
             rotation_center = rotation_center.to_comoving()
         elif data.coordinates.comoving is False:
             rotation_center = rotation_center.to_physical()
         # Rotate co-ordinates as required
-        x, y, z = np.matmul(rotation_matrix, (data.coordinates - rotation_center).T)
-
-        x += rotation_center[0]
-        y += rotation_center[1]
-        z += rotation_center[2]
+        coords = (
+            np.matmul(rotation_matrix, (data.coordinates - rotation_center).T).T
+            + rotation_center
+        )
     else:
-        x, y, z = data.coordinates.T
-    return x, y, z
+        coords = data.coordinates
+    if periodic:
+        coords %= data.metadata.boxsize
+    return coords.T
 
 
 def backend_restore_cosmo_and_units(backend_func, norm=1.0):
