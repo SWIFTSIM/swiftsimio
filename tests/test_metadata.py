@@ -76,6 +76,18 @@ def test_file_handle_cleanup(cosmological_volume_only_single):
     assert _is_closed_hdf5_file(data.metadata.units._handle)
     assert _is_closed_hdf5_file(data.gas.metadata.units._handle)
 
+    m.constrain_spatial(
+        cosmo_array([np.zeros_like(m.metadata.boxsize), m.metadata.boxsize]).T
+    )
+    mdata = load(cosmological_volume_only_single, mask=m)
+    assert _is_closed_hdf5_file(mdata._handle)
+    assert _is_closed_hdf5_file(mdata.metadata._handle)
+    assert _is_closed_hdf5_file(mdata.units._handle)
+    assert _is_closed_hdf5_file(mdata.gas._handle)
+    assert _is_closed_hdf5_file(mdata.gas.metadata._handle)
+    assert _is_closed_hdf5_file(mdata.metadata.units._handle)
+    assert _is_closed_hdf5_file(mdata.gas.metadata.units._handle)
+
 
 def test_mask_and_dataset_share_metadata(cosmological_volume_only_single):
     """
@@ -97,22 +109,14 @@ def test_file_handle_shared(cosmological_volume_only_single):
     Check that file handles are shared across objects.
 
     Only the handle for the initial burst of metadata reading is shared. Later reading
-    of datasets and their attributes get a new handle.
-
-    To test this we need to create a handle under control of the test, if we let the
-    swiftsimio classes create their own handles, they will be closed before we can check
-    their state. However, by passing in our own handle it will stay open, letting us check
-    that it is shared properly. We test for handles being closed promptly separately in
-    ``test_file_handle_cleanup``.
+    of datasets and their attributes get a new handle internally.
     """
-    with h5py.File(cosmological_volume_only_single, "r") as f:
-        data = load(f)
-        assert data._handle is f
-        assert data.metadata._handle is f
-        assert data.units._handle is f
-        assert data.metadata.units._handle is f
-        assert data.gas._handle is f
-        assert data.gas.metadata._handle is f
+    data = load(cosmological_volume_only_single)
+    assert data.metadata._handle is data._handle
+    assert data.units._handle is data._handle
+    assert data.metadata.units._handle is data._handle
+    assert data.gas._handle is data._handle
+    assert data.gas.metadata._handle is data._handle
 
 
 def test_file_handle_shared_when_masked(cosmological_volume_only_single):
@@ -130,11 +134,15 @@ def test_file_handle_shared_when_masked(cosmological_volume_only_single):
     m = mask(cosmological_volume_only_single)  # gets, uses and closes its own handle
     region = cosmo_array([np.zeros_like(m.metadata.boxsize), m.metadata.boxsize]).T
     m.constrain_spatial(region)
-    with h5py.File(cosmological_volume_only_single, "r") as f:
-        data = load(f, mask=m)
-        assert data._handle is f
-        assert data.metadata._handle is not f
-        assert data.units._handle is not f
-        assert data.metadata.units._handle is not f
-        assert data.gas._handle is f
-        assert data.gas.metadata._handle is not f
+    data = load(cosmological_volume_only_single, mask=m)
+    # comparison with `is` robust to handle being open/closed
+    assert data._handle is data._handle
+    assert data.metadata._handle is not data._handle  # handle from mask
+    assert data.units._handle is not data._handle  # handle from masks
+    assert data.metadata.units._handle is not data._handle  # handle from mask
+    assert data.gas._handle is data._handle
+    assert data.gas.metadata._handle is not data._handle  # handle from mask
+    # check that mask shared its handle:
+    assert data.units._handle is data.metadata._handle
+    assert data.metadata.units._handle is data.metadata._handle
+    assert data.gas.metadata._handle is data.metadata._handle

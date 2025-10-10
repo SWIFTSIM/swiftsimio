@@ -9,15 +9,16 @@ import numpy as np
 from typing import Union
 from pathlib import Path
 
-from swiftsimio.metadata.objects import SWIFTMetadata, _set_filename_and_handle
+from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
+from swiftsimio._handle_provider import HandleProvider
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
 
 
-class SWIFTMask(object):
+class SWIFTMask(HandleProvider):
     """
     Main masking object. This can have masks for any present particle field in it.
     Pass in the SWIFTMetadata.
@@ -26,17 +27,15 @@ class SWIFTMask(object):
     group_mapping: dict | None = None
     group_size_mapping: dict | None = None
     filename: Path
-    _handle: h5py.File
-    _opened_file_handle: bool
-    set_filename_and_handle = _set_filename_and_handle
 
     def __init__(
         self,
-        file_name_or_handle: Path | h5py.File,
+        filename: Path,
         metadata: SWIFTMetadata,
         *,
         spatial_only=True,
         safe_padding: Union[bool, float] = _DEFAULT_SAFE_PADDING,
+        handle: h5py.File | None = None,
     ):
         """
         SWIFTMask constructor
@@ -48,8 +47,8 @@ class SWIFTMask(object):
 
         Parameters
         ----------
-        file_name_or_handle : Path or h5py.File
-            File name or open ``h5py.File`` handle to read from.
+        filename : Path
+            File name to read from
 
         metadata : SWIFTMetadata
             Metadata specifying masking for reading of snapshots
@@ -72,8 +71,11 @@ class SWIFTMask(object):
             factor of 30 in some cases (but a few particles in region could be missing).
             See https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
             details.
+
+        handle : h5py.File, optional
+            File handle to read from.
         """
-        self.set_filename_and_handle(file_name_or_handle)
+        super().__init__(filename, handle=handle)
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
@@ -99,8 +101,8 @@ class SWIFTMask(object):
 
         if not spatial_only:
             self._generate_empty_masks()
-        if self._opened_file_handle:
-            self._handle.close()
+
+        self._close_handle_if_manager()
 
     def _generate_mapping_dictionary(self) -> dict[str, str]:
         """
@@ -218,7 +220,7 @@ class SWIFTMask(object):
         self.minpositions = {}
         self.maxpositions = {}
 
-        cell_handle = self._handle["Cells"]
+        cell_handle = self.handle["Cells"]
         count_handle = cell_handle["Counts"]
         metadata_handle = cell_handle["Meta-data"]
         centers_handle = cell_handle["Centres"]

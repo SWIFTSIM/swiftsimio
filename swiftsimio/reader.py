@@ -15,11 +15,11 @@ from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.metadata.objects import (
-    metadata_discriminator,
+    _metadata_discriminator,
     SWIFTUnits,
     SWIFTGroupMetadata,
-    _set_filename_and_handle,
 )
+from swiftsimio._handle_provider import HandleProvider
 
 import h5py
 import unyt
@@ -247,7 +247,7 @@ def generate_deleter(name: str):
     return deleter
 
 
-class __SWIFTGroupDataset(object):
+class __SWIFTGroupDataset(HandleProvider):
     """
     Creates empty property fields
 
@@ -261,12 +261,12 @@ class __SWIFTGroupDataset(object):
     """
 
     filename: Path
-    _handle: h5py.File
-    _opened_file_handle: bool
-    set_filename_and_handle = _set_filename_and_handle
 
     def __init__(
-        self, file_name_or_handle: Path | h5py.File, group_metadata: SWIFTGroupMetadata
+        self,
+        filename: Path,
+        group_metadata: SWIFTGroupMetadata,
+        handle: h5py.File | None = None,
     ):
         """
         Constructor for SWIFTGroupDataset class
@@ -276,13 +276,16 @@ class __SWIFTGroupDataset(object):
 
         Parameters
         ----------
-        file_name_or_handle: Path or h5py.File
-            File name or open ``h5py.File`` handle to read from.
+        filename : Path
+            File name to read from.
 
         group_metadata : SWIFTGroupMetadata
             the metadata used to generate empty properties
+
+        handle: h5py.File, optional
+            File handle to read from.
         """
-        self.set_filename_and_handle(file_name_or_handle)
+        super().__init__(handle.filename, handle=handle)
         self.units = group_metadata.units
 
         self.group = group_metadata.group
@@ -292,8 +295,7 @@ class __SWIFTGroupDataset(object):
         self.metadata = group_metadata.metadata
 
         self.generate_empty_properties()
-        if self._opened_file_handle:
-            self._handle.close()
+        self._close_handle_if_manager()
 
         return
 
@@ -309,7 +311,7 @@ class __SWIFTGroupDataset(object):
         for field_name, field_path in zip(
             self.group_metadata.field_names, self.group_metadata.field_paths
         ):
-            if field_path in self._handle:
+            if field_path in self.handle:
                 setattr(self, f"_{field_name}", None)
             else:
                 raise AttributeError(
@@ -396,7 +398,10 @@ class __SWIFTNamedColumnDataset(object):
 
 
 def generate_dataset(
-    handle, group_metadata: SWIFTGroupMetadata, mask: SWIFTMask
+    filename: Path,
+    group_metadata: SWIFTGroupMetadata,
+    mask: SWIFTMask,
+    handle: h5py.File | None = None,
 ) -> __SWIFTGroupDataset:
     """
     Generates a SWIFTGroupDataset _class_ that corresponds to the
@@ -414,12 +419,14 @@ def generate_dataset(
 
     Parameters
     ----------
-    handle : h5py.File
-        file handle to read metadata
+    filename : Path
+        file name to read metadata
     group_metadata : SWIFTGroupMetadata
         the metadata for the group
     mask : SWIFTMask
         the mask object for the datasets
+    handle : h5py.File, optional
+        file handle to read metadata
     """
 
     filename = group_metadata.filename
@@ -540,12 +547,12 @@ def generate_dataset(
     ThisDataset = type(
         f"{group_nice_name}Dataset", this_dataset_bases, this_dataset_dict
     )
-    empty_dataset = ThisDataset(handle, group_metadata)
+    empty_dataset = ThisDataset(filename, group_metadata, handle=handle)
 
     return empty_dataset
 
 
-class SWIFTDataset(object):
+class SWIFTDataset(HandleProvider):
     """
     A collection object for:
 
@@ -577,25 +584,24 @@ class SWIFTDataset(object):
     """
 
     filename: Path
-    _handle: h5py.File
-    _opened_file_handle: bool
-    set_filename_and_handle = _set_filename_and_handle
 
     def __init__(
-        self, file_name_or_handle: Path | h5py.File, mask: SWIFTMask = None
+        self, filename: Path, mask: SWIFTMask = None, handle: h5py.File | None = None
     ) -> None:
         """
         Constructor for SWIFTDataset class
 
         Parameters
         ----------
-        file_name_or_handle : Path | h5py.File
-            File name or open ``h5py.File`` handle to read from.
+        filename : Path
+            File name to read from.
         mask : np.ndarray, optional
             mask object containing dataset to selected particles
+        handle : h5py.File, optional
+            file handle to read metadata
         """
-        self.set_filename_and_handle(file_name_or_handle)
 
+        super().__init__(filename, handle=handle)
         self.mask = mask
         if mask is not None:
             self.mask.convert_masks_to_ranges()
@@ -603,8 +609,8 @@ class SWIFTDataset(object):
         self.get_units()
         self.get_metadata()
         self.create_datasets()
-        if self._opened_file_handle:
-            self._handle.close()  # we're done with it after reading metadata
+
+        self._close_handle_if_manager()
 
         return
 
@@ -634,7 +640,7 @@ class SWIFTDataset(object):
             ), "Mask is for {self.mask.filename} but dataset is for {self.filename}."
             self.units = self.mask.units
         else:
-            self.units = SWIFTUnits(self._handle)
+            self.units = SWIFTUnits(self.filename, handle=self.handle)
 
         return
 
@@ -653,7 +659,9 @@ class SWIFTDataset(object):
             ), "Mask is for {self.mask.filename} but dataset is for {self.filename}."
             self.metadata = self.mask.metadata
         else:
-            self.metadata = metadata_discriminator(self._handle, self.units)
+            self.metadata = _metadata_discriminator(
+                self.filename, self.units, handle=self.handle
+            )
 
         return
 
@@ -673,9 +681,10 @@ class SWIFTDataset(object):
                 self,
                 group_name,
                 generate_dataset(
-                    self._handle,
+                    self.filename,
                     getattr(self.metadata, f"{group_name}_properties"),
                     self.mask,
+                    handle=self.handle,
                 ),
             )
 
