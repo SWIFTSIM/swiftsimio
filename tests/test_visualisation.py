@@ -1015,11 +1015,21 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
         data = load(cosmological_volume_only_single, mask=m)
         # we force the default (project="masses") to check the cosmo_factor
         # conversion in this case
-        img = func(data, resolution=64, project="masses", region=region.flatten(), parallel=True)
+        img = func(
+            data,
+            resolution=64,
+            project="masses",
+            region=region.flatten(),
+            parallel=True,
+        )
         assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
         img = func(
-            data, resolution=64, project="densities", region=region.flatten(), parallel=True
+            data,
+            resolution=64,
+            project="densities",
+            region=region.flatten(),
+            parallel=True,
         )
         assert data.gas.densities.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
@@ -1046,7 +1056,11 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
         data.gas.coordinates.convert_to_physical()
         with pytest.warns(UserWarning, match="Converting coordinate grid to comoving."):
             img = func(
-                data, resolution=64, project="masses", region=region.flatten(), parallel=True
+                data,
+                resolution=64,
+                project="masses",
+                region=region.flatten(),
+                parallel=True,
             )
         assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** (aexp)).simplify() == 0
@@ -1060,14 +1074,22 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
                 UserWarning, match="Converting coordinate grid to comoving."
             ):
                 img = func(
-                    data, resolution=64, project="masses", region=region.flatten(), parallel=True
+                    data,
+                    resolution=64,
+                    project="masses",
+                    region=region.flatten(),
+                    parallel=True,
                 )
         assert data.gas.masses.comoving and img.comoving
         assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
         # densities are physical, make sure this works with physical coordinates and
         # smoothing lengths
         img = func(
-            data, resolution=64, project="densities", region=region.flatten(), parallel=True
+            data,
+            resolution=64,
+            project="densities",
+            region=region.flatten(),
+            parallel=True,
         )
         assert data.gas.densities.comoving is False and img.comoving is False
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
