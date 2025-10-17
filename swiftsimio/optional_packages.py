@@ -84,7 +84,7 @@ except (ImportError, ModuleNotFoundError):
 
 if not CUDA_AVAILABLE:
     # Mock cuda-jit to prevent crashes
-    def cuda_jit(*args, **kwargs):
+    def cuda_jit(*args, **kwargs):  # NOQA
         def x(func):
             return func
 

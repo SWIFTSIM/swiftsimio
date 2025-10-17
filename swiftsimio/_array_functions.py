@@ -720,18 +720,18 @@ def _arctan2_cosmo_factor(
             f" provided cosmo_factor ({cf2}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf2.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf2.scale_factor)
     elif (cf1 is not None) and (cf2 is None):
         warnings.warn(
             f"Mixing arguments with and without cosmo_factors, continuing assuming"
             f" provided cosmo_factor ({cf1}) for all arguments.",
             RuntimeWarning,
         )
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
     elif (cf1 is not None) and (cf2 is not None) and (cf1 != cf2):
         raise ValueError(f"Arguments have cosmo_factors that differ: {cf1} and {cf2}.")
     elif (cf1 is not None) and (cf2 is not None) and (cf1 == cf2):
-        return objects.cosmo_factor(objects.a ** 0, scale_factor=cf1.scale_factor)
+        return objects.cosmo_factor(objects.a**0, scale_factor=cf1.scale_factor)
 
 
 def _comparison_cosmo_factor(
@@ -1196,7 +1196,6 @@ def array2string(
     *,
     legacy=None,
 ):
-
     res = unyt_array2string(
         a,
         max_line_width=max_line_width,
@@ -1231,7 +1230,6 @@ implements(np.kron)(_default_binary_wrapper(unyt_kron, _multiply_cosmo_factor))
 
 @implements(np.histogram_bin_edges)
 def histogram_bin_edges(a, bins=10, range=None, weights=None):
-
     helper_result = _prepare_array_func_args(a, bins=bins, range=range, weights=weights)
     if not isinstance(bins, str) and np.ndim(bins) == 1:
         # we got bin edges as input
@@ -1261,7 +1259,6 @@ implements(np.linalg.svd)(
 
 @implements(np.histogram)
 def histogram(a, bins=10, range=None, density=None, weights=None):
-
     helper_result = _prepare_array_func_args(
         a, bins=bins, range=range, density=density, weights=weights
     )
@@ -1285,7 +1282,6 @@ def histogram(a, bins=10, range=None, density=None, weights=None):
 
 @implements(np.histogram2d)
 def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
-
     if range is not None:
         xrange, yrange = range
     else:
@@ -1385,7 +1381,6 @@ def histogram2d(x, y, bins=10, range=None, density=None, weights=None):
 
 @implements(np.histogramdd)
 def histogramdd(sample, bins=10, range=None, density=None, weights=None):
-
     D = len(sample)
     if range is not None:
         ranges = range
@@ -1618,7 +1613,6 @@ def linspace(
     *,
     device=None,
 ):
-
     helper_result = _prepare_array_func_args(
         start,
         stop,
@@ -1639,7 +1633,6 @@ def linspace(
 
 @implements(np.logspace)
 def logspace(start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0):
-
     helper_result = _prepare_array_func_args(
         start, stop, num=num, endpoint=endpoint, base=base, dtype=dtype, axis=axis
     )
@@ -1655,7 +1648,6 @@ implements(np.geomspace)(
 
 @implements(np.copyto)
 def copyto(dst, src, casting="same_kind", where=True):
-
     helper_result = _prepare_array_func_args(dst, src, casting=casting, where=where)
     if isinstance(src, objects.cosmo_array) and isinstance(dst, objects.cosmo_array):
         # if we're copyting across two
@@ -1680,7 +1672,6 @@ def prod(
     initial=np._NoValue,
     where=np._NoValue,
 ):
-
     helper_result = _prepare_array_func_args(
         a,
         axis=axis,
@@ -1713,7 +1704,6 @@ implements(np.nanquantile)(
 
 @implements(np.linalg.det)
 def linalg_det(a):
-
     helper_result = _prepare_array_func_args(a)
     ret_cf = _power_cosmo_factor(helper_result["cfs"][0], None, power=a.shape[0])
     res = unyt_linalg_det(*helper_result["args"], **helper_result["kwargs"])
@@ -1728,7 +1718,6 @@ implements(np.ptp)(_default_unary_wrapper(unyt_ptp, _preserve_cosmo_factor))
 
 @implements(np.pad)
 def pad(array, pad_width, mode="constant", **kwargs):
-
     helper_result = _prepare_array_func_args(array, pad_width, mode=mode, **kwargs)
     # the number of options is huge, including user defined functions to handle data
     # let's just preserve the cosmo_factor of the input `array` and trust the user...
@@ -1739,7 +1728,6 @@ def pad(array, pad_width, mode="constant", **kwargs):
 
 @implements(np.choose)
 def choose(a, choices, out=None, mode="raise"):
-
     helper_result = _prepare_array_func_args(a, choices, out=out, mode=mode)
     helper_result_choices = _prepare_array_func_args(*choices)
     ret_cf = _preserve_cosmo_factor(*helper_result_choices["cfs"])
@@ -1749,7 +1737,6 @@ def choose(a, choices, out=None, mode="raise"):
 
 @implements(np.insert)
 def insert(arr, obj, values, axis=None):
-
     helper_result = _prepare_array_func_args(arr, obj, values, axis=axis)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     res = unyt_insert(*helper_result["args"], **helper_result["kwargs"])
@@ -1758,7 +1745,6 @@ def insert(arr, obj, values, axis=None):
 
 @implements(np.linalg.lstsq)
 def linalg_lstsq(a, b, rcond=None):
-
     helper_result = _prepare_array_func_args(a, b, rcond=rcond)
     ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     resid_cf = _power_cosmo_factor(helper_result["cfs"][1], None, power=2)
@@ -1774,7 +1760,6 @@ def linalg_lstsq(a, b, rcond=None):
 
 @implements(np.linalg.solve)
 def linalg_solve(a, b):
-
     helper_result = _prepare_array_func_args(a, b)
     ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     res = unyt_linalg_solve(*helper_result["args"], **helper_result["kwargs"])
@@ -1783,7 +1768,6 @@ def linalg_solve(a, b):
 
 @implements(np.linalg.tensorsolve)
 def linalg_tensorsolve(a, b, axes=None):
-
     helper_result = _prepare_array_func_args(a, b, axes=axes)
     ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     res = unyt_linalg_tensorsolve(*helper_result["args"], **helper_result["kwargs"])
@@ -1792,7 +1776,6 @@ def linalg_tensorsolve(a, b, axes=None):
 
 @implements(np.linalg.eig)
 def linalg_eig(a):
-
     helper_result = _prepare_array_func_args(a)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eig(*helper_result["args"], **helper_result["kwargs"])
@@ -1801,7 +1784,6 @@ def linalg_eig(a):
 
 @implements(np.linalg.eigh)
 def linalg_eigh(a, UPLO="L"):
-
     helper_result = _prepare_array_func_args(a, UPLO=UPLO)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eigh(*helper_result["args"], **helper_result["kwargs"])
@@ -1828,7 +1810,6 @@ def savetxt(
     comments="# ",
     encoding=None,
 ):
-
     warnings.warn(
         "numpy.savetxt does not preserve units or cosmo_array information, "
         "and will only save the raw numerical data from the cosmo_array object.\n"
@@ -1870,7 +1851,6 @@ def apply_over_axes(func, a, axes):
 
 @implements(np.fill_diagonal)
 def fill_diagonal(a, val, wrap=False):
-
     helper_result = _prepare_array_func_args(a, val, wrap=wrap)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][1])
     # must pass a directly here because it's modified in-place
@@ -1887,7 +1867,6 @@ implements(np.isin)(_default_comparison_wrapper(unyt_isin))
 
 @implements(np.place)
 def place(arr, mask, vals):
-
     helper_result = _prepare_array_func_args(arr, mask, vals)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -1902,7 +1881,6 @@ def place(arr, mask, vals):
 
 @implements(np.put)
 def put(a, ind, v, mode="raise"):
-
     helper_result = _prepare_array_func_args(a, ind, v, mode=mode)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -1917,7 +1895,6 @@ def put(a, ind, v, mode="raise"):
 
 @implements(np.put_along_axis)
 def put_along_axis(arr, indices, values, axis):
-
     helper_result = _prepare_array_func_args(arr, indices, values, axis)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -1932,7 +1909,6 @@ def put_along_axis(arr, indices, values, axis):
 
 @implements(np.putmask)
 def putmask(a, mask, values):
-
     helper_result = _prepare_array_func_args(a, mask, values)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -1952,7 +1928,6 @@ implements(np.searchsorted)(
 
 @implements(np.select)
 def select(condlist, choicelist, default=0):
-
     helper_result = _prepare_array_func_args(condlist, choicelist, default=default)
     helper_result_choicelist = _prepare_array_func_args(*choicelist)
     ret_cf = _preserve_cosmo_factor(*helper_result_choicelist["cfs"])
@@ -1971,7 +1946,6 @@ implements(np.setdiff1d)(
 
 @implements(np.sinc)
 def sinc(x):
-
     # unyt just casts to array and calls the numpy implementation
     # so let's just hand off to them
     return unyt_sinc(x)
@@ -1988,7 +1962,6 @@ def clip(
     max=np._NoValue,
     **kwargs,
 ):
-
     # can't work out how to properly handle min and max,
     # just leave them in kwargs I guess (might be a numpy version conflict?)
     helper_result = _prepare_array_func_args(
@@ -2011,7 +1984,6 @@ def clip(
 
 @implements(np.where)
 def where(condition, *args):
-
     helper_result = _prepare_array_func_args(condition, *args)
     if len(args) == 0:  # just condition
         ret_cf = _return_without_cosmo_factor(helper_result["cfs"][0])
@@ -2038,7 +2010,6 @@ def einsum(
     casting="safe",
     optimize=False,
 ):
-
     helper_result = _prepare_array_func_args(
         subscripts,
         operands,
@@ -2069,7 +2040,6 @@ implements(np.tensordot)(
 
 @implements(np.unwrap)
 def unwrap(p, discont=None, axis=-1, *, period=6.283_185_307_179_586):
-
     helper_result = _prepare_array_func_args(
         p, discont=discont, axis=axis, period=period
     )
@@ -2084,7 +2054,6 @@ def unwrap(p, discont=None, axis=-1, *, period=6.283_185_307_179_586):
 
 @implements(np.interp)
 def interp(x, xp, fp, left=None, right=None, period=None):
-
     helper_result = _prepare_array_func_args(
         x, xp, fp, left=left, right=right, period=period
     )
@@ -2095,7 +2064,6 @@ def interp(x, xp, fp, left=None, right=None, period=None):
 
 @implements(np.array_repr)
 def array_repr(arr, max_line_width=None, precision=None, suppress_small=None):
-
     helper_result = _prepare_array_func_args(
         arr,
         max_line_width=max_line_width,
@@ -2120,7 +2088,6 @@ implements(np.linalg.outer)(
 
 @implements(np.trapezoid)
 def trapezoid(y, x=None, dx=1.0, axis=-1):
-
     helper_result = _prepare_array_func_args(y, x=x, dx=dx, axis=axis)
     if x is None:
         ret_cf = _multiply_cosmo_factor(

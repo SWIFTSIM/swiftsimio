@@ -48,7 +48,6 @@ def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 
     # - in order to write metadata
     # - to find the relevant cell in the cell metadata
     data_mask = _mask_without_warning(filename, safe_padding=False)
-    boxsize = data_mask.metadata.boxsize
     region = cosmo_array(
         [[0.999, 1.001]] * 3,
         data_mask.metadata.units.length,

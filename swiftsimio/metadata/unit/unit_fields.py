@@ -1,11 +1,11 @@
 """
 Contains the information for the units that determine the
 particle fields. This must be provided, if not swiftsimio
-will crash (as it should, you can't just be going around
+will crash (as it should, you can'time just be going around
 having quantities without units...)
 
 Unfortunately there must be a generator function used here
-because we don't know the units ahead of time.
+because we don'time know the units ahead of time.
 """
 
 from unyt import g, cm, s, statA, K
@@ -16,7 +16,7 @@ from typing import Callable
 # read anything directly out of the snapshots.
 
 
-def generate_units(m, l, t, I, T):
+def generate_units(mass, length, time, current, temperature):
     """
     Generates the unit dictionaries with the:
 
@@ -29,18 +29,18 @@ def generate_units(m, l, t, I, T):
     """
 
     shared = {
-        "coordinates": l,
-        "masses": m,
+        "coordinates": length,
+        "masses": mass,
         "particle_ids": None,
-        "velocities": l / t,
-        "potential": l * l / (t * t),
+        "velocities": length / time,
+        "potential": length * length / (time * time),
     }
 
     baryon = {
         "element_abundance": None,
-        "maximal_temperature": T,
+        "maximal_temperature": temperature,
         "maximal_temperature_scale_factor": None,
-        "maximal_temperature_time": t,
+        "maximal_temperature_time": time,
         "iron_mass_frac_from_sn1a": None,
         "metal_mass_frac_from_agb": None,
         "metal_mass_frac_from_snii": None,
@@ -49,25 +49,23 @@ def generate_units(m, l, t, I, T):
         "smoothed_element_abundance": None,
         "smoothed_iron_mass_frac_from_sn1a": None,
         "smoothed_metallicity": None,
-        "total_mass_from_agb": m,
-        "total_mass_from_snii": m,
+        "total_mass_from_agb": mass,
+        "total_mass_from_snii": mass,
     }
 
     gas = {
-        "density": m / (l ** 3),
-        "entropy": m * l ** 2 / (t ** 2 * T),
-        "internal_energy": (l / t) ** 2,
-        "smoothing_length": l,
-        "pressure": m / (l * t ** 2),
+        "density": mass / (length**3),
+        "entropy": mass * length**2 / (time**2 * temperature),
+        "internal_energy": (length / time) ** 2,
+        "smoothing_length": length,
+        "pressure": mass / (length * time**2),
         "diffusion": None,
-        "sfr": m / t,
-        "temperature": T,
+        "sfr": mass / time,
+        "temperature": temperature,
         "viscosity": None,
-        "specific_sfr": 1 / t,
+        "specific_sfr": 1 / time,
         "material_id": None,
-        "diffusion": None,
-        "viscosity": None,
-        "radiated_energy": m * (l / t) ** 2,
+        "radiated_energy": mass * (length / time) ** 2,
         **shared,
         **baryon,
     }
@@ -79,10 +77,10 @@ def generate_units(m, l, t, I, T):
     sinks = {**shared}
 
     stars = {
-        "birth_density": m / (l ** 3),
-        "birth_time": t,
-        "initial_masses": m,
-        "smoothing_length": l,
+        "birth_density": mass / (length**3),
+        "birth_time": time,
+        "initial_masses": mass,
+        "smoothing_length": length,
         **shared,
         **baryon,
     }

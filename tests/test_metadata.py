@@ -26,7 +26,7 @@ def test_same_contents():
     assert units.keys() == particle.keys()
 
     for ptype in cosmology.keys():
-        assert list(units[ptype].keys()) == list(particle[ptype].values())
-        assert list(cosmology[ptype].keys()) == list(particle[ptype].values())
+        assert set(units[ptype].keys()) == set(particle[ptype].values())
+        assert set(cosmology[ptype].keys()) == set(particle[ptype].values())
 
     return

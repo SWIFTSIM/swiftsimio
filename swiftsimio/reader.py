@@ -27,7 +27,7 @@ import numpy as np
 from typing import Union, List
 
 
-def generate_getter(
+def _generate_getter(
     filename,
     name: str,
     field: str,
@@ -190,7 +190,7 @@ def generate_getter(
     return getter
 
 
-def generate_setter(name: str):
+def _generate_setter(name: str):
     """
     Generates a function that sets self._name to the value that is passed to it.
 
@@ -214,7 +214,7 @@ def generate_setter(name: str):
     return setter
 
 
-def generate_deleter(name: str):
+def _generate_deleter(name: str):
     """
     Generates a function that destroys self._name (sets it back to None).
 
@@ -375,7 +375,7 @@ class __SWIFTNamedColumnDataset(object):
         return self.named_columns == other.named_columns and self.name == other.name
 
 
-def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
+def _generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     """
     Generates a SWIFTGroupDatasets _class_ that corresponds to the
     particle type given.
@@ -455,7 +455,7 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
 
         if named_columns is None:
             field_property = property(
-                generate_getter(
+                _generate_getter(
                     filename,
                     field_name,
                     field_path,
@@ -468,8 +468,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
                     physical=field_physical,
                     valid_transform=field_valid_transform,
                 ),
-                generate_setter(field_name),
-                generate_deleter(field_name),
+                _generate_setter(field_name),
+                _generate_deleter(field_name),
             )
         else:
             # TODO: Handle this case with recursion.
@@ -483,7 +483,7 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
 
             for index, column in enumerate(named_columns):
                 this_named_column_dataset_dict[column] = property(
-                    generate_getter(
+                    _generate_getter(
                         filename,
                         column,
                         field_path,
@@ -497,8 +497,8 @@ def generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
                         valid_transform=field_valid_transform,
                         columns=np.s_[index],
                     ),
-                    generate_setter(column),
-                    generate_deleter(column),
+                    _generate_setter(column),
+                    _generate_deleter(column),
                 )
 
             ThisNamedColumnDataset = type(
@@ -625,7 +625,7 @@ class SWIFTDataset(object):
             setattr(
                 self,
                 group_name,
-                generate_datasets(
+                _generate_datasets(
                     getattr(self.metadata, f"{group_name}_properties"), self.mask
                 ),
             )

@@ -418,7 +418,7 @@ class ImageCmap2D(Cmap2D):
 
         try:
             from PIL import Image
-        except:
+        except ImportError:
             raise ImportError(
                 "Unable to import pillow, which must be installed "
                 "to use color maps generated from images."

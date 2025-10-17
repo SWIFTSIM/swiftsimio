@@ -151,13 +151,13 @@ def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
         When an invalid combination of ``comoving`` and ``valid_transform`` is found.
     """
     if not obj.valid_transform:
-        assert (
-            not obj.comoving
-        ), "Cosmo arrays without a valid transform to comoving units must be physical"
+        assert not obj.comoving, (
+            "Cosmo arrays without a valid transform to comoving units must be physical"
+        )
     if obj.comoving:
-        assert (
-            obj.valid_transform
-        ), "Comoving cosmo_arrays must be able to be transformed to physical"
+        assert obj.valid_transform, (
+            "Comoving cosmo_arrays must be able to be transformed to physical"
+        )
 
 
 class InvalidConversionError(Exception):
@@ -339,7 +339,7 @@ class cosmo_factor(object):
             cosmo_factor(expr=a**2, scale_factor=0.5)
         """
 
-        obj = cls(a ** exponent, scale_factor)
+        obj = cls(a**exponent, scale_factor)
 
         return obj
 
@@ -677,7 +677,7 @@ class cosmo_factor(object):
         """
         if self.expr is None:
             return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b: "cosmo_factor") -> bool:
         """
@@ -1193,7 +1193,6 @@ class cosmo_array(unyt_array):
         """
 
         if bypass_validation is True:
-
             obj = super().__new__(
                 cls,
                 input_array,
@@ -1215,7 +1214,6 @@ class cosmo_array(unyt_array):
             return obj
 
         if isinstance(input_array, cosmo_array):
-
             obj = input_array.view(cls)
 
             # do cosmo_factor first since it can be used in comoving/physical conversion:
@@ -1251,7 +1249,6 @@ class cosmo_array(unyt_array):
             return obj
 
         elif isinstance(input_array, np.ndarray) and input_array.dtype != object:
-
             # guard np.ndarray so it doesn't get caught by _iterable in next case
 
             # ndarray with object dtype goes to next case to properly handle e.g.
@@ -1385,9 +1382,9 @@ class cosmo_array(unyt_array):
             A :obj:`tuple` containing the extra state information.
         """
         super(cosmo_array, self).__setstate__(state[1:])
-        self.cosmo_factor, self.comoving, self.compression, self.valid_transform = state[
-            0
-        ]
+        self.cosmo_factor, self.comoving, self.compression, self.valid_transform = (
+            state[0]
+        )
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:

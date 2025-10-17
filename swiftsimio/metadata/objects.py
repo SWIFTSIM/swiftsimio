@@ -114,12 +114,14 @@ class SWIFTMetadata(ABC):
         # items including the scale factor.
         # These must be unpacked as they are stored as length-1 arrays
 
-        header_unpack_float_units = metadata.metadata_fields.generate_units_header_unpack_single_float(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_float_units = (
+            metadata.metadata_fields.generate_units_header_unpack_single_float(
+                mass=self.units.mass,
+                length=self.units.length,
+                time=self.units.time,
+                current=self.units.current,
+                temperature=self.units.temperature,
+            )
         )
         for field, names in metadata.metadata_fields.header_unpack_single_float.items():
             try:
@@ -165,15 +167,19 @@ class SWIFTMetadata(ABC):
             self.scale_factor = 1.0
 
         # These are just read straight in to variables
-        header_unpack_arrays_units = metadata.metadata_fields.generate_units_header_unpack_arrays(
-            m=self.units.mass,
-            l=self.units.length,
-            t=self.units.time,
-            I=self.units.current,
-            T=self.units.temperature,
+        header_unpack_arrays_units = (
+            metadata.metadata_fields.generate_units_header_unpack_arrays(
+                mass=self.units.mass,
+                length=self.units.length,
+                time=self.units.time,
+                current=self.units.current,
+                temperature=self.units.temperature,
+            )
         )
-        header_unpack_arrays_cosmo_args = metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
-            self.scale_factor
+        header_unpack_arrays_cosmo_args = (
+            metadata.metadata_fields.generate_cosmo_args_header_unpack_arrays(
+                self.scale_factor
+            )
         )
 
         for field, name in metadata.metadata_fields.header_unpack_arrays.items():
@@ -373,7 +379,8 @@ class SWIFTMetadata(ABC):
     @abstractmethod
     def get_nice_name(group: str) -> str:
         """
-        Converts the group name to a 'nice name' (i.e. for printing) for the SWIFTsimIO objects.
+        Converts the group name to a 'nice name' (i.e. for printing) for the SWIFTsimIO
+        objects.
         """
         raise NotImplementedError
 
@@ -414,7 +421,10 @@ class MassTable(object):
         return
 
     def __str__(self):
-        return f"Mass table for {' '.join(metadata.particle_types.particle_name_underscores.values())}"
+        return (
+            "Mass table for "
+            f"{' '.join(metadata.particle_types.particle_name_underscores.values())}"
+        )
 
     def __repr__(self):
         return self.__str__()
@@ -477,7 +487,7 @@ class MappingTable(object):
         )
 
     def __repr__(self):
-        return f"{self.__str__()}. Raw data: " "\n" f"{self.data}."
+        return f"{self.__str__()}. Raw data: \n{self.data}."
 
 
 class SWIFTGroupMetadata(object):
@@ -607,10 +617,10 @@ class SWIFTGroupMetadata(object):
                 # We store the 'unit exponent' in the SWIFT metadata. This corresponds
                 # to the power we need to raise each unit to, to return the correct units
                 try:
-                    # Need to check if the exponent is 0 manually because of float precision
+                    # Check if the exponent is 0 manually because of float precision
                     unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
                     if unit_exponent != 0.0:
-                        units *= unit ** unit_exponent
+                        units *= unit**unit_exponent
                 except KeyError:
                     # Can't load that data!
                     # We should probably warn the user here...
@@ -651,9 +661,15 @@ class SWIFTGroupMetadata(object):
             mask_datasets = dataset.attrs["Mask Datasets"]
             mask_threshold = dataset.attrs["Mask Threshold"]
             if len(mask_datasets) == 1:
-                mask_str = f" Only computed for objects with {mask_datasets[0]} >= {mask_threshold}."
+                mask_str = (
+                    " Only computed for objects with "
+                    f"{mask_datasets[0]} >= {mask_threshold}."
+                )
             else:
-                mask_str = f' Only computed for objects where {" + ".join(mask_datasets)} >= {mask_threshold}.'
+                mask_str = (
+                    " Only computed for objects where "
+                    f"{' + '.join(mask_datasets)} >= {mask_threshold}."
+                )
             return description + mask_str
 
         self.field_descriptions = [
@@ -664,7 +680,8 @@ class SWIFTGroupMetadata(object):
 
     def load_field_compressions(self):
         """
-        Loads in the string describing the compression filters of the fields for each dataset.
+        Loads in the string describing the compression filters of the fields for each
+        dataset.
         """
 
         def get_comp(dataset):
@@ -700,7 +717,7 @@ class SWIFTGroupMetadata(object):
         def get_cosmo(dataset):
             try:
                 cosmo_exponent = dataset.attrs["a-scale exponent"][0]
-            except:
+            except KeyError:
                 # Can't load, 'graceful' fallback.
                 cosmo_exponent = 0.0
 
@@ -720,7 +737,7 @@ class SWIFTGroupMetadata(object):
         def get_physical(dataset):
             try:
                 physical = dataset.attrs["Value stored as physical"][0] == 1
-            except:
+            except KeyError:
                 physical = False
             return physical
 
@@ -740,7 +757,7 @@ class SWIFTGroupMetadata(object):
                 valid_transform = (
                     dataset.attrs["Property can be converted to comoving"][0] == 1
                 )
-            except:
+            except KeyError:
                 valid_transform = True
             return valid_transform
 
@@ -773,7 +790,22 @@ class SWIFTGroupMetadata(object):
                 # ionized fractions (e.g. HeII) and so we want to leave them with their
                 # original capitalisation.
 
-                num_capitals = lambda x: sum(1 for c in x if c.isupper())
+                def num_capitals(s: str):
+                    """
+                    Count the number of upper case letters in the string.
+
+                    Parameters
+                    ----------
+                    s : str
+                        The string to analyse.
+
+                    Returns
+                    -------
+                    out : int
+                        The number of upper case letters in the string.
+                    """
+                    return sum(1 for c in s if c.isupper())
+
                 mean_num_capitals = sum(map(num_capitals, field_names)) / len(
                     field_names
                 )
@@ -1015,17 +1047,17 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         compiled = re.compile(regex)
 
         for key, data in zip(available_keys, available_data):
-            match = compiled.match(key)
+            matched = compiled.matched(key)
             snake_case = convert(key)
 
-            if match:
-                x = match.group(1)
-                y = match.group(2)
+            if matched:
+                x = matched.group(1)
+                y = matched.group(2)
 
                 if x == "Grain":
                     warnings.warn(
-                        "Use of the GrainToElementMapping is deprecated, please use a newer "
-                        "version of SWIFT to run this simulation.",
+                        "Use of the GrainToElementMapping is deprecated, please use a "
+                        "newer version of SWIFT to run this simulation.",
                         DeprecationWarning,
                     )
 
@@ -1169,7 +1201,8 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         Gets information about the viscosity scheme and formats it as:
 
         Viscosity Model
-        $\alpha_{V, 0}$ = Alpha viscosity, $\ell_V$ = Viscosity decay length [internal units], $\beta_V$ = Beta viscosity
+        $\alpha_{V, 0}$ = Alpha viscosity, $\ell_V$ = Viscosity decay length \
+        [internal units], $\beta_V$ = Beta viscosity
         Alpha viscosity (min) < $\alpha_V$ < Alpha viscosity (max)
         """
 
@@ -1185,7 +1218,8 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             rf"$\ell_V$ = {get_float('Viscosity decay length [internal units]')}, "
             rf"$\beta_V$ = {get_float('Beta viscosity')}"
             "\n"
-            rf"{get_float('Alpha viscosity (min)')} < $\alpha_V$ < {get_float('Alpha viscosity (max)')}"
+            rf"{get_float('Alpha viscosity (min)')} < $\alpha_V$ < "
+            rf"{get_float('Alpha viscosity (max)')}"
         )
 
         return output

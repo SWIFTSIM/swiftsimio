@@ -149,9 +149,9 @@ class __SWIFTWriterParticleDataset(object):
                 sizes.append(getattr(self, f"_{name}").shape[0])
 
         # Now we figure out if everyone's the same (without numpy...)
-        assert reduce(
-            lambda x, y: x and y, [sizes[0] == x for x in sizes]
-        ), f"Arrays passed to {self.particle_name} dataset are not of the same size."
+        assert reduce(lambda x, y: x and y, [sizes[0] == x for x in sizes]), (
+            f"Arrays passed to {self.particle_name} dataset are not of the same size."
+        )
 
         # Make sure positions and velocities have the same shapes
         if getattr(self, "coordinates").shape != getattr(self, "velocities").shape:
@@ -165,10 +165,11 @@ class __SWIFTWriterParticleDataset(object):
 
     def generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int):
         """
-        Automatically generates the smoothing lengths as 2 * the mean interparticle separation.
+        Automatically generates the smoothing lengths as 2 * the mean interparticle
+        separation.
 
-        This only works for a uniform boxsize (i.e. one that has the same length in all dimensions).
-        If boxsize is a list, we just use the 0th member.
+        This only works for a uniform boxsize (i.e. one that has the same length in all
+        dimensions). If boxsize is a list, we just use the 0th member.
 
         Parameters
         ----------
@@ -268,16 +269,18 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the scale factor associated quantities
             a_exp = a_exponents.get(name, 0)
-            a_factor = scale_factor ** a_exp
+            a_factor = scale_factor**a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
                     field.unit_quantity.in_cgs()
                 ],
-                "Conversion factor to physical CGS (including cosmological corrections)": [
+                "Conversion factor to physical CGS "
+                "(including cosmological corrections)": [
                     field.unit_quantity.in_cgs() * a_factor
                 ],
-                # Assign the exponents in the proper order (see unyt.dimensions.base_dimensions)
+                # Assign the exponents in the proper order
+                # (see unyt.dimensions.base_dimensions)
                 "U_I exponent": [dim_exponents["(current)"]],
                 "U_L exponent": [dim_exponents["(length)"]],
                 "U_M exponent": [dim_exponents["(mass)"]],

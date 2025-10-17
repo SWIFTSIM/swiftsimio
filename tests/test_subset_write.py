@@ -1,5 +1,5 @@
 from swiftsimio.subset_writer import write_subset
-from swiftsimio import load, metadata
+from swiftsimio import load
 from .helper import _mask_without_warning as mask
 import os
 

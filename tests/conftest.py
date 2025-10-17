@@ -9,7 +9,6 @@ test_data_location = "test_data/"
 
 
 def _requires(filename):
-
     if filename == "EagleDistributed.hdf5":
         _requires("eagle_0025.0.hdf5")
         _requires("eagle_0025.1.hdf5")

@@ -1,7 +1,6 @@
 from numpy import cbrt
 
 from swiftsimio import SWIFTDataset, cosmo_array
-from swiftsimio.objects import _cbrt_cosmo_factor
 from swiftsimio.visualisation.smoothing_length.sph import get_hsml as get_hsml_sph
 
 

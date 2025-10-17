@@ -1,6 +1,7 @@
+import h5py
 from typing import Optional as _Optional, Union as _Union
 
-from .reader import *
+from .reader import SWIFTDataset
 from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
@@ -8,6 +9,14 @@ from .__version__ import __version__
 from .__cite__ import __cite__
 
 import swiftsimio.metadata as metadata
+from swiftsimio.metadata.objects import (
+    SWIFTUnits,
+    SWIFTGroupMetadata,
+    SWIFTSnapshotMetadata,
+    SWIFTFOFMetadata,
+    SWIFTSOAPMetadata,
+    metadata_discriminator,
+)
 import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
 from swiftsimio.objects import cosmo_array, cosmo_quantity
@@ -15,6 +24,36 @@ import swiftsimio.visualisation as visualisation
 import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
+
+__all__ = [
+    "SWIFTDataset",
+    "SWIFTSnapshotWriter",
+    "SWIFTMask",
+    "SWIFTStatisticsFile",
+    "SWIFTUnits",
+    "SWIFTGroupMetadata",
+    "SWIFTSnapshotMetadata",
+    "SWIFTFOFMetadata",
+    "SWIFTSOAPMetadata",
+    "metadata_discriminator",
+    "__version__",
+    "__cite__",
+    "metadata",
+    "accelerated",
+    "objects",
+    "cosmo_array",
+    "cosmo_quantity",
+    "visualisation",
+    "units",
+    "subset_writer",
+    "statistics",
+    "name",
+    "validate_file",
+    "mask",
+    "load",
+    "load_statistics",
+    "Writer",
+]
 
 name = "swiftsimio"
 
@@ -92,11 +131,11 @@ def mask(
     spatial_only=False version).
     """
 
-    units = SWIFTUnits(filename)
-    metadata = metadata_discriminator(filename, units)
+    loaded_units = SWIFTUnits(filename)
+    loaded_metadata = metadata_discriminator(filename, loaded_units)
 
     return SWIFTMask(
-        metadata=metadata, spatial_only=spatial_only, safe_padding=safe_padding
+        metadata=loaded_metadata, spatial_only=spatial_only, safe_padding=safe_padding
     )
 
 

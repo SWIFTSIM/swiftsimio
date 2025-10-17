@@ -156,7 +156,8 @@ def find_links(
             try:
                 if input_file[subpath].keys() is not None:
                     find_links(input_file, link_names, link_paths, subpath)
-            except:
+            except AttributeError:
+                # it's a Dataset (so has no `keys` attribute), skip
                 pass
 
     return link_names, link_paths

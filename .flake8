@@ -1,2 +1,11 @@
 [flake8]
 max-line-length = 90
+extend-ignore = E203
+exclude =
+    .git,
+    __pycache__,
+    docs/source/conf.py,
+    docs/build,
+    black_formatting_env,
+per-file-ignores =
+    tests/test_cosmo_array.py:E722

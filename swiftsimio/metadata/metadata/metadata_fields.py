@@ -41,7 +41,9 @@ header_unpack_mass_tables = {
 }
 
 
-def generate_units_header_unpack_arrays(m, l, t, I, T) -> dict:
+def generate_units_header_unpack_arrays(
+    mass, length, time, current, temperature
+) -> dict:
     """
     Generates the unit dictionaries with the:
 
@@ -51,7 +53,7 @@ def generate_units_header_unpack_arrays(m, l, t, I, T) -> dict:
     """
 
     # Do not include those items that do not have units.
-    units = {"boxsize": l}
+    units = {"boxsize": length}
 
     return units
 
@@ -78,7 +80,7 @@ def generate_cosmo_args_header_unpack_arrays(scale_factor) -> dict:
     cosmo_args = {
         "boxsize": dict(
             cosmo_factor=cosmo_factor.create(scale_factor, 1),
-            comoving=True,  # if it's not, then a=1 and it doesn't matter
+            comoving=True,  # if it's not, then a=1 and it doesn'time matter
             valid_transform=True,
         )
     }
@@ -107,7 +109,9 @@ header_unpack_single_float = {
 }
 
 
-def generate_units_header_unpack_single_float(m, l, t, I, T) -> dict:
+def generate_units_header_unpack_single_float(
+    mass, length, time, current, temperature
+) -> dict:
     """
     Generate the unit dictionaries with the:
 
@@ -116,6 +120,6 @@ def generate_units_header_unpack_single_float(m, l, t, I, T) -> dict:
     units respectively.
     """
 
-    units = {"time": t, "t": t}
+    units = {"time": time, "t": time}
 
     return units

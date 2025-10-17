@@ -2,7 +2,7 @@
 Contains the particle fields for the various particle types.
 """
 
-shared = {
+_shared = {
     "Coordinates": "coordinates",
     "Masses": "masses",
     "ParticleIDs": "particle_ids",
@@ -10,7 +10,7 @@ shared = {
     "Potential": "potential",
 }
 
-baryon = {
+_baryon = {
     "ElementAbundance": "element_abundance",
     "Maximal Temperature": "maximal_temperature",
     "Maximal Temperature scale-factor": "maximal_temperature_scale_factor",
@@ -33,34 +33,32 @@ gas = {
     "InternalEnergy": "internal_energy",
     "SmoothingLength": "smoothing_length",
     "Pressure": "pressure",
-    "Diffusion": "diffusion",
     "SFR": "sfr",
     "Temperature": "temperature",
     "Viscosity": "viscosity",
     "sSFR": "specific_sfr",
     "MaterialID": "material_id",
     "Diffusion": "diffusion",
-    "Viscosity": "viscosity",
     "RadiatedEnergy": "radiated_energy",
-    **shared,
-    **baryon,
+    **_shared,
+    **_baryon,
 }
 
-dark_matter = {**shared}
+dark_matter = {**_shared}
 
-boundary = {**shared}
+boundary = {**_shared}
 
-sinks = {**shared}
+sinks = {**_shared}
 
 stars = {
     "BirthDensity": "birth_density",
     "BirthTime": "birth_time",
     "InitialMasses": "initial_masses",
     "SmoothingLength": "smoothing_length",
-    **shared,
-    **baryon,
+    **_shared,
+    **_baryon,
 }
 
-black_holes = {**shared}
+black_holes = {**_shared}
 
-neutrinos = {**shared}
+neutrinos = {**_shared}

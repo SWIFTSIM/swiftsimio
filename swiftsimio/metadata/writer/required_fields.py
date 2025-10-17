@@ -3,7 +3,7 @@ A list of required fields for writing a SWIFT dataset, for each
 particle type in turn.
 """
 
-shared = {
+_shared = {
     "coordinates": "Coordinates",
     "particle_ids": "ParticleIDs",
     "velocities": "Velocities",
@@ -13,17 +13,17 @@ shared = {
 gas = {
     "smoothing_length": "SmoothingLength",
     "internal_energy": "InternalEnergy",
-    **shared,
+    **_shared,
 }
 
-dark_matter = {**shared}
+dark_matter = {**_shared}
 
-boundary = {**shared}
+boundary = {**_shared}
 
-sinks = {**shared}
+sinks = {**_shared}
 
-stars = {**shared, "smoothing_length": "SmoothingLength"}
+stars = {**_shared, "smoothing_length": "SmoothingLength"}
 
-black_holes = {**shared}
+black_holes = {**_shared}
 
-neutrinos = {**shared}
+neutrinos = {**_shared}

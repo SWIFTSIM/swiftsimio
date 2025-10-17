@@ -22,7 +22,7 @@ parser = ap.ArgumentParser(
         "Prints metadata to the console, read from the swift snapshots that "
         "are given. Includes cosmology, run, and output information."
     ),
-    epilog=("Example usage:\n" "  swiftsnap output_0000.hdf5"),
+    epilog=("Example usage:\n  swiftsnap output_0000.hdf5"),
 )
 
 parser.add_argument(
@@ -74,9 +74,9 @@ def swiftsnap():
     # First, validate the snapshots.
     for filename in snapshots:
         try:
-            if not sw.validate_file(filename):
-                raise Exception
-        except:
+            # returns True or raises:
+            sw.validate_file(filename)
+        except IOError:
             print(f"{filename} is not a SWIFT snapshot.")
             exit(1)
 
@@ -149,19 +149,11 @@ def swiftsnap():
         print()
 
         # Physics information
-        try:
-            print(
-                f"Gravity scheme: {decode(data.gravity_scheme.get('Scheme', b'None'))}"
-            )
-        except:
-            pass
+        print(f"Gravity scheme: {decode(data.gravity_scheme.get('Scheme', b'None'))}")
 
-        try:
-            print(
-                f"Hydrodynamics scheme: {decode(data.hydro_scheme.get('Scheme', b'None'))}"
-            )
-        except:
-            pass
+        print(
+            f"Hydrodynamics scheme: {decode(data.hydro_scheme.get('Scheme', b'None'))}"
+        )
 
         for name, scheme in data.subgrid_scheme.items():
             if name != "NamedColumns":
