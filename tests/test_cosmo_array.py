@@ -1,6 +1,4 @@
-"""
-Tests the initialisation of a cosmo_array.
-"""
+"""Tests the initialisation of a cosmo_array."""
 
 import pytest
 import os
@@ -26,16 +24,12 @@ def getfunc(fname):
 
 
 def ca(x, unit=u.Mpc):
-    """
-    Helper for our tests: turn an array into a cosmo_array.
-    """
+    """Helper for our tests: turn an array into a cosmo_array."""
     return cosmo_array(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
 def cq(x, unit=u.Mpc):
-    """
-    Helper for our tests: turn a scalar into a cosmo_quantity.
-    """
+    """Helper for our tests: turn a scalar into a cosmo_quantity."""
     return cosmo_quantity(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
@@ -51,9 +45,7 @@ def arg_to_ua(arg):
 
 
 def to_ua(x):
-    """
-    Helper for our tests: turn a cosmo_* object into its unyt_* equivalent.
-    """
+    """Helper for our tests: turn a cosmo_* object into its unyt_* equivalent."""
     return u.unyt_array(x) if hasattr(x, "comoving") else x
 
 
@@ -103,14 +95,10 @@ def check_result(x_c, x_u, ignore_values=False):
 
 
 class TestCosmoArrayInit:
-    """
-    Test different ways of initializing a cosmo_array.
-    """
+    """Test different ways of initializing a cosmo_array."""
 
     def test_init_from_ndarray(self):
-        """
-        Check initializing from a bare numpy array.
-        """
+        """Check initializing from a bare numpy array."""
         arr = cosmo_array(
             np.ones(5), units=u.Mpc, scale_factor=1.0, scale_exponent=1, comoving=False
         )
@@ -129,9 +117,7 @@ class TestCosmoArrayInit:
         assert isinstance(arr, cosmo_array)
 
     def test_init_from_list(self):
-        """
-        Check initializing from a list of values.
-        """
+        """Check initializing from a list of values."""
         arr = cosmo_array(
             [1, 1, 1, 1, 1],
             units=u.Mpc,
@@ -154,9 +140,7 @@ class TestCosmoArrayInit:
         assert isinstance(arr, cosmo_array)
 
     def test_init_from_unyt_array(self):
-        """
-        Check initializing from a unyt_array.
-        """
+        """Check initializing from a unyt_array."""
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=u.Mpc),
             scale_factor=1.0,
@@ -295,9 +279,7 @@ class TestCosmoArrayInit:
             )
 
     def test_init_from_not_iterable_invalid(self):
-        """
-        cosmo_array data must be iterable (scalar handled by cosmo_quantity).
-        """
+        """cosmo_array data must be iterable (scalar handled by cosmo_quantity)."""
         with pytest.raises(ValueError, match="cosmo_array data must be iterable"):
             cosmo_array(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
         # make sure inheriting class doesn't do anything silly:
@@ -687,7 +669,7 @@ class TestNumpyFunctions:
     def test_block_is_broken(self):
         """
         There is an issue in unyt affecting np.block and fixed in
-        https://github.com/yt-project/unyt/pull/571
+        https://github.com/yt-project/unyt/pull/571.
 
         When this fix is released:
         - This test will unexpectedly pass (instead of xfailing).
@@ -898,28 +880,20 @@ class TestNumpyFunctions:
             assert b.cosmo_factor == expt_cf
 
     def test_getitem(self):
-        """
-        Make sure that we don't degrade to an ndarray on slicing.
-        """
+        """Make sure that we don't degrade to an ndarray on slicing."""
         assert isinstance(ca(np.arange(3))[0], cosmo_quantity)
 
     def test_reshape_to_scalar(self):
-        """
-        Make sure that we convert to a cosmo_quantity when we reshape to a scalar.
-        """
+        """Make sure that we convert to a cosmo_quantity when we reshape to a scalar."""
         assert isinstance(ca(np.ones(1)).reshape(tuple()), cosmo_quantity)
 
     def test_iter(self):
-        """
-        Make sure that we get cosmo_quantity's when iterating over a cosmo_array.
-        """
+        """Make sure that we get cosmo_quantity's when iterating over a cosmo_array."""
         for cq in ca(np.arange(3)):
             assert isinstance(cq, cosmo_quantity)
 
     def test_dot(self):
-        """
-        Make sure that we get a cosmo_array when we use array attribute dot.
-        """
+        """Make sure that we get a cosmo_array when we use array attribute dot."""
         res = ca(np.arange(3)).dot(ca(np.arange(3)))
         assert isinstance(res, cosmo_quantity)
         assert res.comoving is False
@@ -950,9 +924,7 @@ class TestCosmoQuantity:
         ],
     )
     def test_propagation_func(self, func, args):
-        """
-        Test that functions that are supposed to propagate our attributes do so.
-        """
+        """Test that functions that are supposed to propagate our attributes do so."""
         cq = cosmo_quantity(
             1,
             u.m,
@@ -967,9 +939,7 @@ class TestCosmoQuantity:
         assert res.valid_transform is True
 
     def test_round(self):
-        """
-        Test that attributes propagate through the round builtin.
-        """
+        """Test that attributes propagate through the round builtin."""
         cq = cosmo_quantity(
             1.03,
             u.m,
@@ -1002,9 +972,7 @@ class TestCosmoQuantity:
 
     @pytest.mark.parametrize("prop", ["T", "ua", "unit_array"])
     def test_propagation_props(self, prop):
-        """
-        Test that properties propagate our attributes as intended.
-        """
+        """Test that properties propagate our attributes as intended."""
         cq = cosmo_quantity(
             1,
             u.m,
@@ -1020,14 +988,10 @@ class TestCosmoQuantity:
 
 
 class TestCosmoArrayCopy:
-    """
-    Tests of explicit (deep)copying of cosmo_array.
-    """
+    """Tests of explicit (deep)copying of cosmo_array."""
 
     def test_copy(self):
-        """
-        Check that when we copy a cosmo_array it preserves its values and attributes.
-        """
+        """Check that when we copy a cosmo_array it preserves its values and attributes."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1042,9 +1006,7 @@ class TestCosmoArrayCopy:
         assert arr.comoving == copy_arr.comoving
 
     def test_deepcopy(self):
-        """
-        Check that when we deepcopy a cosmo_array it preserves its values and attributes
-        """
+        """Check that when we deepcopy a cosmo_array it preserves its values and attributes."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1059,9 +1021,7 @@ class TestCosmoArrayCopy:
         assert arr.comoving == copy_arr.comoving
 
     def test_to_cgs(self):
-        """
-        Check that using to_cgs properly preserves attributes.
-        """
+        """Check that using to_cgs properly preserves attributes."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1142,9 +1102,7 @@ class TestMultiplicationByUnyt:
 
 
 class TestPickle:
-    """
-    Test that the cosmo_array attributes survive being pickled and unpickled.
-    """
+    """Test that the cosmo_array attributes survive being pickled and unpickled."""
 
     def test_pickle(self):
         attrs = {

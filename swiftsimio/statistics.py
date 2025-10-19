@@ -1,6 +1,4 @@
-"""
-Reader for the statistics file.
-"""
+"""Reader for the statistics file."""
 
 import unyt
 import re
@@ -11,9 +9,7 @@ from swiftsimio.accelerated import list_of_strings_to_arrays
 
 
 class SWIFTStatisticsFile(object):
-    """
-    SWIFT statistics files (e.g. SFR.txt, energy.txt) reader.
-    """
+    """SWIFT statistics files (e.g. SFR.txt, energy.txt) reader."""
 
     # Names from the header.
     header_names: List[str]
@@ -39,9 +35,7 @@ class SWIFTStatisticsFile(object):
         return
 
     def _read_file(self):
-        """
-        Reads the header of the file, including loading the units.
-        """
+        """Reads the header of the file, including loading the units."""
         # Read the header and use custom regex parsing.
 
         with open(self.filename, "r") as handle:
@@ -101,9 +95,7 @@ class SWIFTStatisticsFile(object):
         return
 
     def _process_raw_lines(self):
-        """
-        Processes the raw string lines read out of the header.
-        """
+        """Processes the raw string lines read out of the header."""
         arrays = list_of_strings_to_arrays(lines=self.raw_lines)
 
         for array, header_name, header_snake_case_name in zip(

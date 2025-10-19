@@ -1,6 +1,4 @@
-"""
-Sub-module for slice plots in SWFITSIMio.
-"""
+"""Sub-module for slice plots in SWFITSIMio."""
 
 from typing import Union, Optional
 import numpy as np

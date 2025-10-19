@@ -1,6 +1,4 @@
-"""
-Two-dimensional colour map support, along with example colour maps.
-"""
+"""Two-dimensional colour map support, along with example colour maps."""
 
 from typing import List, Optional, Iterable
 
@@ -123,9 +121,7 @@ class Cmap2D(object):
 
     @property
     def color_map_grid(self):
-        """
-        Generates, or gets, the color map grid.
-        """
+        """Generates, or gets, the color map grid."""
         if self._color_map_grid is None:
             # Better make it!
             self.generate_color_map_grid()
@@ -237,9 +233,7 @@ class LinearSegmentedCmap2D(Cmap2D):
         return
 
     def generate_color_map_grid(self):
-        """
-        Generates the color map grid.
-        """
+        """Generates the color map grid."""
         rgba_grid = np.zeros(
             COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 4, dtype=np.float32
         ).reshape((COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE, 4))
@@ -314,9 +308,7 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
         return
 
     def generate_color_map_grid(self):
-        """
-        Generates the color map grid.
-        """
+        """Generates the color map grid."""
         hsv_grid = np.zeros(
             COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 3, dtype=np.float32
         ).reshape((COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE, 3))
@@ -363,9 +355,7 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
 
 
 class ImageCmap2D(Cmap2D):
-    """
-    Creates a 2D color map from an image loaded from disk.
-    """
+    """Creates a 2D color map from an image loaded from disk."""
 
     def __init__(
         self,

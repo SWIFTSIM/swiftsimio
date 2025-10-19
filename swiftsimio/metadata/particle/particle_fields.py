@@ -1,6 +1,4 @@
-"""
-Contains the particle fields for the various particle types.
-"""
+"""Contains the particle fields for the various particle types."""
 
 _shared = {
     "Coordinates": "coordinates",

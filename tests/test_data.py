@@ -21,9 +21,7 @@ from tests.helper import create_n_particle_dataset
 
 
 def test_cosmology_metadata(cosmological_volume):
-    """
-    Tests to see if we get the unpacked cosmology metadata correct.
-    """
+    """Tests to see if we get the unpacked cosmology metadata correct."""
     data = load(cosmological_volume)
 
     assert data.metadata.a == data.metadata.scale_factor
@@ -221,9 +219,7 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
 
 
 def test_reading_select_region_metadata(cosmological_volume):
-    """
-    Tests reading select regions of the volume.
-    """
+    """Tests reading select regions of the volume."""
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
@@ -267,9 +263,7 @@ def test_reading_select_region_metadata(cosmological_volume):
 
 
 def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
-    """
-    The same as test_reading_select_region_metadata but for spatial_only=False.
-    """
+    """The same as test_reading_select_region_metadata but for spatial_only=False."""
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.

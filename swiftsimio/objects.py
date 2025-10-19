@@ -231,7 +231,7 @@ class InvalidSnapshot(Exception):
 
     def __init__(self, message: str = None, *args) -> None:
         """
-        Constructor for warning of invalid snapshot
+        Constructor for warning of invalid snapshot.
 
         Parameters
         ----------
@@ -241,14 +241,12 @@ class InvalidSnapshot(Exception):
         self.message = message
 
     def __str__(self) -> str:
-        """
-        Print warning message of invalid snapshot
-        """
+        """Print warning message of invalid snapshot."""
         return f"InvalidSnapshot: {self.message}"
 
 
 class cosmo_factor(object):
-    """
+    r"""
     Cosmology factor class for storing and computing conversion between
     comoving and physical coordinates.
 
@@ -371,7 +369,7 @@ class cosmo_factor(object):
 
     @property
     def redshift(self) -> float:
-        """
+        r"""
         The redshift computed from the scale factor.
 
         Returns the redshift :math:`z = \\frac{1}{a} - 1`, where :math:`a` is the scale
@@ -1417,9 +1415,7 @@ class cosmo_array(unyt_array):
     unit_array = property(_propagate_cosmo_array_attributes_to_result(np.ones_like))
 
     def convert_to_comoving(self) -> None:
-        """
-        Convert the internal data in-place to be in comoving units.
-        """
+        """Convert the internal data in-place to be in comoving units."""
         if self.comoving:
             return
         if not self.valid_transform or self.comoving is None:
@@ -1431,9 +1427,7 @@ class cosmo_array(unyt_array):
         self.comoving = True
 
     def convert_to_physical(self) -> None:
-        """
-        Convert the internal data in-place to be in physical units.
-        """
+        """Convert the internal data in-place to be in physical units."""
         if self.comoving is None:
             raise InvalidConversionError
         elif not self.comoving:

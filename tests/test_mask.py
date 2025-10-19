@@ -1,6 +1,4 @@
-"""
-Tests the masking using some test data.
-"""
+"""Tests the masking using some test data."""
 
 import warnings
 import h5py
@@ -239,9 +237,7 @@ def test_mask_pad_wrapping(cosmological_volume):
 
 
 def test_mask_entire_box(cosmological_volume):
-    """
-    When we explicitly set the region to the whole box, we'd better get all of the cells!
-    """
+    """When we explicitly set the region to the whole box, we'd better get all of the cells!"""
     mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * 0.0, mask_region.metadata.boxsize]
@@ -253,9 +249,7 @@ def test_mask_entire_box(cosmological_volume):
 
 
 def test_invalid_mask_interval(cosmological_volume):
-    """
-    We should get an error if the mask boundaries go out of bounds.
-    """
+    """We should get an error if the mask boundaries go out of bounds."""
     mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * -2, mask_region.metadata.boxsize * 2]
@@ -291,9 +285,7 @@ def test_inverted_mask_boundaries(cosmological_volume):
 
 
 def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_legacy
-    """
-    Tests that a mask containing no particles doesn't cause any problems.
-    """
+    """Tests that a mask containing no particles doesn't cause any problems."""
     empty_mask = mask(cosmological_volume, spatial_only=False)
     # mask a region just to run faster:
     region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]

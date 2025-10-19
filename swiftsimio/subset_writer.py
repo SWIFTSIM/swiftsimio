@@ -14,7 +14,7 @@ from typing import Optional, List
 
 def get_swift_name(name: str) -> str:
     """
-    Returns the particle type name used in SWIFT
+    Returns the particle type name used in SWIFT.
 
     Parameters
     ----------
@@ -39,7 +39,7 @@ def get_dataset_mask(
     mask: SWIFTMask, dataset_name: str, suffix: Optional[str] = None
 ) -> np.ndarray:
     """
-    Return appropriate mask or mask size for given dataset
+    Return appropriate mask or mask size for given dataset.
 
     Parameters
     ----------
@@ -76,7 +76,7 @@ def find_datasets(
     input_file: h5py.File, dataset_names=[], path=None, recurse=False
 ) -> List[str]:
     """
-    Recursively finds all the datasets in the snapshot and writes them to a list
+    Recursively finds all the datasets in the snapshot and writes them to a list.
 
     Parameters
     ----------
@@ -120,7 +120,7 @@ def find_links(
     path: Optional[str] = None,
 ) -> (List[str], List[str]):
     """
-    Recursively finds all the links in the snapshot and writes them to a list
+    Recursively finds all the links in the snapshot and writes them to a list.
 
     Parameters
     ----------
@@ -225,7 +225,7 @@ def write_metadata(
     infile: h5py.File, outfile: h5py.File, links_list: List[str], mask: SWIFTMask
 ):
     """
-    Copy over all the metadata from snapshot to output file
+    Copy over all the metadata from snapshot to output file.
 
     Parameters
     ----------
@@ -263,7 +263,7 @@ def write_datasubset(
     links_list: List[str],
 ):
     """
-    Writes subset of all datasets contained in snapshot according to specified mask
+    Writes subset of all datasets contained in snapshot according to specified mask.
 
     Parameters
     ----------
@@ -312,7 +312,7 @@ def write_datasubset(
 
 def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[str]):
     """
-    Connects up the links to the appropriate path
+    Connects up the links to the appropriate path.
 
     Parameters
     ----------
@@ -329,7 +329,7 @@ def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[st
 
 def write_subset(output_file: str, mask: SWIFTMask):
     """
-    Writes subset of snapshot according to specified mask to new snapshot file
+    Writes subset of snapshot according to specified mask to new snapshot file.
 
     Parameters
     ----------

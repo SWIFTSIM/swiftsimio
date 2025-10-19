@@ -26,9 +26,7 @@ from typing import List, Optional
 
 
 class SWIFTMetadata(ABC):
-    """
-    An abstract base class for all SWIFT-related file metadata.
-    """
+    """An abstract base class for all SWIFT-related file metadata."""
 
     # Underlying path to the file that this metadata is associated with.
     filename: str
@@ -92,9 +90,7 @@ class SWIFTMetadata(ABC):
         return
 
     def get_metadata(self):
-        """
-        Loads the metadata as specified in metadata.metadata_fields.
-        """
+        """Loads the metadata as specified in metadata.metadata_fields."""
         for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
             try:
                 setattr(self, name, dict(self.handle[field].attrs))
@@ -104,9 +100,7 @@ class SWIFTMetadata(ABC):
         return
 
     def postprocess_header(self):
-        """
-        Some minor postprocessing on the header to local variables.
-        """
+        """Some minor postprocessing on the header to local variables."""
         # We need the scale factor to initialize `cosmo_array`s, so start with the float
         # items including the scale factor.
         # These must be unpacked as they are stored as length-1 arrays
@@ -520,7 +514,7 @@ class SWIFTGroupMetadata(object):
         scale_factor: float,
     ):
         """
-        Constructor for SWIFTGroupMetadata class
+        Constructor for SWIFTGroupMetadata class.
 
         Parameters
         ----------
@@ -568,9 +562,7 @@ class SWIFTGroupMetadata(object):
         self.load_named_columns()
 
     def load_field_names(self):
-        """
-        Loads in only the field names.
-        """
+        """Loads in only the field names."""
 
         # regular expression for camel case to snake case
         # https://stackoverflow.com/a/1176023
@@ -589,9 +581,7 @@ class SWIFTGroupMetadata(object):
         return
 
     def load_field_units(self):
-        """
-        Loads in the units from each dataset.
-        """
+        """Loads in the units from each dataset."""
         unit_dict = {
             "I": self.units.current,
             "L": self.units.length,
@@ -698,9 +688,7 @@ class SWIFTGroupMetadata(object):
         return
 
     def load_cosmology(self):
-        """
-        Loads in the field cosmologies.
-        """
+        """Loads in the field cosmologies."""
         current_scale_factor = self.scale_factor
 
         def get_cosmo(dataset):
@@ -719,9 +707,7 @@ class SWIFTGroupMetadata(object):
         return
 
     def load_physical(self):
-        """
-        Loads in whether the field is saved as comoving or physical.
-        """
+        """Loads in whether the field is saved as comoving or physical."""
 
         def get_physical(dataset):
             try:
@@ -737,9 +723,7 @@ class SWIFTGroupMetadata(object):
         return
 
     def load_valid_transforms(self):
-        """
-        Loads in whether the field can be converted to comoving.
-        """
+        """Loads in whether the field can be converted to comoving."""
 
         def get_valid_transform(dataset):
             try:
@@ -757,9 +741,7 @@ class SWIFTGroupMetadata(object):
         return
 
     def load_named_columns(self):
-        """
-        Loads the named column data for relevant fields.
-        """
+        """Loads the named column data for relevant fields."""
         named_columns = {}
 
         for field in self.field_paths:
@@ -839,7 +821,7 @@ class SWIFTUnits(object):
 
     def __init__(self, filename: Path, handle: Optional[h5py.File] = None):
         """
-        SWIFTUnits constructor
+        SWIFTUnits constructor.
 
         Sets filename for file to read units from and gets unit dictionary
 
@@ -873,7 +855,7 @@ class SWIFTUnits(object):
 
     def get_unit_dictionary(self):
         """
-        Store unit data and metadata
+        Store unit data and metadata.
 
         Length 1 arrays are used to store the unit data. This dictionary
         also contains the metadata information that connects the unyt
@@ -954,7 +936,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     def __init__(self, filename, units: SWIFTUnits):
         """
-        Constructor for SWIFTMetadata object
+        Constructor for SWIFTMetadata object.
 
         Parameters
         ----------
@@ -1067,17 +1049,13 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     @property
     def present_groups(self):
-        """
-        The groups containing datasets that are present in the file.
-        """
+        """The groups containing datasets that are present in the file."""
         types = np.where(np.array(getattr(self, "has_type", self.num_part)) != 0)[0]
         return [f"PartType{i}" for i in types]
 
     @property
     def present_group_names(self):
-        """
-        The names of the groups that we want to expose.
-        """
+        """The names of the groups that we want to expose."""
         return [
             metadata.particle_types.particle_name_underscores[x]
             for x in self.present_groups
@@ -1206,7 +1184,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     @property
     def diffusion_info(self) -> str:
-        """
+        r"""
         Gets information about the diffusion scheme and formats it as:
 
         $\alpha_{D, 0}$ = Diffusion alpha, $\beta_D$ = Diffusion beta
@@ -1268,16 +1246,12 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
     @property
     def present_groups(self):
-        """
-        The groups containing datasets that are present in the file.
-        """
+        """The groups containing datasets that are present in the file."""
         return ["Groups"]
 
     @property
     def present_group_names(self):
-        """
-        The names of the groups that we want to expose.
-        """
+        """The names of the groups that we want to expose."""
         return ["fof_groups"]
 
     @staticmethod
@@ -1317,16 +1291,12 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
     @property
     def present_groups(self):
-        """
-        The groups containing datasets that are present in the file.
-        """
+        """The groups containing datasets that are present in the file."""
         return self.subhalo_types
 
     @property
     def present_group_names(self):
-        """
-        The names of the groups that we want to expose.
-        """
+        """The names of the groups that we want to expose."""
         return [
             metadata.soap_types.get_soap_name_underscore(x) for x in self.present_groups
         ]

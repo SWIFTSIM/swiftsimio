@@ -4,9 +4,7 @@ import unyt as u
 
 
 def test_convert(cosmological_volume_only_single):
-    """
-    Check that the conversion to physical units is done correctly.
-    """
+    """Check that the conversion to physical units is done correctly."""
     data = load(cosmological_volume_only_single)
     coords = data.gas.coordinates
     units = u.kpc
@@ -25,9 +23,7 @@ def test_convert(cosmological_volume_only_single):
 
 
 def test_convert_to_value(cosmological_volume_only_single):
-    """
-    Check that conversions to numerical values are correct.
-    """
+    """Check that conversions to numerical values are correct."""
     data = load(cosmological_volume_only_single)
     coords = data.gas.coordinates
     units = u.kpc

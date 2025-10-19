@@ -32,7 +32,7 @@ class SWIFTMask(object):
         safe_padding: Union[bool, float] = _DEFAULT_SAFE_PADDING,
     ):
         """
-        SWIFTMask constructor
+        SWIFTMask constructor.
 
         Takes the SWIFT metadata and enables individual property-by-property masking
         when reading from snapshots. Please note that when masking like this
@@ -431,7 +431,7 @@ class SWIFTMask(object):
 
     def _generate_cell_mask(self, restrict):
         """
-        Generates spatially restricted mask for cell
+        Generates spatially restricted mask for cell.
 
         Takes the cell metadata and finds the mask for the _cells_ that are
         within the spatial region defined by the spatial mask. Not for
@@ -707,7 +707,7 @@ class SWIFTMask(object):
         self,
     ) -> tuple[dict[str, np.array], dict[str, np.array]]:
         """
-        Returns the particle counts and offsets in cells selected by the mask
+        Returns the particle counts and offsets in cells selected by the mask.
 
         Returns
         -------

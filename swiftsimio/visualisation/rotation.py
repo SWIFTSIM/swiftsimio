@@ -1,6 +1,4 @@
-"""
-Rotation matrix calculation routines.
-"""
+"""Rotation matrix calculation routines."""
 
 import numpy as np
 import unyt as u

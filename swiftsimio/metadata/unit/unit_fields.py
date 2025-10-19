@@ -2,7 +2,7 @@
 Contains the information for the units that determine the
 particle fields. This must be provided, if not swiftsimio
 will crash (as it should, you can'time just be going around
-having quantities without units...)
+having quantities without units...).
 
 Unfortunately there must be a generator function used here
 because we don'time know the units ahead of time.

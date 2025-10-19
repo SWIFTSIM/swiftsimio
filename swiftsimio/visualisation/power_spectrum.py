@@ -1,6 +1,4 @@
-"""
-Tools for creating power spectra from SWIFT data.
-"""
+"""Tools for creating power spectra from SWIFT data."""
 
 from numpy import float32, float64, int32, zeros, ndarray, zeros_like
 import numpy as np

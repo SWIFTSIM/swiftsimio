@@ -74,9 +74,7 @@ def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
 class TestProjection:
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_scatter(self, backend, save=False):
-        """
-        Tests the scatter functions from all backends.
-        """
+        """Tests the scatter functions from all backends."""
         if backend == "gpu":
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
@@ -318,9 +316,7 @@ class TestProjection:
 
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
-        """
-        Test that periodic boundary wrapping works.
-        """
+        """Test that periodic boundary wrapping works."""
         if backend == "gpu":
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
@@ -744,9 +740,7 @@ class TestVolumeRender:
         assert np.allclose(deposition, volume.view(np.ndarray))
 
     def test_folding_deposit(self):
-        """
-        Tests that the deposit returns the 'correct' units.
-        """
+        """Tests that the deposit returns the 'correct' units."""
         x = np.array([100, 200])
         y = np.array([100, 200])
         z = np.array([100, 200])
@@ -996,9 +990,7 @@ def test_selection_render(cosmological_volume_only_single):
 
 
 def test_comoving_versus_physical(cosmological_volume_only_single):
-    """
-    Test what happens if you try to mix up physical and comoving quantities.
-    """
+    """Test what happens if you try to mix up physical and comoving quantities."""
     # this test is pretty slow if we don't mask out some particles
     m = mask(cosmological_volume_only_single)
     boxsize = m.metadata.boxsize
@@ -1093,9 +1085,7 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
 
 
 def test_nongas_smoothing_lengths(cosmological_volume_only_single):
-    """
-    Test that the visualisation tools to calculate smoothing lengths give usable results.
-    """
+    """Test that the visualisation tools to calculate smoothing lengths give usable results."""
     # If project_gas runs without error the smoothing lengths seem usable.
     data = load(cosmological_volume_only_single)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(

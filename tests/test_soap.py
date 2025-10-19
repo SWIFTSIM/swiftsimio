@@ -1,6 +1,4 @@
-"""
-Tests that we can open SOAP files
-"""
+"""Tests that we can open SOAP files."""
 
 from swiftsimio import load, mask, cosmo_quantity
 

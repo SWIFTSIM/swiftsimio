@@ -1494,9 +1494,7 @@ def _recursive_to_comoving(lst):
 
 
 def _prepare_array_block_args(lst, recursing=False):
-    """
-    Block accepts only a nested list of array "blocks". We need to recurse on this.
-    """
+    """Block accepts only a nested list of array "blocks". We need to recurse on this."""
     helper_results = list()
     if isinstance(lst, list):
         for item in lst:

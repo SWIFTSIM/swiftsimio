@@ -148,7 +148,7 @@ def slice_scatter_parallel(
     box_z: float = 0.0,
 ) -> ndarray:
     """
-    Parallel implementation of slice_scatter
+    Parallel implementation of slice_scatter.
 
     Creates a 2D numpy array (image) of the given quantities of all particles in
     a data slice including periodic boundary effects.

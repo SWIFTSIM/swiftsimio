@@ -1,6 +1,4 @@
-"""
-Metadata for the cosmology fields.
-"""
+"""Metadata for the cosmology fields."""
 
 from swiftsimio.objects import cosmo_factor, a
 

@@ -1,6 +1,4 @@
-"""
-Tests the smoothing length generation code.
-"""
+"""Tests the smoothing length generation code."""
 
 import numpy as np
 import unyt as u

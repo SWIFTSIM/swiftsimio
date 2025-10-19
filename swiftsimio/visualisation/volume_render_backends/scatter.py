@@ -24,7 +24,7 @@ def scatter(
     box_z: np.float64 = 0.0,
 ) -> np.ndarray:
     """
-    Creates a weighted voxel grid
+    Creates a weighted voxel grid.
 
     Computes contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.
@@ -228,7 +228,7 @@ def scatter_limited_z(
     box_z: np.float64 = 0.0,
 ) -> np.ndarray:
     """
-    Creates a weighted voxel grid
+    Creates a weighted voxel grid.
 
     Computes contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.
@@ -447,7 +447,7 @@ def scatter_parallel(
     box_z: np.float64 = 0.0,
 ) -> np.ndarray:
     """
-    Parallel implementation of scatter
+    Parallel implementation of scatter.
 
     Compute contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.

@@ -1,6 +1,4 @@
-"""
-Tests some known good states with the metadata.
-"""
+"""Tests some known good states with the metadata."""
 
 from swiftsimio import metadata
 

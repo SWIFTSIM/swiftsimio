@@ -1,6 +1,4 @@
-"""
-Contains the description of the metadata fields in the SWIFT snapshots.
-"""
+"""Contains the description of the metadata fields in the SWIFT snapshots."""
 
 from ..objects import cosmo_factor
 

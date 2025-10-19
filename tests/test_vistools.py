@@ -1,6 +1,4 @@
-"""
-Tests the visualisation tools.
-"""
+"""Tests the visualisation tools."""
 
 from swiftsimio.visualisation.tools.cmaps import (
     LinearSegmentedCmap2D,

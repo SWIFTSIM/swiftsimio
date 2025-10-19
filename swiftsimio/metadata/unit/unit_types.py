@@ -1,6 +1,4 @@
-"""
-Contains the names and types of the units as read from the file.
-"""
+"""Contains the names and types of the units as read from the file."""
 
 import unyt
 from numpy import log

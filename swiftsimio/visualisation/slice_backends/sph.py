@@ -237,7 +237,7 @@ def slice_scatter_parallel(
     box_z: float64 = 0.0,
 ) -> ndarray:
     """
-    Parallel implementation of slice_scatter
+    Parallel implementation of slice_scatter.
 
     Creates a scatter plot of the given quantities for a particles in a data slice
     including periodic boundary effects.

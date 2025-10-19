@@ -37,7 +37,7 @@ def scatter(
     box_y: float64 = 0.0,
 ) -> ndarray:
     """
-    Creates a weighted scatter plot
+    Creates a weighted scatter plot.
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
@@ -325,7 +325,7 @@ def scatter_parallel(
     box_y: float64 = 0.0,
 ) -> ndarray:
     """
-    Parallel implementation of scatter
+    Parallel implementation of scatter.
 
     Creates a weighted scatter plot. Computes contributions from
     particles with positions (`x`,`y`) with smoothing lengths `h`

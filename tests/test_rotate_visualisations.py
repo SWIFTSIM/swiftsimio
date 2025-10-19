@@ -11,7 +11,7 @@ from os import remove
 def test_project(cosmological_volume_only_single):
     """
     Checks that gas projection of a single particle snapshot is invariant under
-    rotations around the particle
+    rotations around the particle.
 
     Parameters
     ----------
@@ -49,7 +49,7 @@ def test_project(cosmological_volume_only_single):
 def test_slice(cosmological_volume_only_single):
     """
     Checks that a slice of a single particle snapshot is invariant under
-    rotations around the particle
+    rotations around the particle.
 
     Parameters
     ----------
@@ -97,7 +97,7 @@ def test_slice(cosmological_volume_only_single):
 def test_render(cosmological_volume_only_single):
     """
     Checks that a volume render of a single particle snapshot is invariant under
-    rotations around the particle
+    rotations around the particle.
 
     Parameters
     ----------

@@ -1,6 +1,4 @@
-"""
-Calls functions from `projection_backends`.
-"""
+"""Calls functions from `projection_backends`."""
 
 from typing import Union
 import numpy as np

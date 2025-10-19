@@ -1,3 +1,1 @@
-"""
-Initial conditions generation.
-"""
+"""Initial conditions generation."""

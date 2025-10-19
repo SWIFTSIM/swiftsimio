@@ -237,7 +237,7 @@ def _generate_deleter(name: str):
 
 class __SWIFTGroupDataset(object):
     """
-    Creates empty property fields
+    Creates empty property fields.
 
     Do not use this class alone; it is essentially completely empty. It is filled
     with properties by generate_dataset.
@@ -250,7 +250,7 @@ class __SWIFTGroupDataset(object):
 
     def __init__(self, group_metadata: SWIFTGroupMetadata):
         """
-        Constructor for SWIFTGroupDatasets class
+        Constructor for SWIFTGroupDatasets class.
 
         This function primarily calls the generate_empty_properties
         function to ensure that defaults are set correctly.
@@ -316,7 +316,7 @@ class __SWIFTNamedColumnDataset(object):
 
     def __init__(self, field_path: str, named_columns: List[str], name: str):
         r"""
-        Constructor for __SWIFTNamedColumnDataset class
+        Constructor for __SWIFTNamedColumnDataset class.
 
         Parameters
         ----------
@@ -548,7 +548,7 @@ class SWIFTDataset(object):
 
     def __init__(self, filename, mask=None):
         """
-        Constructor for SWIFTDataset class
+        Constructor for SWIFTDataset class.
 
         Parameters
         ----------

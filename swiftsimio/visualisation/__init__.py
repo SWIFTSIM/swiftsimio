@@ -1,6 +1,4 @@
-"""
-Visualisation sub-module for swiftismio.
-"""
+"""Visualisation sub-module for swiftismio."""
 
 from .projection import project_gas, project_pixel_grid
 from .slice import slice_gas

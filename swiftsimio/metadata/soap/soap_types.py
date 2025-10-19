@@ -1,6 +1,4 @@
-"""
-Includes the fancy names.
-"""
+"""Includes the fancy names."""
 
 
 # Describes the conversion of hdf5 groups to names

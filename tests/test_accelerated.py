@@ -1,6 +1,4 @@
-"""
-Tests for the accelerated functions.
-"""
+"""Tests for the accelerated functions."""
 
 from swiftsimio.accelerated import (
     ranges_from_array,
@@ -15,9 +13,7 @@ from .helper import create_in_memory_hdf5
 
 
 def test_ranges_from_array():
-    """
-    Tests ranges from array using the example given.
-    """
+    """Tests ranges from array using the example given."""
     my_array = np.array([0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13], dtype=int)
 
     out = np.array([[0, 4], [5, 8], [9, 10], [11, 14]])
@@ -28,9 +24,7 @@ def test_ranges_from_array():
 
 
 def test_ranges_from_array_non_contiguous():
-    """
-    Tests the ranges from array funciton with no contiguous input.
-    """
+    """Tests the ranges from array funciton with no contiguous input."""
     my_array = np.array([77, 34483, 234582, 123412341324], dtype=int)
 
     out = np.array(
@@ -41,9 +35,7 @@ def test_ranges_from_array_non_contiguous():
 
 
 def test_ranges_from_array_empty():
-    """
-    Tests the ranges from array function when the array is empty.
-    """
+    """Tests the ranges from array function when the array is empty."""
     my_array = np.array([], dtype=int)
 
     out = np.array([[0, 0]])
@@ -88,9 +80,7 @@ def test_index_dataset():
 
 
 def test_index_dataset_h5py():
-    """
-    Tests the index_dataset function on a real HDF5 dataset.
-    """
+    """Tests the index_dataset function on a real HDF5 dataset."""
     file = create_in_memory_hdf5()
 
     data = np.arange(100000)
@@ -102,9 +92,7 @@ def test_index_dataset_h5py():
 
 
 def test_list_of_strings_to_arrays():
-    """
-    Tests list_of_strings_to_arrays.
-    """
+    """Tests list_of_strings_to_arrays."""
     lines = ["    0     0.0000    1.0e-3    14.0", "    7     3.0000    1.0e-3    14.0"]
 
     expected_output = [

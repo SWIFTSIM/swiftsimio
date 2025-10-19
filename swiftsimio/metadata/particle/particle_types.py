@@ -1,6 +1,4 @@
-"""
-Includes the fancy names.
-"""
+"""Includes the fancy names."""
 
 # Describes the conversion of particle types to names
 particle_name_underscores = {

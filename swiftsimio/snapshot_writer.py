@@ -59,7 +59,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def __init__(self, unit_system: Union[unyt.UnitSystem, str], particle_type: int):
         """
-        Generates the requested unit system
+        Generates the requested unit system.
 
         Parameters
         ----------
@@ -113,7 +113,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def check_consistent(self) -> bool:
         """
-        Performs consistency checks on dataset
+        Performs consistency checks on dataset.
 
         Checks the following:
 
@@ -218,7 +218,7 @@ class __SWIFTWriterParticleDataset(object):
         self, file_handle: h5py.File, dset_attributes: dict
     ):
         """
-        Writes the relevant metadata for a particle group
+        Writes the relevant metadata for a particle group.
 
         Parameters
         ----------
@@ -238,7 +238,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def get_attributes(self, scale_factor: float) -> dict:
         """
-        Returns a dictionary containg the attributes to attach to the dataset
+        Returns a dictionary containg the attributes to attach to the dataset.
 
         Parameters
         ----------
@@ -288,7 +288,7 @@ class __SWIFTWriterParticleDataset(object):
 
 def get_dimensions(dimension: unyt.dimensions) -> dict:
     """
-    Returns exponents corresponding to base dimensions for given unyt dimensions object
+    Returns exponents corresponding to base dimensions for given unyt dimensions object.
 
     Parameters
     ----------
@@ -508,7 +508,7 @@ class SWIFTSnapshotWriter(object):
         scale_factor: np.float32 = 1.0,
     ):
         """
-        Creates SWIFTSnapshotWriter object
+        Creates SWIFTSnapshotWriter object.
 
         Parameters
         ----------
@@ -559,7 +559,7 @@ class SWIFTSnapshotWriter(object):
     def create_particle_datasets(self):
         """
         Creates particle dataset for each particle type in the metadata with
-        associated units
+        associated units.
         """
         for number, name in metadata.particle_types.particle_name_underscores.items():
             setattr(

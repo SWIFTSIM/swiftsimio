@@ -1,6 +1,4 @@
-"""
-Functions that can be accelerated by numba. Numba does not use classes, unfortunately.
-"""
+"""Functions that can be accelerated by numba. Numba does not use classes, unfortunately."""
 
 import numpy as np
 
@@ -35,7 +33,7 @@ except (ImportError, ModuleNotFoundError):
 @jit(nopython=True)
 def ranges_from_array(array: np.array) -> np.ndarray:
     """
-    Finds contiguous ranges of IDs in sorted list of IDs
+    Finds contiguous ranges of IDs in sorted list of IDs.
 
     Parameters
     ----------
@@ -186,7 +184,7 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     """
     Returns an array of ranges with consecutive ranges merged if there is no
-    gap between them
+    gap between them.
 
 
     Parameters
@@ -222,7 +220,7 @@ def get_chunk_ranges(
     ranges: np.ndarray, chunk_size: np.ndarray, array_length: int
 ) -> np.ndarray:
     """
-    Return indices indicating which hdf5 chunk each range from `ranges` belongs to
+    Return indices indicating which hdf5 chunk each range from `ranges` belongs to.
 
     Parameters
     ----------
@@ -266,7 +264,7 @@ def get_chunk_ranges(
 @jit(nopython=True, fastmath=True)
 def expand_ranges(ranges: np.ndarray) -> np.array:
     """
-    Return an array of indices that are within the specified ranges
+    Return an array of indices that are within the specified ranges.
 
     Parameters
     ----------
@@ -299,7 +297,7 @@ def extract_ranges_from_chunks(
     array: np.ndarray, chunks: np.ndarray, ranges: np.ndarray
 ) -> np.ndarray:
     """
-    Returns elements from array that are located within specified ranges
+    Returns elements from array that are located within specified ranges.
 
     `array` is a portion of the dataset being read consisting of all the chunks
     that contain the ranges specified in `ranges`. The `chunks` array contains
@@ -460,7 +458,7 @@ def read_ranges_from_file(
 ) -> np.array:
     """
     Wrapper function to correctly select which version of read_ranges_from_file
-    should be used
+    should be used.
 
     Parameters
     ----------

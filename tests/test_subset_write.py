@@ -6,7 +6,7 @@ import os
 
 def compare_data_contents(A, B):
     """
-    Compares two SWIFTDatasets
+    Compares two SWIFTDatasets.
 
     Compares all datasets, and one of the metadata fields (this is
     because all metadata fields are copied over simultaneously so if
@@ -57,7 +57,7 @@ def compare_data_contents(A, B):
 
 def test_subset_writer(snapshot_or_soap):
     """
-    Test to make sure subset writing works as intended
+    Test to make sure subset writing works as intended.
 
     Writes a subset of the input file to a new file
     and compares result against masked load of the original file.

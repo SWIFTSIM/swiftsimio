@@ -1,6 +1,4 @@
-"""
-Projection kernels.
-"""
+"""Projection kernels."""
 
 import numpy as np
 from swiftsimio.accelerated import jit
