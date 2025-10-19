@@ -18,7 +18,6 @@ def test_ranges_from_array():
     """
     Tests ranges from array using the example given.
     """
-
     my_array = np.array([0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13], dtype=int)
 
     out = np.array([[0, 4], [5, 8], [9, 10], [11, 14]])
@@ -32,7 +31,6 @@ def test_ranges_from_array_non_contiguous():
     """
     Tests the ranges from array funciton with no contiguous input.
     """
-
     my_array = np.array([77, 34483, 234582, 123412341324], dtype=int)
 
     out = np.array(
@@ -46,7 +44,6 @@ def test_ranges_from_array_empty():
     """
     Tests the ranges from array function when the array is empty.
     """
-
     my_array = np.array([], dtype=int)
 
     out = np.array([[0, 0]])
@@ -59,7 +56,6 @@ def test_read_ranges_from_file():
     Tests the reading of ranges from file using a numpy array as a stand in for
     the dataset.
     """
-
     # In memory hdf5 file
     file_handle = create_in_memory_hdf5()
     handle = file_handle.create_dataset("test", data=np.arange(1000))
@@ -80,7 +76,6 @@ def test_index_dataset():
     Tests the index_dataset function using a numpy array to approximate
     a dataset.
     """
-
     file = create_in_memory_hdf5()
     data = file.create_dataset("test", data=np.arange(1000))
     mask = np.unique(np.random.randint(0, 1000, 100))
@@ -96,7 +91,6 @@ def test_index_dataset_h5py():
     """
     Tests the index_dataset function on a real HDF5 dataset.
     """
-
     file = create_in_memory_hdf5()
 
     data = np.arange(100000)
@@ -111,7 +105,6 @@ def test_list_of_strings_to_arrays():
     """
     Tests list_of_strings_to_arrays.
     """
-
     lines = ["    0     0.0000    1.0e-3    14.0", "    7     3.0000    1.0e-3    14.0"]
 
     expected_output = [

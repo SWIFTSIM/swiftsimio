@@ -238,7 +238,6 @@ def write_metadata(
     mask : SWIFTMask
         the mask being used to define subset
     """
-
     update_metadata_counts(infile, outfile, mask)
 
     skip_list = links_list.copy()
@@ -265,6 +264,7 @@ def write_datasubset(
 ):
     """
     Writes subset of all datasets contained in snapshot according to specified mask
+
     Parameters
     ----------
     infile : h5py.File

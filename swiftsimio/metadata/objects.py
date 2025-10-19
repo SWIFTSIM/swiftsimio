@@ -80,7 +80,6 @@ class SWIFTMetadata(ABC):
 
         As well as some more information about the group.
         """
-
         for group, name in zip(self.present_groups, self.present_group_names):
             filetype_metadata = SWIFTGroupMetadata(
                 group=group,
@@ -96,7 +95,6 @@ class SWIFTMetadata(ABC):
         """
         Loads the metadata as specified in metadata.metadata_fields.
         """
-
         for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
             try:
                 setattr(self, name, dict(self.handle[field].attrs))
@@ -109,7 +107,6 @@ class SWIFTMetadata(ABC):
         """
         Some minor postprocessing on the header to local variables.
         """
-
         # We need the scale factor to initialize `cosmo_array`s, so start with the float
         # items including the scale factor.
         # These must be unpacked as they are stored as length-1 arrays
@@ -332,7 +329,6 @@ class SWIFTMetadata(ABC):
 
         This will be saved as ``self.cosmology``.
         """
-
         if self.cosmology_raw is not None:
             cosmo = self.cosmology_raw
         else:
@@ -395,14 +391,12 @@ class MassTable(object):
         """
         Parameters
         ----------
-
         base_mass_table : np.array
             Mass table of the same length as the number of particle types.
 
         mass_units : unyt_quantity
             Base mass units for the simulation.
         """
-
         # TODO: Extract these names from the files themselves if possible.
 
         for index, name in enumerate(
@@ -447,7 +441,6 @@ class MappingTable(object):
         """
         Parameters
         ----------
-
         data: np.ndarray
             The data array providing the mapping between the named
             columns. Should be of size N x M, where N is the number
@@ -466,7 +459,6 @@ class MappingTable(object):
         named_columns_y_name: str
             The name of the second mapping.
         """
-
         self.data = data
         self.named_columns_x = named_columns_x
         self.named_columns_y = named_columns_y
@@ -566,7 +558,6 @@ class SWIFTGroupMetadata(object):
         This includes loading the field names, units and descriptions, as well as the
         cosmology metadata and any custom named columns
         """
-
         self.load_field_names()
         self.load_field_units()
         self.load_field_descriptions()
@@ -601,7 +592,6 @@ class SWIFTGroupMetadata(object):
         """
         Loads in the units from each dataset.
         """
-
         unit_dict = {
             "I": self.units.current,
             "L": self.units.length,
@@ -711,7 +701,6 @@ class SWIFTGroupMetadata(object):
         """
         Loads in the field cosmologies.
         """
-
         current_scale_factor = self.scale_factor
 
         def get_cosmo(dataset):
@@ -771,7 +760,6 @@ class SWIFTGroupMetadata(object):
         """
         Loads the named column data for relevant fields.
         """
-
         named_columns = {}
 
         for field in self.field_paths:
@@ -857,7 +845,6 @@ class SWIFTUnits(object):
 
         Parameters
         ----------
-
         filename : Path
             Name of file to read units from
 
@@ -892,7 +879,6 @@ class SWIFTUnits(object):
         also contains the metadata information that connects the unyt
         objects to the names that are stored in the SWIFT snapshots.
         """
-
         self.units = {
             name: unyt.unyt_quantity(
                 value[0], units=metadata.unit_types.unit_names_to_unyt[name]
@@ -929,7 +915,6 @@ def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
 
     Parameters
     ----------
-
     filename : str
         Name of the file to read metadata from
 
@@ -939,7 +924,6 @@ def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
 
     Returns
     -------
-
     SWIFTMetadata
         The appropriate metadata object for the file type
     """
@@ -974,7 +958,6 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Parameters
         ----------
-
         filename : str
             name of file to read from
 
@@ -1003,7 +986,6 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         Loads the custom named column metadata (if it exists) from
         SubgridScheme/NamedColumns.
         """
-
         try:
             data = self.handle["SubgridScheme/NamedColumns"]
 
@@ -1024,7 +1006,6 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Includes a hack of `Dust` -> `Grains` that will be deprecated.
         """
-
         try:
             possible_keys = self.handle["SubgridScheme"].keys()
 
@@ -1097,7 +1078,6 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         """
         The names of the groups that we want to expose.
         """
-
         return [
             metadata.particle_types.particle_name_underscores[x]
             for x in self.present_groups
@@ -1252,7 +1232,6 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         Whether or not this snapshot is partial (e.g. a "x.0.hdf5" file), or
         a file describing an entire snapshot.
         """
-
         # Partial snapshots have num_files_per_snapshot set to 1. Virtual snapshots
         # collating multiple sub-snapshots together have num_files_per_snapshot = 1.
 

@@ -28,11 +28,9 @@ class SWIFTStatisticsFile(object):
         """
         Parameters
         ----------
-
         filename: str
             File name for the statistics file.
         """
-
         self.filename = filename
 
         self._read_file()
@@ -44,7 +42,6 @@ class SWIFTStatisticsFile(object):
         """
         Reads the header of the file, including loading the units.
         """
-
         # Read the header and use custom regex parsing.
 
         with open(self.filename, "r") as handle:
@@ -107,7 +104,6 @@ class SWIFTStatisticsFile(object):
         """
         Processes the raw string lines read out of the header.
         """
-
         arrays = list_of_strings_to_arrays(lines=self.raw_lines)
 
         for array, header_name, header_snake_case_name in zip(

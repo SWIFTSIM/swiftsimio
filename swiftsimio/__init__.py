@@ -130,7 +130,6 @@ def mask(
     more expensive, ~bytes per particle instead of ~bytes per cell
     spatial_only=False version).
     """
-
     loaded_units = SWIFTUnits(filename)
     loaded_metadata = metadata_discriminator(filename, loaded_units)
 
@@ -150,7 +149,6 @@ def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
     mask : SWIFTMask, optional
         mask to apply when reading dataset
     """
-
     return SWIFTDataset(filename, mask=mask)
 
 
@@ -160,11 +158,9 @@ def load_statistics(filename: str) -> SWIFTStatisticsFile:
 
     Parameters
     ----------
-
     filename : str
         SWIFT statistics file path
     """
-
     return SWIFTStatisticsFile(filename=filename)
 
 

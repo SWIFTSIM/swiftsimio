@@ -27,7 +27,6 @@ def create_in_memory_hdf5(filename="f1"):
     """
     Creates an in-memory hdf5 file object.
     """
-
     return h5py.File(filename, driver="core", mode="a", backing_store=False)
 
 

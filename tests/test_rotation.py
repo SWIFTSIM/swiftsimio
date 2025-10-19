@@ -10,7 +10,6 @@ def test_basic_rotation_with_vector():
     """
     Tests to see if the expected rotation matrix rotates given vectors.
     """
-
     # Note original direction is set to be 0.0, 0.0, 1.0
     test_vectors = 2.0 * (np.random.rand(300).reshape((100, 3)) - 0.5)
 

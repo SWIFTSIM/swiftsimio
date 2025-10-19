@@ -11,7 +11,6 @@ def test_basic_tcmb(cosmological_volume):
     """
     Tests we can recover omega_gamma = 0.0 and tcmb0 in the usual case.
     """
-
     data = load(cosmological_volume)
 
     try:
@@ -28,7 +27,6 @@ def test_nonzero_tcmb(cosmological_volume):
     """
     Tests we can recover omega_gamma = 0.0 and tcmb0 in the usual case.
     """
-
     data = load(cosmological_volume)
     units = data.metadata.units
 

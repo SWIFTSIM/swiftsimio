@@ -27,7 +27,6 @@ def generate_units(mass, length, time, current, temperature):
 
     units respectively.
     """
-
     shared = {
         "coordinates": length,
         "masses": mass,
@@ -108,7 +107,6 @@ def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units
         Everything is read directly out of the snapshots now
 
     """
-
     units = generate_unit_func(g, cm, s, statA, K)
 
     dimensions = {}

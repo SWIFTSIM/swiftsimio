@@ -24,7 +24,6 @@ def test_cosmology_metadata(cosmological_volume):
     """
     Tests to see if we get the unpacked cosmology metadata correct.
     """
-
     data = load(cosmological_volume)
 
     assert data.metadata.a == data.metadata.scale_factor
@@ -38,7 +37,6 @@ def test_time_metadata(cosmological_volume):
     This tests the time metadata and also tests the ability to include two items at once
     from the same header attribute.
     """
-
     data = load(cosmological_volume)
 
     assert data.metadata.z == data.metadata.redshift
@@ -53,7 +51,6 @@ def test_temperature_units(cosmological_volume):
     This tests checks if we correctly read in temperature units. Based
     on a past bug, to make sure we never break this again.
     """
-
     data = load(cosmological_volume)
     data.gas.temperatures.convert_to_units(K)
     return
@@ -64,7 +61,6 @@ def test_initial_mass_table(cosmological_volume):
     This tests checks if we correctly read in the initial mass table. Based
     on a past bug, to make sure we never break this again.
     """
-
     data = load(cosmological_volume)
     data.metadata.initial_mass_table.gas.convert_to_units(Msun)
 
@@ -76,7 +72,6 @@ def test_units(cosmological_volume):
     Tests that these fields have the same units within SWIFTsimIO as they
     do in the SWIFT code itself.
     """
-
     data = load(cosmological_volume)
 
     shared = ["coordinates", "masses", "particle_ids", "velocities"]
@@ -186,7 +181,6 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
 
     I.e. that it sets the particles contained in a top-level cell.
     """
-
     mask_region = mask(cosmological_volume_dithered)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
@@ -230,7 +224,6 @@ def test_reading_select_region_metadata(cosmological_volume):
     """
     Tests reading select regions of the volume.
     """
-
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
@@ -277,7 +270,6 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     """
     The same as test_reading_select_region_metadata but for spatial_only=False.
     """
-
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.

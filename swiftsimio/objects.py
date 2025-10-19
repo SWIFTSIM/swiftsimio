@@ -338,7 +338,6 @@ class cosmo_factor(object):
             >>> cosmo_factor.create(0.5, 2)
             cosmo_factor(expr=a**2, scale_factor=0.5)
         """
-
         obj = cls(a**exponent, scale_factor)
 
         return obj
@@ -1191,7 +1190,6 @@ class cosmo_array(unyt_array):
             Description of the compression filters that were applied to that array in the
             hdf5 file.
         """
-
         if bypass_validation is True:
             obj = super().__new__(
                 cls,
@@ -1584,7 +1582,6 @@ class cosmo_array(unyt_array):
             >>> cosmo_array.from_astropy([1, 2, 3] * kpc)
             cosmo_array([1., 2., 3.], 'kpc')
         """
-
         obj = super().from_astropy(arr, unit_registry=unit_registry).view(cls)
         obj.comoving = comoving
         obj.cosmo_factor = cosmo_factor

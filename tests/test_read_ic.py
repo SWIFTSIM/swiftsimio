@@ -25,7 +25,6 @@ def simple_snapshot_data():
     """
     Fixture to create and cleanup a simple snapshot for testing.
     """
-
     # Box is 100 Mpc
     boxsize = 100 * unyt.Mpc
 
@@ -68,7 +67,6 @@ def test_reading_ic_units(simple_snapshot_data, field):
     """
     Test to ensure we are able to correctly read ICs created with swiftsimio
     """
-
     data = load(test_filename)
 
     assert isinstance(getattr(data.gas, field), cosmo_array)

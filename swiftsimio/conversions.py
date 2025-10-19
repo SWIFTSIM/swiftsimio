@@ -17,7 +17,6 @@ if ASTROPY_AVAILABLE:
         """
         Parameters
         ----------
-
         N_eff: float
             Fractional number of effective massless neutrinos at high redshift
 
@@ -32,7 +31,6 @@ if ASTROPY_AVAILABLE:
 
         Returns
         -------
-
         ap_m_nu
             Array of neutrino masses in eV, replicated according to degeneracy,
             including massless species, as desired by astropy
@@ -60,7 +58,6 @@ if ASTROPY_AVAILABLE:
         """
         Parameters
         ----------
-
         cosmo: dict
             Cosmology dictionary ready straight out of the SWIFT snapshot.
 
@@ -69,12 +66,10 @@ if ASTROPY_AVAILABLE:
 
         Returns
         -------
-
         Cosmology
             An instance of ``astropy.cosmology.Cosmology`` filled with the
             correct parameters.
         """
-
         H0 = cosmo_quantity(cosmo["H0 [internal units]"][0], units=1.0 / units.time)
 
         Omega_b = cosmo["Omega_b"][0]

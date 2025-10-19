@@ -271,6 +271,7 @@ def _ensure_result_is_cosmo_array_or_quantity(func: Callable) -> Callable:
         The function whose result(s) will be upgraded to
         :class:`~swiftsimio.objects.cosmo_array` or
         :class:`~swifsimio.objects.cosmo_quantity`.
+
     Returns
     -------
     out : Callable

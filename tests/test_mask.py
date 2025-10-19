@@ -16,7 +16,6 @@ def test_reading_select_region_spatial(cosmological_volume):
     Tests reading select regions of the volume, comparing the masks attained with
     spatial_only = True and spatial_only = False.
     """
-
     full_data = load(cosmological_volume)
 
     # Mask off the lower bottom corner of the volume.
@@ -48,7 +47,6 @@ def test_reading_select_region_half_box(cosmological_volume):
 
     Specifically, we test to see if all particles lie within half a boxsize.
     """
-
     # Mask off the lower bottom corner of the volume.
     mask_region = mask(cosmological_volume, spatial_only=True)
 
@@ -84,7 +82,6 @@ def test_region_mask_not_modified(cosmological_volume):
 
     Checks if https://github.com/SWIFTSIM/swiftsimio/issues/22 is broken.
     """
-
     this_mask = mask(cosmological_volume, spatial_only=True)
     bs = this_mask.metadata.boxsize
 
@@ -157,7 +154,6 @@ def test_mask_padding(cosmological_volume):
     Check that the padding of a mask when we don't have cell bounding box metadata
     works correctly.
     """
-
     # Mask off the lower bottom corner of the volume.
     mask_pad_onecell = mask(cosmological_volume, spatial_only=True, safe_padding=1.0)
     mask_pad_tenthcell = mask(cosmological_volume, spatial_only=True)  # default 0.1
@@ -199,7 +195,6 @@ def test_mask_pad_wrapping(cosmological_volume):
     opposite edge as padding in case particles have drifted out of their cell,
     unless the cell metadata with max positions is present.
     """
-
     mask_region_upper = mask(cosmological_volume, spatial_only=True)
     mask_region_lower = mask(cosmological_volume, spatial_only=True)
     restrict_lower = cosmo_array(

@@ -42,7 +42,6 @@ def find_nearest_base_unit(unit: unyt.unyt_quantity, dimension: str):
 
     Parameters
     ----------
-
     unit: unyt_quantity
         Quantity to convert to a nearby unit
 
@@ -53,7 +52,6 @@ def find_nearest_base_unit(unit: unyt.unyt_quantity, dimension: str):
 
     Returns
     -------
-
     unyt_quantity
         Output quantity corresponding to ``unit`` converted to the
         closest unit.
@@ -66,7 +64,6 @@ def find_nearest_base_unit(unit: unyt.unyt_quantity, dimension: str):
         find_nearest_base_unit(1e43 * unyt.g, "mass")
         >>> 1e10 * unyt.Solar_Mass
     """
-
     possible_bases = possible_base_units[dimension]
 
     closest_unit = min(possible_bases, key=lambda x: abs(log((1.0 * x).to(unit))))

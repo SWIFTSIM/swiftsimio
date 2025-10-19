@@ -47,7 +47,6 @@ def generate_smoothing_lengths(
     smoothing lengths : cosmo_array
         a cosmo_array of smoothing lengths.
     """
-
     if not TREE_AVAILABLE:
         raise ImportError(
             "The scipy.spatial.cKDTree class is required to search for smoothing lengths."

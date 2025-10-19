@@ -19,7 +19,6 @@ def kernel_single_precision(r: np.float32, H: np.float32):
 
     Parameters
     ----------
-
     r : np.float32
         radius used in kernel computation
 
@@ -28,13 +27,11 @@ def kernel_single_precision(r: np.float32, H: np.float32):
 
     Returns
     -------
-
     np.float32
         Contribution to the density by the particle
 
     See Also
     --------
-
     kernel_double_precision
 
     References
@@ -70,7 +67,6 @@ def kernel_double_precision(r: np.float64, H: np.float64):
 
     Parameters
     ----------
-
     r : np.float32
         radius used in kernel computation
     H : np.float32
@@ -78,13 +74,11 @@ def kernel_double_precision(r: np.float64, H: np.float64):
 
     Returns
     -------
-
     np.float32
         Contribution to the density by the particle
 
     See Also
     --------
-
     kernel_single_precision
 
     References

@@ -155,7 +155,6 @@ def visualise_render(
 
     Parameters
     ----------
-
     render : np.np.array
         The render to visualise. You should scale this appropriately
         before using this function (e.g. use a logarithmic transform!)
@@ -183,7 +182,6 @@ def visualise_render(
 
     Returns
     -------
-
     list[np.np.array] | np.np.array
         The images of the rendering functions. If return_type is "all", this
         will be a list of images. If return_type is "lighten" or "add", this
@@ -192,7 +190,6 @@ def visualise_render(
     list[plt.Normalize]
         The normalisations used for the rendering functions.
     """
-
     if isinstance(widths, float):
         widths = [widths] * len(centers)
 
@@ -234,7 +231,6 @@ def visualise_render_options(
 
     Parameters
     ----------
-
     centers : list[float]
         The centers of your rendering functions
 
@@ -247,7 +243,6 @@ def visualise_render_options(
 
     Returns
     -------
-
     plt.Figure, plt.Axes
         The figure and axes of the plot.
     """

@@ -44,7 +44,6 @@ class __SWIFTWriterParticleDataset(object):
 
     Methods
     -------
-
     generate_empty_properties(self)
         generates the empty properties that will be accessed through the
         setter and getters.
@@ -73,7 +72,6 @@ class __SWIFTWriterParticleDataset(object):
             the particle type of the dataset. Numbering convention is the same as
             SWIFT, with 0 corresponding to gas, etc.  as usual.
         """
-
         self.unit_system = unit_system
         self.particle_type = particle_type
 
@@ -93,7 +91,6 @@ class __SWIFTWriterParticleDataset(object):
         Initially all of the _{name} values are set to None. Note that we
         only generate required properties.
         """
-
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             setattr(self, f"_{name}", None)
 
@@ -108,7 +105,6 @@ class __SWIFTWriterParticleDataset(object):
         bool
             True if all datasets are empty
         """
-
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             if getattr(self, f"_{name}") is not None:
                 return False
@@ -134,7 +130,6 @@ class __SWIFTWriterParticleDataset(object):
         bool
             True if above listed criteria are satisfied
         """
-
         self.requires_particle_ids_before_write = False
 
         sizes = []
@@ -178,7 +173,6 @@ class __SWIFTWriterParticleDataset(object):
         dimension : int
             number of box dimensions
         """
-
         try:
             boxsize = boxsize[0]
         except IndexError:
@@ -204,7 +198,6 @@ class __SWIFTWriterParticleDataset(object):
         compress : bool
             flag to indicate whether to turn on gzip compression
         """
-
         particle_group = file_handle.create_group(self.particle_type)
 
         if compress:
@@ -467,7 +460,6 @@ def generate_dataset(
     SWIFTWriterParticleDataset
         an empty dataset for the given particle type
     """
-
     particle_name = metadata.particle_types.particle_name_underscores[particle_type]
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
 
@@ -589,7 +581,6 @@ class SWIFTSnapshotWriter(object):
         names_to_write : list
             list of groups to regenerate ids for
         """
-
         numbers_of_particles = [getattr(self, name).n_part for name in names_to_write]
         # Start particle ID's at 1. When running with hydro + DM, partID = 0
         # is a no-no because the ID's are used as offsets in arrays. The code
@@ -669,7 +660,6 @@ class SWIFTSnapshotWriter(object):
         handle : h5py.File
             hdf5 file to write units to
         """
-
         dim = unyt.dimensions
         cgs_base = unyt.unit_systems.cgs_unit_system.base_units
         base = self.unit_system.base_units
@@ -709,7 +699,6 @@ class SWIFTSnapshotWriter(object):
         filename : str
             file to write to
         """
-
         names_to_write = []
         generate_ids = False
 

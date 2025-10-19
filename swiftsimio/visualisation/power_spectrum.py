@@ -62,7 +62,6 @@ def deposit(
     np.array[float32, float32, float32]
         Pixel grid of deposited quantity density.
     """
-
     output = zeros((res, res, res), dtype=float32)
 
     float_res = float32(res)
@@ -145,7 +144,6 @@ def deposit_parallel(
     np.array[float32, float32, float32]
         Pixel grid of deposited quantity density.
     """
-
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
 
@@ -202,7 +200,6 @@ def render_to_deposit(
     cosmo_array[float32, float32, float32]
         The deposition.
     """
-
     # Get the positions and masses
     folding = 2.0**folding
     positions = data.coordinates
@@ -280,7 +277,6 @@ def folded_depositions_to_power_spectrum(
 
     Parameters
     ----------
-
     depositions: dict[int, cosmo_array]
         Dictionary of depositions, where the key is the base folding.
         So that would be 0 for no folding, 1 for a half-box-size folding,
@@ -319,7 +315,6 @@ def folded_depositions_to_power_spectrum(
 
     Returns
     -------
-
     wavenumber_bins: cosmo_array[float32]
         The wavenumber bins.
 
@@ -332,7 +327,6 @@ def folded_depositions_to_power_spectrum(
     folding_tracker: np.array
         A tracker of the contribution of various folded elements.
     """
-
     if cross_depositions is not None:
         if not set(depositions.keys()) == set(cross_depositions.keys()):
             raise ValueError(
@@ -516,7 +510,6 @@ def deposition_to_power_spectrum(
 
     Returns
     -------
-
     wavenumber_centers: ~swiftsimio.objects.cosmo_array[float32]
         The k-values of the power spectrum, with units. These are the
         real bin centers, calculated from the mean value of k that was
@@ -530,11 +523,9 @@ def deposition_to_power_spectrum(
 
     Notes
     -----
-
     This is adapted from Bert Vandenbroucke's code at
     https://bertvandenbroucke.netlify.app/2019/05/24/computing-a-power-spectrum-in-python/
     """
-
     if not len(deposition.shape) == 3:
         raise ValueError("Deposition must be a 3D array")
 

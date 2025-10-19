@@ -32,7 +32,6 @@ def scatter(
 
     Parameters
     ----------
-
     x : np.np.array[np.float64]
         np.array of x-positions of the particles. Must be bounded by [0, 1].
 
@@ -66,20 +65,17 @@ def scatter(
 
     Returns
     -------
-
     np.np.array[np.float32, np.float32, np.float32]
         voxel grid of quantity
 
     See Also
     --------
-
     scatter_parallel : Parallel implementation of this function
     slice_scatter : Create scatter plot of a slice of data
     slice_scatter_parallel : Create scatter plot of a slice of data in parallel
 
     Notes
     -----
-
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba np.ones.
@@ -240,7 +236,6 @@ def scatter_limited_z(
 
     Parameters
     ----------
-
     x : np.np.array[np.float64]
         np.array of x-positions of the particles. Must be bounded by [0, 1].
 
@@ -279,20 +274,17 @@ def scatter_limited_z(
 
     Returns
     -------
-
     np.np.array[np.float32, np.float32, np.float32]
         voxel grid of quantity
 
     See Also
     --------
-
     scatter_parallel : Parallel implementation of this function
     slice_scatter : Create scatter plot of a slice of data
     slice_scatter_parallel : Create scatter plot of a slice of data in parallel
 
     Notes
     -----
-
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba np.ones.
@@ -499,20 +491,17 @@ def scatter_parallel(
 
     Returns
     -------
-
     np.ndarray of np.float32
         voxel grid of quantity
 
     See Also
     --------
-
     scatter : Create voxel grid of quantity
     slice_scatter : Create scatter plot of a slice of data
     slice_scatter_parallel : Create scatter plot of a slice of data in parallel
 
     Notes
     -----
-
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba np.ones.

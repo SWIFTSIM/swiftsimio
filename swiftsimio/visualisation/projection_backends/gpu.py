@@ -19,7 +19,6 @@ def kernel(r: float32, H: float32):
 
     Parameters
     ----------
-
     r : float32
         radius used in kernel computation
 
@@ -28,7 +27,6 @@ def kernel(r: float32, H: float32):
 
     Returns
     -------
-
     float32
         Contribution to the density by the particle
 
@@ -39,7 +37,6 @@ def kernel(r: float32, H: float32):
 
     Notes
     -----
-
     This is the cuda-compiled version of the kernel, designed for use
     within the gpu backend. It has no double precision cousin.
     """
@@ -83,7 +80,6 @@ def scatter_gpu(
 
     Parameters
     ----------
-
     x : np.array[float64]
         array of x-positions of the particles. Must be bounded by [0, 1].
 
@@ -109,7 +105,6 @@ def scatter_gpu(
 
     Notes
     -----
-
     Explicitly defining the types in this function allows
     for a performance improvement. This is the cuda version,
     and as such can only be ran on systems with a supported
@@ -247,18 +242,15 @@ def scatter(
 
     Returns
     -------
-
     np.array[float32, float32, float32]
         pixel grid of quantity
 
     See Also
     --------
-
     scatter : Creates 2D scatter plot from SWIFT data
 
     Notes
     -----
-
     Explicitly defining the types in this function allows
     a performance improvement.
     """

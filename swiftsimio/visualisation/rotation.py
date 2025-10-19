@@ -15,7 +15,6 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
 
     Parameters
     ----------
-
     vector: np.array[float64]
         3D vector describing the top-down direction that you wish
         to rotate to. For example, this could be the angular momentum
@@ -28,11 +27,9 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
 
     Returns
     -------
-
     rotation_matrix: np.array[float64]
         Rotation matrix (3x3).
     """
-
     normed_vector = vector / np.linalg.norm(vector)
     if isinstance(normed_vector, u.unyt_array):
         normed_vector = normed_vector.to_value(u.dimensionless)

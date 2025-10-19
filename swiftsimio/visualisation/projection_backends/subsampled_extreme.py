@@ -45,7 +45,6 @@ def scatter(
 
     Parameters
     ----------
-
     x : np.array[float64]
         array of x-positions of the particles. Must be bounded by [0, 1].
 
@@ -72,18 +71,15 @@ def scatter(
 
     Returns
     -------
-
     np.array[float32, float32, float32]
         pixel grid of quantity
 
     See Also
     --------
-
     scatter_parallel : Parallel implementation of this function
 
     Notes
     -----
-
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.
@@ -364,18 +360,15 @@ def scatter_parallel(
 
     Returns
     -------
-
     np.array[float32, float32, float32]
         pixel grid of quantity
 
     See Also
     --------
-
     scatter : Creates 2D scatter plot from SWIFT data
 
     Notes
     -----
-
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba ones.

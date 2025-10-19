@@ -39,7 +39,6 @@ def project_pixel_grid(
 
     Parameters
     ----------
-
     data: __SWIFTGroupDataset
         The SWIFT dataset that you wish to visualise (get this from ``load``)
 
@@ -88,7 +87,6 @@ def project_pixel_grid(
 
     Returns
     -------
-
     image: cosmo_array
         Projected image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
@@ -96,14 +94,12 @@ def project_pixel_grid(
 
     Notes
     -----
-
     + Particles outside of this range are still considered if their smoothing
       lengths overlap with the range.
     + The returned array has x as the first component and y as the second component,
       which is the opposite to what ``imshow`` requires. You should transpose the
       array if you want it to be visualised the 'right way up'.
     """
-
     m = _get_projection_field(data, project)
     region_info = _get_region_info(data, region, periodic=periodic)
     hsml = backends_get_hsml["sph" if backend != "histogram" else "histogram"](data)
@@ -188,7 +184,6 @@ def project_gas(
 
     Parameters
     ----------
-
     data: SWIFTDataset
         The SWIFT dataset that you wish to visualise (get this from ``load``)
 
@@ -238,7 +233,6 @@ def project_gas(
 
     Returns
     -------
-
     image: cosmo_array
         Projected image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
@@ -246,14 +240,12 @@ def project_gas(
 
     Notes
     -----
-
     + Particles outside of this range are still considered if their smoothing
       lengths overlap with the range.
     + The returned array has x as the first component and y as the second component,
       which is the opposite to what ``imshow`` requires. You should transpose the
       array if you want it to be visualised the 'right way up'.
     """
-
     return project_pixel_grid(
         data=data.gas,
         resolution=resolution,

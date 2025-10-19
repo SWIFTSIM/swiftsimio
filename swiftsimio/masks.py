@@ -63,7 +63,6 @@ class SWIFTMask(object):
             See https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
             details.
         """
-
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
@@ -95,7 +94,6 @@ class SWIFTMask(object):
         Creates cross-links between 'group names' and their underlying cell metadata
         names. Allows for pointers to be used instead of re-creating masks.
         """
-
         if self.group_mapping is not None:
             return self.group_mapping
 
@@ -118,7 +116,6 @@ class SWIFTMask(object):
         Creates cross-links between 'group names' and their underlying cell metadata
         names. Allows for pointers to be used instead of re-creating masks.
         """
-
         if self.group_size_mapping is not None:
             return self.group_size_mapping
 
@@ -143,7 +140,6 @@ class SWIFTMask(object):
         Gets a list of internal mask variables that need to be updated when
         we change the spatial mask.
         """
-
         if self.metadata.shared_cell_counts is None:
             # Each and every particle type has its own cell counts, offsets,
             # and hence masks.
@@ -174,7 +170,6 @@ class SWIFTMask(object):
         Generates the empty (i.e. all False) masks for all available particle
         types.
         """
-
         mapping = self._generate_mapping_dictionary()
 
         if self.metadata.shared_cell_counts is not None:
@@ -198,7 +193,6 @@ class SWIFTMask(object):
         Unpacks the cell metadata into local (to the class) variables. We do not
         read in information for empty cells.
         """
-
         # Reset this in case for any reason we have messed them up
 
         self.counts = {}
@@ -372,11 +366,9 @@ class SWIFTMask(object):
 
         See Also
         --------
-
         constrain_spatial : method to generate spatially constrained cell mask
 
         """
-
         if self.spatial_only:
             raise ValueError(
                 "You cannot constrain a mask if spatial_only=True. "
@@ -447,7 +439,6 @@ class SWIFTMask(object):
 
         Parameters
         ----------
-
         restrict : list
             Restrict is a 3 length list that contains length two arrays giving
             the lower and upper bounds for that axis, e.g.
@@ -467,11 +458,9 @@ class SWIFTMask(object):
 
         Returns
         -------
-
         cell_mask : np.array[bool]
             mask to indicate which cells are within the specified spatial range
         """
-
         if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES:
             cell_mask = {"shared": np.ones(len(self.centers), dtype=bool)}
         else:
@@ -546,7 +535,6 @@ class SWIFTMask(object):
 
         Parameters
         ----------
-
         restrict : list
             currently unused
 
@@ -556,7 +544,6 @@ class SWIFTMask(object):
         cell_mask : dict
             cell mask used to update the particle mask
         """
-
         count_name = data_name[1:]  # Remove the underscore
 
         for group_name in self.metadata.present_group_names:
@@ -589,7 +576,6 @@ class SWIFTMask(object):
 
         Parameters
         ----------
-
         restrict : list
             length 3 list of length two arrays giving the lower and
             upper bounds for that axis, e.g.
@@ -610,11 +596,9 @@ class SWIFTMask(object):
             By default (`False`) any existing mask is overwritten.
 
         See Also
-        -------
-
+        --------
         constrain_mask : method to further refine mask
         """
-
         if hasattr(self, "cell_mask") and intersect:
             # we already have a mask and are in intersect mode
             new_mask = self._generate_cell_mask(restrict)
@@ -640,7 +624,6 @@ class SWIFTMask(object):
 
         If you don't know what you are doing please don't use this.
         """
-
         # Spatial only already comes like this!
         if not self.spatial_only:
             # We must do the whole boolean mask stuff. To do that, we
@@ -665,7 +648,6 @@ class SWIFTMask(object):
         index : int
             The index of the row to select.
         """
-
         if not self.metadata.homogeneous_arrays:
             raise RuntimeError(
                 "Cannot constrain to a single row in a non-homogeneous array; you "
@@ -687,12 +669,12 @@ class SWIFTMask(object):
     def constrain_indices(self, indices: list[int]):
         """
         Constrain the mask to a list of rows.
+
         Parameters
         ----------
         indices : list[int]
             An list of the indices of the rows to mask.
         """
-
         if not self.metadata.homogeneous_arrays:
             raise RuntimeError(
                 "Cannot constrain to a single row in a non-homogeneous array; you "
@@ -729,7 +711,6 @@ class SWIFTMask(object):
 
         Returns
         -------
-
         Dict[str, np.array], Dict[str, np.array]
             Dictionaries containing the particle offets and counts for each particle
             type. For example, the particle counts dictionary would be of the form
@@ -746,7 +727,6 @@ class SWIFTMask(object):
             arrays now storing the offset of the first particle in the cell.
 
         """
-
         if self.spatial_only:
             masked_counts = {}
             current_offsets = {}

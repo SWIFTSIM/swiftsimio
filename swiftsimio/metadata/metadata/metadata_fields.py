@@ -51,7 +51,6 @@ def generate_units_header_unpack_arrays(
 
     units respectively.
     """
-
     # Do not include those items that do not have units.
     units = {"boxsize": length}
 
@@ -74,7 +73,6 @@ def generate_cosmo_args_header_unpack_arrays(scale_factor) -> dict:
         A dictionary containing the `cosmo_array` arguments corresponding to
         header items, omitting any that should not be `cosmo_array`s.
     """
-
     # Do not include those items that do not have units (and therefore
     # should not be cosmo_array'd).
     cosmo_args = {
@@ -119,7 +117,6 @@ def generate_units_header_unpack_single_float(
 
     units respectively.
     """
-
     units = {"time": time, "t": time}
 
     return units

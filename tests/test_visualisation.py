@@ -127,7 +127,6 @@ class TestProjection:
         Asserts that we create the same image with the parallel version of the code
         as with the serial version.
         """
-
         number_of_parts = 1000
         h_max = np.float32(0.05)
         resolution = 512
@@ -395,7 +394,6 @@ class TestSlice:
         Asserts that we create the same image with the parallel version of the code
         as with the serial version.
         """
-
         number_of_parts = 1000
         h_max = np.float32(0.05)
         z_slice = 0.5
@@ -718,7 +716,6 @@ class TestVolumeRender:
         Test that volume render and unfolded deposit can give
         the same result.
         """
-
         x = np.array([100, 200])
         y = np.array([100, 200])
         z = np.array([100, 200])
@@ -750,7 +747,6 @@ class TestVolumeRender:
         """
         Tests that the deposit returns the 'correct' units.
         """
-
         x = np.array([100, 200])
         y = np.array([100, 200])
         z = np.array([100, 200])
@@ -1003,7 +999,6 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
     """
     Test what happens if you try to mix up physical and comoving quantities.
     """
-
     # this test is pretty slow if we don't mask out some particles
     m = mask(cosmological_volume_only_single)
     boxsize = m.metadata.boxsize
@@ -1101,7 +1096,6 @@ def test_nongas_smoothing_lengths(cosmological_volume_only_single):
     """
     Test that the visualisation tools to calculate smoothing lengths give usable results.
     """
-
     # If project_gas runs without error the smoothing lengths seem usable.
     data = load(cosmological_volume_only_single)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(

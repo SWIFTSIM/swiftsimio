@@ -20,7 +20,6 @@ def ensure_rgba(input_color: Iterable[float]) -> np.array:
 
     Parameters
     ----------
-
     input_color: iterable
         An iterable of maximum length 4, with RGBA values
         encoded as floating point 0.0 -> 1.0.
@@ -28,12 +27,10 @@ def ensure_rgba(input_color: Iterable[float]) -> np.array:
 
     Returns
     -------
-
     array_color: np.array
         An array of length 4 as an RGBA color.
 
     """
-
     array_color = np.zeros(4, dtype=np.float32)
     array_color[-1] = 1.0
 
@@ -53,7 +50,6 @@ def apply_color_map(first_values, second_values, map_grid):
 
     Parameters
     ----------
-
     first_values: iterable[float]
         Array or list to loop over, containing floats ranging from 0.0
         to 1.0. Provides the normalisation for the horizontal
@@ -70,12 +66,10 @@ def apply_color_map(first_values, second_values, map_grid):
 
     Returns
     -------
-
     np.ndarray
         An N by 4 array (where N is the length of ``first_value`` and
         ``second_value``) of RGBA components.
     """
-
     number_of_values = len(first_values)
     output_values = np.empty(number_of_values * 4, dtype=np.float32).reshape(
         (number_of_values, 4)
@@ -121,7 +115,6 @@ class Cmap2D(object):
         Generates the colour map grid and stores it in
         ``_color_map_grid``. Imeplementation dependent.
         """
-
         self._color_map_grid = np.empty(
             (COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE), dtype=np.float32
         )
@@ -133,7 +126,6 @@ class Cmap2D(object):
         """
         Generates, or gets, the color map grid.
         """
-
         if self._color_map_grid is None:
             # Better make it!
             self.generate_color_map_grid()
@@ -146,7 +138,6 @@ class Cmap2D(object):
 
         Parameters
         ----------
-
         ax: matplotlib.Axis
             Axis to be plotted on.
 
@@ -154,7 +145,6 @@ class Cmap2D(object):
             If true, plot the individual colours as points that make
             up the color map. Default: False.
         """
-
         ax.imshow(self.color_map_grid, origin="lower", extent=[0, 1, 0, 1])
         ax.set_xlabel("Horizontal Value (first index)")
         ax.set_ylabel("Vertical Value (second index)")
@@ -174,7 +164,6 @@ class Cmap2D(object):
 
         Parameters
         ----------
-
         horizontal_values: iterable
             Values for the first parameter in the color map
 
@@ -183,11 +172,9 @@ class Cmap2D(object):
 
         Returns
         -------
-
         mapped: np.ndarray
             RGBA array using the internal colour map.
         """
-
         if isinstance(horizontal_values, list) or isinstance(horizontal_values, tuple):
             horizontal_values = np.array(horizontal_values)
 
@@ -221,7 +208,6 @@ class LinearSegmentedCmap2D(Cmap2D):
         """
         Parameters
         ----------
-
         colors: List[List[float]]
             Individual colors (at ``coordinates`` below) that make up
             the color map.
@@ -239,7 +225,6 @@ class LinearSegmentedCmap2D(Cmap2D):
 
         See Also
         --------
-
         ``LinearSegmentedCmap2DHSV``, a cousin of this class that
         combines colours using the HSV space rather than RGB used
         here.
@@ -292,7 +277,6 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
 
     Parameters
     ----------
-
     colors: List[List[float]]
         Individual colors (at ``coordinates`` below) that make up
         the color map.
@@ -310,7 +294,6 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
 
     See Also
     --------
-
     ``LinearSegmentedCmap2D``, a cousin of this class that
     combines colours using the RGB space rather than HSV used
     here.
@@ -393,7 +376,6 @@ class ImageCmap2D(Cmap2D):
         """
         Parameters
         ----------
-
         file_path: str
             Path to the image to use as the color map.
 
@@ -403,7 +385,6 @@ class ImageCmap2D(Cmap2D):
         description: str, optional
             Optional metadata description of this colour map.
         """
-
         super().__init__(name=name, description=description)
 
         self.filename = filename
@@ -415,7 +396,6 @@ class ImageCmap2D(Cmap2D):
         Loads the image from file and stores it as the internal
         array.
         """
-
         try:
             from PIL import Image
         except ImportError:

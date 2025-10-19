@@ -59,7 +59,6 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     [[0, 4], [5, 8], [9, 10], [11, 14]]
 
     """
-
     output = []
 
     if len(array) == 0:
@@ -97,7 +96,6 @@ def read_ranges_from_file_unchunked(
 
     Parameters
     ----------
-
     handle: Dataset
         HDF5 dataset to slice data from
 
@@ -117,11 +115,9 @@ def read_ranges_from_file_unchunked(
 
     Returns
     -------
-
     array: np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
-
     output = np.empty(output_shape, dtype=output_type)
     already_read = 0
     handle_multidim = handle.ndim > 1
@@ -178,7 +174,6 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
     np.array
         Subset of the data specified by the mask
     """
-
     output_type = handle[0].dtype
     output_size = mask_array.size
 
@@ -380,7 +375,6 @@ def read_ranges_from_file_chunked(
 
     Parameters
     ----------
-
     handle: Dataset
         HDF5 dataset to slice data from
 
@@ -400,11 +394,9 @@ def read_ranges_from_file_chunked(
 
     Returns
     -------
-
     array: np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
-
     chunk_size = handle.chunks[0]
 
     # Make array of chunk ranges
@@ -472,7 +464,6 @@ def read_ranges_from_file(
 
     Parameters
     ----------
-
     handle: Dataset
         HDF5 dataset to slice data from
 
@@ -492,7 +483,6 @@ def read_ranges_from_file(
 
     Returns
     -------
-
     array: np.ndarray
         Result from reading only the relevant values from ``handle``.
 
@@ -502,7 +492,6 @@ def read_ranges_from_file(
     file read_ranges_from_file_unchunked: reads data within specified ranges for
     unchunked hdf5 file
     """
-
     # It was found that the range size for which read_ranges_from_file_chunked was
     # faster than unchunked was approximately 5e5. For ranges larger than this the
     # overheads associated with read_ranges_from_file_chunked caused slightly worse
@@ -525,24 +514,20 @@ def list_of_strings_to_arrays(lines: List[str]) -> Union[np.array]:
 
     Parameters
     ----------
-
     lines: List[str]
         List of strings containing numbers separated by a set of spaces.
 
 
     Returns
     -------
-
     arrays: List[np.array]
         List of numpy arrays, one per column.
 
 
     Notes
     -----
-
     Currently not suitable for ``numba`` acceleration due to mixed datatype usage.
     """
-
     # Calculate types and set up arrays.
 
     arrays = []

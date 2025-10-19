@@ -15,7 +15,6 @@ def test_same_contents():
 
     We treat the particle fields as the ground truth.
     """
-
     cosmology = metadata.cosmology_fields.generate_cosmology(1.0, 1.0)
     units = metadata.unit_fields.generate_units(1.0, 1.0, 1.0, 1.0, 1.0)
     particle = {x: getattr(metadata.particle_fields, x) for x in units.keys()}

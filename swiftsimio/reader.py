@@ -52,7 +52,6 @@ def _generate_getter(
 
     Parameters
     ----------
-
     filename: str
         Filename of the HDF5 file that everything will be read from. Used to generate
         the HDF5 dataset.
@@ -99,7 +98,6 @@ def _generate_getter(
 
     Returns
     -------
-
     getter: callable
         A callable object that gets the value of the array that has been saved to
         ``_name``. This function takes only ``self`` from the
@@ -108,7 +106,6 @@ def _generate_getter(
 
     Notes
     -----
-
     The major use of this function is for its side effect of setting ``_name`` as
     a member of the class on first read. When the attribute is accessed, it will
     be dynamically read from the file, to keep initial memory usage as minimal
@@ -117,7 +114,6 @@ def _generate_getter(
     If the resultant array is modified, it will not be re-read from the file.
 
     """
-
     # Must do this _outside_ getter because of weird locality issues with the
     # use of None as the default.
     # Here, we need to ensure that in the cases where we're using columns,
@@ -285,7 +281,6 @@ class __SWIFTGroupDataset(object):
         Initially set all of the _{name} values to None. If it doesn't
         _exist_ in the file, the variable is not created.
         """
-
         for field_name, field_path in zip(
             self.group_metadata.field_names, self.group_metadata.field_paths
         ):
@@ -397,7 +392,6 @@ def _generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     mask : SWIFTMask
         the mask object for the datasets
     """
-
     filename = group_metadata.filename
     group = group_metadata.group
     group_name = group_metadata.group_name
@@ -593,7 +587,6 @@ class SWIFTDataset(object):
         Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
         """
-
         self.units = SWIFTUnits(self.filename)
 
         return
@@ -605,7 +598,6 @@ class SWIFTDataset(object):
         Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
         """
-
         self.metadata = metadata_discriminator(self.filename, self.units)
 
         return
@@ -617,7 +609,6 @@ class SWIFTDataset(object):
 
         These can then be accessed using their underscore names, e.g. gas.
         """
-
         if not hasattr(self, "metadata"):
             self.get_metadata()
 
