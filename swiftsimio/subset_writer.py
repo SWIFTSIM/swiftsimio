@@ -1,7 +1,4 @@
-"""
-Contains functions for reading a subset of a SWIFT dataset and writing
-it to a new file.
-"""
+"""Functions for reading a subset of a SWIFT dataset and writing it to a new file."""
 
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
@@ -14,17 +11,17 @@ from typing import Optional, List
 
 def get_swift_name(name: str) -> str:
     """
-    Returns the particle type name used in SWIFT.
+    Return the particle type name used in SWIFT.
 
     Parameters
     ----------
     name : str
-        swiftsimio particle name (e.g. gas)
+        swiftsimio particle name (e.g. gas).
 
     Returns
     -------
-    str
-        SWIFT particle type corresponding to `name` (e.g. PartType0)
+    out : str
+        SWIFT particle type corresponding to `name` (e.g. PartType0).
     """
     part_type_names = [
         k for k, v in metadata.particle_types.particle_name_underscores.items()
@@ -165,8 +162,7 @@ def find_links(
 
 def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask):
     """
-    Recalculates the cell particle counts and offsets based on the particles present in
-    the subset.
+    Recalculate the cell particle counts and offsets from particles present in the subset.
 
     Parameters
     ----------
@@ -263,7 +259,7 @@ def write_datasubset(
     links_list: List[str],
 ):
     """
-    Writes subset of all datasets contained in snapshot according to specified mask.
+    Write subset of all datasets contained in snapshot according to specified mask.
 
     Parameters
     ----------
@@ -312,7 +308,7 @@ def write_datasubset(
 
 def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[str]):
     """
-    Connects up the links to the appropriate path.
+    Connect up the links to the appropriate path.
 
     Parameters
     ----------
@@ -329,7 +325,7 @@ def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[st
 
 def write_subset(output_file: str, mask: SWIFTMask):
     """
-    Writes subset of snapshot according to specified mask to new snapshot file.
+    Write subset of snapshot according to specified mask to new snapshot file.
 
     Parameters
     ----------

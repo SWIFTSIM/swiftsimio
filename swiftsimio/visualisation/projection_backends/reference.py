@@ -1,6 +1,7 @@
 """
-Reference evaluation - only returns a 'real' result if no particles
-lie below the resolution limit.
+Reference evaluation of the kernel.
+
+Only returns a "true" result if no particles lie below the resolution limit.
 
 Uses double precision.
 """
@@ -32,7 +33,7 @@ def scatter(
     box_y: float64 = 0.0,
 ) -> ndarray:
     """
-    Creates a weighted scatter plot.
+    Create a weighted scatter plot.
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
@@ -184,12 +185,11 @@ def scatter_parallel(
     box_y: float64 = 0.0,
 ) -> ndarray:
     """
-    Parallel implementation of scatter.
+    Create a weighted scatter plot in parallel.
 
-    Creates a weighted scatter plot. Computes contributions from
-    particles with positions (`x`,`y`) with smoothing lengths `h`
-    weighted by quantities `m`.
-    This includes periodic boundary effects.
+    Creates a weighted scatter plot. Computes contributions from particles with positions
+    (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`. This includes
+    periodic boundary effects.
 
     Parameters
     ----------

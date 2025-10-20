@@ -1,3 +1,5 @@
+"""Tools to get nearest-neighbour smoothing lengths."""
+
 from numpy import cbrt
 
 from swiftsimio import SWIFTDataset, cosmo_array
@@ -6,13 +8,15 @@ from swiftsimio.visualisation.smoothing_length.sph import get_hsml as get_hsml_s
 
 def get_hsml(data: SWIFTDataset) -> cosmo_array:
     """
-    Computes a "smoothing length" as the 3rd root of the volume of the particles.
-    This scheme uses volume weighting when computing slices.
+    Compute a "smoothing length".
+
+    Estimated as the 3rd root of the volume of the particles. This scheme uses volume
+    weighting when computing slices.
 
     Parameters
     ----------
     data : SWIFTDataset
-        The Dataset from which slice will be extracted
+        The dataset from which slice will be extracted.
 
     Returns
     -------

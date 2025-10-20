@@ -14,8 +14,9 @@ savetxt_file = "saved_array.txt"
 
 def getfunc(fname):
     """
-    Helper for our tests: get the function handle from a name (possibly with attribute
-    access).
+    Test helper: get the function handle from a name.
+
+    Possibly with attribute access.
     """
     func = np
     for attr in fname.split("."):
@@ -24,18 +25,20 @@ def getfunc(fname):
 
 
 def ca(x, unit=u.Mpc):
-    """Helper for our tests: turn an array into a cosmo_array."""
+    """Test helper: turn an array into a cosmo_array."""
     return cosmo_array(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
 def cq(x, unit=u.Mpc):
-    """Helper for our tests: turn a scalar into a cosmo_quantity."""
+    """Test helper: turn a scalar into a cosmo_quantity."""
     return cosmo_quantity(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
 def arg_to_ua(arg):
     """
-    Helper for our tests: recursively convert cosmo_* in an argument (possibly an
+    Test helper: recursively convert cosmo_* to unyt_*.
+
+    Recurseively converts cosmo_* items in an argument (possibly an
     iterable) to their unyt_* equivalents.
     """
     if type(arg) in (list, tuple):
@@ -45,14 +48,16 @@ def arg_to_ua(arg):
 
 
 def to_ua(x):
-    """Helper for our tests: turn a cosmo_* object into its unyt_* equivalent."""
+    """Test helper to turn a cosmo_* object into its unyt_* equivalent."""
     return u.unyt_array(x) if hasattr(x, "comoving") else x
 
 
 def check_result(x_c, x_u, ignore_values=False):
     """
-    Helper for our tests: check that a result with cosmo input matches what we
-    expected based on the result with unyt input.
+    Test helper to compare cosmo and unyt results.
+
+    Check that a result with cosmo input matches what we expected based on the result with
+    unyt input.
 
     We check:
      - that the type of the result makes sense, recursing if needed.
@@ -225,6 +230,7 @@ class TestCosmoArrayInit:
         assert hasattr(arr, "comoving") and arr.comoving is False
 
     def test_expected_init_failures(self):
+        """Test desired failure modes for initialising cosmo_array & cosmo_quantity."""
         for cls, inp in ((cosmo_array, [1]), (cosmo_quantity, 1)):
             # we refuse both cosmo_factor and scale_factor/scale_exponent provided:
             with pytest.raises(ValueError):
@@ -287,13 +293,12 @@ class TestCosmoArrayInit:
 
 
 class TestNumpyFunctions:
-    """
-    Check that numpy functions recognize our cosmo classes as input and handle them
-    correctly.
-    """
+    """Check that numpy functions recognize and handle our cosmo classes."""
 
     def test_explicitly_handled_funcs(self):
         """
+        Test consistency with unyt for functions that we handle explicitly.
+
         Make sure we at least handle everything that unyt does, and anything that
         'just worked' for unyt but that we need to handle by hand.
 
@@ -668,6 +673,8 @@ class TestNumpyFunctions:
     @pytest.mark.xfail
     def test_block_is_broken(self):
         """
+        Tracking upstream fix.
+
         There is an issue in unyt affecting np.block and fixed in
         https://github.com/yt-project/unyt/pull/571.
 
@@ -903,8 +910,9 @@ class TestNumpyFunctions:
 
 class TestCosmoQuantity:
     """
-    Test that the cosmo_quantity class works as desired, mostly around issues converting
-    back and forth with cosmo_array.
+    Test that the cosmo_quantity class works as desired.
+
+    Mostly test around issues converting back and forth with cosmo_array.
     """
 
     @pytest.mark.parametrize(
@@ -956,8 +964,10 @@ class TestCosmoQuantity:
 
     def test_scalar_return_func(self):
         """
-        Make sure that default-wrapped functions that take a cosmo_array and return a
-        scalar convert to a cosmo_quantity.
+        Make sure that default-wrapped functions convert to a cosmo_quantity.
+
+        Many functions behave similarly. Check that the ones that take a
+        cosmo_array and return a scalar convert to a cosmo_quantity.
         """
         ca = cosmo_array(
             np.arange(3),
@@ -991,7 +1001,7 @@ class TestCosmoArrayCopy:
     """Tests of explicit (deep)copying of cosmo_array."""
 
     def test_copy(self):
-        """Check that when we copy a cosmo_array it preserves its values and attributes."""
+        """Check that when we copy values and attributes are preserved."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1006,7 +1016,7 @@ class TestCosmoArrayCopy:
         assert arr.comoving == copy_arr.comoving
 
     def test_deepcopy(self):
-        """Check that when we deepcopy a cosmo_array it preserves its values and attributes."""
+        """Check that when we deepcopy values and attributes are preserved."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1037,8 +1047,12 @@ class TestCosmoArrayCopy:
 
 
 class TestMultiplicationByUnyt:
+    """Tests for multiplying cosmo_array by a unyt unit."""
+
     def test_multiplication_by_unyt(self):
         """
+        Check that left-sided multiplication behaves itself.
+
         We desire consistent behaviour for example for `cosmo_array(...) * (1 * u.Mpc)` as
         for `cosmo_array(...) * u.Mpc`.
 
@@ -1067,6 +1081,8 @@ class TestMultiplicationByUnyt:
     @pytest.mark.xfail
     def test_rmultiplication_by_unyt(self):
         """
+        Check that right-sided multiplication behaves itself.
+
         We desire consistent behaviour for example for `cosmo_array(...) * (1 * u.Mpc)` as
         for `cosmo_array(...) * u.Mpc`.
 
@@ -1105,6 +1121,7 @@ class TestPickle:
     """Test that the cosmo_array attributes survive being pickled and unpickled."""
 
     def test_pickle(self):
+        """Test that the cosmo_array attributes survive pickle/unpickle."""
         attrs = {
             "comoving": False,
             "cosmo_factor": cosmo_factor(a**1, 0.5),

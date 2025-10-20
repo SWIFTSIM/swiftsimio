@@ -1,7 +1,4 @@
-"""
-A list of required fields for writing a SWIFT dataset, for each
-particle type in turn.
-"""
+"""A list of required fields for writing a SWIFT dataset, for each particle type."""
 
 _shared = {
     "coordinates": "Coordinates",

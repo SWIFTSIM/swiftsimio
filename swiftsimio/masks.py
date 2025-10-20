@@ -1,7 +1,4 @@
-"""
-Loading functions and objects that use masked information from the SWIFT
-snapshots.
-"""
+"""Provide functions and objects that use mask information from SWIFT snapshots."""
 
 import warnings
 import h5py
@@ -18,8 +15,38 @@ _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
 
 class SWIFTMask(object):
     """
-    Main masking object. This can have masks for any present particle field in it.
-    Pass in the SWIFTMetadata.
+    Main masking object.
+
+    This can have masks for any present particle field in it.
+
+    Takes the SWIFT metadata and enables individual property-by-property masking
+    when reading from snapshots. Please note that when masking like this
+    order-in-file is not preserved, i.e. the 7th particle may not be the
+    7th particle in the file.
+
+    Parameters
+    ----------
+    metadata : SWIFTMetadata
+        Metadata specifying masking for reading of snapshots
+
+    spatial_only : bool, optional
+        If True (the default), you can only constrain spatially.
+        However, this is significantly faster and considerably
+        more memory efficient (~ bytes per cell, rather than
+        ~ bytes per particle).
+
+    safe_padding : bool or float, optional
+        If snapshot does not specify bounding box of cell particles (``MinPositions``,
+        ``MaxPositions``), pad the mask to gurantee that *all* particles in requested
+        spatial region(s) are selected. If the bounding box metadata is present, this
+        argument is ignored. The default (``0.1``) is to pad by 0.1 times the cell
+        length. Padding can be disabled (``False``) or set to a different fraction of
+        the cell length (e.g. ``0.5``). Only entire cells are loaded, but if the
+        region boundary is more than ``safe_padding`` from a cell boundary the
+        neighbouring cell is not read. Switching off can reduce I/O load by up to a
+        factor of 30 in some cases (but a few particles in region could be missing).
+        See https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
+        details.
     """
 
     group_mapping: dict | None = None
@@ -31,38 +58,6 @@ class SWIFTMask(object):
         spatial_only=True,
         safe_padding: Union[bool, float] = _DEFAULT_SAFE_PADDING,
     ):
-        """
-        SWIFTMask constructor.
-
-        Takes the SWIFT metadata and enables individual property-by-property masking
-        when reading from snapshots. Please note that when masking like this
-        order-in-file is not preserved, i.e. the 7th particle may not be the
-        7th particle in the file.
-
-        Parameters
-        ----------
-        metadata : SWIFTMetadata
-            Metadata specifying masking for reading of snapshots
-
-        spatial_only : bool, optional
-            If True (the default), you can only constrain spatially.
-            However, this is significantly faster and considerably
-            more memory efficient (~ bytes per cell, rather than
-            ~ bytes per particle).
-
-        safe_padding : bool or float, optional
-            If snapshot does not specify bounding box of cell particles (``MinPositions``,
-            ``MaxPositions``), pad the mask to gurantee that *all* particles in requested
-            spatial region(s) are selected. If the bounding box metadata is present, this
-            argument is ignored. The default (``0.1``) is to pad by 0.1 times the cell
-            length. Padding can be disabled (``False``) or set to a different fraction of
-            the cell length (e.g. ``0.5``). Only entire cells are loaded, but if the
-            region boundary is more than ``safe_padding`` from a cell boundary the
-            neighbouring cell is not read. Switching off can reduce I/O load by up to a
-            factor of 30 in some cases (but a few particles in region could be missing).
-            See https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
-            details.
-        """
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
@@ -91,8 +86,14 @@ class SWIFTMask(object):
 
     def _generate_mapping_dictionary(self) -> dict[str, str]:
         """
-        Creates cross-links between 'group names' and their underlying cell metadata
-        names. Allows for pointers to be used instead of re-creating masks.
+        Create mapping between "group names" and their underlying cell metadata names.
+
+        Allows for pointers to be used instead of re-creating masks.
+
+        Returns
+        -------
+        out : dict[str, str]:
+            The dictionary of corresponding names.
         """
         if self.group_mapping is not None:
             return self.group_mapping
@@ -113,8 +114,14 @@ class SWIFTMask(object):
 
     def _generate_size_mapping_dictionary(self) -> dict[str, str]:
         """
-        Creates cross-links between 'group names' and their underlying cell metadata
-        names. Allows for pointers to be used instead of re-creating masks.
+        Create mapping between "group names" and their underlying cell metadata names.
+
+        Allows for pointers to be used instead of re-creating masks.
+
+        Returns
+        -------
+        out : dict[str, str]:
+            The dictionary of corresponding names.
         """
         if self.group_size_mapping is not None:
             return self.group_size_mapping
@@ -137,8 +144,12 @@ class SWIFTMask(object):
 
     def _generate_update_list(self) -> list[str]:
         """
-        Gets a list of internal mask variables that need to be updated when
-        we change the spatial mask.
+        Get list of internal mask variables that need updating when changing spatial mask.
+
+        Returns
+        -------
+        out : list[str]
+            List of the variable names that need updating.
         """
         if self.metadata.shared_cell_counts is None:
             # Each and every particle type has its own cell counts, offsets,
@@ -148,10 +159,24 @@ class SWIFTMask(object):
             # We actually only have _one_ mask!
             return ["_shared"]
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> np.array:
         """
-        Overloads the getattr method to allow for direct access to the masks
-        for each particle type.
+        Overload the ``__getattr__`` method to allow for direct access to the masks.
+
+        Parameters
+        ----------
+        name : str
+            Name of one of the available particle types.
+
+        Returns
+        -------
+        out : np.array[bool]
+            The requested mask.
+
+        Raises
+        ------
+        AttributeError
+            If the requested particle type is not found.
         """
         mappings = {
             **self._generate_mapping_dictionary(),
@@ -160,16 +185,13 @@ class SWIFTMask(object):
 
         underlying_name = mappings.get(name, None)
 
-        if underlying_name is not None:
-            return getattr(self, underlying_name)
+        if underlying_name is None:
+            raise AttributeError(f"Attribute {name} not found in SWIFTMask")
 
-        raise AttributeError(f"Attribute {name} not found in SWIFTMask")
+        return getattr(self, underlying_name)
 
-    def _generate_empty_masks(self):
-        """
-        Generates the empty (i.e. all False) masks for all available particle
-        types.
-        """
+    def _generate_empty_masks(self) -> None:
+        """Generate empty (all ``False``) masks for all available particle types."""
         mapping = self._generate_mapping_dictionary()
 
         if self.metadata.shared_cell_counts is not None:
@@ -188,10 +210,11 @@ class SWIFTMask(object):
 
         return
 
-    def _unpack_cell_metadata(self):
+    def _unpack_cell_metadata(self) -> None:
         """
-        Unpacks the cell metadata into local (to the class) variables. We do not
-        read in information for empty cells.
+        Unpacks the cell metadata into local (to the class) variables.
+
+        We do not read in information for empty cells.
         """
         # Reset this in case for any reason we have messed them up
 
@@ -341,8 +364,9 @@ class SWIFTMask(object):
         upper: cosmo_quantity,
     ):
         """
-        Constrains the mask further for a given particle type, and bounds a
-        quantity between lower and upper values.
+        Constrain the mask further for a given particle type.
+
+        Chooses only particles with a property bounded between lower and upper values.
 
         We update the mask such that
 
@@ -367,7 +391,6 @@ class SWIFTMask(object):
         See Also
         --------
         constrain_spatial : method to generate spatially constrained cell mask
-
         """
         if self.spatial_only:
             raise ValueError(
@@ -429,9 +452,9 @@ class SWIFTMask(object):
 
         return
 
-    def _generate_cell_mask(self, restrict):
+    def _generate_cell_mask(self, restrict) -> np.array:
         """
-        Generates spatially restricted mask for cell.
+        Generate a spatially restricted mask for cells.
 
         Takes the cell metadata and finds the mask for the _cells_ that are
         within the spatial region defined by the spatial mask. Not for
@@ -525,9 +548,9 @@ class SWIFTMask(object):
 
         return cell_mask
 
-    def _update_spatial_mask(self, restrict, data_name: str, cell_mask: dict):
+    def _update_spatial_mask(self, restrict, data_name: str, cell_mask: dict) -> None:
         """
-        Updates the particle mask using the cell mask.
+        Update the particle mask using the cell mask.
 
         We actually overwrite all non-used cells with False, rather than the
         inverse, as we assume initially that we want to write all particles in,
@@ -568,9 +591,9 @@ class SWIFTMask(object):
 
         return
 
-    def constrain_spatial(self, restrict, intersect: bool = False):
+    def constrain_spatial(self, restrict, intersect: bool = False) -> None:
         """
-        Uses the cell metadata to create a spatial mask.
+        Use the cell metadata to create a spatial mask.
 
         This mask is necessarily approximate and is coarse-grained to the cell size.
 
@@ -615,9 +638,9 @@ class SWIFTMask(object):
 
         return
 
-    def convert_masks_to_ranges(self):
+    def convert_masks_to_ranges(self) -> None:
         """
-        Converts the masks to range masks so that they take up less space.
+        Convert the masks to range masks so that they take up less space.
 
         This is non-reversible. It is also not required, but can help save space
         on highly constrained machines before you start reading in the data.
@@ -707,7 +730,7 @@ class SWIFTMask(object):
         self,
     ) -> tuple[dict[str, np.array], dict[str, np.array]]:
         """
-        Returns the particle counts and offsets in cells selected by the mask.
+        Return the particle counts and offsets in cells selected by the mask.
 
         Returns
         -------

@@ -44,10 +44,7 @@ def test_ranges_from_array_empty():
 
 
 def test_read_ranges_from_file():
-    """
-    Tests the reading of ranges from file using a numpy array as a stand in for
-    the dataset.
-    """
+    """Test reading ranges from file using a numpy array as a pseudo-dataset."""
     # In memory hdf5 file
     file_handle = create_in_memory_hdf5()
     handle = file_handle.create_dataset("test", data=np.arange(1000))
@@ -64,31 +61,30 @@ def test_read_ranges_from_file():
 
 
 def test_index_dataset():
-    """
-    Tests the index_dataset function using a numpy array to approximate
-    a dataset.
-    """
-    file = create_in_memory_hdf5()
-    data = file.create_dataset("test", data=np.arange(1000))
+    """Tests index_dataset using a numpy array to approximate a dataset."""
+    memfile = create_in_memory_hdf5()
+    data = memfile.create_dataset("test", data=np.arange(1000))
     mask = np.unique(np.random.randint(0, 1000, 100))
 
     true = data[list(mask)]
 
     assert (index_dataset(data, mask) == true).all()
 
-    file.close()
+    memfile.close()
 
 
 def test_index_dataset_h5py():
     """Tests the index_dataset function on a real HDF5 dataset."""
-    file = create_in_memory_hdf5()
+    memfile = create_in_memory_hdf5()
 
     data = np.arange(100000)
     mask = np.unique(np.random.randint(0, 100000, 10000))
 
-    dataset = file.create_dataset("Test", data=data)
+    dataset = memfile.create_dataset("Test", data=data)
 
     assert (index_dataset(dataset, mask) == data[mask]).all()
+
+    memfile.close()
 
 
 def test_list_of_strings_to_arrays():

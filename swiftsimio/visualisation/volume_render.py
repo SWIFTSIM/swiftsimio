@@ -1,6 +1,7 @@
 """
-Basic volume render for SPH data. This takes the 3D positions
-of the particles and projects them onto a grid.
+Basic volume render for SPH data.
+
+This takes the 3D positions of the particles and projects them onto a grid.
 """
 
 from typing import List, Literal, Tuple, Union
@@ -32,8 +33,7 @@ def render_gas(
     periodic: bool = True,
 ):
     """
-    Creates a 3D render of a SWIFT dataset, weighted by data field, in the
-    form of a voxel grid.
+    Create a data-field weighted 3D render of a SWIFT dataset as a voxel grid.
 
     Parameters
     ----------
@@ -53,7 +53,7 @@ def render_gas(
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix: np.np.array, optional
+    rotation_matrix: np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a volume render
         viewed along the z axis.
@@ -125,7 +125,26 @@ def render_gas(
 
 
 @jit(nopython=True, fastmath=True)
-def render_voxel_to_array(data, center, width):
+def render_voxels_to_array(data: np.array, center: float, width: float):
+    """
+    Insert voxel values into a 2D image grid.
+
+    Handles a single render function (call multiple times for multiple render functions).
+
+    Parameters
+    ----------
+    data : np.ndarray
+        The 3D voxel array.
+    center : float
+        The center of the rendering function.
+    width : float
+        The width of the rendering function.
+
+    Returns
+    -------
+    out : np.ndarray
+        The 2D image array.
+    """
     output = np.zeros((data.shape[0], data.shape[1]))
 
     for i in range(data.shape[0]):
@@ -155,14 +174,14 @@ def visualise_render(
 
     Parameters
     ----------
-    render : np.np.array
+    render : np.array
         The render to visualise. You should scale this appropriately
         before using this function (e.g. use a logarithmic transform!)
         and pass in the 'value' np.array, not the original cosmo_array or
         unyt_array.
 
     centers : list[float]
-        The centers of your rendering functions
+        The centers of your rendering functions.
 
     widths: list[float] | float
         The widths of your rendering functions. If a single float, all functions
@@ -182,7 +201,7 @@ def visualise_render(
 
     Returns
     -------
-    list[np.np.array] | np.np.array
+    list[np.array] | np.array
         The images of the rendering functions. If return_type is "all", this
         will be a list of images. If return_type is "lighten" or "add", this
         will be a single image.
@@ -201,7 +220,7 @@ def visualise_render(
     colors = plt.get_cmap(cmap)(np.linspace(0, 1, len(centers)))[:, :3]
 
     images = [
-        n(render_voxel_to_array(render, center, width))
+        n(render_voxels_to_array(render, center, width))
         for n, center, width in zip(norm, centers, widths)
     ]
 
@@ -224,10 +243,11 @@ def visualise_render_options(
     centers: List[float], widths: Union[List[float], float], cmap: str = "viridis"
 ) -> Tuple["plt.Figure", "plt.Axes"]:
     """
-    Creates a figure of your rendering options. The y-axis is the output value
-    of the rendering function. The x-axis is your input quantity. You may wish
-    to plot a histogram on top of this figure; this is why the figure axes and
-    figure are returned.
+    Create a figure of your rendering options.
+
+    The y-axis is the output value of the rendering function. The x-axis is your input
+    quantity. You may wish to plot a histogram on top of this figure; this is why the
+    figure axes and figure are returned.
 
     Parameters
     ----------

@@ -21,8 +21,10 @@ class TestCopyFuncs:
     )
     def test_argless_copyfuncs(self, func):
         """
-        Make sure that our attributes are preserved through copying functions that
-        take no arguments.
+        Make sure that our attributes are preserved through copying functions.
+
+        This test checks the simplest ones that take no arguments. Others are handled
+        in other tests in this class.
         """
         arr = cosmo_array(
             np.ones((10, 10)),
@@ -119,6 +121,8 @@ class TestCopyFuncs:
 
     def test_compatibility(self):
         """
+        Check comoving/physical conversion compatibility flags for consistency.
+
         Check that the compatible_with_comoving and compatible_with_physical functions
         give correct compatibility checks.
         """
@@ -183,8 +187,9 @@ class TestCheckUfuncCoverage:
 
     def test_multi_output_coverage(self):
         """
-        Compare our list of multi_output_operators with unyt's to make sure we cover
-        everything.
+        Make sure we cover all multi-output operators that unyt does.
+
+        We compare our list of multi_output_operators and unyt's to check.
         """
         assert set(multiple_output_operators.keys()) == set(
             (np.modf, np.frexp, np.divmod)
@@ -201,7 +206,7 @@ class TestCosmoArrayUfuncs:
     """Test some example functions using each of our wrappers for correct output."""
 
     def test_preserving_ufunc(self):
-        """Tests of the _preserve_cosmo_factor wrapper."""
+        """Test the _preserve_cosmo_factor wrapper."""
         # 1 argument
         inp = cosmo_array(
             [2],
@@ -289,7 +294,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor
 
     def test_multiplying_ufunc(self):
-        """Tests of the _multiply_cosmo_factor wrapper."""
+        """Test the _multiply_cosmo_factor wrapper."""
         # no cosmo_factors
         inp = cosmo_array([2], u.kpc, comoving=False)
         res = inp * inp
@@ -343,7 +348,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_dividing_ufunc(self):
-        """Tests of the _divide_cosmo_factor wrapper."""
+        """Test the _divide_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2.0],
             u.kpc,
@@ -356,7 +361,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**0
 
     def test_return_without_ufunc(self):
-        """Tests of the _return_without_cosmo_factor wrapper."""
+        """Test the _return_without_cosmo_factor wrapper."""
         # 1 argument
         inp = cosmo_array(
             [1],
@@ -446,7 +451,7 @@ class TestCosmoArrayUfuncs:
         assert isinstance(res, np.ndarray) and not isinstance(res, u.unyt_array)
 
     def test_sqrt_ufunc(self):
-        """Tests of the _sqrt_cosmo_factor wrapper."""
+        """Test the _sqrt_cosmo_factor wrapper."""
         inp = cosmo_array(
             [4],
             u.kpc,
@@ -459,7 +464,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**0.5
 
     def test_square_ufunc(self):
-        """Tests of the _square_cosmo_factor wrapper."""
+        """Test the _square_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2],
             u.kpc,
@@ -472,7 +477,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_cbrt_ufunc(self):
-        """Tests of the _cbrt_cosmo_factor wrapper."""
+        """Test the _cbrt_cosmo_factor wrapper."""
         inp = cosmo_array(
             [8],
             u.kpc,
@@ -485,7 +490,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor ** (1.0 / 3.0)
 
     def test_reciprocal_ufunc(self):
-        """Tests of the _reciprocal_cosmo_factor wrapper."""
+        """Test the _reciprocal_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2.0],
             u.kpc,
@@ -498,7 +503,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**-1
 
     def test_passthrough_ufunc(self):
-        """Tests of the _passthrough_cosmo_factor wrapper."""
+        """Test the _passthrough_cosmo_factor wrapper."""
         # 1 argument
         inp = cosmo_array(
             [2],
@@ -540,7 +545,7 @@ class TestCosmoArrayUfuncs:
             np.copysign(inp1, inp2)
 
     def test_arctan2_ufunc(self):
-        """Tests of the _arctan2_cosmo_factor wrapper."""
+        """Test the _arctan2_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2],
             u.kpc,
@@ -553,7 +558,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor.a_factor == 1  # also ensures cosmo_factor present
 
     def test_comparison_ufunc(self):
-        """Tests of the _comparison_cosmo_factor wrapper."""
+        """Test the _comparison_cosmo_factor wrapper."""
         inp1 = cosmo_array(
             [1],
             u.kpc,
@@ -663,10 +668,7 @@ class TestCosmoArrayUfuncs:
         assert isinstance(res2, np.ndarray) and not isinstance(res2, u.unyt_array)
 
     def test_multi_output_with_out_arg(self):
-        """
-        Test that we can handle multiple return values in conjunction with an ``out``
-        kwarg.
-        """
+        """Test that we can handle multiple return values with an ``out`` kwarg."""
         # with two out arrays
         inp = cosmo_array(
             [2.5],
@@ -685,10 +687,7 @@ class TestCosmoArrayUfuncs:
         assert out2.cosmo_factor == inp.cosmo_factor
 
     def test_comparison_with_zero(self):
-        """
-        Test that we don't produce warnings for dangerous comparisons on comparison with
-        zero.
-        """
+        """Test that we don't warn on dangerous comparisons on zero comparison."""
         inp1 = cosmo_array(
             [1, 1, 1],
             u.kpc,
@@ -769,8 +768,12 @@ class TestCosmoArrayUfuncs:
 
 
 class TestComovingConversion:
+    """Tests of physical/comoving conversion."""
+
     def test_conversion_happens(self):
         """
+        Check that physical/comoving conversion happens when needed.
+
         Given a physical and a comoving input to e.g. addition, conversion
         should happen and we should get a correct result.
         """

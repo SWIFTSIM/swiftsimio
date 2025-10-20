@@ -1,3 +1,5 @@
+"""Define information needed to unpack metadata fields in SWIFT snapshots."""
+
 from .metadata_fields import (
     metadata_fields_to_read,
     header_unpack_arrays,

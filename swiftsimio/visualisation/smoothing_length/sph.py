@@ -1,3 +1,5 @@
+"""Tools to get SPH smoothing lengths."""
+
 from swiftsimio import SWIFTDataset, cosmo_array
 
 

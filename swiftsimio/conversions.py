@@ -1,7 +1,4 @@
-"""
-Includes conversions between SWIFT internal values and
-``astropy`` ones for convenience.
-"""
+"""Convert between SWIFT internal values and :mod:`astropy` cosmologies."""
 
 from swiftsimio.optional_packages import ASTROPY_AVAILABLE
 from swiftsimio.objects import cosmo_quantity
@@ -15,25 +12,27 @@ if ASTROPY_AVAILABLE:
 
     def swift_neutrinos_to_astropy(N_eff, N_ur, M_nu_eV, deg_nu):
         """
+        Convert SWIFT metadata to the neutrino information needed by :mod:`astropy`.
+
         Parameters
         ----------
         N_eff: float
-            Fractional number of effective massless neutrinos at high redshift
+            Fractional number of effective massless neutrinos at high redshift.
 
         N_ur: float
-            Fractional number of massless neutrino species
+            Fractional number of massless neutrino species.
 
         M_nu_eV: array of floats
-            Masses in eV of massive species only, up to degeneracy
+            Masses in eV of massive species only, up to degeneracy.
 
         deg_nu: array of floats
-            Fractional degeneracies of the massive neutrino species
+            Fractional degeneracies of the massive neutrino species.
 
         Returns
         -------
-        ap_m_nu
+        out : ap_m_nu
             Array of neutrino masses in eV, replicated according to degeneracy,
-            including massless species, as desired by astropy
+            including massless species, as desired by astropy.
         """
         if np.isscalar(deg_nu):
             deg_nu = np.array([deg_nu])
@@ -56,6 +55,8 @@ if ASTROPY_AVAILABLE:
 
     def swift_cosmology_to_astropy(cosmo: dict, units) -> Cosmology:
         """
+        Convert SWIFT metadata to an :mod:`astropy` cosmology.
+
         Parameters
         ----------
         cosmo: dict
@@ -66,7 +67,7 @@ if ASTROPY_AVAILABLE:
 
         Returns
         -------
-        Cosmology
+        out : Cosmology
             An instance of ``astropy.cosmology.Cosmology`` filled with the
             correct parameters.
         """
@@ -141,8 +142,23 @@ if ASTROPY_AVAILABLE:
             m_nu=ap_m_nu,
         )
 
-
 else:
 
     def swift_cosmology_to_astropy(cosmo: dict, units) -> dict:
+        """
+        Mock converting to an astropy cosmology if unavailable.
+
+        Parameters
+        ----------
+        cosmo: dict
+            Cosmology dictionary ready straight out of the SWIFT snapshot.
+
+        units: SWIFTUnits
+            The SWIFT Units instance associated with this snapshot.
+
+        Returns
+        -------
+        out : dict
+            The same metadata dictionary that was input.
+        """
         return cosmo

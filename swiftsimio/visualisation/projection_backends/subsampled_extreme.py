@@ -1,13 +1,13 @@
 """
-Sub-sampled smoothing kernel with each kernel evaluated
-at least 64^2 times. This uses a dithered pre-calculated
-kernel for cell overlaps at small scales, and at large
-scales uses subsampling.
+Sub-samples smoothing kernel with at least 64^2 samples.
+
+Sub-sampled smoothing kernel with each kernel evaluated at least 64^2 times. This uses a
+dithered pre-calculated kernel for cell overlaps at small scales, and at large scales
+uses subsampling.
 
 Uses double precision.
 
-The original smoothing code. This provides a paranoid supersampling
-of the kernel.
+This is the original smoothing code. This provides a paranoid supersampling of the kernel.
 """
 
 from math import sqrt, ceil
@@ -37,7 +37,7 @@ def scatter(
     box_y: float64 = 0.0,
 ) -> ndarray:
     """
-    Creates a weighted scatter plot.
+    Create a weighted scatter plot.
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
@@ -327,9 +327,9 @@ def scatter_parallel(
     """
     Parallel implementation of scatter.
 
-    Creates a weighted scatter plot. Computes contributions from
-    particles with positions (`x`,`y`) with smoothing lengths `h`
-    weighted by quantities `m`.
+    Create a weighted scatter plot. Computes contributions from particles with positions
+    (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
+
     This includes periodic boundary effects.
 
     Parameters

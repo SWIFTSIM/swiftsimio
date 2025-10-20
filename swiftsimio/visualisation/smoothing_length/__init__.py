@@ -1,3 +1,5 @@
+"""Tools for smoothing length generation."""
+
 import numpy as np
 from .sph import get_hsml as _sph_get_hsml
 from .nearest_neighbours import get_hsml as _nearest_neighbours_get_hsml

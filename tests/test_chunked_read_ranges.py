@@ -1,3 +1,5 @@
+"""Test reading subsets from a chunked HDF5 file."""
+
 import numpy as np
 from swiftsimio.accelerated import (
     concatenate_ranges,
@@ -8,6 +10,7 @@ from swiftsimio.accelerated import (
 
 
 def test_concatenate():
+    """Test joining consecutive ranges together."""
     ranges = np.array([[1, 10], [11, 15], [17, 20], [20, 25]])
     correct = np.array([[1, 15], [17, 25]])
 
@@ -18,6 +21,13 @@ def test_concatenate():
 
 
 def test_get_chunk_ranges():
+    """
+    Test converting ranges to chunked equivalents.
+
+    If the chunk is length 5, then any range should expand to cover
+    the interval of 5 elements of chunks that it touches. Duplicate ranges
+    should be removed and consecutive ranges should be merged in the result.
+    """
     ranges = np.array([[0, 2], [2, 4], [11, 17], [21, 23], [24, 25]])
     chunk_size = 5
     length = 25
@@ -31,6 +41,12 @@ def test_get_chunk_ranges():
 
 
 def test_expand_chunked_ranges():
+    """
+    Check the range-to-chunk step of handling chunked ranges.
+
+    If the chunk is length 5, then any range should expand to cover
+    the interval of 5 elements of chunks that it touches.
+    """
     length = 15
     chunk_size = 5
     data = np.arange(length, dtype=np.int32)
@@ -46,6 +62,7 @@ def test_expand_chunked_ranges():
 
 
 def test_expand_ranges():
+    """Check the conversion from ranges to an array of indices."""
     ranges = np.array([[0, 2], [2, 4], [7, 8], [10, 10]])
 
     correct_expansion = np.array([0, 1, 2, 3, 7])

@@ -1,3 +1,5 @@
+"""Backend tools for image slices with nearest neighbour interpolation."""
+
 from numpy import float64, float32, ndarray, linspace, array, stack, meshgrid
 
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
@@ -8,6 +10,7 @@ def build_tree(
 ) -> KDTree:
     """
     Build the tree used for the nearest-neighbour calculations.
+
     In the periodic case, we must make sure that all particle coordinates
     fall inside the box.
 
@@ -68,6 +71,8 @@ def slice_scatter(
     workers: int = 1,
 ) -> ndarray:
     """
+    Create a 2D image slice through a volume.
+
     Creates a 2D numpy array (image) of the given quantities of all particles in
     a data slice including periodic boundary effects.
 

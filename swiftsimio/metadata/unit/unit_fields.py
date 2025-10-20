@@ -1,4 +1,6 @@
 """
+Deprecated: define units "by hand" instead of reading them from files.
+
 Contains the information for the units that determine the
 particle fields. This must be provided, if not swiftsimio
 will crash (as it should, you can'time just be going around
@@ -8,24 +10,45 @@ Unfortunately there must be a generator function used here
 because we don'time know the units ahead of time.
 """
 
-from unyt import g, cm, s, statA, K
+from unyt import g, cm, s, statA, K, Unit
 from typing import Callable
 
 
-# DEPRECATED: This should not be used any more by real code as we now
-# read anything directly out of the snapshots.
-
-
-def generate_units(mass, length, time, current, temperature):
+def generate_units(
+    mass: Unit, length: Unit, time: Unit, current: Unit, temperature: Unit
+) -> dict[str, dict[str, Unit]]:
     """
-    Generates the unit dictionaries with the:
+    Generate unit dictionaries.
+
+    Units for:
 
     mass, length, time, current, and temperature
 
     ..deprecated:: 3.1.0
-        Everything is read directly out of the snapshots now
+        Everything is read directly out of the snapshots now.
 
-    units respectively.
+    Parameters
+    ----------
+    mass : Unit
+        The mass unit.
+
+    length : Unit
+        The length unit.
+
+    time : Unit
+        The time unit.
+
+    current : Unit
+        The current unit.
+
+    temperature : Unit
+        The temperature unit.
+
+    Returns
+    -------
+    out : dict[str, dict[str, Unit]]
+        Dictionary with a dictonary for each particle type defining the units for each
+        field.
     """
     shared = {
         "coordinates": length,
@@ -99,13 +122,24 @@ def generate_units(mass, length, time, current, temperature):
     }
 
 
-def generate_dimensions(generate_unit_func: Callable[..., dict] = generate_units):
+def generate_dimensions(
+    generate_unit_func: Callable[..., dict] = generate_units,
+) -> dict:
     """
-    Gets the dimensions for the above.
+    Get the dimensions for the above.
+
+    Parameters
+    ----------
+    generate_unit_func : Callable[..., dict]
+        Function to set units for particle fields.
+
+    Returns
+    -------
+    out : dict
+        Dictionary specifying dimensions.
 
     ..deprecated:: 3.1.0
         Everything is read directly out of the snapshots now
-
     """
     units = generate_unit_func(g, cm, s, statA, K)
 

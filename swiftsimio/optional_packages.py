@@ -1,5 +1,5 @@
 """
-Imports of optional packages.
+Import optional packages.
 
 This includes:
 
@@ -8,6 +8,8 @@ This includes:
 + numba/cuda: visualisation
 """
 
+from typing import Iterable, Callable
+
 # TQDM
 try:
     from tqdm import tqdm
@@ -15,7 +17,20 @@ try:
     TQDM_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
 
-    def tqdm(x, *args, **kwargs):
+    def tqdm(x: Iterable, *args, **kwargs):
+        """
+        Mock the main tqdm function for use if it's unavailable.
+
+        Parameters
+        ----------
+        x : Iterable
+            The iterable whose progress would be track by tqdm.
+
+        Returns
+        -------
+        out : Iterable
+            The input iterable is returned.
+        """
         return x
 
     TQDM_AVAILABLE = False
@@ -48,6 +63,35 @@ except (ImportError, ModuleNotFoundError):
     plt = None
     MATPLOTLIB_AVAILABLE = False
 
+# numba
+try:
+    from numba import jit, prange
+    from numba.core.config import NUMBA_NUM_THREADS as NUM_THREADS
+except (ImportError, ModuleNotFoundError):
+    try:
+        from numba import jit, prange
+        from numba.config import NUMBA_NUM_THREADS as NUM_THREADS
+    except (ImportError, ModuleNotFoundError):
+        print(
+            "You do not have numba installed. Please consider installing "
+            "if you are going to be doing visualisation or indexing large arrays "
+            "(pip install numba)"
+        )
+
+        def jit(*args, **kwargs) -> Callable:
+            """
+            Mock the numba jit function for use if not available.
+
+            Returns
+            -------
+            out : Callable
+                The wrapper function (a trivial wrapper).
+            """
+            return lambda func: func
+
+        prange = range
+        NUM_THREADS = 1
+
 # Numba/CUDA
 try:
     from numba.cuda.cudadrv.error import CudaSupportError
@@ -76,7 +120,16 @@ except (ImportError, ModuleNotFoundError):
     # where we don't have numba installed.
 
     class CudaSupportError(Exception):
-        def __init__(self, message):
+        """
+        Mock the CudaSupportError class for use if it's unavailable.
+
+        Parameters
+        ----------
+        message : str
+            The error message.
+        """
+
+        def __init__(self, message: str) -> None:
             self.message = message
 
     CUDA_AVAILABLE = False
@@ -85,10 +138,15 @@ except (ImportError, ModuleNotFoundError):
 if not CUDA_AVAILABLE:
     # Mock cuda-jit to prevent crashes
     def cuda_jit(*args, **kwargs):  # NOQA
-        def x(func):
-            return func
+        """
+        Mock the cuda_jit function for use if it's unavailable.
 
-        return x
+        Returns
+        -------
+        out : Callable
+            The wrapper function (a trivial wrapper).
+        """
+        return lambda func: func
 
     # For additional CUDA API access
     cuda = None

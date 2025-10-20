@@ -1,4 +1,4 @@
-"""Sub-module for slice plots in SWFITSIMio."""
+"""Create image slices through a volume."""
 
 from typing import Union, Optional
 import numpy as np
@@ -26,8 +26,7 @@ def slice_gas(
     periodic: bool = True,
 ):
     """
-    Creates a 2D slice of a SWIFT dataset, weighted by data field, in the
-    form of a pixel grid.
+    Create a data field-weighted 2D slice through a SWIFT dataset as a pixel grid.
 
     Parameters
     ----------

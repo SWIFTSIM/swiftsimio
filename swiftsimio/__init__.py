@@ -1,3 +1,10 @@
+"""
+Tools for reading SWIFT simulation data.
+
+The most used functions are :func:`~swiftsimio.load` and :func:`~swiftsimio.mask`.
+The :mod:`~swiftsimio.visualisation` sub-module provides visualisation tools.
+"""
+
 import h5py
 from typing import Optional as _Optional, Union as _Union
 
@@ -60,7 +67,7 @@ name = "swiftsimio"
 
 def validate_file(filename: str):
     """
-    Checks that the provided file is a SWIFT dataset.
+    Check that the provided file is a SWIFT dataset.
 
     Parameters
     ----------
@@ -92,13 +99,15 @@ def mask(
     filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True
 ) -> SWIFTMask:
     """
-    Sets up a masking object for you to use with the correct units and
-    metadata available.
+    Set up a mask to apply to a :mod:`swiftsimio` dataset.
+
+    Also makes the dataset's units and metadata available.
 
     Parameters
     ----------
     filename : str
-        SWIFT data file to read from
+        SWIFT data file to read from.
+
     spatial_only : bool, optional
         Flag for only spatial masking, this is much faster but will not
         allow you to use masking on other variables (e.g. density).
@@ -140,7 +149,7 @@ def mask(
 
 def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
     """
-    Loads the SWIFT dataset at filename.
+    Load a SWIFT dataset (snapshot, FOF or SOAP catalogue).
 
     Parameters
     ----------
@@ -154,7 +163,7 @@ def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
 
 def load_statistics(filename: str) -> SWIFTStatisticsFile:
     """
-    Loads a SWIFT statistics file (``SFR.txt``, ``energy.txt``).
+    Load a SWIFT statistics file (``SFR.txt``, ``energy.txt``).
 
     Parameters
     ----------

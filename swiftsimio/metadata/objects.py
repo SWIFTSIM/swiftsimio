@@ -1,9 +1,10 @@
 """
-Objects describing the metadata in SWIFTsimIO files. There is a main
-abstract class, ``SWIFTMetadata``, that contains the required base
-methods to correctly represent the internal representation of an
-HDF5 file to what SWIFTsimIO expects to be able to unpack into the
-object notation (e.g. PartType0/Coordinates -> gas.coordinates).
+Handle the metadata in SWIFTsimIO files.
+
+There is a main abstract class, ``SWIFTMetadata``, that contains the required base
+methods to correctly represent the internal representation of an HDF5 file to what
+SWIFTsimIO expects to be able to unpack into the object notation (e.g.
+PartType0/Coordinates -> gas.coordinates).
 """
 
 import numpy as np
@@ -26,7 +27,17 @@ from typing import List, Optional
 
 
 class SWIFTMetadata(ABC):
-    """An abstract base class for all SWIFT-related file metadata."""
+    """
+    An abstract base class for all SWIFT-related file metadata.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read metadata from.
+
+    units : SWIFTUnits
+        Units object to use.
+    """
 
     # Underlying path to the file that this metadata is associated with.
     filename: str
@@ -54,14 +65,22 @@ class SWIFTMetadata(ABC):
         raise NotImplementedError
 
     @property
-    def handle(self):
-        # Handle, which is shared with units. Units handles
-        # file opening and closing.
+    def handle(self) -> h5py.File:
+        """
+        Get the file handle.
+
+        Returns
+        -------
+        out : h5py.File
+            The file handle.
+        """
         return self.units.handle
 
-    def load_groups(self):
+    def load_groups(self) -> None:
         """
-        Loads the groups and metadata into objects:
+        Load the groups and metadata into objects.
+
+        These are called:
 
             metadata.<group_name>_properties
 
@@ -89,8 +108,8 @@ class SWIFTMetadata(ABC):
 
         return
 
-    def get_metadata(self):
-        """Loads the metadata as specified in metadata.metadata_fields."""
+    def get_metadata(self) -> None:
+        """Load the metadata as specified in metadata.metadata_fields."""
         for field, name in metadata.metadata_fields.metadata_fields_to_read.items():
             try:
                 setattr(self, name, dict(self.handle[field].attrs))
@@ -99,8 +118,8 @@ class SWIFTMetadata(ABC):
 
         return
 
-    def postprocess_header(self):
-        """Some minor postprocessing on the header to local variables."""
+    def postprocess_header(self) -> None:
+        """Do some minor postprocessing on the header to local variables."""
         # We need the scale factor to initialize `cosmo_array`s, so start with the float
         # items including the scale factor.
         # These must be unpacked as they are stored as length-1 arrays
@@ -317,9 +336,9 @@ class SWIFTMetadata(ABC):
 
         return
 
-    def extract_cosmology(self):
+    def extract_cosmology(self) -> None:
         """
-        Creates an astropy.cosmology object from the internal cosmology system.
+        Create an astropy.cosmology object from the internal cosmology system.
 
         This will be saved as ``self.cosmology``.
         """
@@ -339,10 +358,17 @@ class SWIFTMetadata(ABC):
     @abstractmethod
     def present_groups(self) -> list[str]:
         """
+        Get the present groups.
+
         A property giving the present particle groups in the file to be unpackaged
         into top-level properties. For instance, in a regular snapshot, this would be
         ["PartType0", "PartType1", "PartType4", ...]. In SOAP, this would be
         ["SO/200_crit", "SO/200_mean", ...], i.e. one per aperture.
+
+        Returns
+        -------
+        out : list[str]
+            The list of present groups.
         """
         raise NotImplementedError
 
@@ -350,18 +376,29 @@ class SWIFTMetadata(ABC):
     @abstractmethod
     def present_group_names(self) -> list[str]:
         """
+        Get the present group names.
+
         A property giving the mapping for the names in ``present_groups`` to what the
         objects are called on the SWIFTsimIO objects. For instance, in a regular snapshot,
         this would be ["gas", "dark_matter", "stars", ...]. In SOAP, this would be
         ["spherical_overdensity_200_crit", ...].
+
+        Returns
+        -------
+        out : list[str]
+            The list of present group names.
         """
         raise NotImplementedError
 
     @property
     def partial_snapshot(self) -> bool:
         """
-        A property defining whether this is a partial snapshot (e.g. a `.0.hdf5` file) or
-        a full/virtual snapsoht covering all particles. This must be computed at run-time.
+        Check if this is a partial (e.g. a ``x.0.hdf5`` file).
+
+        Returns
+        -------
+        out : bool
+            ``True`` if the file is a partial file, else ``False``.
         """
         return False
 
@@ -369,28 +406,37 @@ class SWIFTMetadata(ABC):
     @abstractmethod
     def get_nice_name(group: str) -> str:
         """
-        Converts the group name to a 'nice name' (i.e. for printing) for the SWIFTsimIO
-        objects.
+        Convert the group name to a user-readable name.
+
+        Parameters
+        ----------
+        group : str
+            The group name as used in the hdf5 file.
+
+        Returns
+        -------
+        out : str
+            The user-readable version of the name.
         """
         raise NotImplementedError
 
 
 class MassTable(object):
     """
-    Extracts a mass table to local variables based on the
-    particle type names.
+    Extract a mass table to local variables based on the particle type names.
+
+    Parameters
+    ----------
+    base_mass_table : np.array
+        Mass table of the same length as the number of particle types.
+
+    mass_units : unyt_quantity
+        Base mass units for the simulation.
     """
 
-    def __init__(self, base_mass_table: np.array, mass_units: unyt.unyt_quantity):
-        """
-        Parameters
-        ----------
-        base_mass_table : np.array
-            Mass table of the same length as the number of particle types.
-
-        mass_units : unyt_quantity
-            Base mass units for the simulation.
-        """
+    def __init__(
+        self, base_mass_table: np.array, mass_units: unyt.unyt_quantity
+    ) -> None:
         # TODO: Extract these names from the files themselves if possible.
 
         for index, name in enumerate(
@@ -408,20 +454,57 @@ class MassTable(object):
 
         return
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        Print a description of the mass table.
+
+        Returns
+        -------
+        out : str
+            The mass table description.
+        """
         return (
             "Mass table for "
             f"{' '.join(metadata.particle_types.particle_name_underscores.values())}"
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """
+        Print a description of the mass table.
+
+        Returns
+        -------
+        out : str
+            The mass table description.
+        """
         return self.__str__()
 
 
 class MappingTable(object):
     """
-    A mapping table from one named column instance to the other.
+    Provide a table mapping from one named column instance to the other.
+
     Initially designed for the mapping between dust and elements.
+
+    Parameters
+    ----------
+    data: np.ndarray
+        The data array providing the mapping between the named
+        columns. Should be of size N x M, where N is the number
+        of elements in ``named_columns_x`` and M the number
+        of elements in ``named_columns_y``.
+
+    named_columns_x: List[str]
+        The names of the columns in the first axis.
+
+    named_columns_y: List[str]
+        The names of the columns in the second axis.
+
+    named_columns_x_name: str
+        The name of the first mapping.
+
+    named_columns_y_name: str
+        The name of the second mapping.
     """
 
     def __init__(
@@ -431,28 +514,7 @@ class MappingTable(object):
         named_columns_y: List[str],
         named_columns_x_name: str,
         named_columns_y_name: str,
-    ):
-        """
-        Parameters
-        ----------
-        data: np.ndarray
-            The data array providing the mapping between the named
-            columns. Should be of size N x M, where N is the number
-            of elements in ``named_columns_x`` and M the number
-            of elements in ``named_columns_y``.
-
-        named_columns_x: List[str]
-            The names of the columns in the first axis.
-
-        named_columns_y: List[str]
-            The names of the columns in the second axis.
-
-        named_columns_x_name: str
-            The name of the first mapping.
-
-        named_columns_y_name: str
-            The name of the second mapping.
-        """
+    ) -> None:
         self.data = data
         self.named_columns_x = named_columns_x
         self.named_columns_y = named_columns_y
@@ -465,45 +527,51 @@ class MappingTable(object):
 
         return
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        Print a description of the mapping table.
+
+        Returns
+        -------
+        out : str
+            The mapping table description.
+        """
         return (
             f"Mapping table from {self.named_columns_x_name} to "
             f"{self.named_columns_y_name}, containing {len(self.data)} "
             f"by {len(self.data[0])} elements."
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """
+        Print a description of the mapping table.
+
+        Returns
+        -------
+        out : str
+            The mapping table description.
+        """
         return f"{self.__str__()}. Raw data: \n{self.data}."
 
 
 class SWIFTGroupMetadata(object):
     """
-    Object that contains the metadata for one hdf5 group.
+    Provide the metadata for one hdf5 Group.
 
-    This, for instance, could be part type 0, or 'gas'. This will load in
+    This, for instance, could be ``PartType0``, or ``gas``. This will load in
     the names of all datasets, their units, possible named fields,
     and their cosmology, and present them for use in the actual i/o routines.
 
-    Methods
-    -------
-    load_metadata(self):
-        Loads the required metadata.
-    load_field_names(self):
-        Loads in the field names.
-    load_field_units(self):
-        Loads in the units from each dataset.
-    load_field_descriptions(self):
-        Loads in descriptions of the fields for each dataset.
-    load_field_compressions(self):
-        Loads in compressions of the fields for each dataset.
-    load_cosmology(self):
-        Loads in the field cosmologies.
-    load_physical(self):
-        Loads in whether the field is saved as comoving or physical.
-    load_valid_transforms(self):
-        Loads in whether the field can be converted to comoving.
-    load_named_columns(self):
-        Loads the named column data for relevant fields.
+    Parameters
+    ----------
+    group: str
+        The name of the group in the hdf5 file.
+    group_name : str
+        The corresponding group name for swiftsimio.
+    metadata : SWIFTMetadata
+        The snapshot metadata.
+    scale_factor : float
+        The snapshot scale factor.
     """
 
     def __init__(
@@ -513,20 +581,6 @@ class SWIFTGroupMetadata(object):
         metadata: "SWIFTMetadata",
         scale_factor: float,
     ):
-        """
-        Constructor for SWIFTGroupMetadata class.
-
-        Parameters
-        ----------
-        group: str
-            the name of the group in the hdf5 file
-        group_name : str
-            the corresponding group name for swiftsimio
-        metadata : SWIFTMetadata
-            the snapshot metadata
-        scale_factor : float
-            the snapshot scale factor
-        """
         self.group = group
         self.group_name = group_name
         self.metadata = metadata
@@ -539,18 +593,34 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        Print a description of the metadata object.
+
+        Returns
+        -------
+        out : str
+            The description.
+        """
         return f"Metadata class for {self.group} ({self.group_name})"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """
+        Print a description of the metadata object.
+
+        Returns
+        -------
+        out : str
+            The description.
+        """
         return self.__str__()
 
-    def load_metadata(self):
+    def load_metadata(self) -> None:
         """
-        Loads the required metadata.
+        Load the required metadata.
 
         This includes loading the field names, units and descriptions, as well as the
-        cosmology metadata and any custom named columns
+        cosmology metadata and any custom named columns.
         """
         self.load_field_names()
         self.load_field_units()
@@ -561,8 +631,10 @@ class SWIFTGroupMetadata(object):
         self.load_valid_transforms()
         self.load_named_columns()
 
-    def load_field_names(self):
-        """Loads in only the field names."""
+        return
+
+    def load_field_names(self) -> None:
+        """Load in only the field names."""
 
         # regular expression for camel case to snake case
         # https://stackoverflow.com/a/1176023
@@ -580,8 +652,8 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def load_field_units(self):
-        """Loads in the units from each dataset."""
+    def load_field_units(self) -> None:
+        """Load in the units from each dataset."""
         unit_dict = {
             "I": self.units.current,
             "L": self.units.length,
@@ -590,7 +662,20 @@ class SWIFTGroupMetadata(object):
             "t": self.units.time,
         }
 
-        def get_units(unit_attribute):
+        def get_units(unit_attribute: h5py.AttributeManager) -> unyt.Unit | None:
+            """
+            Get the units from the HDF5 attributes.
+
+            Parameters
+            ----------
+            unit_attribute : h5py.AttributeManager
+                The attribute containing unit metadata.
+
+            Returns
+            -------
+            out : unyt.Unit or None
+                The loaded units.
+            """
             units = 1.0
 
             for exponent, unit in unit_dict.items():
@@ -618,13 +703,27 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def load_field_descriptions(self):
+    def load_field_descriptions(self) -> None:
         """
-        Loads in the text descriptions of the fields for each dataset.
+        Load in the text descriptions of the fields for each dataset.
+
         For SOAP filetypes a description of the mask is included.
         """
 
-        def get_desc(dataset):
+        def get_desc(dataset: h5py.Dataset) -> str:
+            """
+            Get the description metadata.
+
+            Parameters
+            ----------
+            dataset : h5py.Dataset
+                The dataset for which to get the description.
+
+            Returns
+            -------
+            out : str
+                The description of the dataset.
+            """
             try:
                 description = dataset.attrs["Description"].decode("utf-8")
             except AttributeError:
@@ -658,13 +757,23 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def load_field_compressions(self):
-        """
-        Loads in the string describing the compression filters of the fields for each
-        dataset.
-        """
+    def load_field_compressions(self) -> None:
+        """Load in the string describing the compression filters for each dataset."""
 
-        def get_comp(dataset):
+        def get_comp(dataset: h5py.Dataset) -> str:
+            """
+            Load the compression metadata for a dataset.
+
+            Parameters
+            ----------
+            dataset : h5py.Dataset
+                The dataset to load the compression metadata for.
+
+            Returns
+            -------
+            out : str
+                The compression metadata.
+            """
             try:
                 # SOAP catalogues can be compressed/uncompressed
                 is_compressed = dataset.attrs["Is Compressed"]
@@ -687,8 +796,8 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def load_cosmology(self):
-        """Loads in the field cosmologies."""
+    def load_cosmology(self) -> None:
+        """Load in the field cosmologies."""
         current_scale_factor = self.scale_factor
 
         def get_cosmo(dataset):
@@ -706,10 +815,23 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def load_physical(self):
-        """Loads in whether the field is saved as comoving or physical."""
+    def load_physical(self) -> None:
+        """Load in whether the field is saved as comoving or physical."""
 
-        def get_physical(dataset):
+        def get_physical(dataset) -> bool:
+            """
+            Check if the metadata item is stored in physical units.
+
+            Parameters
+            ----------
+            dataset : h5py.Dataset
+                The dataset to be checked.
+
+            Returns
+            -------
+            out : bool
+                ``True`` if stored in physical units, else ``False``.
+            """
             try:
                 physical = dataset.attrs["Value stored as physical"][0] == 1
             except KeyError:
@@ -722,8 +844,8 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def load_valid_transforms(self):
-        """Loads in whether the field can be converted to comoving."""
+    def load_valid_transforms(self) -> None:
+        """Load in whether the field can be converted to comoving."""
 
         def get_valid_transform(dataset):
             try:
@@ -740,8 +862,8 @@ class SWIFTGroupMetadata(object):
 
         return
 
-    def load_named_columns(self):
-        """Loads the named column data for relevant fields."""
+    def load_named_columns(self) -> None:
+        """Load the named column data for relevant fields."""
         named_columns = {}
 
         for field in self.field_paths:
@@ -760,7 +882,7 @@ class SWIFTGroupMetadata(object):
                 # ionized fractions (e.g. HeII) and so we want to leave them with their
                 # original capitalisation.
 
-                def num_capitals(s: str):
+                def num_capitals(s: str) -> int:
                     """
                     Count the number of upper case letters in the string.
 
@@ -797,12 +919,21 @@ class SWIFTGroupMetadata(object):
 
 class SWIFTUnits(object):
     """
-    Generates a unyt system that can then be used with the SWIFT data.
+    Generate a :mod:`unyt` system that can be used with SWIFT data.
 
     These give the unit mass, length, time, current, and temperature as
     unyt unit variables in simulation units. I.e. you can take any value
     that you get out of the code and multiply it by the appropriate values
     to get it 'unyt-ified' with the correct units.
+
+    Parameters
+    ----------
+    filename : Path
+        Name of file to read units from
+
+    handle: h5py.File, optional
+        The h5py file handle, optional. Will open a new handle with the
+        filename if required.
 
     Attributes
     ----------
@@ -816,25 +947,9 @@ class SWIFTUnits(object):
         unit for current used
     temperature : float
         unit for temperature used
-
     """
 
     def __init__(self, filename: Path, handle: Optional[h5py.File] = None):
-        """
-        SWIFTUnits constructor.
-
-        Sets filename for file to read units from and gets unit dictionary
-
-        Parameters
-        ----------
-        filename : Path
-            Name of file to read units from
-
-        handle: h5py.File, optional
-            The h5py file handle, optional. Will open a new handle with the
-            filename if required.
-
-        """
         self.filename = filename
         self._handle = handle
 
@@ -843,17 +958,21 @@ class SWIFTUnits(object):
         return
 
     @property
-    def handle(self):
+    def handle(self) -> h5py.File:
         """
-        Property that gets the file handle, which can be shared
-        with other objects for efficiency reasons.
+        Get the file handle.
+
+        Returns
+        -------
+        out : h5py.File
+            The file handle.
         """
         if not self._handle:  # if self._handle is None, or if file closed (h5py #1363)
             self._handle = h5py.File(self.filename, "r")
 
         return self._handle
 
-    def get_unit_dictionary(self):
+    def get_unit_dictionary(self) -> None:
         """
         Store unit data and metadata.
 
@@ -885,15 +1004,15 @@ class SWIFTUnits(object):
             self.units["Unit temperature in cgs (U_T)"], "temperature"
         )
 
-    def __del__(self):
+    def __del__(self) -> None:
+        """Clean up file handle if we own it."""
         if isinstance(self._handle, h5py.File):
             self._handle.close()
 
 
 def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
     """
-    Discriminates between the different types of metadata objects read from
-    SWIFT-compatible files.
+    Determine the type of metadata object to construct.
 
     Parameters
     ----------
@@ -903,10 +1022,9 @@ def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
     units : SWIFTUnits
         The units object associated with the file
 
-
     Returns
     -------
-    SWIFTMetadata
+    out : SWIFTMetadata
         The appropriate metadata object for the file type
     """
     # Old snapshots did not have this attribute, so we need to default to FullVolume
@@ -927,25 +1045,22 @@ def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
 
 class SWIFTSnapshotMetadata(SWIFTMetadata):
     """
-    SWIFT Metadata for a snapshot-style file containing particle
-    information. For more documentation, see the main :cls:`SWIFTMetadata`
-    class.
+    Provide a metadata interface for SWIFT snapshot files.
+
+    For more documentation see :class:`~swiftsimio.metadata.objects.SWIFTMetadata`.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read metadata from.
+
+    units : SWIFTUnits
+        Units object to use.
     """
 
     masking_valid: bool = True
 
-    def __init__(self, filename, units: SWIFTUnits):
-        """
-        Constructor for SWIFTMetadata object.
-
-        Parameters
-        ----------
-        filename : str
-            name of file to read from
-
-        units : SWIFTUnits
-            the units being used
-        """
+    def __init__(self, filename, units: SWIFTUnits) -> None:
         self.filename = filename
         self.units = units
 
@@ -963,10 +1078,11 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         return
 
-    def get_named_column_metadata(self):
+    def get_named_column_metadata(self) -> None:
         """
-        Loads the custom named column metadata (if it exists) from
-        SubgridScheme/NamedColumns.
+        Load the custom named column metadata from SubgridScheme/NamedColumns.
+
+        If name column didn't exist just set an empty :obj:`dict` instead.
         """
         try:
             data = self.handle["SubgridScheme/NamedColumns"]
@@ -979,10 +1095,11 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         return
 
-    def get_mapping_metadata(self):
+    def get_mapping_metadata(self) -> None:
         """
-        Gets the mappings based on the named columns (must have already been read),
-        from the form:
+        Get the mappings based on the named columns (must have already been read).
+
+        From the form:
 
         SubgridScheme/{X}To{Y}Mapping.
 
@@ -1003,7 +1120,20 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         # regular expression for camel case to snake case
         # https://stackoverflow.com/a/1176023
-        def convert(name):
+        def convert(name: str) -> str:
+            """
+            Place underscore between words and make all lower case.
+
+            Parameters
+            ----------
+            name : str
+                Name in CamelCase.
+
+            Returns
+            -------
+            out : str
+                Converted name in snake_case.
+            """
             return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
         regex = r"([a-zA-Z]*)To([a-zA-Z]*)Mapping"
@@ -1049,13 +1179,27 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     @property
     def present_groups(self):
-        """The groups containing datasets that are present in the file."""
+        """
+        Get the groups containing datasets that are present in the file.
+
+        Returns
+        -------
+        out : list[str]
+            List of present groups.
+        """
         types = np.where(np.array(getattr(self, "has_type", self.num_part)) != 0)[0]
         return [f"PartType{i}" for i in types]
 
     @property
-    def present_group_names(self):
-        """The names of the groups that we want to expose."""
+    def present_group_names(self) -> list[str]:
+        """
+        Get the names of the groups that we want to expose.
+
+        Returns
+        -------
+        out : list[str]
+            List of names to expose.
+        """
         return [
             metadata.particle_types.particle_name_underscores[x]
             for x in self.present_groups
@@ -1064,11 +1208,18 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
     @property
     def code_info(self) -> str:
         """
-        Gets a nicely printed set of code information with:
+        Get and format a nicely printed set of code information.
+
+        Formatting is as:
 
         Name (Git Branch)
         Git Revision
         Git Date
+
+        Returns
+        -------
+        out : str
+            The code information.
         """
 
         def get_string(x):
@@ -1085,10 +1236,17 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
     @property
     def compiler_info(self) -> str:
         """
-        Gets information about the compiler and formats it as:
+        Get and format information about the compiler.
+
+        Formatting is as:
 
         Compiler Name (Compiler Version)
         MPI library
+
+        Returns
+        -------
+        out : str
+            The compiler information.
         """
 
         def get_string(x):
@@ -1104,11 +1262,18 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
     @property
     def library_info(self) -> str:
         """
-        Gets information about the libraries used and formats it as:
+        Get and format information about the libraries used.
+
+        Formatting is as:
 
         FFTW vFFTW library version
         GSL vGSL library version
         HDF5 vHDF5 library version
+
+        Returns
+        -------
+        out : str
+            The library information.
         """
 
         def get_string(x):
@@ -1125,12 +1290,19 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
     @property
     def hydro_info(self) -> str:
         r"""
-        Gets information about the hydro scheme and formats it as:
+        Get and format information about the hydro scheme.
+
+        Formatting is as:
 
         Scheme
         Kernel function in DimensionD
         $\eta$ = Kernel eta (Kernel target N_ngb $N_{ngb}$)
         $C_{\rm CFL}$ = CFL parameter
+
+        Returns
+        -------
+        out : str
+            Hydro scheme information.
         """
 
         def get_float(x):
@@ -1156,12 +1328,19 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
     @property
     def viscosity_info(self) -> str:
         r"""
-        Gets information about the viscosity scheme and formats it as:
+        Get and format information about the viscosity scheme.
+
+        Formatting is as:
 
         Viscosity Model
         $\alpha_{V, 0}$ = Alpha viscosity, $\ell_V$ = Viscosity decay length \
         [internal units], $\beta_V$ = Beta viscosity
         Alpha viscosity (min) < $\alpha_V$ < Alpha viscosity (max)
+
+        Returns
+        -------
+        out : str
+            Viscosity scheme information.
         """
 
         def get_float(x):
@@ -1185,10 +1364,17 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
     @property
     def diffusion_info(self) -> str:
         r"""
-        Gets information about the diffusion scheme and formats it as:
+        Get and format information about the diffusion scheme.
+
+        Formatting is as:
 
         $\alpha_{D, 0}$ = Diffusion alpha, $\beta_D$ = Diffusion beta
         Diffusion alpha (min) < $\alpha_D$ < Diffusion alpha (max)
+
+        Returns
+        -------
+        out : str
+            Formatted diffusion scheme information.
         """
 
         def get_float(x):
@@ -1207,8 +1393,12 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
     @property
     def partial_snapshot(self) -> bool:
         """
-        Whether or not this snapshot is partial (e.g. a "x.0.hdf5" file), or
-        a file describing an entire snapshot.
+        Check if this is a partial (e.g. a "x.0.hdf5" file).
+
+        Returns
+        -------
+        out : bool
+            ``True`` if the file is a partial file, else ``False``.
         """
         # Partial snapshots have num_files_per_snapshot set to 1. Virtual snapshots
         # collating multiple sub-snapshots together have num_files_per_snapshot = 1.
@@ -1216,15 +1406,36 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         return self.num_files_per_snapshot > 1
 
     @staticmethod
-    def get_nice_name(group):
+    def get_nice_name(group: str) -> str:
+        """
+        Convert the group name to a user-readable name.
+
+        Parameters
+        ----------
+        group : str
+            The group name as used in the hdf5 file.
+
+        Returns
+        -------
+        out : str
+            The user-readable version of the name.
+        """
         return metadata.particle_types.particle_name_class[group]
 
 
 class SWIFTFOFMetadata(SWIFTMetadata):
     """
-    SWIFT Metadata for a snapshot-style file containing particle
-    information. For more documentation, see the main :cls:`SWIFTMetadata`
-    class.
+    Provide a metadata interface for FOF catalogue files.
+
+    For more documentation see :class:`~swiftsimio.metadata.objects.SWIFTMetadata`.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read metadata from.
+
+    units : SWIFTUnits
+        Units object to use.
     """
 
     homogeneous_arrays: bool = True
@@ -1255,15 +1466,36 @@ class SWIFTFOFMetadata(SWIFTMetadata):
         return ["fof_groups"]
 
     @staticmethod
-    def get_nice_name(group):
+    def get_nice_name(group: str) -> str:
+        """
+        Convert the group name to a user-readable name.
+
+        Parameters
+        ----------
+        group : str
+            The group name as used in the hdf5 file.
+
+        Returns
+        -------
+        out : str
+            The user-readable version of the name.
+        """
         return "FOFGroups"
 
 
 class SWIFTSOAPMetadata(SWIFTMetadata):
     """
-    SWIFT Metadata for a snapshot-style file containing particle
-    information. For more documentation, see the main :cls:`SWIFTMetadata`
-    class.
+    Provide a metadata interface for SOAP catalogue files.
+
+    For more documentation see :class:`~swiftsimio.metadata.objects.SWIFTMetadata`.
+
+    Parameters
+    ----------
+    filename : str
+        Filename to read metadata from.
+
+    units : SWIFTUnits
+        Units object to use.
     """
 
     masking_valid: bool = True
@@ -1286,21 +1518,50 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
         return
 
-    def unpack_subhalo_number(self):
+    def unpack_subhalo_number(self) -> None:
+        """Set the subhalo count."""
         self.n_subhalos = int(self.num_subhalo[0])
+        return
 
     @property
-    def present_groups(self):
-        """The groups containing datasets that are present in the file."""
+    def present_groups(self) -> list[str]:
+        """
+        The groups containing datasets that are present in the file.
+
+        Returns
+        -------
+        out : list[str]
+            List of available subhalo types.
+        """
         return self.subhalo_types
 
     @property
-    def present_group_names(self):
-        """The names of the groups that we want to expose."""
+    def present_group_names(self) -> list[str]:
+        """
+        Provide the names of the groups that we want to expose.
+
+        Returns
+        -------
+        out : list[str]
+            List of the available groups.
+        """
         return [
             metadata.soap_types.get_soap_name_underscore(x) for x in self.present_groups
         ]
 
     @staticmethod
-    def get_nice_name(group):
+    def get_nice_name(group: str) -> str:
+        """
+        Get the de-acronymed name of a specified group.
+
+        Parameters
+        ----------
+        group : str
+            The name as it appears in the SOAP file.
+
+        Returns
+        -------
+        out : str
+            The de-acronymed name.
+        """
         return metadata.soap_types.get_soap_name_nice(group)

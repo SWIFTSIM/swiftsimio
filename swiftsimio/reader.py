@@ -1,5 +1,7 @@
 """
-This file contains four major objects:
+Main objects for reading SWIFT datasets.
+
+These include:
 
 + SWIFTUnits, which is a unit system that can be queried for units (and converts arrays
   to relevant unyt arrays when read from the HDF5 file)
@@ -42,7 +44,9 @@ def _generate_getter(
     columns: Union[None, slice] = None,
 ):
     """
-    Generates a function that:
+    Generate a function that retrieves data from file if not already in memory.
+
+    The process is:
 
     a) If self._`name` exists, return it
     b) If not, open `filename`
@@ -188,7 +192,7 @@ def _generate_getter(
 
 def _generate_setter(name: str):
     """
-    Generates a function that sets self._name to the value that is passed to it.
+    Generate a function that sets self._name to the value that is passed to it.
 
     Parameters
     ----------
@@ -212,7 +216,7 @@ def _generate_setter(name: str):
 
 def _generate_deleter(name: str):
     """
-    Generates a function that destroys self._name (sets it back to None).
+    Generate a function that destroys self._name (sets it back to None).
 
     Parameters
     ----------
@@ -237,20 +241,20 @@ def _generate_deleter(name: str):
 
 class __SWIFTGroupDataset(object):
     """
-    Creates empty property fields.
+    Create empty property fields.
 
     Do not use this class alone; it is essentially completely empty. It is filled
-    with properties by generate_dataset.
+    with properties by `generate_datasets`.
 
     Methods
     -------
     generate_empty_properties(self)
-        creates empty properties to be accessed through setter and getter functions
+        Create empty properties to be accessed through setter and getter functions.
     """
 
     def __init__(self, group_metadata: SWIFTGroupMetadata):
         """
-        Constructor for SWIFTGroupDatasets class.
+        Construct a __SWIFTGroupDataset.
 
         This function primarily calls the generate_empty_properties
         function to ensure that defaults are set correctly.
@@ -275,11 +279,10 @@ class __SWIFTGroupDataset(object):
 
     def generate_empty_properties(self):
         """
-        Generates the empty properties that will be accessed through the
-        setter and getters.
+        Generate empty properties that will be accessed through the setters and getters.
 
-        Initially set all of the _{name} values to None. If it doesn't
-        _exist_ in the file, the variable is not created.
+        Initially set all of the _{name} values to None. If it doesn't _exist_ in the
+        file, the variable is not created.
         """
         for field_name, field_path in zip(
             self.group_metadata.field_names, self.group_metadata.field_paths
@@ -297,26 +300,25 @@ class __SWIFTGroupDataset(object):
         return
 
     def __str__(self):
-        """
-        Prints out some more useful information, rather than just
-        the memory location.
-        """
+        """Print out useful information, not just the memory location."""
         field_names = ", ".join(self.group_metadata.field_names)
         return f"SWIFT dataset at {self.filename}. \nAvailable fields: {field_names}"
 
     def __repr__(self):
+        """Print out useful information, not just the memory location."""
         return self.__str__()
 
 
 class __SWIFTNamedColumnDataset(object):
     """
-    Holder class for individual named datasets. Very similar to
-    __SWIFTGroupDatasets but much simpler.
+    Holder class for individual named datasets.
+
+    Very similar to __SWIFTGroupDatasets but much simpler.
     """
 
     def __init__(self, field_path: str, named_columns: List[str], name: str):
         r"""
-        Constructor for __SWIFTNamedColumnDataset class.
+        Construct a __SWIFTNamedColumnDataset.
 
         Parameters
         ----------
@@ -372,8 +374,7 @@ class __SWIFTNamedColumnDataset(object):
 
 def _generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
     """
-    Generates a SWIFTGroupDatasets _class_ that corresponds to the
-    particle type given.
+    Generate a SWIFTGroupDatasets _class_ for the given particle type.
 
     We _must_ do the following _outside_ of the class itself, as one
     can assign properties to a _class_ but not _within_ a class
@@ -517,11 +518,13 @@ def _generate_datasets(group_metadata: SWIFTGroupMetadata, mask):
 
 class SWIFTDataset(object):
     """
-    A collection object for:
+    A collection object for units, metadata and data objects.
 
-    + SWIFTUnits,
-    + SWIFTMetadata,
-    + SWIFTGroupDatasets
+    It contains:
+
+    + ``SWIFTUnits``,
+    + ``SWIFTMetadata``,
+    + ``SWIFTGroupDataset``s
 
     This object, in essence, completely represents a SWIFT snapshot. You can access
     the different particles as follows:
@@ -548,7 +551,7 @@ class SWIFTDataset(object):
 
     def __init__(self, filename, mask=None):
         """
-        Constructor for SWIFTDataset class.
+        Construct a SWIFTDataset.
 
         Parameters
         ----------
@@ -569,20 +572,18 @@ class SWIFTDataset(object):
 
         return
 
-    def __str__(self):
-        """
-        Prints out some more useful information, rather than just
-        the memory location.
-        """
+    def __str__(self) -> str:
+        """Print out some useful information, not just the memory location."""
         group_names = ", ".join(self.metadata.present_group_names)
         return f"SWIFT dataset at {self.filename}. \nAvailable groups: {group_names}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Print out some useful information, not just the memory location."""
         return self.__str__()
 
-    def get_units(self):
+    def get_units(self) -> None:
         """
-        Loads the units from the SWIFT snapshot.
+        Load the units from the SWIFT snapshot.
 
         Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
@@ -591,9 +592,9 @@ class SWIFTDataset(object):
 
         return
 
-    def get_metadata(self):
+    def get_metadata(self) -> None:
         """
-        Loads the metadata from the SWIFT snapshot.
+        Load the metadata from the SWIFT snapshot.
 
         Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
@@ -602,10 +603,11 @@ class SWIFTDataset(object):
 
         return
 
-    def create_datasets(self):
+    def create_datasets(self) -> None:
         """
-        Creates datasets for whichever groups
-        are specified in metadata.present_group_names.
+        Create datasets for present groups.
+
+        Present groups are specified in metadata.present_group_names.
 
         These can then be accessed using their underscore names, e.g. gas.
         """

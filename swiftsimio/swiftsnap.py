@@ -1,7 +1,8 @@
 #!python3
 """
-swiftsnap allows you to check the metadata of a SWIFT snapshot easily
-from the command line. See the -h invocation for more details.
+swiftsnap checsk the metadata of a SWIFT snapshot easily from the command line.
+
+See the -h invocation for more details.
 """
 
 import argparse as ap
@@ -9,7 +10,22 @@ import argparse as ap
 SCREEN_WIDTH = 80
 
 
-def decode(bytestring: bytes) -> str:
+def decode(bytestring: object) -> str:
+    """
+    Decode input if it is a bytestring.
+
+    If the input is not a bytestring, we instead try to interpret it as a string.
+
+    Parameters
+    ----------
+    bytestring : object
+        The (possibly) bytes object.
+
+    Returns
+    -------
+    out : str
+       The resulting string.
+    """
     try:
         return bytestring.decode("utf-8")
     except AttributeError:
@@ -61,7 +77,12 @@ parser.add_argument(
 )
 
 
-def swiftsnap():
+def swiftsnap() -> None:
+    """
+    Access SWIFT snapshot metadata from the command line.
+
+    For details see the command line argument parser help.
+    """
     import swiftsimio as sw
     from swiftsimio.metadata.objects import metadata_discriminator
 

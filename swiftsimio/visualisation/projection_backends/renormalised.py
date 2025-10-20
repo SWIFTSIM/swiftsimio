@@ -1,12 +1,12 @@
 """
 Renormalised projection visualisation.
 
-This version of the function is the same as `fast` but provides an
-explicit renormalisation of each kernel such that the mass is
-conserved up to floating point precision.
+This version of the function is the same as `fast` but provides an explicit
+renormalisation of each kernel such that the mass is conserved up to floating point
+precision.
 
-The original smoothing code. This provides basic renormalisation
-of the kernel on each call.
+This is the original smoothing code. This provides basic renormalisation of the kernel on
+each call.
 """
 
 from math import sqrt, ceil
@@ -31,7 +31,7 @@ def scatter(
     box_y: float64 = 0.0,
 ) -> ndarray:
     """
-    Creates a weighted scatter plot.
+    Create a weighted scatter plot.
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.

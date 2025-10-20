@@ -6,10 +6,11 @@ import unyt as u
 
 def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarray:
     """
-    Calculate a rotation matrix from a vector. The comparison vector is
-    assumed to be along an axis, x, y, or z (by default this is z). The
-    resulting rotation matrix gives a rotation matrix to align the
-    co-ordinate axes to make the projection be top-down along this axis.
+    Calculate a rotation matrix from a vector.
+
+    The comparison vector is assumed to be along an axis, x, y, or z (by default this is
+    z). The resulting rotation matrix gives a rotation matrix to align the co-ordinate
+    axes to make the projection be top-down along this axis.
 
     Parameters
     ----------
@@ -21,7 +22,6 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
     axis: str, optional
         String describing the axis to project along. This should be one
         of x, y, or z. Defaults to z.
-
 
     Returns
     -------

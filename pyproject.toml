@@ -81,6 +81,7 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
+    "docs/source/conf.py",
 ]
 line-length = 88
 indent-width = 4

@@ -1,3 +1,5 @@
+"""Backend tools for image slices weightd by SPH kernel."""
+
 from typing import Union
 from math import sqrt, ceil
 from numpy import float64, float32, int32, zeros, ndarray
@@ -69,6 +71,8 @@ def slice_scatter(
     box_z: float64 = 0.0,
 ) -> ndarray:
     """
+    Create a 2D image slice through a volume.
+
     Creates a 2D numpy array (image) of the given quantities of all particles in
     a data slice including periodic boundary effects.
 

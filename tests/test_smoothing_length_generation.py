@@ -1,4 +1,4 @@
-"""Tests the smoothing length generation code."""
+"""Test the smoothing length generation code."""
 
 import numpy as np
 import unyt as u
@@ -9,6 +9,7 @@ from numpy import isclose
 
 
 def test_generate_smoothing_length(cosmological_volume):
+    """Check that generated smoothign lengths match the ones stored with the data."""
     data = load(cosmological_volume)
 
     smoothing_lengths = data.gas.smoothing_lengths
@@ -42,6 +43,7 @@ def test_generate_smoothing_length(cosmological_volume):
 
 
 def test_generate_smoothing_length_faster(cosmological_volume):
+    """Check that turning up the speed of the generator gives acceptable results."""
     data = load(cosmological_volume)
 
     smoothing_lengths = data.gas.smoothing_lengths
@@ -75,6 +77,7 @@ def test_generate_smoothing_length_faster(cosmological_volume):
 
 
 def test_generate_smoothing_length_return_type():
+    """Check that return types agree with input types (unyt vs cosmo arrays)."""
     x = cosmo_array(
         np.arange(20), u.Mpc, comoving=False, scale_factor=0.5, scale_exponent=1
     )

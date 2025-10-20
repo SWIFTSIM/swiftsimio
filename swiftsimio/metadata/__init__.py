@@ -1,6 +1,7 @@
 """
-Contains the metadata for all of the snapshots, such as the
-information contained in each snapshot that may be read.
+Handle metadata for data files.
+
+Metadata includes a listing of the datasets available in a file.
 """
 
 from .particle import particle_types, particle_fields

@@ -25,9 +25,10 @@ def deposit(
     box_z: float64,
 ) -> ndarray:
     """
-    Deposit the particles to a 3D grid, with the potential
-    for folding. Note that unlike the other vis tools, this
-    requires the 'raw' positions of the particles.
+    Deposit the particles to a (potentially folded) 3D grid.
+
+    Note that unlike the other vis tools, this requires the 'raw' positions of the
+    particles.
 
     Parameters
     ----------
@@ -107,9 +108,10 @@ def deposit_parallel(
     box_z: float64,
 ) -> ndarray:
     """
-    Deposit the particles to a 3D grid, with the potential
-    for folding. Note that unlike the other vis tools, this
-    requires the 'raw' positions of the particles.
+    Deposit the particles to a (potentially folded) 3D grid, in parallel.
+
+    Note that unlike the other vis tools, this requires the 'raw' positions of the
+    particles.
 
     Parameters
     ----------
@@ -483,8 +485,9 @@ def deposition_to_power_spectrum(
     shot_noise_norm: Optional[float] = None,
 ) -> Tuple[cosmo_array]:
     """
-    Convert a deposition to a power spectrum, by default
-    using a linear binning strategy.
+    Convert a deposition to a power spectrum.
+
+    Uses a linear binning strategy by default.
 
     Parameters
     ----------
@@ -531,9 +534,9 @@ def deposition_to_power_spectrum(
         raise ValueError("Deposition must be a cube")
 
     if cross_deposition is not None:
-        assert deposition.shape == cross_deposition.shape, (
-            "Depositions must have the same shape"
-        )
+        assert (
+            deposition.shape == cross_deposition.shape
+        ), "Depositions must have the same shape"
 
     folding = 2.0**folding
 

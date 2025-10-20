@@ -1,4 +1,6 @@
 """
+Smoothing length generators.
+
 Routines for generating (approximate) smoothing lengths for particles
 that do not usually carry a smoothing length field (e.g. dark matter).
 """
@@ -19,7 +21,7 @@ def generate_smoothing_lengths(
     dimension=3,
 ):
     """
-    Generates smoothing lengths that encompass a number of neighbours specified here.
+    Generate smoothing lengths that encompass a number of neighbours specified here.
 
     Parameters
     ----------

@@ -20,7 +20,7 @@ def scatter(
     box_y: np.float64 = 0.0,
 ) -> np.ndarray:
     """
-    Creates a weighted scatter plot.
+    Create a weighted scatter plot.
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
@@ -127,12 +127,11 @@ def scatter_parallel(
     box_y: np.float64 = 0.0,
 ) -> np.ndarray:
     """
-    Parallel implementation of scatter.
+    Create a weighted scatter plot in parallel.
 
-    Creates a weighted scatter plot. Computes contributions from
-    particles with positions (`x`,`y`) with smoothing lengths `h`
-    weighted by quantities `m`.
-    This includes periodic boundary effects.
+    Creates a weighted scatter plot. Computes contributions from particles with positions
+    (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`. This includes
+    periodic boundary effects.
 
     Parameters
     ----------

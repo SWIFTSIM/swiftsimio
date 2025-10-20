@@ -1,4 +1,6 @@
 """
+Implement overloads for numpy functions.
+
 Overloaded implementations of unyt and numpy functions to correctly handle
 :class:`~swiftsimio.objects.cosmo_array` input.
 
@@ -165,8 +167,7 @@ def _copy_cosmo_array_attributes_if_present(
 
 def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
     """
-    Wrapper that copies :class:`~swiftsimio.objects.cosmo_array` attributes from first
-    input argument to first output.
+    Copy attributes from first input argument to first output.
 
     Many functions take one input (or have a first input that has a close correspondance
     to the output) and one output. This helper copies the ``cosmo_factor``, ``comoving``,
@@ -224,6 +225,8 @@ def _promote_unyt_to_cosmo(input_object: object) -> object:
 
 def _ensure_array_or_quantity_matches_shape(input_object: object) -> object:
     """
+    Ensure the object type is compatible with its shape.
+
     Convert scalars to :class:`~swiftsimio.objects.cosmo_quantity` and arrays to
     :class:`~swiftsimio.objects.cosmo_array`.
 
@@ -257,8 +260,7 @@ def _ensure_array_or_quantity_matches_shape(input_object: object) -> object:
 
 def _ensure_result_is_cosmo_array_or_quantity(func: Callable) -> Callable:
     """
-    Wrapper that converts any :class:`~unyt.array.unyt_array` or
-    :class:`~unyt.array.unyt_quantity` instances in function output to cosmo equivalents.
+    Promote :mod:`unyt` objects to our cosmological equivalents.
 
     If the wrapped function returns a :obj:`tuple` (as many numpy functions do) it is
     iterated over (but not recursively) and each element with a unyt class type is
@@ -373,7 +375,7 @@ def _preserve_cosmo_factor(
     *cfs: "objects.cosmo_factor", **kwargs
 ) -> "objects.cosmo_factor":
     """
-    Helper to preserve the :class:`~swiftsimio.objects.cosmo_factor` of input.
+    Preserve the :class:`~swiftsimio.objects.cosmo_factor` of input.
 
     If there is a single argument, return its ``cosmo_factor``. If there are multiple
     arguments, check that they all have matching ``cosmo_factor``. Any arguments that
@@ -455,8 +457,9 @@ def _power_cosmo_factor(
     power: Optional[float] = None,
 ) -> "objects.cosmo_factor":
     """
-    Raise a :class:`~swiftsimio.objects.cosmo_factor` to a power of another
-    :class:`~swiftsimio.objects.cosmo_factor`.
+    Raise a :class:`~swiftsimio.objects.cosmo_factor` to a power.
+
+    The exponent can be another :class:`~swiftsimio.objects.cosmo_factor`.
 
     Parameters
     ----------
@@ -582,6 +585,8 @@ def _passthrough_cosmo_factor(
     cf: "objects.cosmo_factor", cf2: "Optional[objects.cosmo_factor]" = None, **kwargs
 ) -> "objects.cosmo_factor":
     """
+    Keep the same :class:`~swiftsimio.objects.cosmo_factor`.
+
     Preserve a :class:`~swiftsimio.objects.cosmo_factor`, optionally checking that it
     matches a second :class:`~swiftsimio.objects.cosmo_factor`.
 
@@ -620,8 +625,10 @@ def _return_without_cosmo_factor(
     **kwargs,
 ) -> None:
     """
-    Return ``None``, but first check that argument
-    :class:`~swiftsimio.objects.cosmo_factor`s match, raising or warning if not.
+    Return ``None`` after checking compatibility.
+
+    First check that argument :class:`~swiftsimio.objects.cosmo_factor`s
+    match, raising or warning if not. Then return ``None``.
 
     Comparisons are a special case that wraps around this wrapper, see
     :func:`~swiftsimio._array_functions._comparison_cosmo_factor`.
@@ -690,8 +697,7 @@ def _arctan2_cosmo_factor(
     cf1: "objects.cosmo_factor", cf2: "objects.cosmo_factor", **kwargs
 ) -> "objects.cosmo_factor":
     """
-    Helper specifically to handle the :class:`~swiftsimio.objects.cosmo_factor`s for the
-    ``arctan2`` ufunc from numpy.
+    Handle the :class:`~swiftsimio.objects.cosmo_factor`s for the ``arctan2`` ufunc.
 
     Parameters
     ----------
@@ -741,7 +747,7 @@ def _comparison_cosmo_factor(
     inputs: "Optional[Tuple[objects.cosmo_array]]" = None,
 ) -> None:
     """
-    Helper to enable comparisons involving :class:`~swiftsimio.objects.cosmo_factor`s.
+    Enable comparisons involving :class:`~swiftsimio.objects.cosmo_factor`s.
 
     Warnings are emitted when the comparison is ambiguous, for instance if comparing to a
     bare :obj:`float` or similar. Comparison to zero is a special case where we suppress
@@ -950,7 +956,7 @@ def _return_helper(
     out: Optional[np.ndarray] = None,
 ) -> "objects.cosmo_array":
     """
-    Helper function to attach our cosmo attributes to return values of wrapped functions.
+    Attach our cosmo attributes to return values of wrapped functions.
 
     The return value is first promoted to be a :class:`~swiftsimio.objects.cosmo_array`
     (or quantity) if necessary. If the return value is still not one of our cosmo
@@ -990,7 +996,7 @@ def _default_unary_wrapper(
     unyt_func: Callable, cosmo_factor_handler: Callable
 ) -> Callable:
     """
-    Wrapper helper for unary functions with typical behaviour.
+    Wrap unary functions with typical behaviour.
 
     For many numpy and unyt functions with one (main) input argument, the wrapping
     code that we need to apply is repetitive. Just prepare the arguments, apply
@@ -1015,8 +1021,7 @@ def _default_unary_wrapper(
 
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor`` attriubtes, and attach attributes to
-        output.
+        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes.
 
         Returns
         -------
@@ -1038,7 +1043,7 @@ def _default_binary_wrapper(
     unyt_func: Callable, cosmo_factor_handler: Callable
 ) -> Callable:
     """
-    Wrapper helper for binary functions with typical behaviour.
+    Wrap binary functions with typical behaviour.
 
     For many numpy and unyt functions with two (main) input arguments, the wrapping
     code that we need to apply is repetitive. Just prepare the arguments, apply
@@ -1063,8 +1068,7 @@ def _default_binary_wrapper(
 
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes to
-        output.
+        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes.
 
         Returns
         -------
@@ -1084,7 +1088,7 @@ def _default_binary_wrapper(
 
 def _default_comparison_wrapper(unyt_func: Callable) -> Callable:
     """
-    Wrapper helper for binary comparison functions with typical behaviour.
+    Wrap binary comparison functions with typical behaviour.
 
     For many numpy and unyt comparison functions with two (main) input arguments, the
     wrapping code that we need to apply is repetitive. Just prepare the arguments,
@@ -1108,8 +1112,7 @@ def _default_comparison_wrapper(unyt_func: Callable) -> Callable:
     # _comparison_cosmo_factor with them as the inputs
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes to
-        output.
+        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes.
 
         Returns
         -------
@@ -1128,7 +1131,7 @@ def _default_comparison_wrapper(unyt_func: Callable) -> Callable:
 
 def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
     """
-    Wrapper helper for functions accepting a list of operands with typical behaviour.
+    Wrap functions accepting a list of operands with typical behaviour.
 
     For many numpy and unyt functions taking a list of operands as an argument, the
     wrapping code that we need to apply is repetitive. Just prepare the arguments,
@@ -1151,8 +1154,7 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
 
     def wrapper(*args, **kwargs):
         """
-        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes to
-        output.
+        Prepare arguments, handle ``cosmo_factor`` attributes, and attach attributes.
 
         Returns
         -------

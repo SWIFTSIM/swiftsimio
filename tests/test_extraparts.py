@@ -1,20 +1,26 @@
 """Test for extra particle types."""
 
-from swiftsimio import load, metadata
-from swiftsimio import Writer
+from sympy import Expr
+from swiftsimio import load, metadata, Writer
+from swiftsimio.objects import cosmo_factor
 import swiftsimio.metadata.particle as swp
 import swiftsimio.metadata.writer.required_fields as swmw
 import swiftsimio.metadata.unit.unit_fields as swuf
 import swiftsimio.metadata.cosmology as swcf
 
 import unyt
+from unyt import Unit
 import numpy as np
 
 import os
 
 
-def generate_units(mass, length, time, current, temperature):
+def generate_units(
+    mass: Unit, length: Unit, time: Unit, current: Unit, temperature: Unit
+) -> dict[str, dict[str, Unit]]:
     """
+    Generate units differently for testing.
+
     This function is used to override the inbuilt swiftsimio generate_units function from
     metadata.unit.unit_fields. This allows the specification of a new particle type and
        metadata.unit.unit_fields. This allows the specification of a new particle type and
@@ -47,16 +53,32 @@ def generate_units(mass, length, time, current, temperature):
     return dict_out
 
 
-def generate_cosmology(scale_factor: float, gamma: float):
+def generate_cosmology(
+    scale_factor: float, gamma: float
+) -> dict[str, dict[str, cosmo_factor]]:
     """
+    Generate cosmology differently for testing.
+
     This function is used to override the inbuilt swiftsimio generate_cosmology function
     from metadata.cosmology. This allows the specification of a new particle type and
     affects how the type is influenced by cosmology. Required only for reading in new
     particle types.
     """
-    from swiftsimio.objects import cosmo_factor
 
-    def cosmo_factory(a_dependence):
+    def cosmo_factory(a_dependence: Expr) -> cosmo_factor:
+        """
+        Generate a ``cosmo_factor``.
+
+        Parameters
+        ----------
+        a_dependence : Expr
+            The scale factor dependence desired.
+
+        Returns
+        -------
+        out : cosmo_factor
+            One of our ``cosmo_factor`` objects.
+        """
         return cosmo_factor(a_dependence, scale_factor)
 
     dict_out = swcf.generate_cosmology(scale_factor, gamma)
@@ -70,8 +92,9 @@ def generate_cosmology(scale_factor: float, gamma: float):
 
 def test_write():
     """
-    Tests whether swiftsimio can handle a new particle type. If the test doesn'time crash
-    this is a success.
+    Tests whether swiftsimio can handle a new particle type.
+
+    If the test doesn't crash this is a success.
     """
     # Use default units, i.e. cm, grams, seconds, Ampere, Kelvin
     unit_system = unyt.UnitSystem(
@@ -110,8 +133,9 @@ def test_write():
 
 def test_read():
     """
-    Tests whether swiftsimio can handle a new particle type. Has a few asserts to check
-    the data is read in correctly.
+    Test whether swiftsimio can handle a new particle type.
+
+    Has a few asserts to check the data is read in correctly.
     """
     swp.particle_name_underscores["PartType7"] = "extratype"
     swp.particle_name_class["PartType7"] = "Extratype"

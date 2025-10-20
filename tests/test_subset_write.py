@@ -1,12 +1,14 @@
+"""Tests of the subset writer feature."""
+
 from swiftsimio.subset_writer import write_subset
-from swiftsimio import load
+from swiftsimio import load, SWIFTDataset
 from .helper import _mask_without_warning as mask
 import os
 
 
-def compare_data_contents(A, B):
+def compare_data_contents(A: SWIFTDataset, B: SWIFTDataset) -> None:
     """
-    Compares two SWIFTDatasets.
+    Compare two SWIFTDatasets.
 
     Compares all datasets, and one of the metadata fields (this is
     because all metadata fields are copied over simultaneously so if
@@ -14,8 +16,16 @@ def compare_data_contents(A, B):
 
     Parameters
     ----------
-    A, B : SWIFTDataset
-        datasets to compare
+    A : SWIFTDataset
+        First dataset to compare.
+
+    B : SWIFTDataset
+        Second dataset to compare.
+
+    Raises
+    ------
+    AssertionError
+        If the two datasets are not equivalent.
     """
     # Initialise a list to store fields that differ
     bad_compares = []

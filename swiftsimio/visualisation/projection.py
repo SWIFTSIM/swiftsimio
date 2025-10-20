@@ -28,7 +28,9 @@ def project_pixel_grid(
     periodic: bool = True,
 ):
     r"""
-    Creates a 2D projection of a SWIFT dataset, projected by the "project"
+    Create a 2D projection of a particle-carried field onto a 2D grid.
+
+    Create a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
 
@@ -173,7 +175,9 @@ def project_gas(
     periodic: bool = True,
 ):
     r"""
-    Creates a 2D projection of a SWIFT dataset, projected by the "project"
+    Create a 2D projection of a gas particle-carried field onto a 2D grid.
+
+    Create a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
 

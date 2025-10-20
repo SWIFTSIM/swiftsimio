@@ -1,5 +1,6 @@
-"""Contains the description of the metadata fields in the SWIFT snapshots."""
+"""Define information needed to unpack metadata fields in SWIFT snapshots."""
 
+from unyt import Unit
 from ..objects import cosmo_factor
 
 metadata_fields_to_read = {
@@ -40,14 +41,34 @@ header_unpack_mass_tables = {
 
 
 def generate_units_header_unpack_arrays(
-    mass, length, time, current, temperature
-) -> dict:
+    mass: Unit, length: Unit, time: Unit, current: Unit, temperature: Unit
+) -> dict[str, Unit]:
     """
-    Generates the unit dictionaries with the:
+    Generate mapping for units to apply to metadata array fields.
 
-    mass, length, time, current, and temperature
+    Based on the mass, length, time, current, and temperature units provided.
 
-    units respectively.
+    Parameters
+    ----------
+    mass : Unit
+        The mass unit.
+
+    length : Unit
+        The length unit.
+
+    time : Unit
+        The time unit.
+
+    current : Unit
+        The current unit.
+
+    temperature : Unit
+        The temperature unit.
+
+    Returns
+    -------
+    out : dict[str, Unit]
+        Mapping from metadata field names to their units.
     """
     # Do not include those items that do not have units.
     units = {"boxsize": length}
@@ -55,10 +76,9 @@ def generate_units_header_unpack_arrays(
     return units
 
 
-def generate_cosmo_args_header_unpack_arrays(scale_factor) -> dict:
+def generate_cosmo_args_header_unpack_arrays(scale_factor: float) -> dict:
     """
-    Generates arguments for `cosmo_array` so that relevant header
-    items can be initialized as `cosmo_array`s.
+    Generate arguments so that relevant metadata can be initialised as cosmo arrays.
 
     Parameters
     ----------
@@ -67,9 +87,9 @@ def generate_cosmo_args_header_unpack_arrays(scale_factor) -> dict:
 
     Returns
     -------
-    out : dict
-        A dictionary containing the `cosmo_array` arguments corresponding to
-        header items, omitting any that should not be `cosmo_array`s.
+    out : dict[str, dict]
+        A dictionary containing the ``cosmo_array`` arguments corresponding to
+        header items, omitting any that should not be ``cosmo_array``s.
     """
     # Do not include those items that do not have units (and therefore
     # should not be cosmo_array'd).
@@ -106,14 +126,32 @@ header_unpack_single_float = {
 
 
 def generate_units_header_unpack_single_float(
-    mass, length, time, current, temperature
+    mass: Unit, length: Unit, time: Unit, current: Unit, temperature: Unit
 ) -> dict:
     """
-    Generate the unit dictionaries with the:
+    Generate unit dictionaries for metadata fields of a single float value.
 
-    mass, length, time, current, and temperature
+    Parameters
+    ----------
+    mass : Unit
+        The mass unit.
 
-    units respectively.
+    length : Unit
+        The length unit.
+
+    time : Unit
+        The time unit.
+
+    current : Unit
+        The current unit.
+
+    temperature : Unit
+        The temperature unit.
+
+    Returns
+    -------
+    out : dict[str, Unit]
+        The mapping from metadata field name to its units.
     """
     units = {"time": time, "t": time}
 

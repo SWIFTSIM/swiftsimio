@@ -1,10 +1,4 @@
-"""
-Contains functions and objects for creating SWIFT datasets.
-
-Essentially all you want to do is use SWIFTSnapshotWriter and fill the attributes
-that are required for each particle type. More information is available in the
-README.
-"""
+"""Contains functions and objects for creating SWIFT datasets."""
 
 import unyt
 import h5py
@@ -37,9 +31,10 @@ def _ptype_str_to_int(ptype_str):
 
 class __SWIFTWriterParticleDataset(object):
     """
-    A particle dataset for _writing_ with. This is explicitly different
-    to the one used for reading, as it requires a very different feature
-    set. Perhaps one day they will be merged, but for now this keeps the
+    A particle dataset for _writing_ with.
+
+    This is explicitly different to the one used for reading, as it requires a very
+    different feature set. Perhaps one day they will be merged, but for now this keeps the
     code used to manage both simple.
 
     Methods
@@ -59,7 +54,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def __init__(self, unit_system: Union[unyt.UnitSystem, str], particle_type: int):
         """
-        Generates the requested unit system.
+        Generate the requested unit system.
 
         Parameters
         ----------
@@ -85,8 +80,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def generate_empty_properties(self):
         """
-        Generates the empty properties that will be accessed through the
-        setter and getters.
+        Generate the empty properties accessed by setters and getters.
 
         Initially all of the _{name} values are set to None. Note that we
         only generate required properties.
@@ -98,12 +92,12 @@ class __SWIFTWriterParticleDataset(object):
 
     def check_empty(self) -> bool:
         """
-        Checks if all required datasets are empty.
+        Check if all required datasets are empty.
 
         Returns
         -------
-        bool
-            True if all datasets are empty
+        out : bool
+            True if all datasets are empty.
         """
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             if getattr(self, f"_{name}") is not None:
@@ -113,7 +107,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def check_consistent(self) -> bool:
         """
-        Performs consistency checks on dataset.
+        Perform consistency checks on dataset.
 
         Checks the following:
 
@@ -144,9 +138,9 @@ class __SWIFTWriterParticleDataset(object):
                 sizes.append(getattr(self, f"_{name}").shape[0])
 
         # Now we figure out if everyone's the same (without numpy...)
-        assert reduce(lambda x, y: x and y, [sizes[0] == x for x in sizes]), (
-            f"Arrays passed to {self.particle_name} dataset are not of the same size."
-        )
+        assert reduce(
+            lambda x, y: x and y, [sizes[0] == x for x in sizes]
+        ), f"Arrays passed to {self.particle_name} dataset are not of the same size."
 
         # Make sure positions and velocities have the same shapes
         if getattr(self, "coordinates").shape != getattr(self, "velocities").shape:
@@ -158,10 +152,9 @@ class __SWIFTWriterParticleDataset(object):
 
         return True
 
-    def generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int):
+    def generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int) -> None:
         """
-        Automatically generates the smoothing lengths as 2 * the mean interparticle
-        separation.
+        Automatically generate smoothing lengths as 2 * the mean interparticle spacing.
 
         This only works for a uniform boxsize (i.e. one that has the same length in all
         dimensions). If boxsize is a list, we just use the 0th member.
@@ -189,7 +182,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def write_particle_group(self, file_handle: h5py.File, compress: bool):
         """
-        Writes the particle group's required properties to file.
+        Write the particle group's required properties to file.
 
         Parameters
         ----------
@@ -218,7 +211,7 @@ class __SWIFTWriterParticleDataset(object):
         self, file_handle: h5py.File, dset_attributes: dict
     ):
         """
-        Writes the relevant metadata for a particle group.
+        Write the relevant metadata for a particle group.
 
         Parameters
         ----------
@@ -238,7 +231,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def get_attributes(self, scale_factor: float) -> dict:
         """
-        Returns a dictionary containg the attributes to attach to the dataset.
+        Return a dictionary containg the attributes to attach to the dataset.
 
         Parameters
         ----------
@@ -288,7 +281,7 @@ class __SWIFTWriterParticleDataset(object):
 
 def get_dimensions(dimension: unyt.dimensions) -> dict:
     """
-    Returns exponents corresponding to base dimensions for given unyt dimensions object.
+    Return exponents corresponding to base dimensions for given unyt dimensions object.
 
     Parameters
     ----------
@@ -339,7 +332,7 @@ def get_dimensions(dimension: unyt.dimensions) -> dict:
 
 def generate_getter(name: str):
     """
-    Generates a function that gets the unyt array for name.
+    Generate a function that gets the unyt array for name.
 
     Parameters
     ----------
@@ -360,7 +353,7 @@ def generate_getter(name: str):
 
 def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, str]):
     """
-    Generates a function that sets self._name to the value that is passed to it.
+    Generate a function that sets self._name to the value that is passed to it.
 
     Parameters
     ----------
@@ -400,7 +393,7 @@ def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, s
 
 def generate_deleter(name: str):
     """
-    Generates a function that destroys self._name (sets it back to None).
+    Generate a function that destroys self._name (sets it back to None).
 
     Parameters
     ----------
@@ -431,8 +424,7 @@ def generate_dataset(
     ] = metadata.unit_fields.generate_units,
 ):
     """
-    Generates a SWIFTWriterParticleDataset _class_ that corresponds to the
-    particle type given.
+    Generate a SWIFTWriterParticleDataset _class_ for the given particle type.
 
     We _must_ do the following _outside_ of the class itself, as one
     can assign properties to a _class_ but not _within_ a class
@@ -487,8 +479,10 @@ def generate_dataset(
 
 class SWIFTSnapshotWriter(object):
     """
-    The SWIFT writer dataset. This is used to store all particle arrays and do
-    some extra processing before writing a HDF5 file containing:
+    The SWIFT dataset writer.
+
+    This is used to store all particle arrays and do some extra processing before writing
+    a HDF5 file containing:
 
     + Fully consistent unit system
     + All required arrays for SWIFT to start
@@ -508,7 +502,7 @@ class SWIFTSnapshotWriter(object):
         scale_factor: np.float32 = 1.0,
     ):
         """
-        Creates SWIFTSnapshotWriter object.
+        Create SWIFTSnapshotWriter object.
 
         Parameters
         ----------
@@ -557,10 +551,7 @@ class SWIFTSnapshotWriter(object):
         return
 
     def create_particle_datasets(self):
-        """
-        Creates particle dataset for each particle type in the metadata with
-        associated units.
-        """
+        """Create particle dataset for each particle type in the metadata."""
         for number, name in metadata.particle_types.particle_name_underscores.items():
             setattr(
                 self,
@@ -574,7 +565,7 @@ class SWIFTSnapshotWriter(object):
 
     def _generate_ids(self, names_to_write: List):
         """
-        (Re-)generates all particle IDs for groups with names in names_to_write.
+        (Re-)generate all particle IDs for groups with names in names_to_write.
 
         Parameters
         ----------
@@ -598,8 +589,10 @@ class SWIFTSnapshotWriter(object):
 
     def _write_metadata(self, handle: h5py.File, names_to_write: List):
         """
-        Writes metadata to file based on the information passed to the object
-        and the information in the particle groups.
+        Write metadata to file.
+
+        Metadata written is based on the information passed to the object and the
+        information in the particle groups.
 
         Parameters
         ----------
@@ -651,7 +644,7 @@ class SWIFTSnapshotWriter(object):
 
     def _write_units(self, handle: h5py.File):
         """
-        Writes the unit information to file.
+        Write the unit information to file.
 
         Note that we do not have support for unit current yet.
 
@@ -692,7 +685,7 @@ class SWIFTSnapshotWriter(object):
 
     def write(self, filename: str):
         """
-        Writes the information in the dataset to file.
+        Write the information in the dataset to file.
 
         Parameters
         ----------

@@ -1,4 +1,8 @@
-"""Functions that can be accelerated by numba. Numba does not use classes, unfortunately."""
+"""
+Define functions that can be accelerated by numba.
+
+Numba does not use classes, unfortunately.
+"""
 
 import numpy as np
 
@@ -6,34 +10,29 @@ from h5py._hl.dataset import Dataset
 
 from typing import Tuple, Union, List
 
-try:
-    from numba import jit, prange
-    from numba.core.config import NUMBA_NUM_THREADS as NUM_THREADS
-except (ImportError, ModuleNotFoundError):
-    try:
-        from numba import jit, prange
-        from numba.config import NUMBA_NUM_THREADS as NUM_THREADS
-    except (ImportError, ModuleNotFoundError):
-        print(
-            "You do not have numba installed. Please consider installing "
-            "if you are going to be doing visualisation or indexing large arrays "
-            "(pip install numba)"
-        )
+from .optional_packages import jit, prange, NUM_THREADS
 
-        def jit(*args, **kwargs):
-            def x(func):
-                return func
-
-            return x
-
-        prange = range
-        NUM_THREADS = 1
+__all__ = [
+    "jit",
+    "prange",
+    "NUM_THREADS",
+    "ranges_from_array",
+    "read_ranges_from_file_unchunked",
+    "index_dataset",
+    "concatenate_ranges",
+    "get_chunk_ranges",
+    "expand_ranges",
+    "extract_ranges_from_chunks",
+    "read_ranges_from_file_chunked",
+    "read_ranges_from_file",
+    "list_of_strings_to_arrays",
+]
 
 
 @jit(nopython=True)
 def ranges_from_array(array: np.array) -> np.ndarray:
     """
-    Finds contiguous ranges of IDs in sorted list of IDs.
+    Find contiguous ranges of IDs in sorted list of IDs.
 
     Parameters
     ----------
@@ -87,6 +86,8 @@ def read_ranges_from_file_unchunked(
     columns: slice = np.s_[:],
 ) -> np.array:
     """
+    Read only a selection of index ranges from a dataset that is not chunked.
+
     Takes a hdf5 dataset, and the set of ranges from
     ranges_from_array, and reads only those ranges from the file.
 
@@ -183,9 +184,7 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 @jit(nopython=True, fastmath=True)
 def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     """
-    Returns an array of ranges with consecutive ranges merged if there is no
-    gap between them.
-
+    Merge consecutive ranges if there is no gap between them.
 
     Parameters
     ----------
@@ -297,7 +296,7 @@ def extract_ranges_from_chunks(
     array: np.ndarray, chunks: np.ndarray, ranges: np.ndarray
 ) -> np.ndarray:
     """
-    Returns elements from array that are located within specified ranges.
+    Return elements from array that are located within specified ranges.
 
     `array` is a portion of the dataset being read consisting of all the chunks
     that contain the ranges specified in `ranges`. The `chunks` array contains
@@ -366,6 +365,8 @@ def read_ranges_from_file_chunked(
     columns: slice = np.s_[:],
 ) -> np.array:
     """
+    Read only a selection of index ranges from a dataset that is chunked.
+
     Takes a hdf5 dataset, and the set of ranges from
     ranges_from_array, and reads only those ranges from the file.
 
@@ -457,8 +458,7 @@ def read_ranges_from_file(
     columns: slice = np.s_[:],
 ) -> np.array:
     """
-    Wrapper function to correctly select which version of read_ranges_from_file
-    should be used.
+    Correctly select which version of ``read_ranges_from_file`` should be used.
 
     Parameters
     ----------
@@ -508,7 +508,7 @@ def read_ranges_from_file(
 
 def list_of_strings_to_arrays(lines: List[str]) -> Union[np.array]:
     """
-    Converts a list of space-delimited values to arrays.
+    Convert a list of space-delimited values to arrays.
 
     Parameters
     ----------

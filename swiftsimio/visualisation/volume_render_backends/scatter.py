@@ -1,6 +1,7 @@
 """
-Basic volume render for SPH data. This takes the 3D positions
-of the particles and projects them onto a grid.
+Basic volume render for SPH data.
+
+Takes the 3D positions of the particles and projects them onto a grid.
 """
 
 from math import sqrt, ceil
@@ -24,7 +25,7 @@ def scatter(
     box_z: np.float64 = 0.0,
 ) -> np.ndarray:
     """
-    Creates a weighted voxel grid.
+    Create a weighted voxel grid.
 
     Computes contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.
@@ -228,7 +229,7 @@ def scatter_limited_z(
     box_z: np.float64 = 0.0,
 ) -> np.ndarray:
     """
-    Creates a weighted voxel grid.
+    Create a weighted voxel grid.
 
     Computes contributions to a voxel grid from particles with positions
     (`x`,`y`,`z`) with smoothing lengths `h` weighted by quantities `m`.

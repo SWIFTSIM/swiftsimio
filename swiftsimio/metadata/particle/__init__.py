@@ -1,3 +1,5 @@
+"""Define names of particle types and fields available for each."""
+
 from .particle_fields import (
     gas,
     dark_matter,
