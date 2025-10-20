@@ -88,7 +88,7 @@ indent-width = 4
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "D"]
+select = ["E4", "E7", "E9", "F", "D", "ANN001"]
 ignore = []
 fixable = ["ALL"]
 unfixable = []
@@ -134,3 +134,5 @@ checks = [
        "RT04",
        "RT05",
 ]
+# Don't document class __init__ methods, put the docstring on the class object.
+exclude = ['\.__init__$']
