@@ -7,6 +7,7 @@ import warnings
 import h5py
 import numpy as np
 from typing import Union
+import yt
 
 from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
@@ -14,7 +15,6 @@ from swiftsimio.accelerated import ranges_from_array
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
-
 
 class SWIFTMask(object):
     """
