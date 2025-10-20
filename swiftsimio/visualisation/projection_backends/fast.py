@@ -32,44 +32,45 @@ def scatter(
 
     Parameters
     ----------
-    x : np.array[np.float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[np.float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.array[np.float32]
-        array of masses (or otherwise weights) of the particles
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    h : np.array[np.float32]
-        array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of pixels along one axis, i.e. this returns a square
+        The number of pixels along one axis, i.e. this returns a square
         of res * res.
 
-    box_x: np.float64
-        box size in x, in the same rescaled length units as x and y. Used
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
-    box_y: np.float64
-        box size in y, in the same rescaled length units as x and y. Used
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
     Returns
     -------
-    np.array[np.float32, np.float32, np.float32]
-        pixel grid of quantity
+    out : np.ndarray[np.float32, np.float32, np.float32]
+        Pixel grid of quantity.
 
     See Also
     --------
-    scatter_parallel : Parallel implementation of this function
+    scatter_parallel
+        Parallel implementation of this function.
 
     Notes
     -----
-    Explicitly defining the types in this function allows
-    for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba ones.
+    Explicitly defining the types in this function allows for a 25-50% performance
+    improvement. In our testing, using numpy floats and integers is also an improvement
+    over using the numba ones.
     """
     # Output array for our image
     image = np.zeros((res, res), dtype=np.float32)
@@ -196,45 +197,45 @@ def scatter_parallel(
 
     Parameters
     ----------
-    x : np.array[np.float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[np.float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.array[np.float32]
-        array of masses (or otherwise weights) of the particles
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    h : np.array[np.float32]
-        array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of pixels along one axis, i.e. this returns a square
+        The number of pixels along one axis, i.e. this returns a square
         of res * res.
 
-    box_x: np.float64
-        box size in x, in the same rescaled length units as x and y. Used
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
-    box_y: np.float64
-        box size in y, in the same rescaled length units as x and y. Used
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
     Returns
     -------
-    np.array[np.float32, np.float32, np.float32]
-        pixel grid of quantity
+    out : np.ndarray[np.float32, np.float32, np.float32]
+        Pixel grid of quantity.
 
     See Also
     --------
-    scatter : Creates 2D scatter plot from SWIFT data
+    scatter
+        Creates 2D scatter plot from SWIFT data.
 
     Notes
     -----
-    Explicitly defining the types in this function allows
-    for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba ones.
-
+    Explicitly defining the types in this function allows for a 25-50% performance
+    improvement. In our testing, using numpy floats and integers is also an improvement
+    over using the numba ones.
     """
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS

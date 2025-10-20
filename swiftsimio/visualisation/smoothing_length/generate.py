@@ -16,38 +16,43 @@ def generate_smoothing_lengths(
     coordinates: cosmo_array,
     boxsize: cosmo_array,
     kernel_gamma: np.float32,
-    neighbours=32,
-    speedup_fac=2,
-    dimension=3,
-):
+    neighbours: int = 32,
+    speedup_fac: int = 2,
+    dimension: int = 3,
+) -> cosmo_array:
     """
     Generate smoothing lengths that encompass a number of neighbours specified here.
 
     Parameters
     ----------
     coordinates : cosmo_array
-        a cosmo_array that gives the co-ordinates of all particles
+        A cosmo_array that gives the co-ordinates of all particles.
+
     boxsize : cosmo_array
-        the size of the box (3D)
+        The size of the box (3D).
+
     kernel_gamma : np.float32
-        the kernel gamma of the kernel being used
+        The kernel gamma of the kernel being used.
+
     neighbours : int, optional
-        the number of neighbours to encompass
+        The number of neighbours to encompass.
+
     speedup_fac : int, optional
-        a parameter that neighbours is divided by to provide a speed-up
+        A parameter that neighbours is divided by to provide a speed-up
         by only searching for a lower number of neighbours. For example,
         if neighbours is 32, and speedup_fac is 2, we only search for 16
         (32 / 2) neighbours, and extend the smoothing length out to
         (speedup)**(1/dimension) such that we encompass an approximately
         higher number of neighbours. A factor of 2 gives smoothing lengths
         the same as the full search within 10%, good enough for visualisation.
+
     dimension : int, optional
-        the dimensionality of the problem (used for speedup_fac calculation).
+        The dimensionality of the problem (used for speedup_fac calculation).
 
     Returns
     -------
-    smoothing lengths : cosmo_array
-        a cosmo_array of smoothing lengths.
+    out : cosmo_array
+        A cosmo_array of smoothing lengths.
     """
     if not TREE_AVAILABLE:
         raise ImportError(

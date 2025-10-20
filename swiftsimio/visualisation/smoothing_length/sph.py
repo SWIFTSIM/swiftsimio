@@ -10,11 +10,12 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
     Parameters
     ----------
     data : SWIFTDataset
-        The Dataset from which slice will be extracted
+        The Dataset from which slice will be extracted.
 
     Returns
     -------
-    The extracted smoothing lengths.
+    out : cosmo_array
+        The extracted smoothing lengths.
     """
     return (
         data.smoothing_lengths

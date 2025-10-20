@@ -26,6 +26,28 @@ def generate_units(
        metadata.unit.unit_fields. This allows the specification of a new particle type and
     metadata.unit.unit_fields. This allows the specification of a new particle type and
     the values and types associated with that type.
+
+    Parameters
+    ----------
+    mass : Unit
+        The mass unit.
+
+    length : Unit
+        The length unit.
+
+    time : Unit
+        The time unit.
+
+    current : Unit
+        The current unit.
+
+    temperature : Unit
+        The temperature unit.
+
+    Returns
+    -------
+    out : dict[str, Unit]
+        A dictionary mapping field names to units.
     """
     dict_out = swuf.generate_units(mass, length, time, current, temperature)
 
@@ -63,6 +85,19 @@ def generate_cosmology(
     from metadata.cosmology. This allows the specification of a new particle type and
     affects how the type is influenced by cosmology. Required only for reading in new
     particle types.
+
+    Parameters
+    ----------
+    scale_factor : float
+        The scale factor.
+
+    gamma : float
+        The gas adiabatic index.
+
+    Returns
+    -------
+    out : dict[str, dict[str, cosmo_factor]]
+        The mapping between particle types and cosmology metadata dicts.
     """
 
     def cosmo_factory(a_dependence: Expr) -> cosmo_factor:

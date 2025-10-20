@@ -14,18 +14,18 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
 
     Parameters
     ----------
-    vector: np.array[float64]
+    vector : np.ndarray[float64]
         3D vector describing the top-down direction that you wish
         to rotate to. For example, this could be the angular momentum
         vector for a galaxy if you wish to produce a top-down projection.
 
-    axis: str, optional
+    axis : str, optional
         String describing the axis to project along. This should be one
         of x, y, or z. Defaults to z.
 
     Returns
     -------
-    rotation_matrix: np.array[float64]
+    out : np.ndarray[float64]
         Rotation matrix (3x3).
     """
     normed_vector = vector / np.linalg.norm(vector)

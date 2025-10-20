@@ -6,7 +6,6 @@ The :mod:`~swiftsimio.visualisation` sub-module provides visualisation tools.
 """
 
 import h5py
-from typing import Optional as _Optional, Union as _Union
 
 from .reader import SWIFTDataset
 from .snapshot_writer import SWIFTSnapshotWriter
@@ -65,25 +64,25 @@ __all__ = [
 name = "swiftsimio"
 
 
-def validate_file(filename: str):
+def validate_file(filename: str) -> bool:
     """
     Check that the provided file is a SWIFT dataset.
 
     Parameters
     ----------
     filename : str
-        name of file we want to check is a dataset
+        Name of file we want to check is a dataset.
 
-    Return
-    ------
-    bool
-        if `filename` is a SWIFT dataset return True,
-        otherwise raise exception
+    Returns
+    -------
+    out : bool
+        If ``filename`` is a SWIFT dataset return ``True``,
+        otherwise raise exception.
 
     Raises
     ------
     KeyError
-        Crash if the file is not a SWIFT data file
+        If the file is not a SWIFT data file.
     """
     try:
         with h5py.File(filename, "r") as handle:
@@ -96,7 +95,7 @@ def validate_file(filename: str):
 
 
 def mask(
-    filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True
+    filename: str, spatial_only: bool = True, safe_padding: bool | float = True
 ) -> SWIFTMask:
     """
     Set up a mask to apply to a :mod:`swiftsimio` dataset.
@@ -129,7 +128,7 @@ def mask(
     Returns
     -------
     SWIFTMask
-        empty mask object set up with the correct units and metadata
+        Empty mask object set up with the correct units and metadata.
 
     Notes
     -----
@@ -147,16 +146,17 @@ def mask(
     )
 
 
-def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
+def load(filename: str, mask: SWIFTMask | None = None) -> SWIFTDataset:
     """
     Load a SWIFT dataset (snapshot, FOF or SOAP catalogue).
 
     Parameters
     ----------
     filename : str
-        SWIFT snapshot file to read
+        SWIFT snapshot file to read.
+
     mask : SWIFTMask, optional
-        mask to apply when reading dataset
+        Mask to apply when reading dataset.
     """
     return SWIFTDataset(filename, mask=mask)
 
@@ -168,7 +168,7 @@ def load_statistics(filename: str) -> SWIFTStatisticsFile:
     Parameters
     ----------
     filename : str
-        SWIFT statistics file path
+        SWIFT statistics file path.
     """
     return SWIFTStatisticsFile(filename=filename)
 

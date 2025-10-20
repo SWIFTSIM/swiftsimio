@@ -3,7 +3,6 @@
 import warnings
 import h5py
 import numpy as np
-from typing import Union
 
 from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
@@ -27,7 +26,7 @@ class SWIFTMask(object):
     Parameters
     ----------
     metadata : SWIFTMetadata
-        Metadata specifying masking for reading of snapshots
+        Metadata specifying masking for reading of snapshots.
 
     spatial_only : bool, optional
         If True (the default), you can only constrain spatially.
@@ -55,9 +54,9 @@ class SWIFTMask(object):
     def __init__(
         self,
         metadata: SWIFTMetadata,
-        spatial_only=True,
-        safe_padding: Union[bool, float] = _DEFAULT_SAFE_PADDING,
-    ):
+        spatial_only: bool = True,
+        safe_padding: bool | float = _DEFAULT_SAFE_PADDING,
+    ) -> None:
         self.metadata = metadata
         self.units = metadata.units
         self.spatial_only = spatial_only
@@ -170,7 +169,7 @@ class SWIFTMask(object):
 
         Returns
         -------
-        out : np.array[bool]
+        out : np.ndarray[bool]
             The requested mask.
 
         Raises
@@ -212,7 +211,7 @@ class SWIFTMask(object):
 
     def _unpack_cell_metadata(self) -> None:
         """
-        Unpacks the cell metadata into local (to the class) variables.
+        Unpack the cell metadata into local (to the class) variables.
 
         We do not read in information for empty cells.
         """
@@ -362,13 +361,15 @@ class SWIFTMask(object):
         quantity: str,
         lower: cosmo_quantity,
         upper: cosmo_quantity,
-    ):
+    ) -> None:
         """
         Constrain the mask further for a given particle type.
 
         Chooses only particles with a property bounded between lower and upper values.
 
-        We update the mask such that
+        We update the mask such that:
+
+        .. code-block:: python
 
             lower < group_name.quantity <= upper
 
@@ -377,20 +378,21 @@ class SWIFTMask(object):
         Parameters
         ----------
         group_name : str
-            particle type
+            Particle type.
 
         quantity : str
-            quantity being constrained
+            Quantity being constrained.
 
         lower : ~swiftsimio.objects.cosmo_quantity
-            constraint lower bound
+            Constraint lower bound.
 
         upper : ~swiftsimio.objects.cosmo_quantity
-            constraint upper bound
+            Constraint upper bound.
 
         See Also
         --------
-        constrain_spatial : method to generate spatially constrained cell mask
+        constrain_spatial
+            Method to generate spatially constrained cell mask.
         """
         if self.spatial_only:
             raise ValueError(
@@ -452,7 +454,7 @@ class SWIFTMask(object):
 
         return
 
-    def _generate_cell_mask(self, restrict) -> np.array:
+    def _generate_cell_mask(self, restrict: cosmo_array) -> np.array:
         """
         Generate a spatially restricted mask for cells.
 
@@ -462,27 +464,33 @@ class SWIFTMask(object):
 
         Parameters
         ----------
-        restrict : list
-            Restrict is a 3 length list that contains length two arrays giving
-            the lower and upper bounds for that axis, e.g.
+        restrict : cosmo_array
+            Restrict is a (3,2) cosmo_array giving the lower and upper bounds for each
+            axis, e.g.
 
-            restrict = [
-                [0.5, 0.7],
-                [0.1, 0.9],
-                [0.0, 0.1]
-            ]
+            .. code-block:: python
 
-            These values must have units associated with them.
+                restrict = cosmo_array(
+                    [
+                        [0.5, 0.7],
+                        [0.1, 0.9],
+                        [0.0, 0.1]
+                    ],
+                    u.Mpc,
+                    comoving=True,
+                    scale_factor=1.0,
+                    scale_exponent=1,
+                )
+
+        Returns
+        -------
+        cell_mask : np.ndarray[bool]
+            Mask to indicate which cells are within the specified spatial range.
 
         Raises
         ------
         ValueError
             If the mask boundaries are outside the interval [-Lbox/2, 3*Lbox/2].
-
-        Returns
-        -------
-        cell_mask : np.array[bool]
-            mask to indicate which cells are within the specified spatial range
         """
         if self.metadata.output_type in _GROUPCAT_OUTPUT_TYPES:
             cell_mask = {"shared": np.ones(len(self.centers), dtype=bool)}
@@ -548,7 +556,9 @@ class SWIFTMask(object):
 
         return cell_mask
 
-    def _update_spatial_mask(self, restrict, data_name: str, cell_mask: dict) -> None:
+    def _update_spatial_mask(
+        self, restrict: cosmo_array, data_name: str, cell_mask: dict
+    ) -> None:
         """
         Update the particle mask using the cell mask.
 
@@ -558,14 +568,14 @@ class SWIFTMask(object):
 
         Parameters
         ----------
-        restrict : list
-            currently unused
+        restrict : cosmo_array
+            Currently unused.
 
         data_name : str
-            underlying data to update (e.g. _gas, _shared)
+            Underlying data to update (e.g. ``_gas``, ``_shared``).
 
         cell_mask : dict
-            cell mask used to update the particle mask
+            Cell mask used to update the particle mask.
         """
         count_name = data_name[1:]  # Remove the underscore
 
@@ -591,7 +601,7 @@ class SWIFTMask(object):
 
         return
 
-    def constrain_spatial(self, restrict, intersect: bool = False) -> None:
+    def constrain_spatial(self, restrict: cosmo_array, intersect: bool = False) -> None:
         """
         Use the cell metadata to create a spatial mask.
 
@@ -600,27 +610,32 @@ class SWIFTMask(object):
         Parameters
         ----------
         restrict : list
-            length 3 list of length two arrays giving the lower and
-            upper bounds for that axis, e.g.
+            Restrict is a (3,2) cosmo_array giving the lower and upper bounds for each
+            axis, e.g.
 
-            restrict = [
-                [0.5, 0.7],
-                [0.1, 0.9],
-                [0.0, 0.1]
+            .. code-block:: python
 
-            ]
-
-            These values must have units associated with them. It is also acceptable
-            to have a row as None to not restrict in this direction.
+                restrict = cosmo_array(
+                    [
+                        [0.5, 0.7],
+                        [0.1, 0.9],
+                        [0.0, 0.1]
+                    ],
+                    u.Mpc,
+                    comoving=True,
+                    scale_factor=1.0,
+                    scale_exponent=1,
+                )
 
         intersect : bool
-            If `True`, intersect the spatial mask with any existing spatial mask to
+            If ``True``, intersect the spatial mask with any existing spatial mask to
             select two (or more) regions with repeated calls to `constrain_spatial`.
-            By default (`False`) any existing mask is overwritten.
+            By default (``False``) any existing mask is overwritten.
 
         See Also
         --------
-        constrain_mask : method to further refine mask
+        constrain_mask
+            Method to further refine mask.
         """
         if hasattr(self, "cell_mask") and intersect:
             # we already have a mask and are in intersect mode
@@ -660,7 +675,7 @@ class SWIFTMask(object):
 
         return
 
-    def constrain_index(self, index: int):
+    def constrain_index(self, index: int) -> None:
         """
         Constrain the mask to a single row.
 
@@ -689,7 +704,7 @@ class SWIFTMask(object):
 
         return
 
-    def constrain_indices(self, indices: list[int]):
+    def constrain_indices(self, indices: list[int]) -> None:
         """
         Constrain the mask to a list of rows.
 
@@ -734,7 +749,7 @@ class SWIFTMask(object):
 
         Returns
         -------
-        Dict[str, np.array], Dict[str, np.array]
+        out : dict[str, np.array], dict[str, np.array]
             Dictionaries containing the particle offets and counts for each particle
             type. For example, the particle counts dictionary would be of the form
 
@@ -748,7 +763,6 @@ class SWIFTMask(object):
             would be g_0 gas particles in the first cell, g_1 in the second, etc.).
             The structure of the dictionaries is the same for the offsets, with the
             arrays now storing the offset of the first particle in the cell.
-
         """
         if self.spatial_only:
             masked_counts = {}

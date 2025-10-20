@@ -23,7 +23,24 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 
-from typing import List, Optional
+
+def _convert_snake_to_camel(name: str) -> str:
+    """
+    Place underscore between words and make all lower case.
+
+    Parameters
+    ----------
+    name : str
+        Name in CamelCase.
+
+    Returns
+    -------
+    out : str
+        Converted name in snake_case.
+    """
+    # regular expression for camel case to snake case
+    # https://stackoverflow.com/a/1176023
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
 
 class SWIFTMetadata(ABC):
@@ -32,7 +49,7 @@ class SWIFTMetadata(ABC):
 
     Parameters
     ----------
-    filename : str
+    filename : Path
         Filename to read metadata from.
 
     units : SWIFTUnits
@@ -40,7 +57,7 @@ class SWIFTMetadata(ABC):
     """
 
     # Underlying path to the file that this metadata is associated with.
-    filename: str
+    filename: Path
     # The units object associated with this file. All SWIFT metadata objects
     # must use this units system.
     units: "SWIFTUnits"
@@ -61,7 +78,7 @@ class SWIFTMetadata(ABC):
     homogeneous_arrays: bool = False
 
     @abstractmethod
-    def __init__(self, filename, units: "SWIFTUnits"):
+    def __init__(self, filename: Path, units: "SWIFTUnits") -> None:
         raise NotImplementedError
 
     @property
@@ -488,30 +505,30 @@ class MappingTable(object):
 
     Parameters
     ----------
-    data: np.ndarray
+    data : np.ndarray
         The data array providing the mapping between the named
         columns. Should be of size N x M, where N is the number
         of elements in ``named_columns_x`` and M the number
         of elements in ``named_columns_y``.
 
-    named_columns_x: List[str]
+    named_columns_x : list[str]
         The names of the columns in the first axis.
 
-    named_columns_y: List[str]
+    named_columns_y : list[str]
         The names of the columns in the second axis.
 
-    named_columns_x_name: str
+    named_columns_x_name : str
         The name of the first mapping.
 
-    named_columns_y_name: str
+    named_columns_y_name : str
         The name of the second mapping.
     """
 
     def __init__(
         self,
         data: np.ndarray,
-        named_columns_x: List[str],
-        named_columns_y: List[str],
+        named_columns_x: list[str],
+        named_columns_y: list[str],
         named_columns_x_name: str,
         named_columns_y_name: str,
     ) -> None:
@@ -564,7 +581,7 @@ class SWIFTGroupMetadata(object):
 
     Parameters
     ----------
-    group: str
+    group : str
         The name of the group in the hdf5 file.
     group_name : str
         The corresponding group name for swiftsimio.
@@ -580,7 +597,7 @@ class SWIFTGroupMetadata(object):
         group_name: str,
         metadata: "SWIFTMetadata",
         scale_factor: float,
-    ):
+    ) -> None:
         self.group = group
         self.group_name = group_name
         self.metadata = metadata
@@ -635,12 +652,6 @@ class SWIFTGroupMetadata(object):
 
     def load_field_names(self) -> None:
         """Load in only the field names."""
-
-        # regular expression for camel case to snake case
-        # https://stackoverflow.com/a/1176023
-        def convert(name):
-            return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
-
         # Skip fields which are groups themselves
         self.field_paths = []
         self.field_names = []
@@ -648,7 +659,7 @@ class SWIFTGroupMetadata(object):
             # Skip fields which are groups themselves
             if f"{self.group}/{item}" not in self.metadata.present_groups:
                 self.field_paths.append(f"{self.group}/{item}")
-                self.field_names.append(convert(item))
+                self.field_names.append(_convert_snake_to_camel(item))
 
         return
 
@@ -800,7 +811,20 @@ class SWIFTGroupMetadata(object):
         """Load in the field cosmologies."""
         current_scale_factor = self.scale_factor
 
-        def get_cosmo(dataset):
+        def get_cosmo(dataset: str) -> cosmo_factor:
+            """
+            Generate a cosmo factor from the metadata.
+
+            Parameters
+            ----------
+            dataset : str
+                The name of the dataset to read metadata for.
+
+            Returns
+            -------
+            out : cosmo_factor
+                A :class:`~swiftsimio.objects.cosmo_factor` setup from the metadata.
+            """
             try:
                 cosmo_exponent = dataset.attrs["a-scale exponent"][0]
             except KeyError:
@@ -818,7 +842,7 @@ class SWIFTGroupMetadata(object):
     def load_physical(self) -> None:
         """Load in whether the field is saved as comoving or physical."""
 
-        def get_physical(dataset) -> bool:
+        def get_physical(dataset: h5py.Dataset) -> bool:
             """
             Check if the metadata item is stored in physical units.
 
@@ -847,12 +871,27 @@ class SWIFTGroupMetadata(object):
     def load_valid_transforms(self) -> None:
         """Load in whether the field can be converted to comoving."""
 
-        def get_valid_transform(dataset):
+        def get_valid_transform(dataset: h5py.Dataset) -> bool:
+            """
+            Retrieve the metadata giving whether comoving/physical conversion is allowed.
+
+            Parameters
+            ----------
+            dataset : str
+                The dataset to be checked.
+
+            Returns
+            -------
+            out : bool
+                ``True`` if conversion is allowed or metadata absent (old file), ``False``
+                otherwise.
+            """
             try:
                 valid_transform = (
                     dataset.attrs["Property can be converted to comoving"][0] == 1
                 )
             except KeyError:
+                # For backward compatibility default to True
                 valid_transform = True
             return valid_transform
 
@@ -929,27 +968,20 @@ class SWIFTUnits(object):
     Parameters
     ----------
     filename : Path
-        Name of file to read units from
+        Name of file to read units from.
 
-    handle: h5py.File, optional
+    handle : h5py.File, optional
         The h5py file handle, optional. Will open a new handle with the
         filename if required.
-
-    Attributes
-    ----------
-    mass : float
-        unit for mass used
-    length : float
-        unit for length used
-    time : float
-        unit for time used
-    current : float
-        unit for current used
-    temperature : float
-        unit for temperature used
     """
 
-    def __init__(self, filename: Path, handle: Optional[h5py.File] = None):
+    mass: unyt.unyt_quantity
+    length: unyt.unyt_quantity
+    time: unyt.unyt_quantity
+    current: unyt.unyt_quantity
+    temperature: unyt.unyt_quantity
+
+    def __init__(self, filename: Path, handle: h5py.File | None = None) -> None:
         self.filename = filename
         self._handle = handle
 
@@ -1010,22 +1042,22 @@ class SWIFTUnits(object):
             self._handle.close()
 
 
-def metadata_discriminator(filename: str, units: SWIFTUnits) -> "SWIFTMetadata":
+def metadata_discriminator(filename: Path, units: SWIFTUnits) -> "SWIFTMetadata":
     """
     Determine the type of metadata object to construct.
 
     Parameters
     ----------
-    filename : str
-        Name of the file to read metadata from
+    filename : Path
+        Name of the file to read metadata from.
 
     units : SWIFTUnits
-        The units object associated with the file
+        The units object associated with the file.
 
     Returns
     -------
     out : SWIFTMetadata
-        The appropriate metadata object for the file type
+        The appropriate metadata object for the file type.
     """
     # Old snapshots did not have this attribute, so we need to default to FullVolume
     file_type = units.handle["Header"].attrs.get("OutputType", "FullVolume")
@@ -1051,7 +1083,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     Parameters
     ----------
-    filename : str
+    filename : Path
         Filename to read metadata from.
 
     units : SWIFTUnits
@@ -1060,7 +1092,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     masking_valid: bool = True
 
-    def __init__(self, filename, units: SWIFTUnits) -> None:
+    def __init__(self, filename: Path, units: SWIFTUnits) -> None:
         self.filename = filename
         self.units = units
 
@@ -1117,31 +1149,12 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             available_data = []
 
         # Keys have form {X}To{Y}Mapping
-
-        # regular expression for camel case to snake case
-        # https://stackoverflow.com/a/1176023
-        def convert(name: str) -> str:
-            """
-            Place underscore between words and make all lower case.
-
-            Parameters
-            ----------
-            name : str
-                Name in CamelCase.
-
-            Returns
-            -------
-            out : str
-                Converted name in snake_case.
-            """
-            return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
-
         regex = r"([a-zA-Z]*)To([a-zA-Z]*)Mapping"
         compiled = re.compile(regex)
 
         for key, data in zip(available_keys, available_data):
             matched = compiled.matched(key)
-            snake_case = convert(key)
+            snake_case = _convert_snake_to_camel(key)
 
             if matched:
                 x = matched.group(1)
@@ -1178,7 +1191,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         return
 
     @property
-    def present_groups(self):
+    def present_groups(self) -> list[str]:
         """
         Get the groups containing datasets that are present in the file.
 
@@ -1222,13 +1235,26 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             The code information.
         """
 
-        def get_string(x):
-            return self.code[x].decode("utf-8")
+        def format_string(param: str) -> str:
+            """
+            Fetch a string value from metadata and decode.
+
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``code`` metadata.
+
+            Returns
+            -------
+            out : str
+                The decoded string value.
+            """
+            return self.code[param].decode("utf-8")
 
         output = (
-            f"{get_string('Code')} ({get_string('Git Branch')})\n"
-            f"{get_string('Git Revision')}\n"
-            f"{get_string('Git Date')}"
+            f"{format_string('Code')} ({format_string('Git Branch')})\n"
+            f"{format_string('Git Revision')}\n"
+            f"{format_string('Git Date')}"
         )
 
         return output
@@ -1249,12 +1275,25 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             The compiler information.
         """
 
-        def get_string(x):
-            return self.code[x].decode("utf-8")
+        def format_string(param: str) -> str:
+            """
+            Fetch a string value from metadata, decode and format.
+
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``code`` metadata.
+
+            Returns
+            -------
+            out : str
+                The decoded string value.
+            """
+            return self.code[param].decode("utf-8")
 
         output = (
-            f"{get_string('Compiler Name')} ({get_string('Compiler Version')})\n"
-            f"{get_string('MPI library')}"
+            f"{format_string('Compiler Name')} ({format_string('Compiler Version')})\n"
+            f"{format_string('MPI library')}"
         )
 
         return output
@@ -1276,13 +1315,26 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             The library information.
         """
 
-        def get_string(x):
-            return self.code[f"{x} library version"].decode("utf-8")
+        def format_string(param: str) -> str:
+            """
+            Fetch a string value from metadata, decode and format.
+
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``code`` metadata.
+
+            Returns
+            -------
+            out : str
+                The decoded string value.
+            """
+            return self.code[f"{param} library version"].decode("utf-8")
 
         output = (
-            f"FFTW v{get_string('FFTW')}\n"
-            f"GSL v{get_string('GSL')}\n"
-            f"HDF5 v{get_string('HDF5')}"
+            f"FFTW v{format_string('FFTW')}\n"
+            f"GSL v{format_string('GSL')}\n"
+            f"HDF5 v{format_string('HDF5')}"
         )
 
         return output
@@ -1305,22 +1357,61 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             Hydro scheme information.
         """
 
-        def get_float(x):
-            return "{:4.2f}".format(self.hydro_scheme[x][0])
+        def format_float(param: str) -> str:
+            """
+            Fetch a float value from metadata and format.
 
-        def get_int(x):
-            return int(self.hydro_scheme[x][0])
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``hydro_scheme`` metadata.
 
-        def get_string(x):
-            return self.hydro_scheme[x].decode("utf-8")
+            Returns
+            -------
+            out : str
+                The float value formatted to 2 decimal places.
+            """
+            return f"{self.hydro_scheme[param][0]:4.2f}"
+
+        def get_int(param: str) -> int:
+            """
+            Fetch an integer value from the metadata.
+
+            Parameters
+            ----------
+            param : int
+                The name of the field to retrieve from the ``hydro_scheme`` metadata.
+
+            Returns
+            -------
+            out : str
+                The integer value.
+            """
+            return int(self.hydro_scheme[param][0])
+
+        def format_string(param: str) -> str:
+            """
+            Fetch a string value from metadata and decode.
+
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``hydro_scheme`` metadata.
+
+            Returns
+            -------
+            out : str
+                The decoded string value.
+            """
+            return self.hydro_scheme[param].decode("utf-8")
 
         output = (
-            f"{get_string('Scheme')}\n"
-            f"{get_string('Kernel function')} in {get_int('Dimension')}D\n"
-            rf"$\eta$ = {get_float('Kernel eta')} "
-            rf"({get_float('Kernel target N_ngb')} $N_{{ngb}}$)"
+            f"{format_string('Scheme')}\n"
+            f"{format_string('Kernel function')} in {get_int('Dimension')}D\n"
+            rf"$\eta$ = {format_float('Kernel eta')} "
+            rf"({format_float('Kernel target N_ngb')} $N_{{ngb}}$)"
             "\n"
-            rf"$C_{{\rm CFL}}$ = {get_float('CFL parameter')}"
+            rf"$C_{{\rm CFL}}$ = {format_float('CFL parameter')}"
         )
 
         return output
@@ -1343,20 +1434,46 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             Viscosity scheme information.
         """
 
-        def get_float(x):
-            return "{:4.2f}".format(self.hydro_scheme[x][0])
+        def format_float(param: str) -> str:
+            """
+            Fetch a float value from metadata and format.
 
-        def get_string(x):
-            return self.hydro_scheme[x].decode("utf-8")
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``hydro_scheme`` metadata.
+
+            Returns
+            -------
+            out : str
+                The float value formatted to 2 decimal places.
+            """
+            return f"{self.hydro_scheme[param][0]:4.2f}"
+
+        def format_string(param: str) -> str:
+            """
+            Fetch a string value from metadata and decode.
+
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``hydro_scheme`` metadata.
+
+            Returns
+            -------
+            out : str
+                The decoded string value.
+            """
+            return self.hydro_scheme[param].decode("utf-8")
 
         output = (
-            f"{get_string('Viscosity Model')}\n"
-            rf"$\alpha_{{V, 0}}$ = {get_float('Alpha viscosity')}, "
-            rf"$\ell_V$ = {get_float('Viscosity decay length [internal units]')}, "
-            rf"$\beta_V$ = {get_float('Beta viscosity')}"
+            f"{format_string('Viscosity Model')}\n"
+            rf"$\alpha_{{V, 0}}$ = {format_float('Alpha viscosity')}, "
+            rf"$\ell_V$ = {format_float('Viscosity decay length [internal units]')}, "
+            rf"$\beta_V$ = {format_float('Beta viscosity')}"
             "\n"
-            rf"{get_float('Alpha viscosity (min)')} < $\alpha_V$ < "
-            rf"{get_float('Alpha viscosity (max)')}"
+            rf"{format_float('Alpha viscosity (min)')} < $\alpha_V$ < "
+            rf"{format_float('Alpha viscosity (max)')}"
         )
 
         return output
@@ -1377,15 +1494,28 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             Formatted diffusion scheme information.
         """
 
-        def get_float(x):
-            return "{:4.2f}".format(self.hydro_scheme[x][0])
+        def format_float(param: str) -> str:
+            """
+            Fetch a float value from metadata and format.
+
+            Parameters
+            ----------
+            param : str
+                The name of the field to retrieve from the ``hydro_scheme`` metadata.
+
+            Returns
+            -------
+            out : str
+                The float value formatted to 2 decimal places.
+            """
+            return f"{self.hydro_scheme[param][0]:4.2f}"
 
         output = (
-            rf"$\alpha_{{D, 0}}$ = {get_float('Diffusion alpha')}, "
-            rf"$\beta_D$ = {get_float('Diffusion beta')}"
+            rf"$\alpha_{{D, 0}}$ = {format_float('Diffusion alpha')}, "
+            rf"$\beta_D$ = {format_float('Diffusion beta')}"
             "\n"
-            rf"${get_float('Diffusion alpha (min)')} < "
-            rf"\alpha_D < {get_float('Diffusion alpha (max)')}$"
+            rf"${format_float('Diffusion alpha (min)')} < "
+            rf"\alpha_D < {format_float('Diffusion alpha (max)')}$"
         )
 
         return output
@@ -1431,7 +1561,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
     Parameters
     ----------
-    filename : str
+    filename : Path
         Filename to read metadata from.
 
     units : SWIFTUnits
@@ -1440,7 +1570,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
     homogeneous_arrays: bool = True
 
-    def __init__(self, filename: str, units: SWIFTUnits):
+    def __init__(self, filename: Path, units: SWIFTUnits) -> None:
         self.filename = filename
         self.units = units
 
@@ -1456,13 +1586,27 @@ class SWIFTFOFMetadata(SWIFTMetadata):
         return
 
     @property
-    def present_groups(self):
-        """The groups containing datasets that are present in the file."""
+    def present_groups(self) -> list[str]:
+        """
+        The groups containing datasets that are present in the file.
+
+        Returns
+        -------
+        out : list[str]
+            List of available subhalo types.
+        """
         return ["Groups"]
 
     @property
-    def present_group_names(self):
-        """The names of the groups that we want to expose."""
+    def present_group_names(self) -> list[str]:
+        """
+        Provide the names of the groups that we want to expose.
+
+        Returns
+        -------
+        out : list[str]
+            List of the available groups.
+        """
         return ["fof_groups"]
 
     @staticmethod
@@ -1491,7 +1635,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
     Parameters
     ----------
-    filename : str
+    filename : Path
         Filename to read metadata from.
 
     units : SWIFTUnits
@@ -1502,7 +1646,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
     shared_cell_counts: str = "Subhalos"
     homogeneous_arrays: bool = True
 
-    def __init__(self, filename: str, units: SWIFTUnits):
+    def __init__(self, filename: Path, units: SWIFTUnits) -> None:
         self.filename = filename
         self.units = units
 

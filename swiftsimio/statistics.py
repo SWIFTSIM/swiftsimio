@@ -3,8 +3,6 @@
 import unyt
 import re
 
-from typing import List, Dict
-
 from swiftsimio.accelerated import list_of_strings_to_arrays
 
 
@@ -14,18 +12,18 @@ class SWIFTStatisticsFile(object):
 
     Parameters
     ----------
-    filename: str
+    filename : str
         File name for the statistics file.
     """
 
     # Names from the header.
-    header_names: List[str]
+    header_names: list[str]
     # Units (unyt-based) from the header
-    header_units: Dict[str, unyt.unyt_quantity]
+    header_units: dict[str, unyt.unyt_quantity]
     # snake_case names from the header
-    header_snake_case_names: List[str]
+    header_snake_case_names: list[str]
     # Raw lines as strings, read from the file.
-    raw_lines: List[str]
+    raw_lines: list[str]
 
     def __init__(self, filename: str) -> None:
         self.filename = filename

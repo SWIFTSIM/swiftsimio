@@ -49,14 +49,17 @@ def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
     ``frac`` of values are within a retlative tolerance ``tol`` of their
     counterparts.
 
-    Paramters
-    ---------
+    Parameters
+    ----------
     a : ~swiftsimio.objects.cosmo_array
         The first array to compare.
+
     b : ~swiftsimio.objects.cosmo_array
-        The second array to compare
+        The second array to compare.
+
     frac : float
         The fraction of the values that must be within the tolerance.
+
     tol : float
         The relative tolerance for matching.
 

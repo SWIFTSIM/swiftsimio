@@ -4,11 +4,8 @@ Basic volume render for SPH data.
 Takes the 3D positions of the particles and projects them onto a grid.
 """
 
-from math import sqrt, ceil
 import numpy as np
-
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
-
 from swiftsimio.visualisation.slice_backends.sph import kernel, kernel_gamma
 
 
@@ -33,41 +30,41 @@ def scatter(
 
     Parameters
     ----------
-    x : np.np.array[np.float64]
-        np.array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.np.array[np.float64]
-        np.array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    z : np.np.array[np.float64]
-        np.array of z-positions of the particles. Must be bounded by [0, 1].
+    z : np.ndarray[np.float64]
+        Array of z-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.np.array[np.float32]
-        np.array of masses (or otherwise weights) of the particles
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    h : np.np.array[np.float32]
-        np.array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of voxels along one axis, i.e. this returns a cube
+        The number of voxels along one axis, i.e. this returns a cube
         of res * res * res.
 
-    box_x: np.float64
-        box size in x, in the same rescaled length units as x, y and z.
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_y: np.float64
-        box size in y, in the same rescaled length units as x, y and z.
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_z: np.float64
-        box size in z, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping
+    box_z : np.float64
+        Box size in z, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
 
     Returns
     -------
-    np.np.array[np.float32, np.float32, np.float32]
-        voxel grid of quantity
+    out : np.ndarray[np.float32, np.float32, np.float32]
+        Voxel grid of quantity.
 
     See Also
     --------
@@ -104,19 +101,19 @@ def scatter(
         xshift_max = 1
     else:
         xshift_min = -1  # x_min is always at x=0
-        xshift_max = ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
+        xshift_max = np.ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
         yshift_min = -1  # y_min is always at y=0
-        yshift_max = ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
+        yshift_max = np.ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
     if box_z == 0.0:
         zshift_min = 0
         zshift_max = 1
     else:
         zshift_min = -1  # z_min is always at z=0
-        zshift_max = ceil(1 / box_z) + 1  # tile the box to cover [0, 1]
+        zshift_max = np.ceil(1 / box_z) + 1  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
         x, y, z, m, h
@@ -164,7 +161,7 @@ def scatter(
                         ):
                             image[
                                 particle_cell_x, particle_cell_y, particle_cell_z
-                            ] += mass * inverse_cell_volume
+                            ] += (mass * inverse_cell_volume)
                     else:
                         # Now we loop over the square of cells that the kernel lives in
                         for cell_x in range(
@@ -206,7 +203,9 @@ def scatter(
                                     ) * pixel_width - np.float32(z_pos)
                                     distance_z_2 = distance_z * distance_z
 
-                                    r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
+                                    r = np.sqrt(
+                                        distance_x_2 + distance_y_2 + distance_z_2
+                                    )
 
                                     kernel_eval = kernel(r, kernel_width)
 
@@ -237,46 +236,46 @@ def scatter_limited_z(
 
     Parameters
     ----------
-    x : np.np.array[np.float64]
-        np.array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.np.array[np.float64]
-        np.array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    z : np.np.array[np.float64]
-        np.array of z-positions of the particles. Must be bounded by [0, 1].
+    z : np.ndarray[np.float64]
+        Array of z-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.np.array[np.float32]
-        np.array of masses (or otherwise weights) of the particles
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    h : np.np.array[np.float32]
-        np.array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of voxels along one axis, i.e. this returns a cube
+        The number of voxels along one axis, i.e. this returns a cube
         of res * res * res.
 
-    res_ratio_z: int
-        the number of voxels along the x and y axes relative to the z
+    res_ratio_z : int
+        The number of voxels along the x and y axes relative to the z
         axis. If this is, for instance, 8, and the res is 128, then the
         output np.array will be 128 x 128 x 16.
 
-    box_x: np.float64
-        box size in x, in the same rescaled length units as x, y and z.
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_y: np.float64
-        box size in y, in the same rescaled length units as x, y and z.
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_z: np.float64
-        box size in z, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping
+    box_z : np.float64
+        Box size in z, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
 
     Returns
     -------
-    np.np.array[np.float32, np.float32, np.float32]
-        voxel grid of quantity
+    out : np.ndarray[np.float32, np.float32, np.float32]
+        Voxel grid of quantity.
 
     See Also
     --------
@@ -383,7 +382,7 @@ def scatter_limited_z(
                         ):
                             image[
                                 particle_cell_x, particle_cell_y, particle_cell_z
-                            ] += mass * inverse_cell_volume
+                            ] += (mass * inverse_cell_volume)
                     else:
                         # Now we loop over the square of cells that the kernel lives in
                         for cell_x in range(
@@ -425,7 +424,9 @@ def scatter_limited_z(
                                     ) * pixel_width_z - np.float32(z_pos)
                                     distance_z_2 = distance_z * distance_z
 
-                                    r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
+                                    r = np.sqrt(
+                                        distance_x_2 + distance_y_2 + distance_z_2
+                                    )
 
                                     kernel_eval = kernel(r, kernel_width)
 
@@ -457,43 +458,43 @@ def scatter_parallel(
     Parameters
     ----------
     x : np.array of np.float64
-        np.array of x-positions of the particles. Must be bounded by [0, 1].
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
     y : np.array of np.float64
-        np.array of y-positions of the particles. Must be bounded by [0, 1].
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
     z : np.array of np.float64
-        np.array of z-positions of the particles. Must be bounded by [0, 1].
+        Array of z-positions of the particles. Must be bounded by [0, 1].
 
     m : np.array of np.float32
-        np.array of masses (or otherwise weights) of the particles
+        Array of masses (or otherwise weights) of the particles.
 
     h : np.array of np.float32
-        np.array of smoothing lengths of the particles
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of voxels along one axis, i.e. this returns a cube
+        The number of voxels along one axis, i.e. this returns a cube
         of res * res * res.
 
-    res_ratio_z: int
-        the number of voxels along the x and y axes relative to the z
+    res_ratio_z : int
+        The number of voxels along the x and y axes relative to the z.
 
-    box_x: np.float64
-        box size in x, in the same rescaled length units as x, y and z.
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_y: np.float64
-        box size in y, in the same rescaled length units as x, y and z.
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
-    box_z: np.float64
-        box size in z, in the same rescaled length units as x, y and z.
-        Used for periodic wrapping
+    box_z : np.float64
+        Box size in z, in the same rescaled length units as x, y and z.
+        Used for periodic wrapping.
 
     Returns
     -------
-    np.ndarray of np.float32
-        voxel grid of quantity
+    out : np.ndarray of np.float32
+        Voxel grid of quantity.
 
     See Also
     --------
@@ -506,7 +507,6 @@ def scatter_parallel(
     Explicitly defining the types in this function allows
     for a 25-50% performance improvement. In our testing, using numpy
     floats and integers is also an improvement over using the numba np.ones.
-
     """
     # Same as scatter, but executes in parallel! This is actually trivial,
     # we just make NUM_THREADS images and add them together at the end.

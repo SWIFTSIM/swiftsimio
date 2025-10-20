@@ -8,7 +8,7 @@ This includes:
 + numba/cuda: visualisation
 """
 
-from typing import Iterable, Callable
+from typing import Iterable, Callable, Any
 
 # TQDM
 try:
@@ -17,7 +17,7 @@ try:
     TQDM_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
 
-    def tqdm(x: Iterable, *args, **kwargs):
+    def tqdm(x: Iterable, *args: tuple[Any], **kwargs: dict[str, Any]) -> Iterable:
         """
         Mock the main tqdm function for use if it's unavailable.
 
@@ -25,6 +25,12 @@ except (ImportError, ModuleNotFoundError):
         ----------
         x : Iterable
             The iterable whose progress would be track by tqdm.
+
+        *args : tuple[Any]
+            Arbitrary additional arguments.
+
+        **kwargs : dict[str, Any]
+            Arbitrary additional kwargs.
 
         Returns
         -------
@@ -78,9 +84,17 @@ except (ImportError, ModuleNotFoundError):
             "(pip install numba)"
         )
 
-        def jit(*args, **kwargs) -> Callable:
+        def jit(*args: tuple[Any], **kwargs: dict[str, Any]) -> Callable:
             """
             Mock the numba jit function for use if not available.
+
+            Parameters
+            ----------
+            *args : tuple[Any]
+                Arbitrary arguments.
+
+            **kwargs : dict[str, Any]
+                Arbitrary kwargs.
 
             Returns
             -------

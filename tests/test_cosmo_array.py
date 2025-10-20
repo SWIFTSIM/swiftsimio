@@ -1,5 +1,6 @@
 """Tests the initialisation of a cosmo_array."""
 
+from typing import Callable
 import pytest
 import os
 import warnings
@@ -12,11 +13,21 @@ from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 savetxt_file = "saved_array.txt"
 
 
-def getfunc(fname):
+def getfunc(fname: str) -> Callable:
     """
     Test helper: get the function handle from a name.
 
     Possibly with attribute access.
+
+    Parameters
+    ----------
+    fname : str
+        Name of the numpy function.
+
+    Returns
+    -------
+    out : Callable
+        The function handle.
     """
     func = np
     for attr in fname.split("."):
@@ -24,22 +35,62 @@ def getfunc(fname):
     return func
 
 
-def ca(x, unit=u.Mpc):
-    """Test helper: turn an array into a cosmo_array."""
+def ca(x: np.ndarray, unit: u.Unit = u.Mpc) -> cosmo_array:
+    """
+    Test helper: turn an array into a cosmo_array.
+
+    Parameters
+    ----------
+    x : ndarray
+        The numerical array.
+
+    unit : Unit
+        The units for the array.
+
+    Returns
+    -------
+    out : cosmo_array
+        A cosmo_array with the requested data and units.
+    """
     return cosmo_array(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
-def cq(x, unit=u.Mpc):
-    """Test helper: turn a scalar into a cosmo_quantity."""
+def cq(x: float, unit: u.Unit = u.Mpc) -> cosmo_quantity:
+    """
+    Test helper: turn a scalar into a cosmo_quantity.
+
+    Parameters
+    ----------
+    x : float
+        The numerical value.
+
+    unit : Unit
+        The units for the quantity.
+
+    Returns
+    -------
+    out : cosmo_quantity
+        A cosmo_quantity wih the requested data and units.
+    """
     return cosmo_quantity(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
-def arg_to_ua(arg):
+def arg_to_ua(arg: cosmo_array) -> u.unyt_array:
     """
     Test helper: recursively convert cosmo_* to unyt_*.
 
     Recurseively converts cosmo_* items in an argument (possibly an
     iterable) to their unyt_* equivalents.
+
+    Parameters
+    ----------
+    arg : cosmo_array
+        The cosmo object to be converted.
+
+    Returns
+    -------
+    out : unyt_array
+        The unyt version(s) of the input.
     """
     if type(arg) in (list, tuple):
         return type(arg)([arg_to_ua(a) for a in arg])
@@ -47,12 +98,26 @@ def arg_to_ua(arg):
         return to_ua(arg)
 
 
-def to_ua(x):
-    """Test helper to turn a cosmo_* object into its unyt_* equivalent."""
+def to_ua(x: cosmo_array) -> u.unyt_array:
+    """
+    Test helper to turn a cosmo_* object into its unyt_* equivalent.
+
+    Parameters
+    ----------
+    x : cosmo_array
+        The cosmo object to be converted.
+
+    Returns
+    -------
+    out : unyt_array
+        The unyt version of the input.
+    """
     return u.unyt_array(x) if hasattr(x, "comoving") else x
 
 
-def check_result(x_c, x_u, ignore_values=False):
+def check_result(
+    x_c: cosmo_array, x_u: u.unyt_array, ignore_values: bool = False
+) -> None:
     """
     Test helper to compare cosmo and unyt results.
 
@@ -63,6 +128,22 @@ def check_result(x_c, x_u, ignore_values=False):
      - that the type of the result makes sense, recursing if needed.
      - that the value of the result matches (unless ignore_values=False).
      - that the units match.
+
+    Parameters
+    ----------
+    x_c : cosmo_array
+        The cosmo_* object to be compared.
+
+    x_u : unyt_array
+        The unyt_* object to be compared.
+
+    ignore_values : bool
+        If ``True``, only compare non-data attributes.
+
+    Raises
+    ------
+    AssertionError
+        If the two inputs are not equivalent for attributes in common.
     """
     if x_u is None:
         assert x_c is None
@@ -285,7 +366,7 @@ class TestCosmoArrayInit:
             )
 
     def test_init_from_not_iterable_invalid(self):
-        """cosmo_array data must be iterable (scalar handled by cosmo_quantity)."""
+        """Check initializing with a scalar raises (should use cosmo_quantity)."""
         with pytest.raises(ValueError, match="cosmo_array data must be iterable"):
             cosmo_array(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
         # make sure inheriting class doesn't do anything silly:

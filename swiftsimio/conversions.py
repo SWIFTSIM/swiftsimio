@@ -2,6 +2,10 @@
 
 from swiftsimio.optional_packages import ASTROPY_AVAILABLE
 from swiftsimio.objects import cosmo_quantity
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from swiftsimio.metadata.objects import SWIFTUnits
 
 if ASTROPY_AVAILABLE:
     from astropy.cosmology import w0waCDM
@@ -10,22 +14,24 @@ if ASTROPY_AVAILABLE:
     import astropy.units as astropy_units
     import numpy as np
 
-    def swift_neutrinos_to_astropy(N_eff, N_ur, M_nu_eV, deg_nu):
+    def swift_neutrinos_to_astropy(
+        N_eff: float, N_ur: float, M_nu_eV: np.ndarray[float], deg_nu: np.ndarray[float]
+    ) -> astropy_units.Quantity:
         """
         Convert SWIFT metadata to the neutrino information needed by :mod:`astropy`.
 
         Parameters
         ----------
-        N_eff: float
+        N_eff : float
             Fractional number of effective massless neutrinos at high redshift.
 
-        N_ur: float
+        N_ur : float
             Fractional number of massless neutrino species.
 
-        M_nu_eV: array of floats
+        M_nu_eV : array of floats
             Masses in eV of massive species only, up to degeneracy.
 
-        deg_nu: array of floats
+        deg_nu : array of floats
             Fractional degeneracies of the massive neutrino species.
 
         Returns
@@ -53,7 +59,7 @@ if ASTROPY_AVAILABLE:
         ap_m_nu = np.array(ap_m_nu) * astropy_units.eV
         return ap_m_nu
 
-    def swift_cosmology_to_astropy(cosmo: dict, units) -> Cosmology:
+    def swift_cosmology_to_astropy(cosmo: dict, units: "SWIFTUnits") -> Cosmology:
         """
         Convert SWIFT metadata to an :mod:`astropy` cosmology.
 
@@ -144,16 +150,16 @@ if ASTROPY_AVAILABLE:
 
 else:
 
-    def swift_cosmology_to_astropy(cosmo: dict, units) -> dict:
+    def swift_cosmology_to_astropy(cosmo: dict, units: "SWIFTUnits") -> dict:
         """
         Mock converting to an astropy cosmology if unavailable.
 
         Parameters
         ----------
-        cosmo: dict
+        cosmo : dict
             Cosmology dictionary ready straight out of the SWIFT snapshot.
 
-        units: SWIFTUnits
+        units : SWIFTUnits
             The SWIFT Units instance associated with this snapshot.
 
         Returns

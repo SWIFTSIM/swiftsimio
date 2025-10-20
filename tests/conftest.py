@@ -3,6 +3,7 @@
 import os
 import subprocess
 import pytest
+from collections.abc import Generator
 import numpy as np
 import unyt
 from swiftsimio import Writer
@@ -63,32 +64,72 @@ def _requires(filename: str) -> str:
         "LegacyCosmologicalVolume.hdf5",
     ]
 )
-def cosmological_volume(request):
-    """Fixture provides single, distributed and legacy datasets to test on."""
+def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:
+    """
+    Fixture provides single, distributed and legacy datasets to test on.
+
+    Parameters
+    ----------
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
+    Yields
+    ------
+    out : Generator[str, None, None]
+        The file name, after downloading if required.
+    """
     yield _requires(request.param)
 
 
 @pytest.fixture
-def cosmological_volume_only_single():
-    """Fixture provides only a single (non-distributed) dataset to test on."""
+def cosmological_volume_only_single() -> Generator[str, None, None]:
+    """
+    Fixture provides only a single (non-distributed) dataset to test on.
+
+    Yields
+    ------
+    out : Generator[str, None, None]
+        The file name, after downloading if required.
+    """
     yield _requires("EagleSingle.hdf5")
 
 
 @pytest.fixture
-def cosmological_volume_only_distributed():
-    """Fixture provides only a distributed (not monolithic) dataset to test on."""
+def cosmological_volume_only_distributed() -> Generator[str, None, None]:
+    """
+    Fixture provides only a distributed (not monolithic) dataset to test on.
+
+    Yields
+    ------
+    out : Generator[str, None, None]
+        The file name, after downloading if required.
+    """
     yield _requires("EagleDistributed.hdf5")
 
 
 @pytest.fixture
-def cosmological_volume_dithered():
-    """Fixture provides a dithered dataset to test on."""
+def cosmological_volume_dithered() -> Generator[str, None, None]:
+    """
+    Fixture provides a dithered dataset to test on.
+
+    Yields
+    ------
+    out : Generator[str, None, None]
+        The file name, after downloading if required.
+    """
     yield _requires("LegacyCosmologicalVolumeDithered.hdf5")
 
 
 @pytest.fixture
-def soap_example():
-    """Fixture provides a sample SOAP file to test on."""
+def soap_example() -> Generator[str, None, None]:
+    """
+    Fixture provides a sample SOAP file to test on.
+
+    Yields
+    ------
+    out : Generator[str, None, None]
+        The file name, after downloading if required.
+    """
     yield _requires("SoapExample.hdf5")
 
 
@@ -100,14 +141,33 @@ def soap_example():
         "SoapExample.hdf5",
     ]
 )
-def snapshot_or_soap(request):
-    """Fixture provides distributed, single & legacy, and SOAP datasets to test on."""
+def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, None]:
+    """
+    Fixture provides distributed, single & legacy, and SOAP datasets to test on.
+
+    Parameters
+    ----------
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
+    Yields
+    ------
+    out : Generator[str, None, None]
+        The file name, after downloading if required.
+    """
     yield _requires(request.param)
 
 
 @pytest.fixture(scope="function")
-def simple_snapshot_data():
-    """Fixture provides a simple IC-like snapshot for testing."""
+def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
+    """
+    Fixture provides a simple IC-like snapshot for testing.
+
+    Yields
+    ------
+    out : Generator[tuple[Writer, str], None, None]
+        The Writer object and the name of the file it wrote.
+    """
     test_filename = "test_write_output_units.hdf5"
 
     # Box is 100 Mpc

@@ -1,6 +1,6 @@
 #!python3
 """
-swiftsnap checsk the metadata of a SWIFT snapshot easily from the command line.
+``swiftsnap``: check the metadata of a SWIFT snapshot easily from the command line.
 
 See the -h invocation for more details.
 """

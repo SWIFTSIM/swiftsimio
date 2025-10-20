@@ -1,7 +1,6 @@
 """Tools to get nearest-neighbour smoothing lengths."""
 
-from numpy import cbrt
-
+import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.visualisation.smoothing_length.sph import get_hsml as get_hsml_sph
 
@@ -20,14 +19,15 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
 
     Returns
     -------
-    The extracted "smoothing lengths".
+    out : cosmo_array
+        The extracted "smoothing lengths".
     """
     try:
-        hsml = cbrt(data.gas.volumes)
+        hsml = np.cbrt(data.gas.volumes)
     except AttributeError:
         try:
             # Try computing the volumes explicitly?
-            hsml = cbrt(data.gas.masses / data.gas.densities)
+            hsml = np.cbrt(data.gas.masses / data.gas.densities)
         except AttributeError:
             # Fall back to SPH behavior if above didn't work...
             hsml = get_hsml_sph(data)

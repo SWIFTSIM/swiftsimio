@@ -4,7 +4,8 @@ import unyt
 import h5py
 import numpy as np
 
-from typing import Union, List, Callable
+from typing import Callable
+from sympy import Symbol
 from functools import reduce
 
 from swiftsimio import metadata
@@ -12,7 +13,7 @@ from swiftsimio.objects import cosmo_array
 from swiftsimio.metadata.cosmology.cosmology_fields import a_exponents
 
 
-def _ptype_str_to_int(ptype_str):
+def _ptype_str_to_int(ptype_str: str) -> int:
     """
     Convert a string like `"PartType0"` to an integer (in this example, `0`).
 
@@ -37,36 +38,19 @@ class __SWIFTWriterParticleDataset(object):
     different feature set. Perhaps one day they will be merged, but for now this keeps the
     code used to manage both simple.
 
-    Methods
-    -------
-    generate_empty_properties(self)
-        generates the empty properties that will be accessed through the
-        setter and getters.
-    check_empty(self)
-        checks if all required datasets are empty.
-    check_consistent(self)
-        performs consistency checks on dataset
-    generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int)
-        automatically generates the smoothing lengths
-    write_particle_group(self, file_handle: h5py.File, compress: bool)
-        writes the particle group's required properties to file.
+    Parameters
+    ----------
+    unit_system : unyt.UnitSystem or str
+        Either be a string (e.g. "cgs"), or a UnitSystem as defined by unyt
+        specifying the units to be used. Users may wish to consider the
+        cosmological unit system provided in swiftsimio.units.cosmo_units.
+
+    particle_type : int
+        The particle type of the dataset. Numbering convention is the same as
+        SWIFT, with 0 corresponding to gas, etc. as usual.
     """
 
-    def __init__(self, unit_system: Union[unyt.UnitSystem, str], particle_type: int):
-        """
-        Generate the requested unit system.
-
-        Parameters
-        ----------
-        unit_system : unyt.UnitSystem or str
-            either be a string (e.g. "cgs"), or a UnitSystem as defined by unyt
-            specifying the units to be used. Users may wish to consider the
-            cosmological unit system provided in swiftsimio.units.cosmo_units.
-
-        particle_type : int
-            the particle type of the dataset. Numbering convention is the same as
-            SWIFT, with 0 corresponding to gas, etc.  as usual.
-        """
+    def __init__(self, unit_system: unyt.UnitSystem | str, particle_type: int) -> None:
         self.unit_system = unit_system
         self.particle_type = particle_type
 
@@ -78,7 +62,7 @@ class __SWIFTWriterParticleDataset(object):
 
         return
 
-    def generate_empty_properties(self):
+    def generate_empty_properties(self) -> None:
         """
         Generate the empty properties accessed by setters and getters.
 
@@ -121,8 +105,8 @@ class __SWIFTWriterParticleDataset(object):
 
         Returns
         -------
-        bool
-            True if above listed criteria are satisfied
+        out : bool
+            ``True`` if above listed criteria are satisfied.
         """
         self.requires_particle_ids_before_write = False
 
@@ -162,9 +146,10 @@ class __SWIFTWriterParticleDataset(object):
         Parameters
         ----------
         boxsize : cosmo_array or cosmo_quantity
-            size of SWIFT computational box
+            Size of SWIFT computational box.
+
         dimension : int
-            number of box dimensions
+            Number of box dimensions.
         """
         try:
             boxsize = boxsize[0]
@@ -180,16 +165,17 @@ class __SWIFTWriterParticleDataset(object):
 
         return
 
-    def write_particle_group(self, file_handle: h5py.File, compress: bool):
+    def write_particle_group(self, file_handle: h5py.File, compress: bool) -> None:
         """
         Write the particle group's required properties to file.
 
         Parameters
         ----------
         file_handle : h5py.File
-            file handle to write to
+            File handle to write to.
+
         compress : bool
-            flag to indicate whether to turn on gzip compression
+            Flag to indicate whether to turn on gzip compression.
         """
         particle_group = file_handle.create_group(self.particle_type)
 
@@ -209,16 +195,17 @@ class __SWIFTWriterParticleDataset(object):
 
     def write_particle_group_metadata(
         self, file_handle: h5py.File, dset_attributes: dict
-    ):
+    ) -> None:
         """
         Write the relevant metadata for a particle group.
 
         Parameters
         ----------
-        file_handle: h5py.File
-            hdf5 output file being written
-        dset_attributes: dict
-            dictionary containg metadata to attach to group
+        file_handle : h5py.File
+            HDF5 output file being written.
+
+        dset_attributes : dict
+            Dictionary containg metadata to attach to group.
         """
         for name, output_handle in getattr(
             metadata.required_fields, self.particle_name
@@ -235,13 +222,13 @@ class __SWIFTWriterParticleDataset(object):
 
         Parameters
         ----------
-        scale_factor: float
-            the cosmological scale factor of the dataset
+        scale_factor : float
+            The cosmological scale factor of the dataset.
 
         Returns
         -------
-        attributes_dict: dict
-            dictionary containg the attributes applying to the dataset
+        attributes_dict : dict
+            Dictionary containg the attributes applying to the dataset.
         """
         attributes_dict = {}
 
@@ -285,25 +272,26 @@ def get_dimensions(dimension: unyt.dimensions) -> dict:
 
     Parameters
     ----------
-    dimension: unyt.dimensions
-        dimension for which we're identifying the exponents
+    dimension : unyt.dimensions
+        Dimension for which we're identifying the exponents.
 
     Returns
     -------
-    exp_array: np.ndarray
-        array of exponents corresponding to each base dimension
+    exp_array : np.ndarray
+        Array of exponents corresponding to each base dimension.
 
     Examples
     --------
-    >>> get_dimensions(unyt.dimensions.velocity)
-    {
-        "(mass)": 0,
-        "(length)": 1,
-        "(time)": -1,
-        "(temperature)": 0,
-        "(current)": 0,
-    }
+    .. code-block:: python
 
+        >>> get_dimensions(unyt.dimensions.velocity)
+        {
+            "(mass)": 0,
+            "(length)": 1,
+            "(time)": -1,
+            "(temperature)": 0,
+            "(current)": 0,
+        }
     """
     # Get the names of all the dimensions
     dimensions = [str(x) for x in unyt.dimensions.base_dimensions[:5]]
@@ -330,47 +318,77 @@ def get_dimensions(dimension: unyt.dimensions) -> dict:
     return exp_array
 
 
-def generate_getter(name: str):
+def generate_getter(
+    name: str,
+) -> Callable[[__SWIFTWriterParticleDataset], unyt.unyt_array]:
     """
     Generate a function that gets the unyt array for name.
 
     Parameters
     ----------
     name : str
-        name of data field
+        Name of data field.
 
     Returns
     -------
-    getter : function
-        function that returns unyt array for `name`
+    getter : Callable
+        Function that returns unyt array for ``name``.
     """
 
-    def getter(self):
+    def getter(self: __SWIFTWriterParticleDataset) -> unyt.unyt_array:
+        """
+        Get the value of the dataset from the private name attribute.
+
+        Parameters
+        ----------
+        self : __SWIFTWriterParticleDataset
+           The dataset the attribute is attached to.
+
+        Returns
+        -------
+        out : unyt_array
+            The value of the named data field.
+        """
         return getattr(self, f"_{name}")
 
     return getter
 
 
-def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, str]):
+def generate_setter(
+    name: str, dimensions: unyt.dimensions, unit_system: unyt.UnitSystem | str
+) -> Callable[[__SWIFTWriterParticleDataset, unyt.unyt_array], None]:
     """
     Generate a function that sets self._name to the value that is passed to it.
 
     Parameters
     ----------
     name : str
-        string to set self._name to
+        String to set ``self._name`` to.
+
     dimensions : unyt.dimensions
-        physical dimension of self._name (for consistency check)
+        Physical dimension of ``self._name`` (for consistency check).
+
     unit_system : unyt.UnitSystem or str
-        unit system of self._name
+        Unit system of ``self._name``.
 
     Returns
     -------
-    setter : function
-        function to set self._name
+    out : Callable
+        Function to set ``self._name``.
     """
 
-    def setter(self, value: unyt.unyt_array):
+    def setter(self: __SWIFTWriterParticleDataset, value: unyt.unyt_array) -> None:
+        """
+        Set the named dataset to a value (private name attribute).
+
+        Parameters
+        ----------
+        self : __SWIFTWriterParticleDataset
+            The dataset the attribute is attached to.
+
+        value : unyt_array
+            The value to set the attribute to.
+        """
         if dimensions != 1:
             if isinstance(value, unyt.unyt_array):
                 if value.units.dimensions == dimensions:
@@ -391,22 +409,30 @@ def generate_setter(name: str, dimensions, unit_system: Union[unyt.UnitSystem, s
     return setter
 
 
-def generate_deleter(name: str):
+def generate_deleter(name: str) -> Callable[[__SWIFTWriterParticleDataset], None]:
     """
     Generate a function that destroys self._name (sets it back to None).
 
     Parameters
     ----------
     name : str
-        name of object to be destroyed
+        Name of object to be destroyed.
 
     Returns
     -------
-    deleter : function
-        function to delete self._name
+    out : Callable
+        Function to delete ``self._name``.
     """
 
-    def deleter(self):
+    def deleter(self: __SWIFTWriterParticleDataset) -> None:
+        """
+        Delete the named dataset (private name attribute).
+
+        Parameters
+        ----------
+        self : __SWIFTWriterParticleDataset
+            The dataset the attribute is attached to.
+        """
         current_value = getattr(self, f"_{name}")
         del current_value
         setattr(self, f"_{name}", None)
@@ -417,12 +443,12 @@ def generate_deleter(name: str):
 
 
 def generate_dataset(
-    unit_system: Union[unyt.UnitSystem, str],
+    unit_system: unyt.UnitSystem | str,
     particle_type: int,
     unit_fields_generate_units: Callable[
         ..., dict
     ] = metadata.unit_fields.generate_units,
-):
+) -> __SWIFTWriterParticleDataset:
     """
     Generate a SWIFTWriterParticleDataset _class_ for the given particle type.
 
@@ -439,18 +465,20 @@ def generate_dataset(
     Parameters
     ----------
     unit_system : unyt.UnitSystem or str
-        unit system of the dataset
+        Unit system of the dataset.
+
     particle_type : int
-        the particle type of the dataset. Numbering convention is the same as
-        SWIFT, with 0 corresponding to gas, etc.  as usual.
-    unit_fields_generate_units : callable, optional
-        collection of properties in metadata file for which to create setters
-        and getters
+        The particle type of the dataset. Numbering convention is the same as
+        SWIFT, with 0 corresponding to gas, etc. as usual.
+
+    unit_fields_generate_units : Callable, optional
+        Collection of properties in metadata file for which to create setters
+        and getters.
 
     Returns
     -------
     SWIFTWriterParticleDataset
-        an empty dataset for the given particle type
+        An empty dataset for the given particle type.
     """
     particle_name = metadata.particle_types.particle_name_underscores[particle_type]
     particle_nice_name = metadata.particle_types.particle_name_class[particle_type]
@@ -487,42 +515,44 @@ class SWIFTSnapshotWriter(object):
     + Fully consistent unit system
     + All required arrays for SWIFT to start
     + Required metadata (all automatic, apart from those required by __init__)
+
+    Parameters
+    ----------
+    unit_system : unyt.UnitSystem or str
+        Unit system for dataset.
+
+    boxsize : cosmo_array
+        Size of simulation box and associated units.
+
+    dimension : int, optional
+        Dimensions of simulation.
+
+    compress : bool, optional
+        Flag to turn on compression.
+
+    extra_header : dict, optional
+        Dictionary containing extra things to write to the header.
+
+    unit_fields_generate_units : Callable, optional
+        Collection of properties in metadata file for which to create setters
+        and getters.
+
+    scale_factor : np.float32
+        Scale factor associated with dataset. Defaults to 1.
     """
 
     def __init__(
         self,
-        unit_system: Union[unyt.UnitSystem, str],
+        unit_system: unyt.UnitSystem | str,
         boxsize: cosmo_array,
-        dimension=3,
-        compress=True,
-        extra_header: Union[None, dict] = None,
+        dimension: int = 3,
+        compress: bool = True,
+        extra_header: dict | None = None,
         unit_fields_generate_units: Callable[
             ..., dict
         ] = metadata.unit_fields.generate_units,
         scale_factor: np.float32 = 1.0,
-    ):
-        """
-        Create SWIFTSnapshotWriter object.
-
-        Parameters
-        ----------
-        unit_system : unyt.UnitSystem or str
-            unit system for dataset
-        boxsize : cosmo_array
-            size of simulation box and associated units
-        dimension : int, optional
-            dimensions of simulation
-        compress : bool, optional
-            flag to turn on compression
-        extra_header : dict, optional
-            dictionary containing extra things to write to the header
-        unit_fields_generate_units: callable, optional
-            collection of properties in metadata file for which to create setters
-            and getters
-        scale_factor: np.float32
-            scale factor associated with dataset. Defaults to 1
-
-        """
+    ) -> None:
         self.unit_fields_generate_units = unit_fields_generate_units
         if isinstance(unit_system, str):
             self.unit_system = unyt.unit_systems.unit_system_registry[unit_system]
@@ -550,7 +580,7 @@ class SWIFTSnapshotWriter(object):
 
         return
 
-    def create_particle_datasets(self):
+    def create_particle_datasets(self) -> None:
         """Create particle dataset for each particle type in the metadata."""
         for number, name in metadata.particle_types.particle_name_underscores.items():
             setattr(
@@ -563,14 +593,14 @@ class SWIFTSnapshotWriter(object):
 
         return
 
-    def _generate_ids(self, names_to_write: List):
+    def _generate_ids(self, names_to_write: list) -> None:
         """
         (Re-)generate all particle IDs for groups with names in names_to_write.
 
         Parameters
         ----------
         names_to_write : list
-            list of groups to regenerate ids for
+            List of groups to regenerate ids for.
         """
         numbers_of_particles = [getattr(self, name).n_part for name in names_to_write]
         # Start particle ID's at 1. When running with hydro + DM, partID = 0
@@ -587,7 +617,7 @@ class SWIFTSnapshotWriter(object):
 
         return
 
-    def _write_metadata(self, handle: h5py.File, names_to_write: List):
+    def _write_metadata(self, handle: h5py.File, names_to_write: list) -> None:
         """
         Write metadata to file.
 
@@ -597,9 +627,9 @@ class SWIFTSnapshotWriter(object):
         Parameters
         ----------
         handle : h5py.File
-            hdf5 file handle to write to
+            HDF5 file handle to write to.
         names_to_write : list
-            list of metadata fields to write
+            List of metadata fields to write.
         """
         part_types = (
             max(
@@ -642,7 +672,7 @@ class SWIFTSnapshotWriter(object):
 
         return
 
-    def _write_units(self, handle: h5py.File):
+    def _write_units(self, handle: h5py.File) -> None:
         """
         Write the unit information to file.
 
@@ -651,17 +681,30 @@ class SWIFTSnapshotWriter(object):
         Parameters
         ----------
         handle : h5py.File
-            hdf5 file to write units to
+            HDF5 file to write units to.
         """
         dim = unyt.dimensions
         cgs_base = unyt.unit_systems.cgs_unit_system.base_units
         base = self.unit_system.base_units
 
-        def get_conversion(type):
+        def get_conversion(unit_type: Symbol) -> np.ndarray[float]:
+            """
+            Find the conversion factor from base to cgs units.
+
+            Parameters
+            ----------
+            unit_type : sympy.Symbol
+                The type of unit to convert (mass, length, etc.).
+
+            Returns
+            -------
+            out : np.ndarray[float]
+                The conversion factor.
+            """
             # We need to find the correct unit (which is now stored as a sympy value,
             # why?!) and convert it to an unyt unit.
-            our_unit = unyt.unit_object.Unit(base[type])
-            cgs_unit = unyt.unit_object.Unit(cgs_base[type])
+            our_unit = unyt.unit_object.Unit(base[unit_type])
+            cgs_unit = unyt.unit_object.Unit(cgs_base[unit_type])
             conversion_factor = our_unit.get_conversion_factor(cgs_unit)[0]
 
             # We use the array because this is how swift outputs it, as a length
@@ -683,14 +726,14 @@ class SWIFTSnapshotWriter(object):
 
         return
 
-    def write(self, filename: str):
+    def write(self, filename: str) -> None:
         """
         Write the information in the dataset to file.
 
         Parameters
         ----------
         filename : str
-            file to write to
+            File to write to.
         """
         names_to_write = []
         generate_ids = False

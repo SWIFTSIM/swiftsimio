@@ -139,7 +139,7 @@ def generate_dimensions(
         Dictionary specifying dimensions.
 
     ..deprecated:: 3.1.0
-        Everything is read directly out of the snapshots now
+        Everything is read directly out of the snapshots now.
     """
     units = generate_unit_func(g, cm, s, statA, K)
 

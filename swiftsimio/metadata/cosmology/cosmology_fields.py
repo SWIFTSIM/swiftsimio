@@ -26,7 +26,7 @@ def generate_cosmology(
         Dictionary of ``cosmo_factor``s for particle fields.
 
     ..deprecated:: 3.1.0
-        This information is now directly read out of the snapshots
+        This information is now directly read out of the snapshots.
     """
 
     def cosmo_factory(a_dependence: Expr) -> cosmo_factor:

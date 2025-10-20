@@ -12,7 +12,7 @@ kernel_gamma = np.float32(1.897367)
 
 
 @cuda_jit("np.float32(np.float32, np.float32)", device=True)
-def kernel(r: np.float32, H: np.float32):
+def kernel(r: np.float32, H: np.float32) -> np.float32:
     """
     Single precision kernel implementation for swiftsimio.
 
@@ -21,25 +21,24 @@ def kernel(r: np.float32, H: np.float32):
     Parameters
     ----------
     r : np.float32
-        radius used in kernel computation
+        Radius used in kernel computation.
 
     H : np.float32
-        kernel width (i.e. radius of compact support for the kernel)
+        Kernel width (i.e. radius of compact support for the kernel).
 
     Returns
     -------
-    np.float32
-        Contribution to the density by the particle
-
-    References
-    ----------
-
-    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
+    out : np.float32
+        Contribution to the density by the particle.
 
     Notes
     -----
-    This is the cuda-compiled version of the kernel, designed for use
-    within the gpu backend. It has no double precision cousin.
+    This is the cuda-compiled version of the kernel, designed for use within the gpu
+    backend. It has no double precision cousin.
+
+    References
+    ----------
+    .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = np.float32(2.22817109)
 
@@ -72,47 +71,44 @@ def scatter_gpu(
     box_x: np.float64,
     box_y: np.float64,
     img: np.float32,
-):
+) -> None:
     """
     Create a weighted scatter plot.
 
-    Computes contributions to from particles with positions
-    (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
-    This includes periodic boundary effects.
+    Computes contributions to from particles with positions (`x`,`y`) with smoothing
+    lengths `h` weighted by quantities `m`. This includes periodic boundary effects.
 
     Parameters
     ----------
-    x : np.array[np.float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[np.float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.array[np.float32]
-        array of masses (or otherwise weights) of the particles
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    h : np.array[np.float32]
-        array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
-    box_x: np.float64
-        box size in x, in the same rescaled length units as x and y. Used
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
-    box_y: np.float64
-        box size in y, in the same rescaled length units as x and y. Used
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
-    img : np.array[np.float32]
+    img : np.ndarray[np.float32]
         The output image.
 
     Notes
     -----
-    Explicitly defining the types in this function allows
-    for a performance improvement. This is the cuda version,
-    and as such can only be ran on systems with a supported
-    GPU. Do not call this where cuda is not available (checks
-    can be performed using
-    ``swiftsimio.optional_packages.CUDA_AVAILABLE``)
+    Explicitly defining the types in this function allows for a performance improvement.
+    This is the cuda version, and as such can only be run on systems with a supported
+    GPU. Do not call this where cuda is not available (checks can be performed using
+    ``swiftsimio.optional_packages.CUDA_AVAILABLE``).
     """
     # Output array for our image
     res = img.shape[0]
@@ -217,43 +213,43 @@ def scatter(
 
     Parameters
     ----------
-    x : np.array[np.float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[np.float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.array[np.float32]
-        array of masses (or otherwise weights) of the particles
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    h : np.array[np.float32]
-        array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of pixels along one axis, i.e. this returns a square
+        The number of pixels along one axis, i.e. this returns a square
         of res * res.
 
-    box_x: np.float64
-        box size in x, in the same rescaled length units as x and y. Used
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
-    box_y: np.float64
-        box size in y, in the same rescaled length units as x and y. Used
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
     Returns
     -------
-    np.array[np.float32, np.float32, np.float32]
-        pixel grid of quantity
+    out : np.ndarray[np.float32, np.float32, np.float32]
+        Pixel grid of quantity.
 
     See Also
     --------
-    scatter : Creates 2D scatter plot from SWIFT data
+    scatter
+        Creates 2D scatter plot from SWIFT data.
 
     Notes
     -----
-    Explicitly defining the types in this function allows
-    a performance improvement.
+    Explicitly defining the types in this function allows a performance improvement.
     """
     if not CUDA_AVAILABLE or cuda is None:
         raise CudaSupportError(

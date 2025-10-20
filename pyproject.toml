@@ -88,11 +88,14 @@ indent-width = 4
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "D", "ANN001"]
+select = ["E4", "E7", "E9", "F", "D", "ANN"]
 ignore = []
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -121,6 +124,7 @@ checks = [
        "SS02",
        "SS03",
        "SS04",
+       "SS05",
        "PR01",
        "PR02",
        "PR03",
@@ -129,10 +133,15 @@ checks = [
        "PR06",
        "PR07",
        "PR08",
+       "PR09",
        "PR10",
+       # "RT02",  # would be good to have this
        "RT03",
        "RT04",
        "RT05",
+       "SA02",
+       "SA03",
+       "SS06",
 ]
 # Don't document class __init__ methods, put the docstring on the class object.
-exclude = ['\.__init__$']
+exclude = ['\.__init__$', '\.test_']

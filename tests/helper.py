@@ -6,10 +6,26 @@ import h5py
 import unyt as u
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
+from swiftsimio.masks import SWIFTMask
 
 
-def _mask_without_warning(fname, **kwargs):
-    """Create a mask suppressing expected warnings."""
+def _mask_without_warning(fname: str, **kwargs: dict) -> SWIFTMask:
+    """
+    Create a mask suppressing expected warnings.
+
+    Parameters
+    ----------
+    fname : str
+        File name to mask.
+
+    **kwargs : dict
+        Arbitrary additional kwargs.
+
+    Returns
+    -------
+    out : SWIFTMask
+        The mask object.
+    """
     with h5py.File(fname, "r") as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
         is_soap = f["/Header"].attrs.get("OutputType", "FullVolume") == "SOAP"
@@ -22,7 +38,7 @@ def _mask_without_warning(fname, **kwargs):
             return mask(fname, **kwargs)
 
 
-def create_in_memory_hdf5(filename="f1"):
+def create_in_memory_hdf5(filename: str = "f1") -> h5py.File:
     """
     Create an in-memory hdf5 file object.
 
@@ -39,18 +55,22 @@ def create_in_memory_hdf5(filename="f1"):
     return h5py.File(filename, driver="core", mode="a", backing_store=False)
 
 
-def create_n_particle_dataset(filename: str, output_name: str, num_parts: int = 2):
+def create_n_particle_dataset(
+    filename: str, output_name: str, num_parts: int = 2
+) -> None:
     """
     Create an hdf5 snapshot with a desired number of identical particles.
 
     Parameters
     ----------
-    filename: str
-        name of file from which to copy metadata
-    output_name: str
-        name of single particle snapshot
-    num_parts: int
-        number of particles to create (default: 2)
+    filename : str
+        Name of file from which to copy metadata.
+
+    output_name : str
+        Name of single particle snapshot.
+
+    num_parts : int
+        Number of particles to create (default: 2).
     """
     # Create a mask:
     # - in order to write metadata

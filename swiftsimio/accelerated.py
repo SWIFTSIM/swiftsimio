@@ -8,8 +8,6 @@ import numpy as np
 
 from h5py._hl.dataset import Dataset
 
-from typing import Tuple, Union, List
-
 from .optional_packages import jit, prange, NUM_THREADS
 
 __all__ = [
@@ -37,24 +35,27 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     Parameters
     ----------
     array : np.array of int
-        sorted list of IDs
+        Sorted list of IDs.
 
     Returns
     -------
-    np.ndarray
-        list of length two arrays corresponding to contiguous
-        ranges of IDs (inclusive) in the input array
+    out : np.ndarray
+        List of length two arrays corresponding to contiguous
+        ranges of IDs (inclusive) in the input array.
 
     Examples
     --------
-    The array
+    The array:
 
-    [0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13]
+    .. code-block::
 
-    would return
+        [0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13]
 
-    [[0, 4], [5, 8], [9, 10], [11, 14]]
+    would return:
 
+    .. code-block::
+
+        [[0, 4], [5, 8], [9, 10], [11, 14]]
     """
     output = []
 
@@ -81,7 +82,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 def read_ranges_from_file_unchunked(
     handle: Dataset,
     ranges: np.ndarray,
-    output_shape: Tuple,
+    output_shape: tuple,
     output_type: type = np.float64,
     columns: slice = np.s_[:],
 ) -> np.array:
@@ -95,22 +96,21 @@ def read_ranges_from_file_unchunked(
 
     Parameters
     ----------
-    handle: Dataset
-        HDF5 dataset to slice data from
+    handle : Dataset
+        HDF5 dataset to slice data from.
 
-    ranges: np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
 
-    output_shape: Tuple
+    output_shape : tuple
         Resultant shape of output.
 
-    output_type: type, optional
+    output_type : type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
-    columns: slice, optional
+    columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
-
 
     Returns
     -------
@@ -157,21 +157,22 @@ def read_ranges_from_file_unchunked(
 
 def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
     """
-    Indexes the dataset using the mask array.
+    Index the dataset using the mask array.
 
     This is not currently a feature of h5py. (March 2019)
 
     Parameters
     ----------
     handle : Dataset
-        data to be indexed
+        Data to be indexed.
+
     mask_array : np.array
-        mask used to index data
+        Mask used to index data.
 
     Returns
     -------
     np.array
-        Subset of the data specified by the mask
+        Subset of the data specified by the mask.
     """
     output_type = handle[0].dtype
     output_size = mask_array.size
@@ -189,17 +190,19 @@ def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     Parameters
     ----------
     ranges : np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+        Array of ranges (see :func:`~swiftsimio.accelerated.ranges_from_array`).
 
     Returns
     -------
     np.ndarray
-        two dimensional array of ranges
+        Two dimensional array of ranges.
 
     Examples
     --------
-    >>> concatenate_ranges([[1,5],[6,10],[12,15]])
-    np.ndarray([[1,10],[12,15]])
+    .. code-block:: python
+
+        >>> concatenate_ranges([[1,5],[6,10],[12,15]])
+        np.ndarray([[1,10],[12,15]])
     """
     concatenated = [list(ranges[0])]
 
@@ -219,23 +222,24 @@ def get_chunk_ranges(
     ranges: np.ndarray, chunk_size: np.ndarray, array_length: int
 ) -> np.ndarray:
     """
-    Return indices indicating which hdf5 chunk each range from `ranges` belongs to.
+    Return indices indicating which hdf5 chunk each range from ``ranges`` belongs to.
 
     Parameters
     ----------
     ranges : np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+        Array of ranges (see :func:`ranges_from_array`).
+
     chunk_size : int
-        size of the hdf5 dataset chunks
-    array_length: int
-        size of the dataset
+        Size of the hdf5 dataset chunks.
+
+    array_length : int
+        Size of the dataset.
 
     Returns
     -------
-    np.ndarray
-        two dimensional array of bounds for the chunks that contain each range from
-        `ranges`
-
+    out : np.ndarray
+        Two dimensional array of bounds for the chunks that contain each range from
+        ``ranges``.
     """
     chunk_ranges = []
     for bounds in ranges:
@@ -268,13 +272,12 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
     Parameters
     ----------
     ranges : np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+        Array of ranges (see :func:`ranges_from_array`).
 
     Returns
     -------
-    np.array
-        1D array of indices that fall within each range specified in `ranges`
-
+    out : np.array
+        1D array of indices that fall within each range specified in `ranges`.
     """
     length = np.asarray([bounds[1] - bounds[0] for bounds in ranges]).sum()
 
@@ -298,8 +301,8 @@ def extract_ranges_from_chunks(
     """
     Return elements from array that are located within specified ranges.
 
-    `array` is a portion of the dataset being read consisting of all the chunks
-    that contain the ranges specified in `ranges`. The `chunks` array contains
+    ``array`` is a portion of the dataset being read consisting of all the chunks
+    that contain the ranges specified in ``ranges``. The ``chunks`` array contains
     the indices of the upper and lower bounds of these chunks. To find the
     elements of the dataset that lie within the specified ranges we first create
     an array indexing which chunk each range belongs to. From this information
@@ -310,18 +313,19 @@ def extract_ranges_from_chunks(
     Parameters
     ----------
     array : np.ndarray
-        array containing data read in from snapshot
+        Array containing data read in from snapshot.
+
     chunks : np.ndarray
-        two dimensional array of bounds for the chunks that contain each range from
-        `ranges`
-    ranges: np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+        Two dimensional array of bounds for the chunks that contain each range from
+        ``ranges``.
+
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
 
     Returns
     -------
     np.ndarray
-        subset of `array` whose elements are within each range in `ranges`
-
+        Subset of ``array`` whose elements are within each range in ``ranges``.
     """
     # Find out which of the chunks in the chunks array each range in ranges belongs to
     n_ranges = len(ranges)
@@ -360,7 +364,7 @@ def extract_ranges_from_chunks(
 def read_ranges_from_file_chunked(
     handle: Dataset,
     ranges: np.ndarray,
-    output_shape: Tuple,
+    output_shape: tuple,
     output_type: type = np.float64,
     columns: slice = np.s_[:],
 ) -> np.array:
@@ -374,22 +378,21 @@ def read_ranges_from_file_chunked(
 
     Parameters
     ----------
-    handle: Dataset
-        HDF5 dataset to slice data from
+    handle : Dataset
+        HDF5 dataset to slice data from.
 
-    ranges: np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
 
-    output_shape: Tuple
+    output_shape : tuple
         Resultant shape of output.
 
-    output_type: type, optional
-        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+    output_type : type, optional
+        :mod:`numpy` type of output elements. If not supplied, we assume ``np.float64``.
 
-    columns: slice, optional
+    columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
-
 
     Returns
     -------
@@ -453,7 +456,7 @@ def read_ranges_from_file_chunked(
 def read_ranges_from_file(
     handle: Dataset,
     ranges: np.ndarray,
-    output_shape: Tuple,
+    output_shape: tuple,
     output_type: type = np.float64,
     columns: slice = np.s_[:],
 ) -> np.array:
@@ -462,22 +465,21 @@ def read_ranges_from_file(
 
     Parameters
     ----------
-    handle: Dataset
-        HDF5 dataset to slice data from
+    handle : Dataset
+        HDF5 dataset to slice data from.
 
-    ranges: np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
 
-    output_shape: Tuple
+    output_shape : tuple
         Resultant shape of output.
 
-    output_type: type, optional
+    output_type : type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
-    columns: slice, optional
+    columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
-
 
     Returns
     -------
@@ -486,9 +488,11 @@ def read_ranges_from_file(
 
     See Also
     --------
-    read_ranges_from_file_chunked: reads data within specified ranges for chunked hdf5
-    file read_ranges_from_file_unchunked: reads data within specified ranges for
-    unchunked hdf5 file
+    read_ranges_from_file_chunked
+        Reads data ranges for chunked hdf5 file.
+
+    read_ranges_from_file_unchunked
+        Reads data ranges for unchunked hdf5 file.
     """
     # It was found that the range size for which read_ranges_from_file_chunked was
     # faster than unchunked was approximately 5e5. For ranges larger than this the
@@ -506,25 +510,23 @@ def read_ranges_from_file(
     return read_ranges(handle, ranges, output_shape, output_type, columns)
 
 
-def list_of_strings_to_arrays(lines: List[str]) -> Union[np.array]:
+def list_of_strings_to_arrays(lines: list[str]) -> np.array:
     """
     Convert a list of space-delimited values to arrays.
 
     Parameters
     ----------
-    lines: List[str]
+    lines : list[str]
         List of strings containing numbers separated by a set of spaces.
-
 
     Returns
     -------
-    arrays: List[np.array]
+    arrays : list[np.array]
         List of numpy arrays, one per column.
-
 
     Notes
     -----
-    Currently not suitable for ``numba`` acceleration due to mixed datatype usage.
+    Currently not suitable for :mod:`numba` acceleration due to mixed datatype usage.
     """
     # Calculate types and set up arrays.
 
