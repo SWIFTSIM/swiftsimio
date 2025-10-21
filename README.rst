@@ -26,7 +26,7 @@ SWIFTsimIO
 
 .. INTRO_START_LABEL
 
-:mod:`swiftsimio` is a toolkit for reading data produced by the SWIFT_
+``swiftsimio`` is a toolkit for reading data produced by the SWIFT_
 astrophysics simulation code. It is used to ensure that all data have a
 symbolic unit attached, and can be used for visualisation. Another key
 feature is the use of the cell metadata in ``SWIFT`` snapshots to enable
@@ -34,15 +34,15 @@ efficient reading of sub-regions.
 
 The SWIFT_ astrophysical simulation code is used widely. There exists
 many ways of reading the data from SWIFT, which outputs HDF5 files.
-These range from reading directly using :mod:`h5py` to using a complex
-system such as :mod:`yt`; however these either are unsatisfactory
+These range from reading directly using ``h5py`` to using a complex
+system such as ``yt``; however these either are unsatisfactory
 (e.g. a lack of unit information in reading HDF5), or too complex for
-most use-cases. :mod:`swiftsimio` provides an object-oriented API to
+most use-cases. ``swiftsimio`` provides an object-oriented API to
 dynamically read data from SWIFT outputs, including FOF and SOAP
-catalogues. An extension module for :mod:`swiftsimio` for using
-catalogues and snapshots in tandem is available: :mod:`swiftgalaxy`.
+catalogues. An extension module for ``swiftsimio`` for using
+catalogues and snapshots in tandem is available: ``swiftgalaxy``.
 
-Getting set up with :mod:`swiftsimio` is easy; it (by design) has very few
+Getting set up with ``swiftsimio`` is easy; it (by design) has very few
 requirements. There are a number of optional packages that you can install
 to make the experience better and these are recommended.
 
@@ -50,7 +50,9 @@ to make the experience better and these are recommended.
 
 .. INTRO_END_LABEL
 
-Full documentation is available at [ReadTheDocs](http://swiftsimio.readthedocs.org).
+Full documentation is available at ReadTheDocs_.
+
+.. _ReadTheDocs: http://swiftsimio.readthedocs.org
    
 Requirements
 ------------
@@ -58,24 +60,24 @@ Requirements
 .. REQS_START_LABEL
 
 |Python version| is required. Unfortunately it is not
-possible to support :mod:`swiftsimio` on versions of python lower than this.
+possible to support ``swiftsimio`` on versions of python lower than this.
 
 Python packages
 ^^^^^^^^^^^^^^^
 
-+ :mod:`numpy`, required for the core numerical routines.
-+ :mod:`h5py`, required to read data from the SWIFT HDF5 output files.
-+ :mod:`unyt`, required for symbolic unit calculations (depends on sympy`).
-+ :mod:`astropy`, required to represent cosmology information.
-+ :mod:`numba`, highly recommended should you wish to use the in-built visualisation
++ ``numpy``, required for the core numerical routines.
++ ``h5py``, required to read data from the SWIFT HDF5 output files.
++ ``unyt``, required for symbolic unit calculations (depends on sympy``).
++ ``astropy``, required to represent cosmology information.
++ ``numba``, highly recommended should you wish to use the in-built visualisation
   tools.
 
 Optional packages
 ^^^^^^^^^^^^^^^^^
 
-+ :mod:`scipy`, required if you wish to generate smoothing lengths for particle types
++ ``scipy``, required if you wish to generate smoothing lengths for particle types
   that do not store this variable in the snapshots (e.g. dark matter)
-+ :mod:`tqdm`, required for progress bars for some long-running tasks. If not installed
++ ``tqdm``, required for progress bars for some long-running tasks. If not installed
   no progress bar will be shown.
 
 .. REQS_END_LABEL
@@ -85,7 +87,7 @@ Installing
 
 .. INSTALL_START_LABEL
    
-:mod:`swiftsimio` can be installed using the ``pip`` python packaging manager,
+``swiftsimio`` can be installed using the ``pip`` python packaging manager,
 or any other packaging manager that you wish to use:
 
 .. code-block::
@@ -132,13 +134,13 @@ diagram, with density and temperature given in CGS units:
 
 In the above:
 
-+ All metadata is read in when the :meth:`swiftsimio.load` function is called.
++ All metadata is read in when the ``swiftsimio.load`` function is called.
 + Only the densities and temperatures (corresponding to the ``PartType0/Densities`` and
   ``PartType0/Temperatures``) datasets are read in.
 + That data is only read in once the
-  :meth:`~swiftsimio.objects.cosmo_array.convert_to_cgs` method is called.
-+ :meth:`~swiftsimio.objects.cosmo_array.convert_to_cgs` converts data in-place;
-  i.e. it returns `None`.
+  ``swiftsimio.objects.cosmo_array.convert_to_cgs`` method is called.
++ ``swiftsimio.objects.cosmo_array.convert_to_cgs`` converts data in-place;
+  i.e. it returns ``None``.
 + The data is cached: it is not re-read when ``plt.scatter`` is called.
 
 .. USAGE_END_LABEL
@@ -148,7 +150,7 @@ Citing
 
 .. CITING_START_LABEL
 
-Please cite :mod:`swiftsimio` using the `JOSS paper`_:
+Please cite ``swiftsimio`` using the `JOSS paper`_:
 
 .. code-block:: bibtex
 		
@@ -192,7 +194,7 @@ Community
 
 Code contributions are very welcome! A good place to start is the `contributing guide`_ and how to set up a `development environment`_.
 
-:mod:`swiftsimio` is licensed under `GPL-3.0`_ and community members are expected to abide by the `code of conduct`_.
+``swiftsimio`` is licensed under `GPL-3.0`_ and community members are expected to abide by the `code of conduct`_.
 
 .. _contributing guide: https://github.com/SWIFTSIM/swiftsimio/blob/master/CONTRIBUTING.md
 .. _development environment: https://swiftsimio.readthedocs.io/en/latest/getting_started/index.html#installing
