@@ -166,7 +166,7 @@ def scatter(
                         ):
                             image[
                                 particle_cell_x, particle_cell_y, particle_cell_z
-                            ] += (mass * inverse_cell_volume)
+                            ] += mass * inverse_cell_volume
                     else:
                         # Now we loop over the square of cells that the kernel lives in
                         for cell_x in range(
@@ -392,7 +392,7 @@ def scatter_limited_z(
                         ):
                             image[
                                 particle_cell_x, particle_cell_y, particle_cell_z
-                            ] += (mass * inverse_cell_volume)
+                            ] += mass * inverse_cell_volume
                     else:
                         # Now we loop over the square of cells that the kernel lives in
                         for cell_x in range(
