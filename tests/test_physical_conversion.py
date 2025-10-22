@@ -1,5 +1,5 @@
-from swiftsimio import load
-from numpy import allclose
+from swiftsimio import load, cosmo_array
+import numpy as np
 import unyt as u
 
 
@@ -16,7 +16,7 @@ def test_convert(cosmological_volume_only_single):
 
     # allclose applied to cosmo_array's is aware of physical & comoving
     # make sure to compare bare arrays:
-    assert allclose(
+    assert np.allclose(
         coords.to_value(units) * data.metadata.a,
         coords_physical.to_value(units),
         rtol=1e-6,
@@ -36,6 +36,26 @@ def test_convert_to_value(cosmological_volume_only_single):
     coords_physical_values = coords.to_physical_value(units)
     coords_comoving_values = coords.to_comoving_value(units)
     print(coords_physical_values / (coords_comoving_values * data.metadata.a))
-    assert allclose(
+    assert np.allclose(
         coords_physical_values, coords_comoving_values * data.metadata.a, rtol=1e-6
     )
+
+
+def test_combine_physical_comoving(cosmological_volume_only_single):
+    """
+    Check that we can combine physical and comoving quantities.
+    """
+    comoving_arr = cosmo_array(
+        u.unyt_array(np.ones(5), units=u.kpc),
+        scale_factor=1.0,
+        scale_exponent=1,
+        comoving=True,
+    )
+    physical_arr = cosmo_array(
+        u.unyt_array(np.ones(5), units=u.kpc),
+        scale_factor=1.0,
+        scale_exponent=1,
+        comoving=False,
+        valid_transform=False,
+    )
+    physical_arr / comoving_arr
