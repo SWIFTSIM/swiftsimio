@@ -872,7 +872,6 @@ def _prepare_array_func_args(*args, _default_cm: bool = True, **kwargs) -> dict:
             for arg in args:
                 if not arg.valid_transform:
                     _default_cm = False
-                    # TODO: Raise warning?
                     break
         if _default_cm:
             args = [

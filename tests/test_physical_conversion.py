@@ -43,7 +43,9 @@ def test_convert_to_value(cosmological_volume_only_single):
 
 def test_combine_physical_comoving(cosmological_volume_only_single):
     """
-    Check that we can combine physical and comoving quantities.
+    When combining a physical and comoving array we default to converting them
+    both to comoving if possible. Check that we can still combine a physical-only
+    array (valid_transform=False) with a comoving array.
     """
     comoving_arr = cosmo_array(
         u.unyt_array(np.ones(5), units=u.kpc),
