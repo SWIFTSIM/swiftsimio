@@ -17,7 +17,7 @@ jobs:
       - name: Ruff checks
         uses: astral-sh/ruff-action@v3
       - name: Checkout swiftsimio
-        uses: actions@checkoutv4
+        uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
