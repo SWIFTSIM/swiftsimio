@@ -75,7 +75,7 @@ def scatter(
     See Also
     --------
     scatter_parallel
-        Parallel implementation of this function
+        Parallel implementation of this function.
 
     Notes
     -----

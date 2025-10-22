@@ -293,13 +293,13 @@ def slice_scatter_parallel(
     See Also
     --------
     scatter
-        Create 3D scatter plot of SWIFT data
+        Create 3D scatter plot of SWIFT data.
 
     scatter_parallel
-        Create 3D scatter plot of SWIFT data in parallel
+        Create 3D scatter plot of SWIFT data in parallel.
 
     slice_scatter
-        Create scatter plot of a slice of data
+        Create scatter plot of a slice of data.
 
     Notes
     -----

@@ -68,15 +68,20 @@ def scatter(
 
     See Also
     --------
-    scatter_parallel : Parallel implementation of this function
-    slice_scatter : Create scatter plot of a slice of data
-    slice_scatter_parallel : Create scatter plot of a slice of data in parallel
+    scatter_parallel
+        Parallel implementation of this function.
+
+    slice_scatter
+        Create scatter plot of a slice of data.
+
+    slice_scatter_parallel
+        Create scatter plot of a slice of data in parallel.
 
     Notes
     -----
-    Explicitly defining the types in this function allows
-    for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba np.ones.
+    Explicitly defining the types in this function allows for a 25-50% performance
+    improvement. In our testing, using numpy floats and integers is also an improvement
+    over using the numba np.ones.
     """
     # Output np.array for our image
     image = np.zeros((res, res, res), dtype=np.float32)
@@ -279,9 +284,14 @@ def scatter_limited_z(
 
     See Also
     --------
-    scatter_parallel : Parallel implementation of this function
-    slice_scatter : Create scatter plot of a slice of data
-    slice_scatter_parallel : Create scatter plot of a slice of data in parallel
+    scatter_parallel
+        Parallel implementation of this function.
+
+    slice_scatter
+        Create scatter plot of a slice of data.
+
+    slice_scatter_parallel
+        Create scatter plot of a slice of data in parallel.
 
     Notes
     -----
@@ -498,9 +508,14 @@ def scatter_parallel(
 
     See Also
     --------
-    scatter : Create voxel grid of quantity
-    slice_scatter : Create scatter plot of a slice of data
-    slice_scatter_parallel : Create scatter plot of a slice of data in parallel
+    scatter
+        Create voxel grid of quantity.
+
+    slice_scatter
+        Create scatter plot of a slice of data.
+
+    slice_scatter_parallel
+        Create scatter plot of a slice of data in parallel.
 
     Notes
     -----

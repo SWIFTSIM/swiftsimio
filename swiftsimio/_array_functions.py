@@ -1317,7 +1317,10 @@ implements(np.kron)(_default_binary_wrapper(unyt_kron, _multiply_cosmo_factor))
 
 @implements(np.histogram_bin_edges)
 def histogram_bin_edges(  # NOQA
-    a, bins=10, range=None, weights=None  # NOQA
+    a,
+    bins=10,
+    range=None,
+    weights=None,  # NOQA
 ):  # NOQA numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, bins=bins, range=range, weights=weights)
     if not isinstance(bins, str) and np.ndim(bins) == 1:
@@ -1348,7 +1351,11 @@ implements(np.linalg.svd)(
 
 @implements(np.histogram)
 def histogram(  # NOQA
-    a, bins=10, range=None, density=None, weights=None  # NOQA
+    a,
+    bins=10,
+    range=None,
+    density=None,
+    weights=None,  # NOQA
 ):  # NOQA numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         a, bins=bins, range=range, density=density, weights=weights
@@ -1373,7 +1380,12 @@ def histogram(  # NOQA
 
 @implements(np.histogram2d)
 def histogram2d(  # NOQA
-    x, y, bins=10, range=None, density=None, weights=None  # NOQA
+    x,
+    y,
+    bins=10,
+    range=None,
+    density=None,
+    weights=None,  # NOQA
 ):  # NOQA numpydoc ignore=GL08
     if range is not None:
         xrange, yrange = range
@@ -1474,7 +1486,11 @@ def histogram2d(  # NOQA
 
 @implements(np.histogramdd)
 def histogramdd(  # NOQA
-    sample, bins=10, range=None, density=None, weights=None  # NOQA
+    sample,
+    bins=10,
+    range=None,
+    density=None,
+    weights=None,  # NOQA
 ):  # NOQA numpydoc ignore=GL08
     D = len(sample)
     if range is not None:
@@ -1754,7 +1770,13 @@ def linspace(  # NOQA numpydoc ignore=GL08
 
 @implements(np.logspace)
 def logspace(  # NOQA
-    start, stop, num=50, endpoint=True, base=10.0, dtype=None, axis=0  # NOQA
+    start,
+    stop,
+    num=50,
+    endpoint=True,
+    base=10.0,
+    dtype=None,
+    axis=0,  # NOQA
 ):  # NOQA numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         start, stop, num=num, endpoint=endpoint, base=base, dtype=dtype, axis=axis
@@ -2163,7 +2185,11 @@ implements(np.tensordot)(
 
 @implements(np.unwrap)
 def unwrap(  # NOQA
-    p, discont=None, axis=-1, *, period=6.283_185_307_179_586  # NOQA
+    p,
+    discont=None,
+    axis=-1,
+    *,
+    period=6.283_185_307_179_586,  # NOQA
 ):  # NOQA numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         p, discont=discont, axis=axis, period=period
@@ -2189,7 +2215,10 @@ def interp(x, xp, fp, left=None, right=None, period=None):  # NOQA numpydoc igno
 
 @implements(np.array_repr)
 def array_repr(  # NOQA
-    arr, max_line_width=None, precision=None, suppress_small=None  # NOQA
+    arr,
+    max_line_width=None,
+    precision=None,
+    suppress_small=None,  # NOQA
 ):  # NOQA numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         arr,

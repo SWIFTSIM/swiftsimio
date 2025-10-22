@@ -122,9 +122,9 @@ class __SWIFTWriterParticleDataset(object):
                 sizes.append(getattr(self, f"_{name}").shape[0])
 
         # Now we figure out if everyone's the same (without numpy...)
-        assert reduce(
-            lambda x, y: x and y, [sizes[0] == x for x in sizes]
-        ), f"Arrays passed to {self.particle_name} dataset are not of the same size."
+        assert reduce(lambda x, y: x and y, [sizes[0] == x for x in sizes]), (
+            f"Arrays passed to {self.particle_name} dataset are not of the same size."
+        )
 
         # Make sure positions and velocities have the same shapes
         if getattr(self, "coordinates").shape != getattr(self, "velocities").shape:

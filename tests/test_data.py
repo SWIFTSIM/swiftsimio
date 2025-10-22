@@ -14,7 +14,7 @@ from os import remove
 import h5py
 
 from unyt import K, Msun
-from numpy import logical_and, isclose, float64
+from numpy import isclose
 from numpy import array as numpy_array
 
 from swiftsimio.objects import cosmo_array
@@ -111,7 +111,7 @@ def test_units(cosmological_volume):
         for property in properties:
             # Read the 0th element, and compare in CGS units.
             # We need to use doubles here as sometimes we can overflow!
-            our_units = getattr(field, property).astype(float64)[0]
+            our_units = getattr(field, property).astype(np.float64)[0]
 
             our_units.convert_to_cgs()
 
@@ -238,18 +238,18 @@ def test_reading_select_region_metadata(cosmological_volume, spatial_only):
 
     # Now need to repeat teh selection by hand:
 
-    subset_mask = logical_and.reduce(
+    subset_mask = np.logical_and.reduce(
         [
-            logical_and(x > y_lower, x < y_upper)
+            np.logical_and(x > y_lower, x < y_upper)
             for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
         ]
     )
 
     # We also need to repeat for the thing we just selected; the cells only give
     # us an _approximate_ selection!
-    selected_subset_mask = logical_and.reduce(
+    selected_subset_mask = np.logical_and.reduce(
         [
-            logical_and(x > y_lower, x < y_upper)
+            np.logical_and(x > y_lower, x < y_upper)
             for x, (y_lower, y_upper) in zip(selected_data.gas.coordinates.T, restrict)
         ]
     )

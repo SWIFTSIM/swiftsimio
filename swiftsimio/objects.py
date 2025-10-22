@@ -153,13 +153,13 @@ def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
         When an invalid combination of ``comoving`` and ``valid_transform`` is found.
     """
     if not obj.valid_transform:
-        assert (
-            not obj.comoving
-        ), "Cosmo arrays without a valid transform to comoving units must be physical"
+        assert not obj.comoving, (
+            "Cosmo arrays without a valid transform to comoving units must be physical"
+        )
     if obj.comoving:
-        assert (
-            obj.valid_transform
-        ), "Comoving cosmo_arrays must be able to be transformed to physical"
+        assert obj.valid_transform, (
+            "Comoving cosmo_arrays must be able to be transformed to physical"
+        )
 
 
 class InvalidConversionError(Exception):

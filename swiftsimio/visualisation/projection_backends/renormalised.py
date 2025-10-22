@@ -69,7 +69,7 @@ def scatter(
     See Also
     --------
     scatter_parallel
-        Parallel implementation of this function
+        Parallel implementation of this function.
 
     Notes
     -----
@@ -268,7 +268,7 @@ def scatter_parallel(
     See Also
     --------
     scatter
-        Creates 2D scatter plot from SWIFT data
+        Creates 2D scatter plot from SWIFT data.
 
     Notes
     -----

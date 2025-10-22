@@ -85,7 +85,8 @@ def render_gas(
 
     See Also
     --------
-    slice_gas_pixel_grid : Creates a 2D slice of a SWIFT dataset
+    slice_gas_pixel_grid
+        Creates a 2D slice of a SWIFT dataset.
     """
     data = data.gas
 

@@ -383,14 +383,14 @@ def folded_depositions_to_power_spectrum(
     wavenumber_centers.name = r"Wavenumbers $k$"
     box_volume = np.prod(boxsize)
     power_spectrum = cosmo_array(
-        np.np.zeros(number_of_wavenumber_bins),
+        np.zeros(number_of_wavenumber_bins),
         units=box_volume.units,
         comoving=box_volume.comoving,
         cosmo_factor=box_volume.cosmo_factor**-1,
         name="Power spectrum $P(k)$",
     )
     folding_tracker = np.ones(number_of_wavenumber_bins, dtype=float)
-    contributed_counts = np.np.zeros(number_of_wavenumber_bins, dtype=int)
+    contributed_counts = np.zeros(number_of_wavenumber_bins, dtype=int)
     corrected_wavenumber_centers = wavenumber_centers.copy()
     first_folding = min(depositions.keys())
     final_folding = max(depositions.keys())
@@ -568,9 +568,9 @@ def deposition_to_power_spectrum(
         raise ValueError("Deposition must be a cube")
 
     if cross_deposition is not None:
-        assert (
-            deposition.shape == cross_deposition.shape
-        ), "Depositions must have the same shape"
+        assert deposition.shape == cross_deposition.shape, (
+            "Depositions must have the same shape"
+        )
 
     folding = 2.0**folding
 
