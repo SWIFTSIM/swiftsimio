@@ -190,7 +190,7 @@ def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
 
     def wrapped(
         obj: object, *args: tuple[Any], **kwargs: dict[str, Any]
-    ) -> object:  # numpydoc ignore=GL08
+    ) -> object:  # # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
         return _copy_cosmo_array_attributes_if_present(obj, func(obj, *args, **kwargs))
 
@@ -284,7 +284,7 @@ def _ensure_result_is_cosmo_array_or_quantity(func: Callable) -> Callable:
 
     def wrapped(
         *args: tuple[Any], **kwargs: dict[str, Any]
-    ) -> object:  # numpydoc ignore=GL08
+    ) -> object:  # # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
         result = func(*args, **kwargs)
         if isinstance(result, tuple):
@@ -1266,22 +1266,22 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
 
 
 @implements(np.array2string)
-def array2string(  # NOQA numpydoc ignore=GL08
-    a,  # NOQA
-    max_line_width=None,  # NOQA
-    precision=None,  # NOQA
-    suppress_small=None,  # NOQA
-    separator=" ",  # NOQA
-    prefix="",  # NOQA
-    style=np._NoValue,  # NOQA
-    formatter=None,  # NOQA
-    threshold=None,  # NOQA
-    edgeitems=None,  # NOQA
-    sign=None,  # NOQA
-    floatmode=None,  # NOQA
-    suffix="",  # NOQA
+def array2string(  # noqa numpydoc ignore=GL08
+    a,  # noqa: ANN001
+    max_line_width=None,  # noqa: ANN001
+    precision=None,  # noqa: ANN001
+    suppress_small=None,  # noqa: ANN001
+    separator=" ",  # noqa: ANN001
+    prefix="",  # noqa: ANN001
+    style=np._NoValue,  # noqa: ANN001
+    formatter=None,  # noqa: ANN001
+    threshold=None,  # noqa: ANN001
+    edgeitems=None,  # noqa: ANN001
+    sign=None,  # noqa: ANN001
+    floatmode=None,  # noqa: ANN001
+    suffix="",  # noqa: ANN001
     *,
-    legacy=None,  # NOQA
+    legacy=None,  # noqa: ANN001
 ):
     res = unyt_array2string(
         a,
@@ -1316,12 +1316,12 @@ implements(np.kron)(_default_binary_wrapper(unyt_kron, _multiply_cosmo_factor))
 
 
 @implements(np.histogram_bin_edges)
-def histogram_bin_edges(  # NOQA
-    a,
-    bins=10,
-    range=None,
-    weights=None,  # NOQA
-):  # NOQA numpydoc ignore=GL08
+def histogram_bin_edges(  # noqa: ANN202
+    a,  # noqa: ANN001
+    bins=10,  # noqa: ANN001
+    range=None,  # noqa: ANN001
+    weights=None,  # noqa: ANN001
+):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, bins=bins, range=range, weights=weights)
     if not isinstance(bins, str) and np.ndim(bins) == 1:
         # we got bin edges as input
@@ -1350,13 +1350,13 @@ implements(np.linalg.svd)(
 
 
 @implements(np.histogram)
-def histogram(  # NOQA
-    a,
-    bins=10,
-    range=None,
-    density=None,
-    weights=None,  # NOQA
-):  # NOQA numpydoc ignore=GL08
+def histogram(  # noqa: ANN202
+    a,  # noqa: ANN001
+    bins=10,  # noqa: ANN001
+    range=None,  # noqa: ANN001
+    density=None,  # noqa: ANN001
+    weights=None,  # noqa: ANN001
+):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         a, bins=bins, range=range, density=density, weights=weights
     )
@@ -1379,14 +1379,14 @@ def histogram(  # NOQA
 
 
 @implements(np.histogram2d)
-def histogram2d(  # NOQA
-    x,
-    y,
-    bins=10,
-    range=None,
-    density=None,
-    weights=None,  # NOQA
-):  # NOQA numpydoc ignore=GL08
+def histogram2d(  # noqa: ANN202
+    x,  # noqa: ANN001
+    y,  # noqa: ANN001
+    bins=10,  # noqa: ANN001
+    range=None,  # noqa: ANN001
+    density=None,  # noqa: ANN001
+    weights=None,  # noqa: ANN001
+):  # noqa numpydoc ignore=GL08
     if range is not None:
         xrange, yrange = range
     else:
@@ -1485,13 +1485,13 @@ def histogram2d(  # NOQA
 
 
 @implements(np.histogramdd)
-def histogramdd(  # NOQA
-    sample,
-    bins=10,
-    range=None,
-    density=None,
-    weights=None,  # NOQA
-):  # NOQA numpydoc ignore=GL08
+def histogramdd(  # noqa: ANN202
+    sample,  # noqa: ANN001
+    bins=10,  # noqa: ANN001
+    range=None,  # noqa: ANN001
+    density=None,  # noqa: ANN001
+    weights=None,  # noqa: ANN001
+):  # noqa numpydoc ignore=GL08
     D = len(sample)
     if range is not None:
         ranges = range
@@ -1683,7 +1683,7 @@ def _prepare_array_block_args(lst: list, recursing: bool = False) -> dict:
 
 
 @implements(np.block)
-def block(arrays):  # NOQA numpydoc ignore=GL08
+def block(arrays):  # noqa numpydoc ignore=GL08
     # block is a special case since we need to recurse more than one level
     # down the list of arrays.
     helper_result_block = _prepare_array_block_args(arrays)
@@ -1739,16 +1739,16 @@ implements(np.array_equiv)(_default_comparison_wrapper(unyt_array_equiv))
 
 
 @implements(np.linspace)
-def linspace(  # NOQA numpydoc ignore=GL08
-    start,  # NOQA
-    stop,  # NOQA
-    num=50,  # NOQA
-    endpoint=True,  # NOQA
-    retstep=False,  # NOQA
-    dtype=None,  # NOQA
-    axis=0,  # NOQA
+def linspace(  # noqa numpydoc ignore=GL08
+    start,  # noqa: ANN001
+    stop,  # noqa: ANN001
+    num=50,  # noqa: ANN001
+    endpoint=True,  # noqa: ANN001
+    retstep=False,  # noqa: ANN001
+    dtype=None,  # noqa: ANN001
+    axis=0,  # noqa: ANN001
     *,
-    device=None,  # NOQA
+    device=None,  # noqa: ANN001
 ):
     helper_result = _prepare_array_func_args(
         start,
@@ -1769,15 +1769,15 @@ def linspace(  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.logspace)
-def logspace(  # NOQA
-    start,
-    stop,
-    num=50,
-    endpoint=True,
-    base=10.0,
-    dtype=None,
-    axis=0,  # NOQA
-):  # NOQA numpydoc ignore=GL08
+def logspace(  # noqa: ANN202
+    start,  # noqa: ANN001
+    stop,  # noqa: ANN001
+    num=50,  # noqa: ANN001
+    endpoint=True,  # noqa: ANN001
+    base=10.0,  # noqa: ANN001
+    dtype=None,  # noqa: ANN001
+    axis=0,  # noqa: ANN001
+):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         start, stop, num=num, endpoint=endpoint, base=base, dtype=dtype, axis=axis
     )
@@ -1792,7 +1792,7 @@ implements(np.geomspace)(
 
 
 @implements(np.copyto)
-def copyto(dst, src, casting="same_kind", where=True):  # NOQA numpydoc ignore=GL08
+def copyto(dst, src, casting="same_kind", where=True):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(dst, src, casting=casting, where=where)
     if isinstance(src, objects.cosmo_array) and isinstance(dst, objects.cosmo_array):
         # if we're copyting across two
@@ -1808,14 +1808,14 @@ def copyto(dst, src, casting="same_kind", where=True):  # NOQA numpydoc ignore=G
 
 
 @implements(np.prod)
-def prod(  # NOQA numpydoc ignore=GL08
-    a,  # NOQA
-    axis=None,  # NOQA
-    dtype=None,  # NOQA
-    out=None,  # NOQA
-    keepdims=np._NoValue,  # NOQA
-    initial=np._NoValue,  # NOQA
-    where=np._NoValue,  # NOQA
+def prod(  # noqa numpydoc ignore=GL08
+    a,  # noqa: ANN001
+    axis=None,  # noqa: ANN001
+    dtype=None,  # noqa: ANN001
+    out=None,  # noqa: ANN001
+    keepdims=np._NoValue,  # noqa: ANN001
+    initial=np._NoValue,  # noqa: ANN001
+    where=np._NoValue,  # noqa: ANN001
 ):
     helper_result = _prepare_array_func_args(
         a,
@@ -1848,7 +1848,7 @@ implements(np.nanquantile)(
 
 
 @implements(np.linalg.det)
-def linalg_det(a):  # NOQA numpydoc ignore=GL08
+def linalg_det(a):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a)
     ret_cf = _power_cosmo_factor(helper_result["cfs"][0], None, power=a.shape[0])
     res = unyt_linalg_det(*helper_result["args"], **helper_result["kwargs"])
@@ -1862,7 +1862,7 @@ implements(np.ptp)(_default_unary_wrapper(unyt_ptp, _preserve_cosmo_factor))
 
 
 @implements(np.pad)
-def pad(array, pad_width, mode="constant", **kwargs):  # NOQA numpydoc ignore=GL08
+def pad(array, pad_width, mode="constant", **kwargs):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(array, pad_width, mode=mode, **kwargs)
     # the number of options is huge, including user defined functions to handle data
     # let's just preserve the cosmo_factor of the input `array` and trust the user...
@@ -1872,7 +1872,7 @@ def pad(array, pad_width, mode="constant", **kwargs):  # NOQA numpydoc ignore=GL
 
 
 @implements(np.choose)
-def choose(a, choices, out=None, mode="raise"):  # NOQA numpydoc ignore=GL08
+def choose(a, choices, out=None, mode="raise"):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, choices, out=out, mode=mode)
     helper_result_choices = _prepare_array_func_args(*choices)
     ret_cf = _preserve_cosmo_factor(*helper_result_choices["cfs"])
@@ -1881,7 +1881,7 @@ def choose(a, choices, out=None, mode="raise"):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.insert)
-def insert(arr, obj, values, axis=None):  # NOQA numpydoc ignore=GL08
+def insert(arr, obj, values, axis=None):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(arr, obj, values, axis=axis)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     res = unyt_insert(*helper_result["args"], **helper_result["kwargs"])
@@ -1889,7 +1889,7 @@ def insert(arr, obj, values, axis=None):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.linalg.lstsq)
-def linalg_lstsq(a, b, rcond=None):  # NOQA numpydoc ignore=GL08
+def linalg_lstsq(a, b, rcond=None):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, b, rcond=rcond)
     ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     resid_cf = _power_cosmo_factor(helper_result["cfs"][1], None, power=2)
@@ -1904,7 +1904,7 @@ def linalg_lstsq(a, b, rcond=None):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.linalg.solve)
-def linalg_solve(a, b):  # NOQA numpydoc ignore=GL08
+def linalg_solve(a, b):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, b)
     ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     res = unyt_linalg_solve(*helper_result["args"], **helper_result["kwargs"])
@@ -1912,7 +1912,7 @@ def linalg_solve(a, b):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.linalg.tensorsolve)
-def linalg_tensorsolve(a, b, axes=None):  # NOQA numpydoc ignore=GL08
+def linalg_tensorsolve(a, b, axes=None):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, b, axes=axes)
     ret_cf = _divide_cosmo_factor(helper_result["cfs"][1], helper_result["cfs"][0])
     res = unyt_linalg_tensorsolve(*helper_result["args"], **helper_result["kwargs"])
@@ -1920,7 +1920,7 @@ def linalg_tensorsolve(a, b, axes=None):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.linalg.eig)
-def linalg_eig(a):  # NOQA numpydoc ignore=GL08
+def linalg_eig(a):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eig(*helper_result["args"], **helper_result["kwargs"])
@@ -1928,7 +1928,7 @@ def linalg_eig(a):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.linalg.eigh)
-def linalg_eigh(a, UPLO="L"):  # NOQA numpydoc ignore=GL08
+def linalg_eigh(a, UPLO="L"):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, UPLO=UPLO)
     ret_cf = _preserve_cosmo_factor(helper_result["cfs"][0])
     ress = unyt_linalg_eigh(*helper_result["args"], **helper_result["kwargs"])
@@ -1944,16 +1944,16 @@ implements(np.linalg.eigvalsh)(
 
 
 @implements(np.savetxt)
-def savetxt(  # NOQA numpydoc ignore=GL08
-    fname,  # NOQA
-    X,  # NOQA
-    fmt="%.18e",  # NOQA
-    delimiter=" ",  # NOQA
-    newline="\n",  # NOQA
-    header="",  # NOQA
-    footer="",  # NOQA
-    comments="# ",  # NOQA
-    encoding=None,  # NOQA
+def savetxt(  # noqa numpydoc ignore=GL08
+    fname,  # noqa: ANN001
+    X,  # noqa: ANN001
+    fmt="%.18e",  # noqa: ANN001
+    delimiter=" ",  # noqa: ANN001
+    newline="\n",  # noqa: ANN001
+    header="",  # noqa: ANN001
+    footer="",  # noqa: ANN001
+    comments="# ",  # noqa: ANN001
+    encoding=None,  # noqa: ANN001
 ):
     warnings.warn(
         "numpy.savetxt does not preserve units or cosmo_array information, "
@@ -1984,7 +1984,7 @@ def savetxt(  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.apply_over_axes)
-def apply_over_axes(func, a, axes):  # NOQA numpydoc ignore=GL08
+def apply_over_axes(func, a, axes):  # noqa numpydoc ignore=GL08
     res = func(a, axes[0])
     if len(axes) > 1:
         # this function is recursive by nature,
@@ -1995,7 +1995,7 @@ def apply_over_axes(func, a, axes):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.fill_diagonal)
-def fill_diagonal(a, val, wrap=False):  # NOQA numpydoc ignore=GL08
+def fill_diagonal(a, val, wrap=False):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, val, wrap=wrap)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][1])
     # must pass a directly here because it's modified in-place
@@ -2011,7 +2011,7 @@ implements(np.isin)(_default_comparison_wrapper(unyt_isin))
 
 
 @implements(np.place)
-def place(arr, mask, vals):  # NOQA numpydoc ignore=GL08
+def place(arr, mask, vals):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(arr, mask, vals)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -2025,7 +2025,7 @@ def place(arr, mask, vals):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.put)
-def put(a, ind, v, mode="raise"):  # NOQA numpydoc ignore=GL08
+def put(a, ind, v, mode="raise"):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, ind, v, mode=mode)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -2039,7 +2039,7 @@ def put(a, ind, v, mode="raise"):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.put_along_axis)
-def put_along_axis(arr, indices, values, axis):  # NOQA numpydoc ignore=GL08
+def put_along_axis(arr, indices, values, axis):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(arr, indices, values, axis)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -2053,7 +2053,7 @@ def put_along_axis(arr, indices, values, axis):  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.putmask)
-def putmask(a, mask, values):  # NOQA numpydoc ignore=GL08
+def putmask(a, mask, values):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(a, mask, values)
     _preserve_cosmo_factor(helper_result["cfs"][0], helper_result["cfs"][2])
     # must pass arr directly here because it's modified in-place
@@ -2072,7 +2072,7 @@ implements(np.searchsorted)(
 
 
 @implements(np.select)
-def select(condlist, choicelist, default=0):  # NOQA numpydoc ignore=GL08
+def select(condlist, choicelist, default=0):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(condlist, choicelist, default=default)
     helper_result_choicelist = _prepare_array_func_args(*choicelist)
     ret_cf = _preserve_cosmo_factor(*helper_result_choicelist["cfs"])
@@ -2090,22 +2090,22 @@ implements(np.setdiff1d)(
 
 
 @implements(np.sinc)
-def sinc(x):  # NOQA numpydoc ignore=GL08
+def sinc(x):  # noqa numpydoc ignore=GL08
     # unyt just casts to array and calls the numpy implementation
     # so let's just hand off to them
     return unyt_sinc(x)
 
 
 @implements(np.clip)
-def clip(  # NOQA numpydoc ignore=GL08
-    a,  # NOQA
-    a_min=np._NoValue,  # NOQA
-    a_max=np._NoValue,  # NOQA
-    out=None,  # NOQA
+def clip(  # noqa numpydoc ignore=GL08
+    a,  # noqa: ANN001
+    a_min=np._NoValue,  # noqa: ANN001
+    a_max=np._NoValue,  # noqa: ANN001
+    out=None,  # noqa: ANN001
     *,
-    min=np._NoValue,  # NOQA
-    max=np._NoValue,  # NOQA
-    **kwargs,  # NOQA
+    min=np._NoValue,  # noqa: ANN001
+    max=np._NoValue,  # noqa: ANN001
+    **kwargs,  # noqa: ANN003
 ):
     # can't work out how to properly handle min and max,
     # just leave them in kwargs I guess (might be a numpy version conflict?)
@@ -2128,7 +2128,7 @@ def clip(  # NOQA numpydoc ignore=GL08
 
 
 @implements(np.where)
-def where(condition, *args):  # NOQA numpydoc ignore=GL08
+def where(condition, *args):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(condition, *args)
     if len(args) == 0:  # just condition
         ret_cf = _return_without_cosmo_factor(helper_result["cfs"][0])
@@ -2146,14 +2146,14 @@ implements(np.tril)(_default_unary_wrapper(unyt_tril, _preserve_cosmo_factor))
 
 
 @implements(np.einsum)
-def einsum(  # NOQA numpydoc ignore=GL08
-    subscripts,  # NOQA
-    *operands,  # NOQA
-    out=None,  # NOQA
-    dtype=None,  # NOQA
-    order="K",  # NOQA
-    casting="safe",  # NOQA
-    optimize=False,  # NOQA
+def einsum(  # noqa numpydoc ignore=GL08
+    subscripts,  # noqa: ANN001
+    *operands,  # noqa: ANN002
+    out=None,  # noqa: ANN001
+    dtype=None,  # noqa: ANN001
+    order="K",  # noqa: ANN001
+    casting="safe",  # noqa: ANN001
+    optimize=False,  # noqa: ANN001
 ):
     helper_result = _prepare_array_func_args(
         subscripts,
@@ -2184,13 +2184,13 @@ implements(np.tensordot)(
 
 
 @implements(np.unwrap)
-def unwrap(  # NOQA
-    p,
-    discont=None,
-    axis=-1,
+def unwrap(  # noqa: ANN202
+    p,  # noqa: ANN001
+    discont=None,  # noqa: ANN001
+    axis=-1,  # noqa: ANN001
     *,
-    period=6.283_185_307_179_586,  # NOQA
-):  # NOQA numpydoc ignore=GL08
+    period=6.283_185_307_179_586,  # noqa: ANN001
+):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         p, discont=discont, axis=axis, period=period
     )
@@ -2204,7 +2204,7 @@ def unwrap(  # NOQA
 
 
 @implements(np.interp)
-def interp(x, xp, fp, left=None, right=None, period=None):  # NOQA numpydoc ignore=GL08
+def interp(x, xp, fp, left=None, right=None, period=None):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         x, xp, fp, left=left, right=right, period=period
     )
@@ -2214,12 +2214,12 @@ def interp(x, xp, fp, left=None, right=None, period=None):  # NOQA numpydoc igno
 
 
 @implements(np.array_repr)
-def array_repr(  # NOQA
-    arr,
-    max_line_width=None,
-    precision=None,
-    suppress_small=None,  # NOQA
-):  # NOQA numpydoc ignore=GL08
+def array_repr(  # noqa: ANN202
+    arr,  # noqa: ANN001
+    max_line_width=None,  # noqa: ANN001
+    precision=None,  # noqa: ANN001
+    suppress_small=None,  # noqa: ANN001
+):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(
         arr,
         max_line_width=max_line_width,
@@ -2243,7 +2243,7 @@ implements(np.linalg.outer)(
 
 
 @implements(np.trapezoid)
-def trapezoid(y, x=None, dx=1.0, axis=-1):  # NOQA numpydoc ignore=GL08
+def trapezoid(y, x=None, dx=1.0, axis=-1):  # noqa numpydoc ignore=GL08
     helper_result = _prepare_array_func_args(y, x=x, dx=dx, axis=axis)
     if x is None:
         ret_cf = _multiply_cosmo_factor(
@@ -2283,7 +2283,7 @@ implements(np.partition)(
 
 
 @implements(np.meshgrid)
-def meshgrid(*xi, **kwargs):  # NOQA numpydoc ignore=GL08
+def meshgrid(*xi, **kwargs):  # noqa numpydoc ignore=GL08
     # meshgrid is a unique case: arguments never interact with each other, so we don't
     # want to use our _prepare_array_func_args helper (that will try to coerce to
     # compatible comoving, cosmo_factor).
