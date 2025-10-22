@@ -14,9 +14,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Formatting
-        run: bash format.sh --check
+      - name: Ruff checks
+        uses: astral-sh/ruff-action@v3
+      - name: Checkout swiftsimio
+        uses: actions@checkoutv4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+	with:
+	  python-version: "3.12"
+      - name: Install numpydoc
+        run: pip install numpydoc
+      - name: Run docstring validation
+        run: python -m numpydoc lint **/*.py
 
   tests:
     needs: lint
