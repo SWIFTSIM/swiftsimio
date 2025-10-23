@@ -22,7 +22,7 @@ from swiftsimio.metadata.objects import (
     SWIFTSnapshotMetadata,
     SWIFTFOFMetadata,
     SWIFTSOAPMetadata,
-    metadata_discriminator,
+    _metadata_discriminator,
 )
 import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
@@ -31,7 +31,6 @@ import swiftsimio.visualisation as visualisation
 import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
-from swiftsimio.metadata.objects import _metadata_discriminator
 
 __all__ = [
     "SWIFTDataset",
@@ -43,7 +42,6 @@ __all__ = [
     "SWIFTSnapshotMetadata",
     "SWIFTFOFMetadata",
     "SWIFTSOAPMetadata",
-    "metadata_discriminator",
     "__version__",
     "__cite__",
     "metadata",
