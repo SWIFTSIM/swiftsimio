@@ -36,7 +36,7 @@ def _convert_snake_to_camel(name: str) -> str:
 
     Returns
     -------
-    out : str
+    str
         Converted name in snake_case.
     """
     # regular expression for camel case to snake case
@@ -390,7 +390,7 @@ class SWIFTMetadata(HandleProvider, ABC):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             The list of present groups.
         """
         raise NotImplementedError
@@ -408,7 +408,7 @@ class SWIFTMetadata(HandleProvider, ABC):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             The list of present group names.
         """
         raise NotImplementedError
@@ -420,7 +420,7 @@ class SWIFTMetadata(HandleProvider, ABC):
 
         Returns
         -------
-        out : bool
+        bool
             ``True`` if the file is a partial file, else ``False``.
         """
         return False
@@ -438,7 +438,7 @@ class SWIFTMetadata(HandleProvider, ABC):
 
         Returns
         -------
-        out : str
+        str
             The user-readable version of the name.
         """
         raise NotImplementedError
@@ -483,7 +483,7 @@ class MassTable(object):
 
         Returns
         -------
-        out : str
+        str
             The mass table description.
         """
         return (
@@ -497,7 +497,7 @@ class MassTable(object):
 
         Returns
         -------
-        out : str
+        str
             The mass table description.
         """
         return self.__str__()
@@ -556,7 +556,7 @@ class MappingTable(object):
 
         Returns
         -------
-        out : str
+        str
             The mapping table description.
         """
         return (
@@ -571,7 +571,7 @@ class MappingTable(object):
 
         Returns
         -------
-        out : str
+        str
             The mapping table description.
         """
         return f"{self.__str__()}. Raw data: \n{self.data}."
@@ -636,7 +636,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
         Returns
         -------
-        out : str
+        str
             The description.
         """
         return f"Metadata class for {self.group} ({self.group_name})"
@@ -647,7 +647,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
         Returns
         -------
-        out : str
+        str
             The description.
         """
         return self.__str__()
@@ -704,7 +704,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
             Returns
             -------
-            out : unyt.Unit or None
+            unyt.Unit or None
                 The loaded units.
             """
             units = 1.0
@@ -750,7 +750,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
             Returns
             -------
-            out : str
+            str
                 The description of the dataset.
             """
             try:
@@ -798,7 +798,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
             Returns
             -------
-            out : str
+            str
                 The compression metadata.
             """
             try:
@@ -836,7 +836,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
             Returns
             -------
-            out : cosmo_factor
+            cosmo_factor
                 A :class:`~swiftsimio.objects.cosmo_factor` setup from the metadata.
             """
             try:
@@ -865,7 +865,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
             Returns
             -------
-            out : bool
+            bool
                 ``True`` if stored in physical units, else ``False``.
             """
             try:
@@ -892,7 +892,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
             Returns
             -------
-            out : bool
+            bool
                 ``True`` if conversion is allowed or metadata absent (old file), ``False``
                 otherwise.
             """
@@ -942,7 +942,7 @@ class SWIFTGroupMetadata(HandleProvider):
 
                     Returns
                     -------
-                    out : int
+                    int
                         The number of upper case letters in the string.
                     """
                     return sum(1 for c in s if c.isupper())
@@ -1051,7 +1051,7 @@ def _metadata_discriminator(
 
     Returns
     -------
-    out : SWIFTMetadata
+    SWIFTMetadata
         The appropriate metadata object for the file type.
     """
     # Old snapshots did not have OutputType, so we need to default to FullVolume
@@ -1201,7 +1201,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             List of present groups.
         """
         types = np.where(np.array(getattr(self, "has_type", self.num_part)) != 0)[0]
@@ -1214,7 +1214,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             List of names to expose.
         """
         return [
@@ -1235,7 +1235,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             The code information.
         """
 
@@ -1250,7 +1250,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The decoded string value.
             """
             return self.code[param].decode("utf-8")
@@ -1275,7 +1275,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             The compiler information.
         """
 
@@ -1290,7 +1290,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The decoded string value.
             """
             return self.code[param].decode("utf-8")
@@ -1315,7 +1315,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             The library information.
         """
 
@@ -1330,7 +1330,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The decoded string value.
             """
             return self.code[f"{param} library version"].decode("utf-8")
@@ -1357,7 +1357,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             Hydro scheme information.
         """
 
@@ -1372,7 +1372,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The float value formatted to 2 decimal places.
             """
             return f"{self.hydro_scheme[param][0]:4.2f}"
@@ -1388,7 +1388,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The integer value.
             """
             return int(self.hydro_scheme[param][0])
@@ -1404,7 +1404,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The decoded string value.
             """
             return self.hydro_scheme[param].decode("utf-8")
@@ -1434,7 +1434,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             Viscosity scheme information.
         """
 
@@ -1449,7 +1449,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The float value formatted to 2 decimal places.
             """
             return f"{self.hydro_scheme[param][0]:4.2f}"
@@ -1465,7 +1465,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The decoded string value.
             """
             return self.hydro_scheme[param].decode("utf-8")
@@ -1494,7 +1494,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             Formatted diffusion scheme information.
         """
 
@@ -1509,7 +1509,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
             Returns
             -------
-            out : str
+            str
                 The float value formatted to 2 decimal places.
             """
             return f"{self.hydro_scheme[param][0]:4.2f}"
@@ -1531,7 +1531,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : bool
+        bool
             ``True`` if the file is a partial file, else ``False``.
         """
         # Partial snapshots have num_files_per_snapshot set to 1. Virtual snapshots
@@ -1551,7 +1551,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             The user-readable version of the name.
         """
         return metadata.particle_types.particle_name_class[group]
@@ -1601,7 +1601,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             List of available subhalo types.
         """
         return ["Groups"]
@@ -1613,7 +1613,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             List of the available groups.
         """
         return ["fof_groups"]
@@ -1630,7 +1630,7 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             The user-readable version of the name.
         """
         return "FOFGroups"
@@ -1688,7 +1688,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             List of available subhalo types.
         """
         return self.subhalo_types
@@ -1700,7 +1700,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             List of the available groups.
         """
         return [
@@ -1719,7 +1719,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
         Returns
         -------
-        out : str
+        str
             The de-acronymed name.
         """
         return metadata.soap_types.get_soap_name_nice(group)

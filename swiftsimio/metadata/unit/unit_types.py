@@ -53,7 +53,7 @@ def find_nearest_base_unit(
 
     Returns
     -------
-    out : unyt_quantity
+    unyt_quantity
         Output quantity corresponding to ``unit`` converted to the
         closest base unit.
 

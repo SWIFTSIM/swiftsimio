@@ -25,7 +25,7 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
 
     Returns
     -------
-    out : np.ndarray[float64]
+    np.ndarray[float64]
         Rotation matrix (3x3).
     """
     normed_vector = vector / np.linalg.norm(vector)

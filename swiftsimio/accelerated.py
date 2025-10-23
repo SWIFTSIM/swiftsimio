@@ -39,7 +39,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     Returns
     -------
-    out : np.ndarray
+    np.ndarray
         List of length two arrays corresponding to contiguous
         ranges of IDs (inclusive) in the input array.
 
@@ -114,7 +114,7 @@ def read_ranges_from_file_unchunked(
 
     Returns
     -------
-    array: np.ndarray
+    np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
     output = np.empty(output_shape, dtype=output_type)
@@ -171,7 +171,7 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
 
     Returns
     -------
-    np.array
+    np.ndarray
         Subset of the data specified by the mask.
     """
     output_type = handle[0].dtype
@@ -237,7 +237,7 @@ def get_chunk_ranges(
 
     Returns
     -------
-    out : np.ndarray
+    np.ndarray
         Two dimensional array of bounds for the chunks that contain each range from
         ``ranges``.
     """
@@ -276,7 +276,7 @@ def expand_ranges(ranges: np.ndarray) -> np.array:
 
     Returns
     -------
-    out : np.array
+    np.ndarray
         1D array of indices that fall within each range specified in `ranges`.
     """
     length = np.asarray([bounds[1] - bounds[0] for bounds in ranges]).sum()
@@ -396,7 +396,7 @@ def read_ranges_from_file_chunked(
 
     Returns
     -------
-    array: np.ndarray
+    np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
     chunk_size = handle.chunks[0]
@@ -483,7 +483,7 @@ def read_ranges_from_file(
 
     Returns
     -------
-    array: np.ndarray
+    np.ndarray
         Result from reading only the relevant values from ``handle``.
 
     See Also
@@ -521,7 +521,7 @@ def list_of_strings_to_arrays(lines: list[str]) -> np.array:
 
     Returns
     -------
-    arrays : list[np.array]
+    list[np.array]
         List of numpy arrays, one per column.
 
     Notes

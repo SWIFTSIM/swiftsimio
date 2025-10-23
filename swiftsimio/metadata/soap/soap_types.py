@@ -13,7 +13,7 @@ def get_soap_name_underscore(group: str) -> str:
 
     Returns
     -------
-    out : str
+    str
         The name to use in swiftsimio.
     """
     soap_name_underscores = {
@@ -41,7 +41,7 @@ def get_soap_name_nice(group: str) -> str:
 
     Returns
     -------
-    out : str
+    str
         The nice name.
     """
     soap_name_nice = {

@@ -46,7 +46,7 @@ def generate_units(
 
     Returns
     -------
-    out : dict[str, Unit]
+    dict[str, Unit]
         A dictionary mapping field names to units.
     """
     dict_out = swuf.generate_units(mass, length, time, current, temperature)
@@ -96,7 +96,7 @@ def generate_cosmology(
 
     Returns
     -------
-    out : dict[str, dict[str, cosmo_factor]]
+    dict[str, dict[str, cosmo_factor]]
         The mapping between particle types and cosmology metadata dicts.
     """
 
@@ -111,7 +111,7 @@ def generate_cosmology(
 
         Returns
         -------
-        out : cosmo_factor
+        cosmo_factor
             One of our ``cosmo_factor`` objects.
         """
         return cosmo_factor(a_dependence, scale_factor)

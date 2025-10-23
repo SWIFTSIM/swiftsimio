@@ -103,10 +103,10 @@ def _generate_getter(
 
     Returns
     -------
-    getter: Callable
-        A callable object that gets the value of the array that has been saved to
-        ``_name``. This function takes only ``self`` from the
-        :obj:``__SWIFTGroupDataset`` class.
+    Callable
+        A getter: callable object that gets the value of the array that has been saved to
+        ``_name``. This function takes only ``self`` from the ``__SWIFTGroupDataset``
+        class.
 
     Notes
     -----
@@ -137,7 +137,7 @@ def _generate_getter(
 
         Returns
         -------
-        out : cosmo_array
+        cosmo_array
             The dataset.
         """
         current_value = getattr(self, f"_{name}")
@@ -213,7 +213,7 @@ def _generate_setter(name: str) -> Callable[["__SWIFTGroupDataset", cosmo_array]
 
     Returns
     -------
-    setter : callable
+    Callable
         A callable object that sets the attribute specified by ``name`` to the value
         passed to it.
     """
@@ -248,7 +248,7 @@ def _generate_deleter(name: str) -> Callable[["__SWIFTGroupDataset"], None]:
 
     Returns
     -------
-    deleter : Callable
+    Callable
         Callable that deletes ``name`` field.
     """
 
@@ -342,7 +342,7 @@ class __SWIFTGroupDataset(HandleProvider):
 
         Returns
         -------
-        out : str
+        str
             The file location and available fields.
         """
         field_names = ", ".join(self.group_metadata.field_names)
@@ -354,7 +354,7 @@ class __SWIFTGroupDataset(HandleProvider):
 
         Returns
         -------
-        out : str
+        str
             The file location and available fields.
         """
         return self.__str__()
@@ -420,7 +420,7 @@ class __SWIFTNamedColumnDataset(object):
 
         Returns
         -------
-        out : str
+        str
             Formatted list of column names.
         """
         return (
@@ -434,7 +434,7 @@ class __SWIFTNamedColumnDataset(object):
 
         Returns
         -------
-        out : str
+        str
             Formatted list of column names.
         """
         return self.__str__()
@@ -445,7 +445,7 @@ class __SWIFTNamedColumnDataset(object):
 
         Returns
         -------
-        out : int
+        int
             The number of columns.
         """
         return len(self.named_columns)
@@ -461,7 +461,7 @@ class __SWIFTNamedColumnDataset(object):
 
         Returns
         -------
-        out : bool
+        bool
             ``True`` if the datasets match, ``False`` otherwise.
         """
         return self.named_columns == other.named_columns and self.name == other.name
@@ -505,7 +505,7 @@ def _generate_datasets(
 
     Returns
     -------
-    out : __SWIFTGroupDataset or __SWIFTNamedColumnDataset
+    __SWIFTGroupDataset or __SWIFTNamedColumnDataset
         The customized dataset object.
     """
     filename = group_metadata.filename
@@ -704,9 +704,9 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert self.filename == self.mask.filename, (
-                "Mask is for {self.mask.filename} but dataset is for {self.filename}."
-            )
+            assert (
+                self.filename == self.mask.filename
+            ), "Mask is for {self.mask.filename} but dataset is for {self.filename}."
             self.units = self.mask.units
         else:
             self.units = SWIFTUnits(self.filename, handle=self.handle)
@@ -722,9 +722,9 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert self.filename == self.mask.filename, (
-                "Mask is for {self.mask.filename} but dataset is for {self.filename}."
-            )
+            assert (
+                self.filename == self.mask.filename
+            ), "Mask is for {self.mask.filename} but dataset is for {self.filename}."
             self.metadata = self.mask.metadata
         else:
             self.metadata = _metadata_discriminator(

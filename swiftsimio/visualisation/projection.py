@@ -86,7 +86,7 @@ def project_pixel_grid(
 
     Returns
     -------
-    image : cosmo_array
+    cosmo_array
         Projected image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
 
@@ -234,7 +234,7 @@ def project_gas(
 
     Returns
     -------
-    image : cosmo_array
+    cosmo_array
         Projected image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
 

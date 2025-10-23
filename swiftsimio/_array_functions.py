@@ -148,7 +148,7 @@ def _copy_cosmo_array_attributes_if_present(
 
     Returns
     -------
-    out : :obj:`object`
+    :obj:`object`
         The destination object (with attributes copied if copy occurred).
     """
     if not (
@@ -184,7 +184,7 @@ def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
 
     Returns
     -------
-    out : callable
+    Callable
         The wrapped function.
     """
 
@@ -245,7 +245,7 @@ def _ensure_array_or_quantity_matches_shape(input_object: object) -> object:
 
     Returns
     -------
-    out : :obj:`object`
+    :obj:`object`
         A version of the input with container type matching data contents.
     """
     if (
@@ -278,7 +278,7 @@ def _ensure_result_is_cosmo_array_or_quantity(func: Callable) -> Callable:
 
     Returns
     -------
-    out : Callable
+    Callable
         The wrapped function.
     """
 
@@ -316,7 +316,7 @@ def _sqrt_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The square root of the input :class:`~swiftsimio.objects.cosmo_factor`.
     """
     return _power_cosmo_factor(cf, None, power=0.5)
@@ -341,7 +341,7 @@ def _multiply_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The product of the input :class:`~swiftsimio.objects.cosmo_factor`s.
     """
     return reduce(__binary_multiply_cosmo_factor, cfs)
@@ -369,7 +369,7 @@ def __binary_multiply_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The product of the :class:`~swiftsimio.objects.cosmo_factor`s.
     """
     if (cf1 is None) and (cf2 is None):
@@ -406,7 +406,7 @@ def _preserve_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The preserved :class:`~swiftsimio.objects.cosmo_factor`.
     """
     return reduce(__binary_preserve_cosmo_factor, cfs)
@@ -436,7 +436,7 @@ def __binary_preserve_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The preserved :class:`~swiftsimio.objects.cosmo_factor`s.
 
     Raises
@@ -498,7 +498,7 @@ def _power_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The exponentiated :class:`~swiftsimio.objects.cosmo_factor`s.
 
     Raises
@@ -540,7 +540,7 @@ def _square_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The squared :class:`~swiftsimio.objects.cosmo_factor`.
     """
     return _power_cosmo_factor(cf, None, power=2)
@@ -562,7 +562,7 @@ def _cbrt_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The cube root of the input :class:`~swiftsimio.objects.cosmo_factor`.
     """
     return _power_cosmo_factor(cf, None, power=1.0 / 3.0)
@@ -587,7 +587,7 @@ def _divide_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The ratio of the input :class:`~swiftsimio.objects.cosmo_factor`s.
     """
     return _multiply_cosmo_factor(cf1, _reciprocal_cosmo_factor(cf2))
@@ -609,7 +609,7 @@ def _reciprocal_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The inverted :class:`~swiftsimio.objects.cosmo_factor`.
     """
     return _power_cosmo_factor(cf, None, power=-1)
@@ -642,7 +642,7 @@ def _passthrough_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The input :class:`~swiftsimio.objects.cosmo_factor`.
 
     Raises
@@ -698,7 +698,7 @@ def _return_without_cosmo_factor(
 
     Returns
     -------
-    out : None
+    None
         The :class:`~swiftsimio.objects.cosmo_factor` is discarded.
 
     Raises
@@ -754,7 +754,7 @@ def _arctan2_cosmo_factor(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_factor
+    ~swiftsimio.objects.cosmo_factor
         The :class:`~swiftsimio.objects.cosmo_factor` for the ``arctan2`` result.
 
     Raises
@@ -813,7 +813,7 @@ def _comparison_cosmo_factor(
 
     Returns
     -------
-    out : None
+    None
         The :class:`~swiftsimio.objects.cosmo_factor` is discarded.
     """
     try:
@@ -881,7 +881,7 @@ def _prepare_array_func_args(
 
     Returns
     -------
-    out : dict
+    dict
         A dictionary containing the input `args`` and ``kwargs`` coerced to a common
         state, and lists of their ``cosmo_factor`` attributes, and ``comoving`` and
         ``compression`` values that can be used in return values for wrapped functions,
@@ -981,7 +981,7 @@ def implements(numpy_function: Callable) -> Callable:
 
     Returns
     -------
-    out : Callable
+    Callable
         The wrapped function.
     """
 
@@ -997,7 +997,7 @@ def implements(numpy_function: Callable) -> Callable:
 
         Returns
         -------
-        out : Callable
+        Callable
             The input ``func``.
         """
         _HANDLED_FUNCTIONS[numpy_function] = func
@@ -1034,7 +1034,7 @@ def _return_helper(
 
     Returns
     -------
-    out : swiftsimio.objects.cosmo_array
+    ~swiftsimio.objects.cosmo_array
         The input return value of a wrapped function with our cosmo attributes applied.
     """
     res = _promote_unyt_to_cosmo(res)
@@ -1072,7 +1072,7 @@ def _default_unary_wrapper(
 
     Returns
     -------
-    out : Callable
+    Callable
         The wrapped function.
     """
 
@@ -1090,7 +1090,7 @@ def _default_unary_wrapper(
 
         Returns
         -------
-        out : Callable
+        Callable
             The wrapped function.
         """
         helper_result = _prepare_array_func_args(*args, **kwargs)
@@ -1127,7 +1127,7 @@ def _default_binary_wrapper(
 
     Returns
     -------
-    out : Callable
+    Callable
         The wrapped function.
     """
 
@@ -1145,7 +1145,7 @@ def _default_binary_wrapper(
 
         Returns
         -------
-        out : Callable
+        Callable
             The wrapped function.
         """
         helper_result = _prepare_array_func_args(*args, **kwargs)
@@ -1177,7 +1177,7 @@ def _default_comparison_wrapper(unyt_func: Callable) -> Callable:
 
     Returns
     -------
-    out : Callable
+    Callable
         The wrapped function.
     """
 
@@ -1197,7 +1197,7 @@ def _default_comparison_wrapper(unyt_func: Callable) -> Callable:
 
         Returns
         -------
-        out : Callable
+        Callable
             The wrapped function.
         """
         helper_result = _prepare_array_func_args(*args, **kwargs)
@@ -1229,7 +1229,7 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
 
     Returns
     -------
-    out : Callable
+    Callable
         The wrapped function.
     """
 
@@ -1247,7 +1247,7 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
 
         Returns
         -------
-        out : Callable
+        Callable
             The wrapped function.
         """
         helper_result = _prepare_array_func_args(*args, **kwargs)
@@ -1609,7 +1609,7 @@ def _recursive_to_comoving(lst: list) -> list:
 
     Returns
     -------
-    out : list
+    list
         Matching (nested) lists in comoving units.
     """
     ret_lst = list()
@@ -1635,7 +1635,7 @@ def _prepare_array_block_args(lst: list, recursing: bool = False) -> dict:
 
     Returns
     -------
-    out : dict
+    dict
         The prepared block argument.
     """
     helper_results = list()

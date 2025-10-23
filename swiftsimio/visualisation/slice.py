@@ -80,7 +80,7 @@ def slice_gas(
 
     Returns
     -------
-    out : cosmo_array
+    cosmo_array
         Slice image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
 

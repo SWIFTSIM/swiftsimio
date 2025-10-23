@@ -46,7 +46,7 @@ def generate_units(
 
     Returns
     -------
-    out : dict[str, dict[str, Unit]]
+    dict[str, dict[str, Unit]]
         Dictionary with a dictonary for each particle type defining the units for each
         field.
     """
@@ -135,7 +135,7 @@ def generate_dimensions(
 
     Returns
     -------
-    out : dict
+    dict
         Dictionary specifying dimensions.
 
     ..deprecated:: 3.1.0

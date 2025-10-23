@@ -28,7 +28,7 @@ def kernel(r: np.float32, H: np.float32) -> np.float32:
 
     Returns
     -------
-    out : np.float32
+    np.float32
         Contribution to the density by the particle.
 
     Notes
@@ -239,7 +239,7 @@ def scatter(
 
     Returns
     -------
-    out : np.ndarray[np.float32, np.float32, np.float32]
+    np.ndarray[np.float32, np.float32, np.float32]
         Pixel grid of quantity.
 
     See Also

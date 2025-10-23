@@ -27,7 +27,7 @@ def _requires(filename: str) -> str:
 
     Returns
     -------
-    out : str
+    str
         The location of the desired file.
     """
     if filename == "EagleDistributed.hdf5":

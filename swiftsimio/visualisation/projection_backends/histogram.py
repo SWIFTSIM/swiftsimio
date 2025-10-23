@@ -53,7 +53,7 @@ def scatter(
 
     Returns
     -------
-    out : np.ndarray[np.float32, np.float32, np.float32]
+    np.ndarray[np.float32, np.float32, np.float32]
         Pixel grid of quantity.
 
     See Also
@@ -161,7 +161,7 @@ def scatter_parallel(
 
     Returns
     -------
-    out : np.ndarray[np.float32, np.float32, np.float32]
+    np.ndarray[np.float32, np.float32, np.float32]
         Pixel grid of quantity.
 
     See Also

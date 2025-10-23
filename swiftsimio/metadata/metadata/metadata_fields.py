@@ -67,7 +67,7 @@ def generate_units_header_unpack_arrays(
 
     Returns
     -------
-    out : dict[str, Unit]
+    dict[str, Unit]
         Mapping from metadata field names to their units.
     """
     # Do not include those items that do not have units.
@@ -87,7 +87,7 @@ def generate_cosmo_args_header_unpack_arrays(scale_factor: float) -> dict:
 
     Returns
     -------
-    out : dict[str, dict]
+    dict[str, dict]
         A dictionary containing the ``cosmo_array`` arguments corresponding to
         header items, omitting any that should not be ``cosmo_array``s.
     """
@@ -150,7 +150,7 @@ def generate_units_header_unpack_single_float(
 
     Returns
     -------
-    out : dict[str, Unit]
+    dict[str, Unit]
         The mapping from metadata field name to its units.
     """
     units = {"time": time, "t": time}

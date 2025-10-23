@@ -24,7 +24,7 @@ def kernel(r: float | np.float32, H: float | np.float32) -> float:
 
     Returns
     -------
-    out : float
+    float
         Contribution to density by particle at distance `r`.
 
     Notes
@@ -102,7 +102,7 @@ def slice_scatter(
 
     Returns
     -------
-    out : np.ndarray of np.float32
+    np.ndarray of np.float32
         Output array for the slice image.
 
     See Also
@@ -287,7 +287,7 @@ def slice_scatter_parallel(
 
     Returns
     -------
-    out : np.ndarray of np.float32
+    np.ndarray of np.float32
         Output array for the slice image.
 
     See Also

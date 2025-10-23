@@ -39,7 +39,7 @@ def build_tree(
 
     Returns
     -------
-    out : KDTree
+    KDTree
         A KD-tree built from the particle positions.
     """
     if not TREE_AVAILABLE:
@@ -125,7 +125,7 @@ def slice_scatter(
 
     Returns
     -------
-    out : ndarray of float32
+    ndarray of float32
         Output array for the slice image.
 
     See Also
@@ -219,7 +219,7 @@ def slice_scatter_parallel(
 
     Returns
     -------
-    out : ndarray of float32
+    ndarray of float32
         Output array for the slice image.
 
     See Also

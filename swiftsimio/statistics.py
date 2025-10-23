@@ -116,7 +116,7 @@ class SWIFTStatisticsFile(object):
 
         Returns
         -------
-        out : str
+        str
             String describing file contents.
         """
         return (
@@ -130,7 +130,7 @@ class SWIFTStatisticsFile(object):
 
         Returns
         -------
-        out : str
+        str
             String describing file contents.
         """
         return self.__str__()

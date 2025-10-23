@@ -25,7 +25,7 @@ def kernel_single_precision(r: np.float32, H: np.float32) -> np.float32:
 
     Returns
     -------
-    out : np.float32
+    np.float32
         Contribution to the density by the particle.
 
     See Also

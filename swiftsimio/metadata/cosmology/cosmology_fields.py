@@ -22,7 +22,7 @@ def generate_cosmology(
 
     Returns
     -------
-    out : dict[str, dict[str, cosmo_factor]]
+    dict[str, dict[str, cosmo_factor]]
         Dictionary of ``cosmo_factor``s for particle fields.
 
     ..deprecated:: 3.1.0
@@ -40,7 +40,7 @@ def generate_cosmology(
 
         Returns
         -------
-        out : cosmo_factor
+        cosmo_factor
             One of our ``cosmo_factor`` objects.
         """
         return cosmo_factor(a_dependence, scale_factor)

@@ -19,7 +19,7 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
 
     Returns
     -------
-    out : cosmo_array
+    cosmo_array
         The extracted "smoothing lengths".
     """
     try:

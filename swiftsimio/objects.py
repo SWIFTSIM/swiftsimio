@@ -153,13 +153,13 @@ def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
         When an invalid combination of ``comoving`` and ``valid_transform`` is found.
     """
     if not obj.valid_transform:
-        assert not obj.comoving, (
-            "Cosmo arrays without a valid transform to comoving units must be physical"
-        )
+        assert (
+            not obj.comoving
+        ), "Cosmo arrays without a valid transform to comoving units must be physical"
     if obj.comoving:
-        assert obj.valid_transform, (
-            "Comoving cosmo_arrays must be able to be transformed to physical"
-        )
+        assert (
+            obj.valid_transform
+        ), "Comoving cosmo_arrays must be able to be transformed to physical"
 
 
 class InvalidConversionError(Exception):
@@ -203,7 +203,7 @@ class InvalidScaleFactor(Exception):
 
         Returns
         -------
-        out : str
+        str
             The error message.
         """
         return f"InvalidScaleFactor: {self.message}"
@@ -318,7 +318,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : str
+        str
             String with exponent and current scale factor.
         """
         return str(self.expr) + f" at a={self.scale_factor}"
@@ -332,7 +332,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : float
+        float
             The multiplicative factor for conversion from comoving to physical.
         """
         if (self.expr is None) or (self.scale_factor is None):
@@ -349,7 +349,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : float
+        float
             The redshift.
         """
         if self.scale_factor is None:
@@ -367,7 +367,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The sum of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -406,7 +406,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The difference of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -448,7 +448,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The product of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -495,7 +495,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The quotient of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -539,7 +539,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The sum of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -564,7 +564,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The difference of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -590,7 +590,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The product of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -616,7 +616,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The quotient of the two :class:`~swiftsimio.objects.cosmo_factor`s.
 
         Raises
@@ -641,7 +641,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_factor
+        swiftsimio.objects.cosmo_factor
             The exponentiated :class:`~swiftsimio.objects.cosmo_factor`s.
         """
         if self.expr is None:
@@ -662,7 +662,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : bool
+        bool
             The result of the comparison.
 
         Raises
@@ -688,7 +688,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : bool
+        bool
             The result of the comparison.
 
         Raises
@@ -714,7 +714,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : bool
+        bool
             The result of the comparison.
 
         Raises
@@ -740,7 +740,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : bool
+        bool
             The result of the comparison.
 
         Raises
@@ -770,7 +770,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : bool
+        bool
             The result of the comparison.
 
         Raises
@@ -811,7 +811,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : bool
+        bool
             The result of the comparison.
 
         Raises
@@ -827,7 +827,7 @@ class cosmo_factor(object):
 
         Returns
         -------
-        out : str
+        str
             String representation of the scaling with the scale factor.
         """
         return f"cosmo_factor(expr={self.expr}, scale_factor={self.scale_factor})"
@@ -864,7 +864,7 @@ def _parse_cosmo_factor_args(
 
     Returns
     -------
-    out : cosmo_factor or None
+    cosmo_factor or None
         The :class:`~swiftsimio.objects.cosmo_factor` to use, or ``None``.
 
     Raises
@@ -1289,7 +1289,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : str
+        str
             The array string representataion annotated with cosmology metadata.
         """
         if self.comoving:
@@ -1307,7 +1307,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : str
+        str
             The array string representataion annotated with cosmology metadata.
         """
         return super().__repr__()
@@ -1321,7 +1321,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : tuple
+        tuple
             The state ready for pickling.
         """
         np_ret = super(cosmo_array, self).__reduce__()
@@ -1420,7 +1420,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             Copy of this array in physical units.
         """
         copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
@@ -1434,7 +1434,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             Copy of this array in comoving units.
         """
         if not self.valid_transform:
@@ -1455,7 +1455,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : np.ndarray
+        np.ndarray
             Copy of the array values in the specified physical units.
         """
         return self.to_physical().to_value(units)
@@ -1471,7 +1471,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : np.ndarray
+        np.ndarray
             Copy of the array values in the specified comoving units.
         """
         return self.to_comoving().to_value(units)
@@ -1486,7 +1486,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : bool
+        bool
             ``True`` if compatible, ``False`` otherwise.
         """
         return self.comoving or (self.cosmo_factor.a_factor == 1.0)
@@ -1501,7 +1501,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : bool
+        bool
             ``True`` if compatible, ``False`` otherwise.
         """
         return (not self.comoving) or (self.cosmo_factor.a_factor == 1.0)
@@ -1547,7 +1547,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             A cosmology-aware array.
 
         Examples
@@ -1602,7 +1602,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             A cosmology-aware array.
 
         Examples
@@ -1661,7 +1661,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : object
+        object
             The result of the ufunc call, with our cosmology attribute processing applied.
         """
         helper_result = _prepare_array_func_args(*inputs, **kwargs)
@@ -1747,7 +1747,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : object
+        object
             The result of the ufunc call, with our cosmology attribute processing applied.
         """
         # Follow NEP 18 guidelines
@@ -1800,7 +1800,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             The result of the multiplication.
         """
         if isinstance(b, unyt.unit_object.Unit):
@@ -1833,7 +1833,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             The result of the multiplication.
         """
         if isinstance(b, unyt.unit_object.Unit):
@@ -1858,7 +1858,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             The result of the division.
         """
         if isinstance(b, unyt.unit_object.Unit):
@@ -1889,7 +1889,7 @@ class cosmo_array(unyt_array):
 
         Returns
         -------
-        out : swiftsimio.objects.cosmo_array
+        ~swiftsimio.objects.cosmo_array
             The result of the division.
         """
         if isinstance(b, unyt.unit_object.Unit):
@@ -2003,7 +2003,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
 
         Returns
         -------
-        out : cosmo_quantity
+        cosmo_quantity
             The constructed object.
         """
         if bypass_validation is True:

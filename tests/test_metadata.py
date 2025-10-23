@@ -17,7 +17,7 @@ def _is_closed_hdf5_file(handle: h5py.File) -> bool:
 
     Returns
     -------
-    out : bool
+    bool
         ``True`` if ``handle`` is a closed file handle, else ``False``.
     """
     return isinstance(handle, h5py.File) and not handle

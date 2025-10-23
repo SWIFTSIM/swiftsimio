@@ -23,7 +23,7 @@ def _mask_without_warning(fname: str, **kwargs: dict) -> SWIFTMask:
 
     Returns
     -------
-    out : SWIFTMask
+    SWIFTMask
         The mask object.
     """
     with h5py.File(fname, "r") as f:
@@ -49,7 +49,7 @@ def create_in_memory_hdf5(filename: str = "f1") -> h5py.File:
 
     Returns
     -------
-    out : h5py.File
+    h5py.File
         A memory-backed HDF5 dataset file.
     """
     return h5py.File(filename, driver="core", mode="a", backing_store=False)

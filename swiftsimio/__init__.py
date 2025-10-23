@@ -75,7 +75,7 @@ def validate_file(filename: str) -> bool:
 
     Returns
     -------
-    out : bool
+    bool
         If ``filename`` is a SWIFT dataset return ``True``,
         otherwise raise exception.
 

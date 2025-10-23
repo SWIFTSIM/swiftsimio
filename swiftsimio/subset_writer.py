@@ -19,7 +19,7 @@ def get_swift_name(name: str) -> str:
 
     Returns
     -------
-    out : str
+    str
         SWIFT particle type corresponding to `name` (e.g. PartType0).
     """
     part_type_names = [
@@ -52,7 +52,7 @@ def get_dataset_mask(
 
     Returns
     -------
-    out : np.ndarray
+    np.ndarray
         Mask for the appropriate dataset.
     """
     suffix = "" if suffix is None else suffix
@@ -92,7 +92,7 @@ def find_datasets(
 
     Returns
     -------
-    out : list of str
+    list of str
         Names of datasets in ``path`` in ``input_file``.
     """
     if not recurse:
@@ -119,7 +119,7 @@ def find_links(
     link_names: list = [],
     link_paths: list = [],
     path: str | None = None,
-) -> (list[str], list[str]):
+) -> tuple[list[str], list[str]]:
     """
     Recursively finds all the links in the snapshot and writes them to a list.
 
@@ -139,8 +139,11 @@ def find_links(
 
     Returns
     -------
-    out : list of str, list of str
-        Lists of the names and links of paths in ``input_file``.
+    list of str
+        List of the names in ``input_file``.
+
+    list of str
+        List of the paths in ``input_file``.
     """
     if path is not None:
         keys = input_file[path].keys()

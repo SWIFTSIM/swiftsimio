@@ -26,7 +26,7 @@ def _get_projection_field(data: __SWIFTGroupDataset, field_name: str) -> cosmo_a
 
     Returns
     -------
-    out : cosmo_array
+    cosmo_array
         The requested particle field.
     """
     if field_name is None:
@@ -60,7 +60,7 @@ def _get_region_info(
 
     Returns
     -------
-    out : dict
+    dict
         A dictionary of kwargs for use with backend visualisation functions.
     """
     boxsize = data.metadata.boxsize
@@ -150,7 +150,7 @@ def _get_rotated_and_wrapped_coordinates(
 
     Returns
     -------
-    out : cosmo_array
+    cosmo_array
        The rotated or wrapped coordinates.
     """
     if rotation_center is not None and periodic is True:
@@ -190,7 +190,7 @@ def backend_restore_cosmo_and_units(
 
     Returns
     -------
-    out : Callable
+    Callable
         The wrapped function.
     """
 
@@ -212,7 +212,7 @@ def backend_restore_cosmo_and_units(
 
         Returns
         -------
-        out : cosmo_array
+        cosmo_array
             The result with cosmology metadata reattached.
         """
         comoving = getattr(kwargs["m"], "comoving", None)

@@ -41,7 +41,9 @@ except ImportError:
     pass
 
 
-def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
+def fraction_within_tolerance(
+    a: np.ndarray, b: np.ndarray, frac: float = 0.99, tol: float = 0.1
+) -> bool:
     """
     Check that two arrays have most values within a desired tolerance.
 
@@ -65,7 +67,7 @@ def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
 
     Returns
     -------
-    out : bool
+    bool
         ``True`` if enough values match within the tolerance, ``False`` otherwise.
     """
     assert a.shape == b.shape

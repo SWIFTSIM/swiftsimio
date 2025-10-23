@@ -26,7 +26,7 @@ def getfunc(fname: str) -> Callable:
 
     Returns
     -------
-    out : Callable
+    Callable
         The function handle.
     """
     func = np
@@ -49,7 +49,7 @@ def ca(x: np.ndarray, unit: u.Unit = u.Mpc) -> cosmo_array:
 
     Returns
     -------
-    out : cosmo_array
+    cosmo_array
         A cosmo_array with the requested data and units.
     """
     return cosmo_array(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
@@ -69,7 +69,7 @@ def cq(x: float, unit: u.Unit = u.Mpc) -> cosmo_quantity:
 
     Returns
     -------
-    out : cosmo_quantity
+    cosmo_quantity
         A cosmo_quantity wih the requested data and units.
     """
     return cosmo_quantity(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
@@ -89,7 +89,7 @@ def arg_to_ua(arg: cosmo_array) -> u.unyt_array:
 
     Returns
     -------
-    out : unyt_array
+    unyt_array
         The unyt version(s) of the input.
     """
     if type(arg) in (list, tuple):
@@ -109,7 +109,7 @@ def to_ua(x: cosmo_array) -> u.unyt_array:
 
     Returns
     -------
-    out : unyt_array
+    unyt_array
         The unyt version of the input.
     """
     return u.unyt_array(x) if hasattr(x, "comoving") else x

@@ -24,7 +24,7 @@ def _ptype_str_to_int(ptype_str: str) -> int:
 
     Returns
     -------
-    out : int
+    int
         The corresponding integer.
     """
     return int(ptype_str.strip("PartType")) if "PartType" in ptype_str else ptype_str
@@ -80,7 +80,7 @@ class __SWIFTWriterParticleDataset(object):
 
         Returns
         -------
-        out : bool
+        bool
             True if all datasets are empty.
         """
         for name in getattr(metadata.required_fields, self.particle_name).keys():
@@ -105,7 +105,7 @@ class __SWIFTWriterParticleDataset(object):
 
         Returns
         -------
-        out : bool
+        bool
             ``True`` if above listed criteria are satisfied.
         """
         self.requires_particle_ids_before_write = False
@@ -122,9 +122,9 @@ class __SWIFTWriterParticleDataset(object):
                 sizes.append(getattr(self, f"_{name}").shape[0])
 
         # Now we figure out if everyone's the same (without numpy...)
-        assert reduce(lambda x, y: x and y, [sizes[0] == x for x in sizes]), (
-            f"Arrays passed to {self.particle_name} dataset are not of the same size."
-        )
+        assert reduce(
+            lambda x, y: x and y, [sizes[0] == x for x in sizes]
+        ), f"Arrays passed to {self.particle_name} dataset are not of the same size."
 
         # Make sure positions and velocities have the same shapes
         if getattr(self, "coordinates").shape != getattr(self, "velocities").shape:
@@ -227,7 +227,7 @@ class __SWIFTWriterParticleDataset(object):
 
         Returns
         -------
-        attributes_dict : dict
+        dict
             Dictionary containg the attributes applying to the dataset.
         """
         attributes_dict = {}
@@ -277,7 +277,7 @@ def get_dimensions(dimension: unyt.dimensions) -> dict:
 
     Returns
     -------
-    exp_array : np.ndarray
+    np.ndarray
         Array of exponents corresponding to each base dimension.
 
     Examples
@@ -331,8 +331,8 @@ def generate_getter(
 
     Returns
     -------
-    getter : Callable
-        Function that returns unyt array for ``name``.
+    Callable
+        Getter function that returns unyt array for ``name``.
     """
 
     def getter(self: __SWIFTWriterParticleDataset) -> unyt.unyt_array:
@@ -346,7 +346,7 @@ def generate_getter(
 
         Returns
         -------
-        out : unyt_array
+        unyt_array
             The value of the named data field.
         """
         return getattr(self, f"_{name}")
@@ -373,7 +373,7 @@ def generate_setter(
 
     Returns
     -------
-    out : Callable
+    Callable
         Function to set ``self._name``.
     """
 
@@ -420,7 +420,7 @@ def generate_deleter(name: str) -> Callable[[__SWIFTWriterParticleDataset], None
 
     Returns
     -------
-    out : Callable
+    Callable
         Function to delete ``self._name``.
     """
 
@@ -698,7 +698,7 @@ class SWIFTSnapshotWriter(object):
 
             Returns
             -------
-            out : np.ndarray[float]
+            np.ndarray[float]
                 The conversion factor.
             """
             # We need to find the correct unit (which is now stored as a sympy value,

@@ -78,7 +78,7 @@ def render_gas(
 
     Returns
     -------
-    out : cosmo_array
+    cosmo_array
         Voxel grid with units of project / length^3, of size ``resolution`` x
         ``resolution`` x ``resolution``. Comoving if ``project`` data are
         comoving, else physical.
@@ -141,7 +141,7 @@ def render_voxels_to_array(data: np.array, center: float, width: float) -> np.ar
 
     Returns
     -------
-    out : np.ndarray
+    np.ndarray
         The 2D image array.
     """
     output = np.zeros((data.shape[0], data.shape[1]))
@@ -262,8 +262,11 @@ def visualise_render_options(
 
     Returns
     -------
-    plt.Figure, plt.Axes
-        The figure and axes of the plot.
+    plt.Figure
+        The matplotlib figure object used for the plot.
+
+    plt.Axes
+        The matplotlib axes object used for the plot.
     """
     fig, ax = plt.subplots()
 

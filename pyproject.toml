@@ -135,7 +135,7 @@ checks = [
        "PR08",
        "PR09",
        "PR10",
-       # "RT02",  # would be good to have this
+       "RT02",
        "RT03",
        "RT04",
        "RT05",

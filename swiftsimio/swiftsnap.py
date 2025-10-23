@@ -23,7 +23,7 @@ def decode(bytestring: object) -> str:
 
     Returns
     -------
-    out : str
+    str
        The resulting string.
     """
     try:

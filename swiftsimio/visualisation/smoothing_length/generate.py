@@ -51,7 +51,7 @@ def generate_smoothing_lengths(
 
     Returns
     -------
-    out : cosmo_array
+    cosmo_array
         A cosmo_array of smoothing lengths.
     """
     if not TREE_AVAILABLE:

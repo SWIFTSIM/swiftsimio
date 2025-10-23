@@ -25,7 +25,7 @@ def ensure_rgba(input_color: Iterable[float]) -> np.ndarray:
 
     Returns
     -------
-    array_color : np.array
+    np.ndarray
         An array of length 4 as an RGBA color.
     """
     array_color = np.zeros(4, dtype=np.float32)
@@ -66,7 +66,7 @@ def apply_color_map(
 
     Returns
     -------
-    out : np.ndarray
+    np.ndarray
         An (N, 4) array (where N is the length of ``first_value`` and
         ``second_value``) of RGBA components.
     """
@@ -137,7 +137,7 @@ class Cmap2D(object):
 
         Returns
         -------
-        out : np.array
+        np.ndarray
             The color map grid.
         """
         if self._color_map_grid is None:
@@ -188,7 +188,7 @@ class Cmap2D(object):
 
         Returns
         -------
-        out : np.ndarray
+        np.ndarray
             RGBA array using the internal colour map.
         """
         if isinstance(horizontal_values, list) or isinstance(horizontal_values, tuple):
@@ -253,7 +253,7 @@ class LinearSegmentedCmap2D(Cmap2D):
 
         Returns
         -------
-        out : np.array
+        np.ndarray
             The color map grid.
         """
         rgba_grid = np.zeros(
@@ -333,7 +333,7 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
 
         Returns
         -------
-        out : np.array
+        np.ndarray
             The color map grid.
         """
         hsv_grid = np.zeros(

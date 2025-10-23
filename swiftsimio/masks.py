@@ -106,7 +106,7 @@ class SWIFTMask(HandleProvider):
 
         Returns
         -------
-        out : dict[str, str]:
+        dict[str, str]:
             The dictionary of corresponding names.
         """
         if self.group_mapping is not None:
@@ -134,7 +134,7 @@ class SWIFTMask(HandleProvider):
 
         Returns
         -------
-        out : dict[str, str]:
+        dict[str, str]:
             The dictionary of corresponding names.
         """
         if self.group_size_mapping is not None:
@@ -162,7 +162,7 @@ class SWIFTMask(HandleProvider):
 
         Returns
         -------
-        out : list[str]
+        list[str]
             List of the variable names that need updating.
         """
         if self.metadata.shared_cell_counts is None:
@@ -184,7 +184,7 @@ class SWIFTMask(HandleProvider):
 
         Returns
         -------
-        out : np.ndarray[bool]
+        np.ndarray[bool]
             The requested mask.
 
         Raises
@@ -499,7 +499,7 @@ class SWIFTMask(HandleProvider):
 
         Returns
         -------
-        cell_mask : np.ndarray[bool]
+        np.ndarray[bool]
             Mask to indicate which cells are within the specified spatial range.
 
         Raises
@@ -764,7 +764,7 @@ class SWIFTMask(HandleProvider):
 
         Returns
         -------
-        out : dict[str, np.array], dict[str, np.array]
+        dict[str, np.array], dict[str, np.array]
             Dictionaries containing the particle offets and counts for each particle
             type. For example, the particle counts dictionary would be of the form
 

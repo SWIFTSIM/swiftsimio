@@ -63,7 +63,7 @@ def deposit(
 
     Returns
     -------
-    out : np.ndarray[np.float32, np.float32, np.float32]
+    np.ndarray[np.float32, np.float32, np.float32]
         Pixel grid of deposited quantity density.
     """
     output = np.zeros((res, res, res), dtype=np.float32)
@@ -154,7 +154,7 @@ def deposit_parallel(
 
     Returns
     -------
-    out : np.ndarray[np.float32, np.float32, np.float32]
+    np.ndarray[np.float32, np.float32, np.float32]
         Pixel grid of deposited quantity density.
     """
     number_of_particles = x.size
@@ -214,7 +214,7 @@ def render_to_deposit(
 
     Returns
     -------
-    out : cosmo_array[np.float32, np.float32, np.float32]
+    cosmo_array[np.float32, np.float32, np.float32]
         The deposition.
     """
     # Get the positions and masses
@@ -343,16 +343,16 @@ def folded_depositions_to_power_spectrum(
 
     Returns
     -------
-    out : cosmo_array[np.float32]
+    cosmo_array[np.float32]
         The wavenumber bins.
 
-    wavenumber_centers : cosmo_array[np.float32]
+    cosmo_array[np.float32]
         The centers of the wavenumber bins.
 
-    power_spectrum : cosmo_array[np.float32]
+    cosmo_array[np.float32]
         The power spectrum.
 
-    folding_tracker : np.array
+    np.ndarray
         A tracker of the contribution of various folded elements.
     """
     if cross_depositions is not None:
@@ -545,15 +545,14 @@ def deposition_to_power_spectrum(
 
     Returns
     -------
-    wavenumber_centers : ~swiftsimio.objects.cosmo_array[np.float32]
-        The k-values of the power spectrum, with units. These are the
-        real bin centers, calculated from the mean value of k that was
-        used in the binning process.
+    ~swiftsimio.objects.cosmo_array[np.float32]
+        The k-values of the power spectrum. These are the real bin centers, calculated
+        from the mean value of k that was used in the binning process.
 
-    power_spectrum : ~swiftsimio.objects.cosmo_array[np.float32]
-        The power spectrum, with units.
+    ~swiftsimio.objects.cosmo_array[np.float32]
+        The power spectrum.
 
-    binned_counts : np.ndarray[np.int32]
+    np.ndarray[np.int32]
         Bin counts for the power spectrum; useful for shot noise.
 
     Notes
@@ -568,9 +567,9 @@ def deposition_to_power_spectrum(
         raise ValueError("Deposition must be a cube")
 
     if cross_deposition is not None:
-        assert deposition.shape == cross_deposition.shape, (
-            "Depositions must have the same shape"
-        )
+        assert (
+            deposition.shape == cross_deposition.shape
+        ), "Depositions must have the same shape"
 
     folding = 2.0**folding
 

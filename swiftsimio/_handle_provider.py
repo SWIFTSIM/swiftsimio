@@ -37,7 +37,7 @@ class HandleProvider:
 
         Returns
         -------
-        out : h5py.File
+        h5py.File
             The file handle.
 
         Raises
