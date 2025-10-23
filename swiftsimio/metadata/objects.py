@@ -8,13 +8,14 @@ PartType0/Coordinates -> gas.coordinates).
 """
 
 import numpy as np
+import h5py
 import unyt
 from unyt.array import _iterable
 
-import h5py
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor
+from swiftsimio._handle_provider import HandleProvider
 from abc import ABC, abstractmethod
 
 import re
@@ -43,7 +44,7 @@ def _convert_snake_to_camel(name: str) -> str:
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", name).lower()
 
 
-class SWIFTMetadata(ABC):
+class SWIFTMetadata(HandleProvider, ABC):
     """
     An abstract base class for all SWIFT-related file metadata.
 
@@ -54,6 +55,9 @@ class SWIFTMetadata(ABC):
 
     units : SWIFTUnits
         Units object to use.
+
+    handle : h5py.File
+        File handle to read metadata from.
     """
 
     # Underlying path to the file that this metadata is associated with.
@@ -77,21 +81,21 @@ class SWIFTMetadata(ABC):
     # in masking as everyone uses the same _shared mask!
     homogeneous_arrays: bool = False
 
-    @abstractmethod
-    def __init__(self, filename: Path, units: "SWIFTUnits") -> None:
-        raise NotImplementedError
+    def __init__(
+        self,
+        filename: Path,
+        units: "SWIFTUnits | None" = None,
+        handle: h5py.File | None = None,
+    ) -> None:
+        super().__init__(filename, handle=handle)
+        if units is not None:
+            self.units = units
+        else:
+            self.units = SWIFTUnits(filename, handle=self.handle)
 
-    @property
-    def handle(self) -> h5py.File:
-        """
-        Get the file handle.
+        # don't _close_handle_if_manager here in the ABC, let derived classes close
 
-        Returns
-        -------
-        out : h5py.File
-            The file handle.
-        """
-        return self.units.handle
+        return
 
     def load_groups(self) -> None:
         """
@@ -116,10 +120,12 @@ class SWIFTMetadata(ABC):
         """
         for group, name in zip(self.present_groups, self.present_group_names):
             filetype_metadata = SWIFTGroupMetadata(
+                self.filename,
                 group=group,
                 group_name=name,
                 metadata=self,
                 scale_factor=self.scale_factor,
+                handle=self.handle,
             )
             setattr(self, f"{name}_properties", filetype_metadata)
 
@@ -571,7 +577,7 @@ class MappingTable(object):
         return f"{self.__str__()}. Raw data: \n{self.data}."
 
 
-class SWIFTGroupMetadata(object):
+class SWIFTGroupMetadata(HandleProvider):
     """
     Provide the metadata for one hdf5 Group.
 
@@ -581,32 +587,46 @@ class SWIFTGroupMetadata(object):
 
     Parameters
     ----------
+    filename : Path
+        Filename to read metadata from.
+
     group : str
         The name of the group in the hdf5 file.
+
     group_name : str
         The corresponding group name for swiftsimio.
+
     metadata : SWIFTMetadata
         The snapshot metadata.
+
     scale_factor : float
         The snapshot scale factor.
+
+    handle : h5py.File
+        File handle to read metadata from.
     """
+
+    filename: Path
 
     def __init__(
         self,
+        filename: Path,
         group: str,
         group_name: str,
         metadata: "SWIFTMetadata",
         scale_factor: float,
+        handle: h5py.File,
     ) -> None:
+        super().__init__(filename, handle=handle)
         self.group = group
         self.group_name = group_name
         self.metadata = metadata
         self.units = metadata.units
         self.scale_factor = scale_factor
 
-        self.filename = metadata.filename
-
         self.load_metadata()
+
+        self._close_handle_if_manager()
 
         return
 
@@ -655,7 +675,7 @@ class SWIFTGroupMetadata(object):
         # Skip fields which are groups themselves
         self.field_paths = []
         self.field_names = []
-        for item in self.metadata.handle[f"{self.group}"].keys():
+        for item in self.handle[f"{self.group}"].keys():
             # Skip fields which are groups themselves
             if f"{self.group}/{item}" not in self.metadata.present_groups:
                 self.field_paths.append(f"{self.group}/{item}")
@@ -708,9 +728,7 @@ class SWIFTGroupMetadata(object):
 
             return units
 
-        self.field_units = [
-            get_units(self.metadata.handle[x].attrs) for x in self.field_paths
-        ]
+        self.field_units = [get_units(self.handle[x].attrs) for x in self.field_paths]
 
         return
 
@@ -762,9 +780,7 @@ class SWIFTGroupMetadata(object):
                 )
             return description + mask_str
 
-        self.field_descriptions = [
-            get_desc(self.metadata.handle[x]) for x in self.field_paths
-        ]
+        self.field_descriptions = [get_desc(self.handle[x]) for x in self.field_paths]
 
         return
 
@@ -801,9 +817,7 @@ class SWIFTGroupMetadata(object):
 
             return comp if is_compressed else "Not compressed."
 
-        self.field_compressions = [
-            get_comp(self.metadata.handle[x]) for x in self.field_paths
-        ]
+        self.field_compressions = [get_comp(self.handle[x]) for x in self.field_paths]
 
         return
 
@@ -833,9 +847,7 @@ class SWIFTGroupMetadata(object):
 
             return cosmo_factor.create(current_scale_factor, cosmo_exponent)
 
-        self.field_cosmologies = [
-            get_cosmo(self.metadata.handle[x]) for x in self.field_paths
-        ]
+        self.field_cosmologies = [get_cosmo(self.handle[x]) for x in self.field_paths]
 
         return
 
@@ -862,9 +874,7 @@ class SWIFTGroupMetadata(object):
                 physical = False
             return physical
 
-        self.field_physicals = [
-            get_physical(self.metadata.handle[x]) for x in self.field_paths
-        ]
+        self.field_physicals = [get_physical(self.handle[x]) for x in self.field_paths]
 
         return
 
@@ -896,7 +906,7 @@ class SWIFTGroupMetadata(object):
             return valid_transform
 
         self.field_valid_transforms = [
-            get_valid_transform(self.metadata.handle[x]) for x in self.field_paths
+            get_valid_transform(self.handle[x]) for x in self.field_paths
         ]
 
         return
@@ -956,7 +966,7 @@ class SWIFTGroupMetadata(object):
         return
 
 
-class SWIFTUnits(object):
+class SWIFTUnits(HandleProvider):
     """
     Generate a :mod:`unyt` system that can be used with SWIFT data.
 
@@ -982,27 +992,12 @@ class SWIFTUnits(object):
     temperature: unyt.unyt_quantity
 
     def __init__(self, filename: Path, handle: h5py.File | None = None) -> None:
-        self.filename = filename
-        self._handle = handle
-
+        super().__init__(filename, handle=handle)
         self.get_unit_dictionary()
 
+        self._close_handle_if_manager()
+
         return
-
-    @property
-    def handle(self) -> h5py.File:
-        """
-        Get the file handle.
-
-        Returns
-        -------
-        out : h5py.File
-            The file handle.
-        """
-        if not self._handle:  # if self._handle is None, or if file closed (h5py #1363)
-            self._handle = h5py.File(self.filename, "r")
-
-        return self._handle
 
     def get_unit_dictionary(self) -> None:
         """
@@ -1036,13 +1031,10 @@ class SWIFTUnits(object):
             self.units["Unit temperature in cgs (U_T)"], "temperature"
         )
 
-    def __del__(self) -> None:
-        """Clean up file handle if we own it."""
-        if isinstance(self._handle, h5py.File):
-            self._handle.close()
 
-
-def metadata_discriminator(filename: Path, units: SWIFTUnits) -> "SWIFTMetadata":
+def _metadata_discriminator(
+    filename: Path, units: SWIFTUnits, handle: h5py.File | None = None
+) -> "SWIFTMetadata":
     """
     Determine the type of metadata object to construct.
 
@@ -1054,23 +1046,30 @@ def metadata_discriminator(filename: Path, units: SWIFTUnits) -> "SWIFTMetadata"
     units : SWIFTUnits
         The units object associated with the file.
 
+    handle : h5py.File, optional
+        File handle to read metadata from.
+
     Returns
     -------
     out : SWIFTMetadata
         The appropriate metadata object for the file type.
     """
-    # Old snapshots did not have this attribute, so we need to default to FullVolume
-    file_type = units.handle["Header"].attrs.get("OutputType", "FullVolume")
+    # Old snapshots did not have OutputType, so we need to default to FullVolume
+    if handle is None:
+        with h5py.File(filename, "r") as local_handle:
+            file_type = local_handle["Header"].attrs.get("OutputType", "FullVolume")
+    else:
+        file_type = handle["Header"].attrs.get("OutputType", "FullVolume")
 
     if isinstance(file_type, bytes):
         file_type = file_type.decode("utf-8")
 
     if file_type in ["FullVolume"]:
-        return SWIFTSnapshotMetadata(filename, units)
+        return SWIFTSnapshotMetadata(filename, units, handle=handle)
     elif file_type in ["SOAP"]:
-        return SWIFTSOAPMetadata(filename, units)
+        return SWIFTSOAPMetadata(filename, units, handle=handle)
     elif file_type in ["FOF"]:
-        return SWIFTFOFMetadata(filename, units)
+        return SWIFTFOFMetadata(filename, units, handle=handle)
     else:
         raise ValueError(f"File type {file_type} not recognised.")
 
@@ -1088,14 +1087,20 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
     units : SWIFTUnits
         Units object to use.
+
+    handle : h5py.File, optional
+        File handle to read from.
     """
 
     masking_valid: bool = True
 
-    def __init__(self, filename: Path, units: SWIFTUnits) -> None:
-        self.filename = filename
-        self.units = units
-
+    def __init__(
+        self,
+        filename: Path,
+        units: SWIFTUnits | None = None,
+        handle: h5py.File | None = None,
+    ) -> None:
+        super().__init__(filename, units=units, handle=handle)
         self.get_metadata()
         self.get_named_column_metadata()
         self.get_mapping_metadata()
@@ -1105,8 +1110,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         self.load_groups()
         self.extract_cosmology()
 
-        # After we've loaded all this metadata, we can safely release the file handle.
-        self.handle.close()
+        self._close_handle_if_manager()
 
         return
 
@@ -1566,22 +1570,27 @@ class SWIFTFOFMetadata(SWIFTMetadata):
 
     units : SWIFTUnits
         Units object to use.
+
+    handle : h5py.File, optional
+        File handle to read from.
     """
 
     homogeneous_arrays: bool = True
 
-    def __init__(self, filename: Path, units: SWIFTUnits) -> None:
-        self.filename = filename
-        self.units = units
-
+    def __init__(
+        self,
+        filename: Path,
+        units: SWIFTUnits | None = None,
+        handle: h5py.File | None = None,
+    ) -> None:
+        super().__init__(filename, units=units, handle=handle)
         self.get_metadata()
         self.postprocess_header()
 
         self.load_groups()
         self.extract_cosmology()
 
-        # After we've loaded all this metadata, we can safely release the file handle.
-        self.handle.close()
+        self._close_handle_if_manager()
 
         return
 
@@ -1640,16 +1649,22 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
 
     units : SWIFTUnits
         Units object to use.
+
+    handle : h5py.File, optional
+        File handle to read from.
     """
 
     masking_valid: bool = True
     shared_cell_counts: str = "Subhalos"
     homogeneous_arrays: bool = True
 
-    def __init__(self, filename: Path, units: SWIFTUnits) -> None:
-        self.filename = filename
-        self.units = units
-
+    def __init__(
+        self,
+        filename: Path,
+        units: SWIFTUnits | None = None,
+        handle: h5py.File | None = None,
+    ) -> None:
+        super().__init__(filename, units=units, handle=handle)
         self.get_metadata()
         self.postprocess_header()
         self.unpack_subhalo_number()
@@ -1657,8 +1672,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
         self.load_groups()
         self.extract_cosmology()
 
-        # After we've loaded all this metadata, we can safely release the file handle.
-        self.handle.close()
+        self._close_handle_if_manager()
 
         return
 

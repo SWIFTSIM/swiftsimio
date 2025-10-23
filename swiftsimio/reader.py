@@ -7,7 +7,7 @@ These include:
   to relevant unyt arrays when read from the HDF5 file)
 + SWIFTMetadata, which contains all of the metadata from the file
 + __SWIFTGroupDataset, which contains particle information but should never be
-  directly accessed. Use generate_dataset to create one of these. The reasoning
+  directly accessed. Use ``_generate_datasets`` to create one of these. The reasoning
   here is that properties can only be added to the class afterwards, and not
   directly in an _instance_ of the class.
 + SWIFTDataset, a container class for all of the above.
@@ -16,18 +16,19 @@ These include:
 from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.objects import cosmo_array, cosmo_factor
 from swiftsimio.masks import SWIFTMask
-
 from swiftsimio.metadata.objects import (
-    metadata_discriminator,
+    _metadata_discriminator,
     SWIFTUnits,
     SWIFTGroupMetadata,
 )
+from swiftsimio._handle_provider import HandleProvider
 
 import h5py
 import unyt
 import numpy as np
 
 from typing import Callable
+from pathlib import Path
 
 
 def _generate_getter(
@@ -269,24 +270,37 @@ def _generate_deleter(name: str) -> Callable[["__SWIFTGroupDataset"], None]:
     return deleter
 
 
-class __SWIFTGroupDataset(object):
+class __SWIFTGroupDataset(HandleProvider):
     """
     Create empty property fields.
 
     Do not use this class alone; it is essentially completely empty. It is filled
-    with properties by `generate_datasets`.
+    with properties by `_generate_datasets`.
 
     On initialization we calls the generate_empty_properties function to ensure that
     defaults are set correctly.
 
     Parameters
     ----------
+    filename : Path
+        The filename to read metadata.
+
     group_metadata : SWIFTGroupMetadata
         The metadata used to generate empty properties.
+
+    handle : h5py.File, optional
+        File handle to read from.
     """
 
-    def __init__(self, group_metadata: SWIFTGroupMetadata) -> None:
-        self.filename = group_metadata.filename
+    filename: Path
+
+    def __init__(
+        self,
+        filename: Path,
+        group_metadata: SWIFTGroupMetadata,
+        handle: h5py.File | None = None,
+    ) -> None:
+        super().__init__(handle.filename, handle=handle)
         self.units = group_metadata.units
 
         self.group = group_metadata.group
@@ -296,6 +310,7 @@ class __SWIFTGroupDataset(object):
         self.metadata = group_metadata.metadata
 
         self.generate_empty_properties()
+        self._close_handle_if_manager()
 
         return
 
@@ -309,13 +324,13 @@ class __SWIFTGroupDataset(object):
         for field_name, field_path in zip(
             self.group_metadata.field_names, self.group_metadata.field_paths
         ):
-            if field_path in self.metadata.handle:
+            if field_path in self.handle:
                 setattr(self, f"_{field_name}", None)
             else:
                 raise AttributeError(
                     (
                         f"Cannot find attribute {field_path} in file although"
-                        "it was present when searching initially."
+                        " it was present when searching initially."
                     )
                 )
 
@@ -453,7 +468,10 @@ class __SWIFTNamedColumnDataset(object):
 
 
 def _generate_datasets(
-    group_metadata: SWIFTGroupMetadata, mask: SWIFTMask
+    filename: Path,
+    group_metadata: SWIFTGroupMetadata,
+    mask: SWIFTMask,
+    handle: h5py.File | None = None,
 ) -> __SWIFTGroupDataset | __SWIFTNamedColumnDataset:
     """
     Generate a SWIFTGroupDatasets _class_ for the given particle type.
@@ -465,13 +483,22 @@ def _generate_datasets(
     Here we loop through all of the possible properties in the metadata file.
     We then use the builtin ``property()`` function and some generators to
     create setters and getters for those properties. This will allow them
-    to be accessed from outside by using SWIFTGroupDatasets.name, where
+    to be accessed from outside by using SWIFTGroupDataset.name, where
     the name is, for example, coordinates.
 
     Parameters
     ----------
+    filename : Path
+        File name to read metadata.
+
     group_metadata : SWIFTGroupMetadata
         The metadata for the group.
+
+    mask : SWIFTMask
+        The mask object for the datasets.
+
+    handle : h5py.File, optional
+        File handle to read metadata.
 
     mask : SWIFTMask
         The mask object for the datasets.
@@ -599,12 +626,12 @@ def _generate_datasets(
     ThisDataset = type(
         f"{group_nice_name}Dataset", this_dataset_bases, this_dataset_dict
     )
-    empty_dataset = ThisDataset(group_metadata)
+    empty_dataset = ThisDataset(filename, group_metadata, handle=handle)
 
     return empty_dataset
 
 
-class SWIFTDataset(object):
+class SWIFTDataset(HandleProvider):
     """
     A collection object for units, metadata and data objects.
 
@@ -633,18 +660,29 @@ class SWIFTDataset(object):
 
     mask : np.ndarray, optional
         Mask object containing dataset to selected particles.
+
+    handle : h5py.File, optional
+        File handle to read metadata.
     """
 
-    def __init__(self, filename: str, mask: SWIFTMask | None = None) -> None:
-        self.filename = filename
-        self.mask = mask
+    filename: Path
 
+    def __init__(
+        self,
+        filename: Path,
+        mask: SWIFTMask | None = None,
+        handle: h5py.File | None = None,
+    ) -> None:
+        super().__init__(filename, handle=handle)
+        self.mask = mask
         if mask is not None:
             self.mask.convert_masks_to_ranges()
 
         self.get_units()
         self.get_metadata()
         self.create_datasets()
+
+        self._close_handle_if_manager()
 
         return
 
@@ -664,7 +702,14 @@ class SWIFTDataset(object):
         Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
         """
-        self.units = SWIFTUnits(self.filename)
+        if self.mask is not None:
+            # we can save ourselves the trouble of reading it again
+            assert self.filename == self.mask.filename, (
+                "Mask is for {self.mask.filename} but dataset is for {self.filename}."
+            )
+            self.units = self.mask.units
+        else:
+            self.units = SWIFTUnits(self.filename, handle=self.handle)
 
         return
 
@@ -675,7 +720,16 @@ class SWIFTDataset(object):
         Ordinarily this happens automatically, but you can call
         this function again if you mess things up.
         """
-        self.metadata = metadata_discriminator(self.filename, self.units)
+        if self.mask is not None:
+            # we can save ourselves the trouble of reading it again
+            assert self.filename == self.mask.filename, (
+                "Mask is for {self.mask.filename} but dataset is for {self.filename}."
+            )
+            self.metadata = self.mask.metadata
+        else:
+            self.metadata = _metadata_discriminator(
+                self.filename, self.units, handle=self.handle
+            )
 
         return
 
@@ -695,7 +749,10 @@ class SWIFTDataset(object):
                 self,
                 group_name,
                 _generate_datasets(
-                    getattr(self.metadata, f"{group_name}_properties"), self.mask
+                    self.filename,
+                    getattr(self.metadata, f"{group_name}_properties"),
+                    self.mask,
+                    handle=self.handle,
                 ),
             )
 

@@ -928,6 +928,11 @@ def _prepare_array_func_args(
         # mix of comoving and physical inputs
         # better to modify inplace (convert_to_comoving)?
         if _default_cm:
+            for arg in args:
+                if not arg.valid_transform:
+                    _default_cm = False
+                    break
+        if _default_cm:
             args = [
                 arg.to_comoving() if cm[0] and not cm[1] else arg
                 for arg, cm in zip(args, cms)
