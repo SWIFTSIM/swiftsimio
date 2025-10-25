@@ -1049,8 +1049,8 @@ class TestCosmoQuantity:
         multiplied = cq * cq
         assert type(multiplied) is cosmo_quantity
         assert multiplied.comoving is False
-        assert multiplied.cosmo_factor == cosmo_factor(a ** 2, 0.5)
-        assert multiplied.to_value(u.m ** 2) == 4
+        assert multiplied.cosmo_factor == cosmo_factor(a**2, 0.5)
+        assert multiplied.to_value(u.m**2) == 4
 
 
 class TestCosmoArrayCopy:
@@ -1125,10 +1125,10 @@ class TestMultiplicationByUnyt:
         multiplied_by_quantity = ca * (1 * u.Mpc)  # parentheses very important here
         # get the same result twice through left-sided multiplication and division:
         lmultiplied_by_unyt = ca * u.Mpc
-        ldivided_by_unyt = ca / u.Mpc ** -1
+        ldivided_by_unyt = ca / u.Mpc**-1
         # and twice more through right-sided multiplication and division:
         rmultiplied_by_unyt = u.Mpc * ca
-        rdivided_by_unyt = u.Mpc ** 3 / ca
+        rdivided_by_unyt = u.Mpc**3 / ca
 
         for multiplied_by_unyt in (
             lmultiplied_by_unyt,
