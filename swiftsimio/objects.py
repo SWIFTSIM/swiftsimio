@@ -340,7 +340,7 @@ class cosmo_factor(object):
             cosmo_factor(expr=a**2, scale_factor=0.5)
         """
 
-        obj = cls(a ** exponent, scale_factor)
+        obj = cls(a**exponent, scale_factor)
 
         return obj
 
@@ -678,7 +678,7 @@ class cosmo_factor(object):
         """
         if self.expr is None:
             return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-        return cosmo_factor(expr=self.expr ** p, scale_factor=self.scale_factor)
+        return cosmo_factor(expr=self.expr**p, scale_factor=self.scale_factor)
 
     def __lt__(self, b: "cosmo_factor") -> bool:
         """
@@ -1386,9 +1386,9 @@ class cosmo_array(unyt_array):
             A :obj:`tuple` containing the extra state information.
         """
         super(cosmo_array, self).__setstate__(state[1:])
-        self.cosmo_factor, self.comoving, self.compression, self.valid_transform = state[
-            0
-        ]
+        self.cosmo_factor, self.comoving, self.compression, self.valid_transform = (
+            state[0]
+        )
 
     # Wrap functions that return copies of cosmo_arrays so that our
     # attributes get passed through:

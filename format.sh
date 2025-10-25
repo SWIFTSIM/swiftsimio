@@ -14,14 +14,14 @@ if [ ! -d black_formatting_env ]
 then
   echo "Formatting environment not found, installing it..."
   python3 -m venv black_formatting_env
-  ./black_formatting_env/bin/python3 -m pip install click==8.0.4 black==19.3b0
+  ./black_formatting_env/bin/python3 -m pip install click==8.1.8 black==25.9.0
 fi
 # Now we know exactly which black to use
 black="./black_formatting_env/bin/python3 -m black"
 
 # Formatting command
 files=$(echo {tests/*.py,swiftsimio/*.py,swiftsimio/*/*.py,swiftsimio/*/*/*.py})
-cmd="$black -t py38 $files"
+cmd="$black $files"
 
 # Print the help
 function show_help {

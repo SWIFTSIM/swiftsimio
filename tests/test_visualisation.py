@@ -115,7 +115,7 @@ class TestProjection:
         for resolution in resolutions:
             scatter = projection_backends["fast"]
             image = scatter(x=x, y=y, m=m, h=h, res=resolution, box_x=1.0, box_y=1.0)
-            mass_in_image = image.sum() / (resolution ** 2)
+            mass_in_image = image.sum() / (resolution**2)
 
             # Check mass conservation to 5%
             assert np.isclose(mass_in_image.view(np.ndarray), total_mass, 0.05)
@@ -783,19 +783,19 @@ class TestVolumeRender:
         volume = render_gas(data, npix, parallel=False).to_physical()
 
         mean_density_deposit = (
-            (np.sum(deposition) / npix ** 3)
+            (np.sum(deposition) / npix**3)
             .to_comoving()
-            .to_value(unyt.solMass / unyt.kpc ** 3)
+            .to_value(unyt.solMass / unyt.kpc**3)
         )
         mean_density_volume = (
-            (np.sum(volume) / npix ** 3)
+            (np.sum(volume) / npix**3)
             .to_comoving()
-            .to_value(unyt.solMass / unyt.kpc ** 3)
+            .to_value(unyt.solMass / unyt.kpc**3)
         )
         mean_density_calculated = (
             (np.sum(data.gas.masses) / np.prod(data.metadata.boxsize))
             .to_comoving()
-            .to_value(unyt.solMass / unyt.kpc ** 3)
+            .to_value(unyt.solMass / unyt.kpc**3)
         )
 
         assert np.isclose(mean_density_deposit, mean_density_calculated)
@@ -1081,7 +1081,7 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
                     parallel=True,
                 )
         assert data.gas.masses.comoving and img.comoving
-        assert (img.cosmo_factor.expr - a ** aexp).simplify() == 0
+        assert (img.cosmo_factor.expr - a**aexp).simplify() == 0
         # densities are physical, make sure this works with physical coordinates and
         # smoothing lengths
         img = func(
@@ -1156,14 +1156,14 @@ class TestPowerSpectrum:
 
         min_k = cosmo_quantity(
             1e-2,
-            unyt.Mpc ** -1,
+            unyt.Mpc**-1,
             comoving=True,
             scale_factor=data.metadata.scale_factor,
             scale_exponent=-1,
         )
         max_k = cosmo_quantity(
             1e2,
-            unyt.Mpc ** -1,
+            unyt.Mpc**-1,
             comoving=True,
             scale_factor=data.metadata.scale_factor,
             scale_exponent=-1,
@@ -1203,7 +1203,7 @@ class TestPowerSpectrum:
 
             folds[folding] = deposition
 
-            folding_output[2 ** folding] = (k, power_spectrum, scatter)
+            folding_output[2**folding] = (k, power_spectrum, scatter)
 
         # Now try doing them all together at once.
 

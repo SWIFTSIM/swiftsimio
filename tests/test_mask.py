@@ -309,14 +309,14 @@ def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_
         "pressures",
         cosmo_quantity(
             1e59,
-            u.solMass * u.Gyr ** -2 * u.Mpc ** -1,
+            u.solMass * u.Gyr**-2 * u.Mpc**-1,
             comoving=False,
             scale_factor=empty_mask.metadata.a,
             scale_exponent=-5,
         ),
         cosmo_quantity(
             1e60,
-            u.solMass * u.Gyr ** -2 * u.Mpc ** -1,
+            u.solMass * u.Gyr**-2 * u.Mpc**-1,
             comoving=False,
             scale_factor=empty_mask.metadata.a,
             scale_exponent=-5,

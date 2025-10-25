@@ -130,7 +130,7 @@ def slice_scatter(
     tree = build_tree(x, y, z, box_x, box_y, box_z)
     _, i = tree.query(pixel_coordinates, workers=workers)
 
-    values = m / h ** 3
+    values = m / h**3
     return values[i].reshape(xres, yres)
 
 

@@ -1,4 +1,5 @@
-from typing import Optional as _Optional, Union as _Union
+from pathlib import Path
+import h5py
 
 from .reader import *
 from .snapshot_writer import SWIFTSnapshotWriter
@@ -15,6 +16,7 @@ import swiftsimio.visualisation as visualisation
 import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
+from swiftsimio.metadata.objects import _metadata_discriminator
 
 name = "swiftsimio"
 
@@ -50,7 +52,9 @@ def validate_file(filename: str):
 
 
 def mask(
-    filename: str, spatial_only: bool = True, safe_padding: _Union[bool, float] = True
+    filename: str | Path,
+    spatial_only: bool = True,
+    safe_padding: bool | float = True,
 ) -> SWIFTMask:
     """
     Sets up a masking object for you to use with the correct units and
@@ -58,8 +62,9 @@ def mask(
 
     Parameters
     ----------
-    filename : str
-        SWIFT data file to read from
+    filename : str or Path
+        SWIFT data file to read from. Can also be an open h5py.File handle.
+
     spatial_only : bool, optional
         Flag for only spatial masking, this is much faster but will not
         allow you to use masking on other variables (e.g. density).
@@ -91,38 +96,55 @@ def mask(
     more expensive, ~bytes per particle instead of ~bytes per cell
     spatial_only=False version).
     """
+    if isinstance(filename, str):
+        filename = Path(filename)
+    with h5py.File(filename, "r") as handle:
+        units = SWIFTUnits(filename, handle=handle)
+        metadata = _metadata_discriminator(filename, units, handle=handle)
+        mask = SWIFTMask(
+            filename,
+            metadata=metadata,
+            spatial_only=spatial_only,
+            safe_padding=safe_padding,
+            handle=handle,
+        )
+    return mask
 
-    units = SWIFTUnits(filename)
-    metadata = metadata_discriminator(filename, units)
 
-    return SWIFTMask(
-        metadata=metadata, spatial_only=spatial_only, safe_padding=safe_padding
-    )
-
-
-def load(filename: str, mask: _Optional[SWIFTMask] = None) -> SWIFTDataset:
+def load(filename: str | Path, mask: SWIFTMask | None = None) -> SWIFTDataset:
     """
     Loads the SWIFT dataset at filename.
 
     Parameters
     ----------
-    filename : str
-        SWIFT snapshot file to read
+    filename : str or Path
+        SWIFT data file to read from. Can also be an open h5py.File handle.
+
     mask : SWIFTMask, optional
         mask to apply when reading dataset
+
+    Returns
+    -------
+    SWIFTDataset
+        dataset object providing an interface to the data file.
     """
+    if isinstance(filename, str):
+        filename = Path(filename)
 
-    return SWIFTDataset(filename, mask=mask)
+    with h5py.File(filename, "r") as handle:
+        data = SWIFTDataset(filename, mask=mask, handle=handle)
+
+    return data
 
 
-def load_statistics(filename: str) -> SWIFTStatisticsFile:
+def load_statistics(filename: str | Path) -> SWIFTStatisticsFile:
     """
     Loads a SWIFT statistics file (``SFR.txt``, ``energy.txt``).
 
     Parameters
     ----------
 
-    filename : str
+    filename : str or Path
         SWIFT statistics file path
     """
 

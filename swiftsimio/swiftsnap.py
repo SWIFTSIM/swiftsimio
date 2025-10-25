@@ -63,7 +63,7 @@ parser.add_argument(
 
 def swiftsnap():
     import swiftsimio as sw
-    from swiftsimio.metadata.objects import metadata_discriminator
+    from swiftsimio.metadata.objects import _metadata_discriminator
 
     from swiftsimio.metadata.particle import particle_name_underscores
     from textwrap import wrap
@@ -81,25 +81,26 @@ def swiftsnap():
             exit(1)
 
     # Now that we know they are valid, we can load the metadata.
-    units = [sw.SWIFTUnits(snap) for snap in snapshots]
-    metadata = [
-        metadata_discriminator(snap, units) for snap, units in zip(snapshots, units)
+    units_list = [sw.SWIFTUnits(snap) for snap in snapshots]
+    metadata_list = [
+        _metadata_discriminator(snap, units)
+        for snap, units in zip(snapshots, units_list)
     ]
 
     if args.redshift:
-        redshifts = [f"{snap.z:.4g}" for snap in metadata]
+        redshifts = [f"{snap.z:.4g}" for snap in metadata_list]
         print("\n".join(redshifts))
         exit(0)
 
     if args.scale_factor:
-        scale_factors = [f"{snap.a:.4g}" for snap in metadata]
+        scale_factors = [f"{snap.a:.4g}" for snap in metadata_list]
         print("\n".join(scale_factors))
         exit(0)
 
     # If we have not activated special modes, now it's time to get going with the
     # printing of metadata!
 
-    for data in metadata:
+    for data in metadata_list:
         # Snapshot state information
         print(f"{decode(data.run_name)}")
         output_string = f"Written at: {data.snapshot_date}"
