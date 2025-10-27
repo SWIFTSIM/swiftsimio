@@ -1661,7 +1661,7 @@ class cosmo_array(unyt_array):
             ret_cf = cls._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
         # if we get a tuple we have multiple return values to deal with
         if isinstance(result, tuple):
-            r = tuple(
+            result = tuple(
                 (
                     r.view(cosmo_quantity)
                     if r.shape == ()
