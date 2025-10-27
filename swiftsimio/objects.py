@@ -1630,14 +1630,87 @@ class cosmo_array(unyt_array):
         return obj
 
     @classmethod
-    def __unyt_ufunc_prepare__(cls, ufunc: np.ufunc, method: str, *inputs, **kwargs):
+    def __unyt_ufunc_prepare__(
+        cls, ufunc: np.ufunc, method: str, *inputs: tuple, **kwargs: dict
+    ) -> tuple[np.ufunc, str, tuple, dict]:
+        """
+        Prepare arguments for a ufunc call.
+
+        This function gives us the opportunity to pre-process arguments to a ufunc call
+        before handing control off to :mod:`unyt`. The arguments and kwargs are checked for
+        consistent ``cosmo_factor`` attributes and coerced to a common comoving/physical state.
+
+        Parameters
+        ----------
+        ufunc : np.ufunc
+            The ufunc that is about to be called.
+
+        method : str
+            The call method for the ufunc (for example `"call"` or `"reduce"`).
+
+        *inputs : tuple
+            The ufunc arguments.
+
+        **kwargs : dict
+            The ufunc kwargs.
+
+        Returns
+        -------
+        np.ufunc
+            The ufunc that is about to be called.
+
+        str
+            The call method for the ufunc.
+
+        tuple
+            The now prepared arguments for the ufunc.
+
+        dict
+            The now prepared kwargs for the ufunc.
+        """
         helper_result = _prepare_array_func_args(*inputs, **kwargs)
         return ufunc, method, helper_result["args"], helper_result["kwargs"]
 
     @classmethod
     def __unyt_ufunc_finalize__(
-        cls, result, ufunc: np.ufunc, method: str, *inputs, **kwargs
-    ):
+        cls,
+        result: tuple | unyt_array,
+        ufunc: np.ufunc,
+        method: str,
+        *inputs: tuple,
+        **kwargs: dict,
+    ) -> "tuple | cosmo_array":
+        """
+        Finalize results after a ufunc call.
+
+        This function gives us the opportunity to post-process return value(s) from a ufunc
+        when we get control back from :mod:`unyt`. We check that the return type is
+        consistent with its shape (i.e. a :class:`~swiftsimio.objects.cosmo_array` or
+        :class:`~swiftsimio.objects.cosmo_quantity`) and attach our cosmo attributes.
+
+        Parameters
+        ----------
+        result : :class:`~unyt.array.unyt_array` or tuple
+            The return value of the called ufunc.
+
+        ufunc : np.ufunc
+            The ufunc that was called.
+
+        method : str
+            The call method for the ufunc (for example `"call"` or `"reduce"`).
+
+        *inputs : tuple
+            The ufunc arguments.
+
+        **kwargs : dict
+            The ufunc kwargs.
+
+        Returns
+        -------
+        tuple or comso_array
+            The result of the ufunc call, with the appropriate type and cosmo attributes attached.
+        """
+        # wonder if we could cache helper_result during __unyt_ufunc_prepare__ to use here?
         helper_result = _prepare_array_func_args(*inputs, **kwargs)
         cfs = helper_result["cfs"]
         # make sure we evaluate the cosmo_factor_ufunc_registry function:

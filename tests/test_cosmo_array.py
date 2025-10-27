@@ -1092,9 +1092,7 @@ class TestCosmoQuantity:
         assert res.valid_transform is True
 
     def test_multiply_quantities(self):
-        """
-        Test multiplying two quantities.
-        """
+        """Test multiplying two quantities."""
         cq = cosmo_quantity(
             2,
             u.m,
