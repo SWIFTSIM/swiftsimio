@@ -487,10 +487,27 @@ class TestNumpyFunctions:
             "fill_diagonal": (ca(np.eye(3)), ca(np.arange(3))),
             "apply_over_axes": (lambda x, axis: x, ca(np.eye(3)), (0, 1)),
             "isin": (ca(np.arange(3)), ca(np.arange(3))),
-            "place": (ca(np.arange(3)), np.arange(3) > 0, ca(np.arange(3))),
-            "put": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
-            "put_along_axis": (ca(np.arange(3)), np.arange(3), ca(np.arange(3)), 0),
-            "putmask": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
+            "place": (
+                ca(np.arange(3)),
+                np.arange(3) > 0,
+                ca(np.arange(3)),
+            ),
+            "put": (
+                ca(np.arange(3)),
+                np.arange(3),
+                ca(np.arange(3)),
+            ),
+            "put_along_axis": (
+                ca(np.arange(3)),
+                np.arange(3),
+                ca(np.arange(3)),
+                0,
+            ),
+            "putmask": (
+                ca(np.arange(3)),
+                np.arange(3),
+                ca(np.arange(3)),
+            ),
             "searchsorted": (ca(np.arange(3)), ca(np.arange(3))),
             "select": (
                 [np.arange(3) < 1, np.arange(3) > 1],
@@ -500,7 +517,11 @@ class TestNumpyFunctions:
             "setdiff1d": (ca(np.arange(3)), ca(np.arange(3, 6))),
             "sinc": (ca(np.arange(3)),),
             "clip": (ca(np.arange(3)), cq(1), cq(2)),
-            "where": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
+            "where": (
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+            ),
             "triu": (ca(np.ones((3, 3))),),
             "tril": (ca(np.ones((3, 3))),),
             "einsum": ("ii->i", ca(np.eye(3))),
@@ -508,11 +529,18 @@ class TestNumpyFunctions:
             "correlate": (ca(np.arange(3)), ca(np.arange(3))),
             "tensordot": (ca(np.eye(3)), ca(np.eye(3))),
             "unwrap": (ca(np.arange(3)),),
-            "interp": (ca(np.arange(3)), ca(np.arange(3)), ca(np.arange(3))),
+            "interp": (
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+            ),
             "array_repr": (ca(np.arange(3)),),
             "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
             "trapezoid": (ca(np.arange(3)),),
-            "in1d": (ca(np.arange(3)), ca(np.arange(3))),  # np deprecated
+            "in1d": (
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+            ),  # np deprecated
             "take": (ca(np.arange(3)), np.arange(3)),
             # FUNCTIONS THAT UNYT DOESN'T HANDLE EXPLICITLY (THEY "JUST WORK"):
             "all": (ca(np.arange(3)),),
@@ -524,7 +552,10 @@ class TestNumpyFunctions:
             "apply_along_axis": (lambda x: x, 0, ca(np.eye(3))),
             "argmax": (ca(np.arange(3)),),  # implemented via max
             "argmin": (ca(np.arange(3)),),  # implemented via min
-            "argpartition": (ca(np.arange(3)), 1),  # implemented via partition
+            "argpartition": (
+                ca(np.arange(3)),
+                1,
+            ),  # implemented via partition
             "argsort": (ca(np.arange(3)),),  # implemented via sort
             "argwhere": (ca(np.arange(3)),),
             "array_str": (ca(np.arange(3)),),
@@ -606,7 +637,10 @@ class TestNumpyFunctions:
             "unravel_index": (np.arange(3), (3,)),
             "fix": (ca(np.arange(3)),),
             "round": (ca(np.arange(3)),),  # implemented via around
-            "may_share_memory": (ca(np.arange(3)), ca(np.arange(3))),
+            "may_share_memory": (
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+            ),
             "linalg.matrix_power": (ca(np.eye(3)), 2),
             "linalg.cholesky": (ca(np.eye(3)),),
             "linalg.multi_dot": ((ca(np.eye(3)), ca(np.eye(3))),),
@@ -630,7 +664,11 @@ class TestNumpyFunctions:
             "imag": (ca(np.arange(3)),),
             "real": (ca(np.arange(3)),),
             "real_if_close": (ca(np.arange(3)),),
-            "einsum_path": ("ij,jk->ik", ca(np.eye(3)), ca(np.eye(3))),
+            "einsum_path": (
+                "ij,jk->ik",
+                ca(np.eye(3)),
+                ca(np.eye(3)),
+            ),
             "cov": (ca(np.arange(3)),),
             "corrcoef": (ca(np.arange(3)),),
             "compress": (np.zeros(3), ca(np.arange(3))),
@@ -658,13 +696,6 @@ class TestNumpyFunctions:
         functions_checked = list()
         bad_funcs = dict()
         for fname, args in functions_to_check.items():
-            # ----- this is to be removed ------
-            # ---- see test_block_is_broken ----
-            if fname == "block":
-                # we skip this function due to issue in unyt with unreleased fix
-                functions_checked.append(np.block)
-                continue
-            # ----------------------------------
             ua_args = list()
             for arg in args:
                 ua_args.append(arg_to_ua(arg))
@@ -751,23 +782,6 @@ class TestNumpyFunctions:
                 ],
             )
 
-    @pytest.mark.xfail
-    def test_block_is_broken(self):
-        """
-        Tracking upstream fix.
-
-        There is an issue in unyt affecting np.block and fixed in
-        https://github.com/yt-project/unyt/pull/571.
-
-        When this fix is released:
-        - This test will unexpectedly pass (instead of xfailing).
-        - Remove lines flagged with a comment in `test_explicitly_handled_funcs`.
-        - Remove this test.
-        """
-        assert isinstance(
-            np.block([[ca(np.arange(3))], [ca(np.arange(3))]]), cosmo_array
-        )
-
     # the combinations of units and cosmo_factors is nonsense but it's just for testing...
     @pytest.mark.parametrize(
         "func_args",
@@ -843,7 +857,7 @@ class TestNumpyFunctions:
             np.array([1, 2, 3]),
         ),
     )
-    @pytest.mark.parametrize("bins_type", ("int", "np", "ca"))
+    @pytest.mark.parametrize("bins_type", ("int", "np", "cosmo"))
     @pytest.mark.parametrize("density", (None, True))
     def test_histograms(self, func_args, weights, bins_type, density):
         """
@@ -857,7 +871,7 @@ class TestNumpyFunctions:
         bins = {
             "int": 10,
             "np": [np.linspace(0, 5, 11)] * 3,
-            "ca": [
+            "cosmo": [
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.kpc,
@@ -889,7 +903,7 @@ class TestNumpyFunctions:
                     np.histogramdd: np.s_[:],
                 }[func]
             ]
-            if bins_type in ("np", "ca")
+            if bins_type in ("np", "cosmo")
             else bins
         )
         result = func(*args, bins=bins, density=density, weights=weights)
@@ -1077,6 +1091,22 @@ class TestCosmoQuantity:
         assert res.cosmo_factor == cosmo_factor(a**1, 1.0)
         assert res.valid_transform is True
 
+    def test_multiply_quantities(self):
+        """Test multiplying two quantities."""
+        cq = cosmo_quantity(
+            2,
+            u.m,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=True,
+        )
+        multiplied = cq * cq
+        assert type(multiplied) is cosmo_quantity
+        assert multiplied.comoving is False
+        assert multiplied.cosmo_factor == cosmo_factor(a**2, 0.5)
+        assert multiplied.to_value(u.m**2) == 4
+
 
 class TestCosmoArrayCopy:
     """Tests of explicit (deep)copying of cosmo_array."""
@@ -1136,9 +1166,6 @@ class TestMultiplicationByUnyt:
 
         We desire consistent behaviour for example for `cosmo_array(...) * (1 * u.Mpc)` as
         for `cosmo_array(...) * u.Mpc`.
-
-        Right-sided multiplication & division can't be supported without upstream
-        changes in unyt, see `test_rmultiplication_by_unyt`.
         """
         ca = cosmo_array(
             np.ones(3), u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1
@@ -1150,46 +1177,16 @@ class TestMultiplicationByUnyt:
         # get the same result twice through left-sided multiplication and division:
         lmultiplied_by_unyt = ca * u.Mpc
         ldivided_by_unyt = ca / u.Mpc**-1
-
-        for multiplied_by_unyt in (lmultiplied_by_unyt, ldivided_by_unyt):
-            assert isinstance(multiplied_by_quantity, cosmo_array)
-            assert isinstance(multiplied_by_unyt, cosmo_array)
-            assert np.allclose(
-                multiplied_by_unyt.to_value(multiplied_by_quantity.units),
-                multiplied_by_quantity.to_value(multiplied_by_quantity.units),
-            )
-
-    @pytest.mark.xfail
-    def test_rmultiplication_by_unyt(self):
-        """
-        Check that right-sided multiplication behaves itself.
-
-        We desire consistent behaviour for example for `cosmo_array(...) * (1 * u.Mpc)` as
-        for `cosmo_array(...) * u.Mpc`.
-
-        But unyt will call it's own __mul__ before we get a chance to use our __rmul__
-        when the cosmo_array is the right-hand argument.
-
-        We can't handle this case without upstream changes in unyt, so this test is marked
-        to xfail.
-
-        If this is fixed in the future this test will pass and can be merged with
-        `test_multiplication_by_unyt` to tidy up.
-
-        See https://github.com/yt-project/unyt/pull/572
-        """
-        ca = cosmo_array(
-            np.ones(3), u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1
-        )
-        # required so that can test right-sided division with the same assertions:
-        assert np.allclose(ca.to_value(ca.units), 1)
-        # the reference result:
-        multiplied_by_quantity = ca * (1 * u.Mpc)  # parentheses very important here
-        # get 2x the same result through right-sided multiplication and division:
+        # and twice more through right-sided multiplication and division:
         rmultiplied_by_unyt = u.Mpc * ca
-        rdivided_by_unyt = u.Mpc**2 / ca
+        rdivided_by_unyt = u.Mpc**3 / ca
 
-        for multiplied_by_unyt in (rmultiplied_by_unyt, rdivided_by_unyt):
+        for multiplied_by_unyt in (
+            lmultiplied_by_unyt,
+            ldivided_by_unyt,
+            rmultiplied_by_unyt,
+            rdivided_by_unyt,
+        ):
             assert isinstance(multiplied_by_quantity, cosmo_array)
             assert isinstance(multiplied_by_unyt, cosmo_array)
             assert np.allclose(
