@@ -1,12 +1,9 @@
 """Test for extra particle types."""
 
-from sympy import Expr
 from swiftsimio import load, metadata, Writer
-from swiftsimio.objects import cosmo_factor
 import swiftsimio.metadata.particle as swp
 import swiftsimio.metadata.writer.required_fields as swmw
 import swiftsimio.metadata.unit.unit_fields as swuf
-import swiftsimio.metadata.cosmology as swcf
 
 import unyt
 from unyt import Unit
@@ -72,56 +69,6 @@ def generate_units(
     }
 
     dict_out["extratype"] = extratype
-    return dict_out
-
-
-def generate_cosmology(
-    scale_factor: float, gamma: float
-) -> dict[str, dict[str, cosmo_factor]]:
-    """
-    Generate cosmology differently for testing.
-
-    This function is used to override the inbuilt swiftsimio generate_cosmology function
-    from metadata.cosmology. This allows the specification of a new particle type and
-    affects how the type is influenced by cosmology. Required only for reading in new
-    particle types.
-
-    Parameters
-    ----------
-    scale_factor : float
-        The scale factor.
-
-    gamma : float
-        The gas adiabatic index.
-
-    Returns
-    -------
-    dict[str, dict[str, cosmo_factor]]
-        The mapping between particle types and cosmology metadata dicts.
-    """
-
-    def cosmo_factory(a_dependence: Expr) -> cosmo_factor:
-        """
-        Generate a ``cosmo_factor``.
-
-        Parameters
-        ----------
-        a_dependence : Expr
-            The scale factor dependence desired.
-
-        Returns
-        -------
-        cosmo_factor
-            One of our ``cosmo_factor`` objects.
-        """
-        return cosmo_factor(a_dependence, scale_factor)
-
-    dict_out = swcf.generate_cosmology(scale_factor, gamma)
-
-    extratype = {**dict_out["gas"]}
-
-    dict_out["extratype"] = extratype
-
     return dict_out
 
 

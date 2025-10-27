@@ -1,17 +1,16 @@
 """
-Deprecated: define units "by hand" instead of reading them from files.
+Define units "by hand" for writing snapshot-like files.
 
-Contains the information for the units that determine the
-particle fields. This must be provided, if not swiftsimio
-will crash (as it should, you can'time just be going around
-having quantities without units...).
-
-Unfortunately there must be a generator function used here
-because we don'time know the units ahead of time.
+Contains the information for the units that determine the particle fields.
+When reading files we read this metadata from the files, but when writing
+we may need to generate this information.
 """
 
 from unyt import g, cm, s, statA, K, Unit
 from typing import Callable
+
+# scale factor exponents for writing snapshot-like files:
+a_exponents = {"coordinates": 1, "internal_energies": -2}
 
 
 def generate_units(
@@ -23,9 +22,6 @@ def generate_units(
     Units for:
 
     mass, length, time, current, and temperature
-
-    ..deprecated:: 3.1.0
-        Everything is read directly out of the snapshots now.
 
     Parameters
     ----------
@@ -58,38 +54,12 @@ def generate_units(
         "potential": length * length / (time * time),
     }
 
-    baryon = {
-        "element_abundance": None,
-        "maximal_temperature": temperature,
-        "maximal_temperature_scale_factor": None,
-        "maximal_temperature_time": time,
-        "iron_mass_frac_from_sn1a": None,
-        "metal_mass_frac_from_agb": None,
-        "metal_mass_frac_from_snii": None,
-        "metal_mass_frac_from_sn1a": None,
-        "metallicity": None,
-        "smoothed_element_abundance": None,
-        "smoothed_iron_mass_frac_from_sn1a": None,
-        "smoothed_metallicity": None,
-        "total_mass_from_agb": mass,
-        "total_mass_from_snii": mass,
-    }
-
     gas = {
-        "density": mass / (length**3),
-        "entropy": mass * length**2 / (time**2 * temperature),
         "internal_energy": (length / time) ** 2,
         "smoothing_length": length,
         "pressure": mass / (length * time**2),
-        "diffusion": None,
-        "sfr": mass / time,
         "temperature": temperature,
-        "viscosity": None,
-        "specific_sfr": 1 / time,
-        "material_id": None,
-        "radiated_energy": mass * (length / time) ** 2,
         **shared,
-        **baryon,
     }
 
     dark_matter = {**shared}
@@ -99,12 +69,8 @@ def generate_units(
     sinks = {**shared}
 
     stars = {
-        "birth_density": mass / (length**3),
-        "birth_time": time,
-        "initial_masses": mass,
         "smoothing_length": length,
         **shared,
-        **baryon,
     }
 
     black_holes = {**shared}
@@ -138,8 +104,6 @@ def generate_dimensions(
     dict
         Dictionary specifying dimensions.
 
-    ..deprecated:: 3.1.0
-        Everything is read directly out of the snapshots now.
     """
     units = generate_unit_func(g, cm, s, statA, K)
 

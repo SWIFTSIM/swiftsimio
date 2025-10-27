@@ -10,7 +10,7 @@ from functools import reduce
 
 from swiftsimio import metadata
 from swiftsimio.objects import cosmo_array
-from swiftsimio.metadata.cosmology.cosmology_fields import a_exponents
+from swiftsimio.metadata.unit.unit_fields import a_exponents
 
 
 def _ptype_str_to_int(ptype_str: str) -> int:
