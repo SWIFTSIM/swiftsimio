@@ -1,11 +1,7 @@
-"""
-Reader for the statistics file.
-"""
+"""Reader for the statistics file."""
 
 import unyt
 import re
-
-from typing import List, Dict
 
 from swiftsimio.accelerated import list_of_strings_to_arrays
 
@@ -13,26 +9,23 @@ from swiftsimio.accelerated import list_of_strings_to_arrays
 class SWIFTStatisticsFile(object):
     """
     SWIFT statistics files (e.g. SFR.txt, energy.txt) reader.
+
+    Parameters
+    ----------
+    filename : str
+        File name for the statistics file.
     """
 
     # Names from the header.
-    header_names: List[str]
+    header_names: list[str]
     # Units (unyt-based) from the header
-    header_units: Dict[str, unyt.unyt_quantity]
+    header_units: dict[str, unyt.unyt_quantity]
     # snake_case names from the header
-    header_snake_case_names: List[str]
+    header_snake_case_names: list[str]
     # Raw lines as strings, read from the file.
-    raw_lines: List[str]
+    raw_lines: list[str]
 
-    def __init__(self, filename: str):
-        """
-        Parameters
-        ----------
-
-        filename: str
-            File name for the statistics file.
-        """
-
+    def __init__(self, filename: str) -> None:
         self.filename = filename
 
         self._read_file()
@@ -40,11 +33,8 @@ class SWIFTStatisticsFile(object):
 
         return
 
-    def _read_file(self):
-        """
-        Reads the header of the file, including loading the units.
-        """
-
+    def _read_file(self) -> None:
+        """Read the header of the file, including loading the units."""
         # Read the header and use custom regex parsing.
 
         with open(self.filename, "r") as handle:
@@ -103,11 +93,8 @@ class SWIFTStatisticsFile(object):
 
         return
 
-    def _process_raw_lines(self):
-        """
-        Processes the raw string lines read out of the header.
-        """
-
+    def _process_raw_lines(self) -> None:
+        """Process the raw string lines read out of the header."""
         arrays = list_of_strings_to_arrays(lines=self.raw_lines)
 
         for array, header_name, header_snake_case_name in zip(
@@ -123,11 +110,27 @@ class SWIFTStatisticsFile(object):
 
         return
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """
+        Print file name and fields.
+
+        Returns
+        -------
+        str
+            String describing file contents.
+        """
         return (
             f"Statistics file: {self.filename}, containing fields: "
             f"{', '.join(self.header_snake_case_names)}"
         )
 
-    def __repr__(self):
-        return str(self)
+    def __repr__(self) -> str:
+        """
+        Print file name and fields.
+
+        Returns
+        -------
+        str
+            String describing file contents.
+        """
+        return self.__str__()

@@ -1,8 +1,10 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
+Configuration file for the Sphinx documentation builder.
+
+This file only contains a selection of the most common options. For a full
+list see the documentation:
+https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""
 
 # -- Path setup --------------------------------------------------------------
 
@@ -79,7 +81,7 @@ autosummary_generate = True
 os.environ["SPHINX_APIDOC_OPTIONS"] = "members,undoc-members,show-inheritance"
 
 
-def run_apidoc(_):
+def run_apidoc(_):  # numpydoc ignore=GL08
     try:
         from sphinx.ext.apidoc import main
     except ImportError:
@@ -98,7 +100,7 @@ def run_apidoc(_):
     main(["-M", "-f", "-e", "-T", "-d 0", "-o", api_doc_dir, module, *ignore])
 
 
-def setup(app):
+def setup(app):  # numpydoc ignore=GL08
     app.connect("builder-inited", run_apidoc)
 
 

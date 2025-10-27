@@ -1,7 +1,8 @@
 #!python3
 """
-swiftsnap allows you to check the metadata of a SWIFT snapshot easily
-from the command line. See the -h invocation for more details.
+``swiftsnap``: check the metadata of a SWIFT snapshot easily from the command line.
+
+See the -h invocation for more details.
 """
 
 import argparse as ap
@@ -9,7 +10,22 @@ import argparse as ap
 SCREEN_WIDTH = 80
 
 
-def decode(bytestring: bytes) -> str:
+def decode(bytestring: object) -> str:
+    """
+    Decode input if it is a bytestring.
+
+    If the input is not a bytestring, we instead try to interpret it as a string.
+
+    Parameters
+    ----------
+    bytestring : object
+        The (possibly) bytes object.
+
+    Returns
+    -------
+    str
+       The resulting string.
+    """
     try:
         return bytestring.decode("utf-8")
     except AttributeError:
@@ -22,7 +38,7 @@ parser = ap.ArgumentParser(
         "Prints metadata to the console, read from the swift snapshots that "
         "are given. Includes cosmology, run, and output information."
     ),
-    epilog=("Example usage:\n" "  swiftsnap output_0000.hdf5"),
+    epilog=("Example usage:\n  swiftsnap output_0000.hdf5"),
 )
 
 parser.add_argument(
@@ -61,7 +77,12 @@ parser.add_argument(
 )
 
 
-def swiftsnap():
+def swiftsnap() -> None:
+    """
+    Access SWIFT snapshot metadata from the command line.
+
+    For details see the command line argument parser help.
+    """
     import swiftsimio as sw
     from swiftsimio.metadata.objects import _metadata_discriminator
 
@@ -74,9 +95,9 @@ def swiftsnap():
     # First, validate the snapshots.
     for filename in snapshots:
         try:
-            if not sw.validate_file(filename):
-                raise Exception
-        except:
+            # returns True or raises:
+            sw.validate_file(filename)
+        except IOError:
             print(f"{filename} is not a SWIFT snapshot.")
             exit(1)
 
@@ -150,19 +171,11 @@ def swiftsnap():
         print()
 
         # Physics information
-        try:
-            print(
-                f"Gravity scheme: {decode(data.gravity_scheme.get('Scheme', b'None'))}"
-            )
-        except:
-            pass
+        print(f"Gravity scheme: {decode(data.gravity_scheme.get('Scheme', b'None'))}")
 
-        try:
-            print(
-                f"Hydrodynamics scheme: {decode(data.hydro_scheme.get('Scheme', b'None'))}"
-            )
-        except:
-            pass
+        print(
+            f"Hydrodynamics scheme: {decode(data.hydro_scheme.get('Scheme', b'None'))}"
+        )
 
         for name, scheme in data.subgrid_scheme.items():
             if name != "NamedColumns":

@@ -1,8 +1,5 @@
-"""
-Includes the fancy names.
-"""
+"""Define the human-friendly names for numbered particle types."""
 
-# Describes the conversion of particle types to names
 particle_name_underscores = {
     "PartType0": "gas",
     "PartType1": "dark_matter",

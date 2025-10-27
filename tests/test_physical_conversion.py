@@ -1,12 +1,12 @@
+"""Tests for converting to physical units and raw values."""
+
 from swiftsimio import load, cosmo_array
 import numpy as np
 import unyt as u
 
 
 def test_convert(cosmological_volume_only_single):
-    """
-    Check that the conversion to physical units is done correctly.
-    """
+    """Check that the conversion to physical units is done correctly."""
     data = load(cosmological_volume_only_single)
     coords = data.gas.coordinates
     units = u.kpc
@@ -25,9 +25,7 @@ def test_convert(cosmological_volume_only_single):
 
 
 def test_convert_to_value(cosmological_volume_only_single):
-    """
-    Check that conversions to numerical values are correct.
-    """
+    """Check that conversions to numerical values are correct."""
     data = load(cosmological_volume_only_single)
     coords = data.gas.coordinates
     units = u.kpc
@@ -43,6 +41,8 @@ def test_convert_to_value(cosmological_volume_only_single):
 
 def test_combine_physical_comoving(cosmological_volume_only_single):
     """
+    Check that a non-convertible array does not prevent getting a result.
+
     When combining a physical and comoving array we default to converting them
     both to comoving if possible. Check that we can still combine a physical-only
     array (valid_transform=False) with a comoving array.

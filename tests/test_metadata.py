@@ -1,6 +1,4 @@
-"""
-Tests some known good states with the metadata.
-"""
+"""Tests some known good states with the metadata."""
 
 import numpy as np
 import h5py
@@ -8,13 +6,28 @@ from swiftsimio import metadata, load, mask, SWIFTUnits, cosmo_array
 from swiftsimio.metadata.objects import SWIFTSnapshotMetadata
 
 
-def _is_closed_hdf5_file(handle):
+def _is_closed_hdf5_file(handle: h5py.File) -> bool:
+    """
+    Check if a hdf5 file handle is closed.
+
+    Parameters
+    ----------
+    handle : h5py.File
+        The handle to check for open state.
+
+    Returns
+    -------
+    bool
+        ``True`` if ``handle`` is a closed file handle, else ``False``.
+    """
     return isinstance(handle, h5py.File) and not handle
 
 
 def test_same_contents():
     """
-    Tests that there are the same arrays in each of the following:
+    Tests that field metadata defined by hand covers same fields.
+
+    Checks that there are the same arrays in each of the following:
 
         + particle fields
         + unit fields
@@ -22,7 +35,6 @@ def test_same_contents():
 
     We treat the particle fields as the ground truth.
     """
-
     cosmology = metadata.cosmology_fields.generate_cosmology(1.0, 1.0)
     units = metadata.unit_fields.generate_units(1.0, 1.0, 1.0, 1.0, 1.0)
     particle = {x: getattr(metadata.particle_fields, x) for x in units.keys()}
@@ -33,8 +45,8 @@ def test_same_contents():
     assert units.keys() == particle.keys()
 
     for ptype in cosmology.keys():
-        assert list(units[ptype].keys()) == list(particle[ptype].values())
-        assert list(cosmology[ptype].keys()) == list(particle[ptype].values())
+        assert set(units[ptype].keys()) == set(particle[ptype].values())
+        assert set(cosmology[ptype].keys()) == set(particle[ptype].values())
 
     return
 
@@ -91,8 +103,10 @@ def test_file_handle_cleanup(cosmological_volume_only_single):
 
 def test_mask_and_dataset_share_metadata(cosmological_volume_only_single):
     """
-    When a mask is used, we skip re-reading the metadata in the SWIFTDataset and
-    borrow it from the mask instead. Check that this is the case.
+    When a mask is used, chec that we skip re-reading the metadata.
+
+    We should not read it in the SWIFTDataset and borrow it from the mask instead.
+    Check that this is the case.
     """
     m = mask(cosmological_volume_only_single)
     region = cosmo_array([np.zeros_like(m.metadata.boxsize), m.metadata.boxsize]).T

@@ -5,7 +5,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 packages = [
     "swiftsimio",
-    "swiftsimio.initial_conditions",
     "swiftsimio.metadata",
     "swiftsimio.metadata.cosmology",
     "swiftsimio.metadata.metadata",
@@ -53,3 +52,68 @@ dependencies = [
 
 [project.scripts]
 swiftsnap = "swiftsimio.swiftsnap:swiftsnap"
+
+[tool.ruff]
+exclude = ["docs/source/conf.py"]
+line-length = 88
+indent-width = 4
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "D", "ANN"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false  # enable eventually
+docstring-code-line-length = "dynamic"
+
+# numpydoc_validation provides many useful rules that ruff does not yet.
+# If ruff support for rules improves this can be phased out.
+[tool.numpydoc_validation]
+checks = [
+       "GL01",
+       "GL02",
+       "GL03",
+       "GL05",
+       "GL06",
+       "GL07",
+       "GL08",
+       "GL10",
+       "SS01",
+       "SS02",
+       "SS03",
+       "SS04",
+       "SS05",
+       "PR01",
+       "PR02",
+       "PR03",
+       "PR04",
+       "PR05",
+       "PR06",
+       "PR07",
+       "PR08",
+       "PR09",
+       "PR10",
+       "RT02",
+       "RT03",
+       "RT04",
+       "RT05",
+       "SA02",
+       "SA03",
+       "SS06",
+]
+# Don't document class __init__ methods, put the docstring on the class object.
+exclude = ['\.__init__$', '\.test_']

@@ -1,7 +1,7 @@
 """
-Contains unit systems that may be useful to astronomers. In particular,
-it contains the cosmo_units which can be considered Gadget-oid default units,
-with
+Define unit systems that may be useful to astronomers.
+
+In particular, we define the cosmo_units which can be considered Gadget-oid default units:
 
 + Unit length = Mpc
 + Unit velocity = km/s

@@ -1,3 +1,5 @@
+"""Tests of the visualisation tools."""
+
 import pytest
 from swiftsimio import load, mask
 from swiftsimio.visualisation.projection import project_gas, project_pixel_grid
@@ -39,26 +41,33 @@ except ImportError:
     pass
 
 
-def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
+def fraction_within_tolerance(
+    a: np.ndarray, b: np.ndarray, frac: float = 0.99, tol: float = 0.1
+) -> bool:
     """
+    Check that two arrays have most values within a desired tolerance.
+
     Compare array values in ``a`` and ``b``, return ``True`` if a fraction
     ``frac`` of values are within a retlative tolerance ``tol`` of their
     counterparts.
 
-    Paramters
-    ---------
+    Parameters
+    ----------
     a : ~swiftsimio.objects.cosmo_array
         The first array to compare.
+
     b : ~swiftsimio.objects.cosmo_array
-        The second array to compare
+        The second array to compare.
+
     frac : float
         The fraction of the values that must be within the tolerance.
+
     tol : float
         The relative tolerance for matching.
 
     Returns
     -------
-    out : bool
+    bool
         ``True`` if enough values match within the tolerance, ``False`` otherwise.
     """
     assert a.shape == b.shape
@@ -72,11 +81,11 @@ def fraction_within_tolerance(a, b, frac=0.99, tol=0.1):
 
 
 class TestProjection:
+    """Tests for the projection functions in the visualisation tools."""
+
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_scatter(self, backend, save=False):
-        """
-        Tests the scatter functions from all backends.
-        """
+        """Tests the scatter functions from all projection backends."""
         if backend == "gpu":
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
@@ -102,6 +111,7 @@ class TestProjection:
         return
 
     def test_scatter_mass_conservation(self):
+        """Check that projecting insets all of the mass into the projection."""
         np.random.seed(971_263)
         # Width of 0.8 centered on 0.5, 0.5.
         x = 0.8 * np.random.rand(100) + 0.1
@@ -123,11 +133,7 @@ class TestProjection:
         return
 
     def test_scatter_parallel(self, save=False):
-        """
-        Asserts that we create the same image with the parallel version of the code
-        as with the serial version.
-        """
-
+        """Check that parallel projection is equivalent to serial projection."""
         number_of_parts = 1000
         h_max = np.float32(0.05)
         resolution = 512
@@ -171,20 +177,22 @@ class TestProjection:
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_equivalent_regions(self, backend, cosmological_volume_only_single):
         """
-        Here we test that various regions are (close enough to) equivalent.
-        The ref_img is just a projection through the whole box.
-        The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
-        as many times as we like.
-        The far_img is way, way outside the box, confirming that we can place the region
-        anywhere.
-        The depth_img is a reference image with limited projection depth in the box.
-        The neg_depth_img is as the depth_img but with the z range in negative values.
-        The wrap_depth_img is as the depth_img but with the z range beyond the box length.
-        The straddled_depth_img compares to the ref_img - it projects through the whole
-        box but straddling z=0 instead of starting there.
-        The edge_img is the only non-periodic case, framed to only partially contain the
-        box. We check that it matches the expected region of the ref_img (with the edges
-        trimmed a bit).
+        Check that equivalent regions are (close enough to) equivalent.
+
+        + The ref_img is just a projection through the whole box.
+        + The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
+          as many times as we like.
+        + The far_img is way, way outside the box, confirming that we can place the region
+          anywhere.
+        + The depth_img is a reference image with limited projection depth in the box.
+        + The neg_depth_img is as the depth_img but with the z range in negative values.
+        + The wrap_depth_img is as the depth_img but with the z range beyond the box
+          length.
+        + The straddled_depth_img compares to the ref_img - it projects through the whole
+          box but straddling z=0 instead of starting there.
+        + The edge_img is the only non-periodic case, framed to only partially contain the
+          box. We check that it matches the expected region of the ref_img (with the edges
+          trimmed a bit).
         """
         sd = load(cosmological_volume_only_single)
         if backend == "gpu":
@@ -319,9 +327,7 @@ class TestProjection:
 
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
-        """
-        Test that periodic boundary wrapping works.
-        """
+        """Test that a single particle wraps properly around the periodic boundary."""
         if backend == "gpu":
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
@@ -369,7 +375,10 @@ class TestProjection:
 
 
 class TestSlice:
+    """Tests for the slice functions in the visualisation tools."""
+
     def test_slice(self, save=False):
+        """Just run a slice and make sure we don't crash."""
         slice = slice_backends["sph"]
         image = slice(
             x=np.array([0.0, 1.0, 1.0, -0.000_001]),
@@ -391,11 +400,7 @@ class TestSlice:
         return
 
     def test_slice_parallel(self, save=False):
-        """
-        Asserts that we create the same image with the parallel version of the code
-        as with the serial version.
-        """
-
+        """Check that parallel slice and serial slice are equivalent."""
         number_of_parts = 1000
         h_max = np.float32(0.05)
         z_slice = 0.5
@@ -446,6 +451,7 @@ class TestSlice:
 
     @pytest.mark.parametrize("backend", slice_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
+        """Check that a single particle wraps properly around the periodic boundary."""
         if backend == "gpu":
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
@@ -497,17 +503,18 @@ class TestSlice:
     @pytest.mark.parametrize("backend", slice_backends.keys())
     def test_equivalent_regions(self, backend, cosmological_volume_only_single):
         """
-        Here we test that various regions are (close enough to) equivalent.
-        The ref_img is just a slice through the whole box at z=0.5 * lbox.
-        The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
-        as many times as we like.
-        The far_img is way, way outside the box, confirming that we can place the region
-        anywhere.
-        The neg_img places the slice at z=-0.5 * lbox.
-        The wrap_img places the slice at z=1.5 * lbox.
-        The edge_img is the only non-periodic case, framed to only partially contain the
-        box. We check that it matches the expected region of the ref_img (with the edges
-        trimmed a bit).
+        Check that slices of equivalent regions are (close enough to) equivalent.
+
+        + The ref_img is just a slice through the whole box at z=0.5 * lbox.
+        + The big_img is the box tiled 3x3 times, confirming that we can periodically wrap
+          as many times as we like.
+        + The far_img is way, way outside the box, confirming that we can place the region
+          anywhere.
+        + The neg_img places the slice at z=-0.5 * lbox.
+        + The wrap_img places the slice at z=1.5 * lbox.
+        + The edge_img is the only non-periodic case, framed to only partially contain the
+          box. We check that it matches the expected region of the ref_img (with the edges
+          trimmed a bit).
         """
         sd = load(cosmological_volume_only_single)
         parallel = True
@@ -654,7 +661,10 @@ class TestSlice:
 
 
 class TestVolumeRender:
+    """Tests for the volume render functions in the visualisation tools."""
+
     def test_volume_render(self):
+        """Just run a volume render and make sure we don't crash."""
         # render image
         scatter = volume_render_backends["scatter"]
         scatter(
@@ -672,6 +682,7 @@ class TestVolumeRender:
         return
 
     def test_volume_parallel(self):
+        """Check that volume render in parallel matches serial volume render."""
         number_of_parts = 1000
         h_max = np.float32(0.05)
         resolution = 64
@@ -714,11 +725,7 @@ class TestVolumeRender:
         return
 
     def test_volume_render_and_unfolded_deposit(self):
-        """
-        Test that volume render and unfolded deposit can give
-        the same result.
-        """
-
+        """Test that volume render and unfolded deposit can give the same result."""
         x = np.array([100, 200])
         y = np.array([100, 200])
         z = np.array([100, 200])
@@ -747,10 +754,7 @@ class TestVolumeRender:
         assert np.allclose(deposition, volume.view(np.ndarray))
 
     def test_folding_deposit(self):
-        """
-        Tests that the deposit returns the 'correct' units.
-        """
-
+        """Tests that the deposit returns the correct units."""
         x = np.array([100, 200])
         y = np.array([100, 200])
         z = np.array([100, 200])
@@ -770,6 +774,7 @@ class TestVolumeRender:
     def test_volume_render_and_unfolded_deposit_with_units(
         self, cosmological_volume_only_single
     ):
+        """Check that the density in the render matches the input density."""
         data = load(cosmological_volume_only_single)
         data.gas.smoothing_lengths = 1e-30 * data.gas.smoothing_lengths
         npix = 64
@@ -803,7 +808,7 @@ class TestVolumeRender:
         assert np.isclose(mean_density_deposit, mean_density_volume, rtol=0.2)
 
     def test_periodic_boundary_wrapping(self):
-
+        """Check that a single particle wraps properly around the periodic boundary."""
         voxel_resolution = 10
         boxsize = 1.0
 
@@ -847,17 +852,18 @@ class TestVolumeRender:
 
     def test_equivalent_regions(self, cosmological_volume_only_single):
         """
-        Here we test that various regions are (close enough to) equivalent.
-        The ref_img is just a render of the whole box.
-        The big_img is the box tiled 3x3x3 times, confirming that we can periodically wrap
-        as many times as we like.
-        The far_img is way, way outside the box, confirming that we can place the region
-        anywhere.
-        The straddled_img is offset by half a box length, the two halves of the result
-        should agree with the opposite halves of the ref_img.
-        The edge_img is the only non-periodic case, framed to only partially contain the
-        box. We check that it matches the expected region of the ref_img (with the edges
-        trimmed a bit).
+        Test that volume renders of equivalent regions are (close enough to) equivalent.
+
+        + The ref_img is just a render of the whole box.
+        + The big_img is the box tiled 3x3x3 times, confirming that we can periodically
+          wrap as many times as we like.
+        + The far_img is way, way outside the box, confirming that we can place the
+          region anywhere.
+        + The straddled_img is offset by half a box length, the two halves of the result
+          should agree with the opposite halves of the ref_img.
+        + The edge_img is the only non-periodic case, framed to only partially contain the
+          box. We check that it matches the expected region of the ref_img (with the edges
+          trimmed a bit).
         """
         sd = load(cosmological_volume_only_single)
         parallel = False  # memory gets a bit out of hand otherwise
@@ -960,6 +966,11 @@ class TestVolumeRender:
 
 
 def test_selection_render(cosmological_volume_only_single):
+    """
+    Check that we can run rendering on a sub-region of the volume.
+
+    Just checks that nothing crashes.
+    """
     data = load(cosmological_volume_only_single)
     bs = data.metadata.boxsize[0]
 
@@ -1001,10 +1012,7 @@ def test_selection_render(cosmological_volume_only_single):
 
 
 def test_comoving_versus_physical(cosmological_volume_only_single):
-    """
-    Test what happens if you try to mix up physical and comoving quantities.
-    """
-
+    """Test what happens if you try to mix up physical and comoving quantities."""
     # this test is pretty slow if we don't mask out some particles
     m = mask(cosmological_volume_only_single)
     boxsize = m.metadata.boxsize
@@ -1115,9 +1123,13 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
 
 def test_nongas_smoothing_lengths(cosmological_volume_only_single):
     """
-    Test that the visualisation tools to calculate smoothing lengths give usable results.
-    """
+    Check that calculating smoothing lengths give usable results.
 
+    Tests the smoothing length generator from the visualisation tools.
+
+    Just makes sure that we get back a unyt_array for unyt_array input, and
+    a cosmo_array for cosmo_array input.
+    """
     # If project_gas runs without error the smoothing lengths seem usable.
     data = load(cosmological_volume_only_single)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
@@ -1142,9 +1154,17 @@ def test_nongas_smoothing_lengths(cosmological_volume_only_single):
 
 
 class TestPowerSpectrum:
+    """Tests for the visualisation module's power spectrum tools."""
+
     def test_dark_matter_power_spectrum(
         self, cosmological_volume_only_single, save=False
     ):
+        """
+        Check that power spectra can be calculated.
+
+        Runs both a series of "raw" depositions with different fold values and
+        combining them into a power spectrum. Can save a plot for inspection.
+        """
         data = load(cosmological_volume_only_single)
 
         data.dark_matter.smoothing_lengths = generate_smoothing_lengths(
@@ -1190,7 +1210,7 @@ class TestPowerSpectrum:
 
         folding_output = {}
 
-        for folding in [2, 4, 6, 8]:  # , 8.0, 512.0]:
+        for folding in [2, 4, 6, 8]:
             # Deposit the particles
             deposition = render_to_deposit(
                 data.dark_matter, 32, project="masses", folding=folding, parallel=False
@@ -1215,8 +1235,6 @@ class TestPowerSpectrum:
             wavenumber_range=(min_k, max_k),
             log_wavenumber_bins=True,
         )
-
-        # import pdb; pdb.set_trace()
 
         if save:
             import matplotlib.pyplot as plt

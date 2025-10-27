@@ -1,7 +1,14 @@
+"""
+Tools for reading SWIFT simulation data.
+
+The most used functions are :func:`~swiftsimio.load` and :func:`~swiftsimio.mask`.
+The :mod:`~swiftsimio.visualisation` sub-module provides visualisation tools.
+"""
+
 from pathlib import Path
 import h5py
 
-from .reader import *
+from .reader import SWIFTDataset
 from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
@@ -9,6 +16,14 @@ from .__version__ import __version__
 from .__cite__ import __cite__
 
 import swiftsimio.metadata as metadata
+from swiftsimio.metadata.objects import (
+    SWIFTUnits,
+    SWIFTGroupMetadata,
+    SWIFTSnapshotMetadata,
+    SWIFTFOFMetadata,
+    SWIFTSOAPMetadata,
+    _metadata_discriminator,
+)
 import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
 from swiftsimio.objects import cosmo_array, cosmo_quantity
@@ -16,30 +31,58 @@ import swiftsimio.visualisation as visualisation
 import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
-from swiftsimio.metadata.objects import _metadata_discriminator
+
+__all__ = [
+    "SWIFTDataset",
+    "SWIFTSnapshotWriter",
+    "SWIFTMask",
+    "SWIFTStatisticsFile",
+    "SWIFTUnits",
+    "SWIFTGroupMetadata",
+    "SWIFTSnapshotMetadata",
+    "SWIFTFOFMetadata",
+    "SWIFTSOAPMetadata",
+    "__version__",
+    "__cite__",
+    "metadata",
+    "accelerated",
+    "objects",
+    "cosmo_array",
+    "cosmo_quantity",
+    "visualisation",
+    "units",
+    "subset_writer",
+    "statistics",
+    "name",
+    "validate_file",
+    "mask",
+    "load",
+    "load_statistics",
+    "Writer",
+]
 
 name = "swiftsimio"
 
 
-def validate_file(filename: str):
+def validate_file(filename: str) -> bool:
     """
-    Checks that the provided file is a SWIFT dataset.
+    Check that the provided file is a SWIFT dataset.
 
     Parameters
     ----------
     filename : str
-        name of file we want to check is a dataset
+        Name of file we want to check is a dataset.
 
-    Return
-    ------
+    Returns
+    -------
     bool
-        if `filename` is a SWIFT dataset return True,
-        otherwise raise exception
+        If ``filename`` is a SWIFT dataset return ``True``,
+        otherwise raise exception.
 
     Raises
     ------
     KeyError
-        Crash if the file is not a SWIFT data file
+        If the file is not a SWIFT data file.
     """
     try:
         with h5py.File(filename, "r") as handle:
@@ -57,8 +100,9 @@ def mask(
     safe_padding: bool | float = True,
 ) -> SWIFTMask:
     """
-    Sets up a masking object for you to use with the correct units and
-    metadata available.
+    Set up a mask to apply to a :mod:`swiftsimio` dataset.
+
+    Also makes the dataset's units and metadata available.
 
     Parameters
     ----------
@@ -86,7 +130,7 @@ def mask(
     Returns
     -------
     SWIFTMask
-        empty mask object set up with the correct units and metadata
+        Empty mask object set up with the correct units and metadata.
 
     Notes
     -----
@@ -113,20 +157,20 @@ def mask(
 
 def load(filename: str | Path, mask: SWIFTMask | None = None) -> SWIFTDataset:
     """
-    Loads the SWIFT dataset at filename.
+    Load a SWIFT dataset (snapshot, FOF or SOAP catalogue).
 
     Parameters
     ----------
     filename : str or Path
-        SWIFT data file to read from. Can also be an open h5py.File handle.
+        SWIFT data file to read from.
 
     mask : SWIFTMask, optional
-        mask to apply when reading dataset
+        Mask to apply when reading dataset.
 
     Returns
     -------
     SWIFTDataset
-        dataset object providing an interface to the data file.
+        Dataset object providing an interface to the data file.
     """
     if isinstance(filename, str):
         filename = Path(filename)
@@ -139,15 +183,13 @@ def load(filename: str | Path, mask: SWIFTMask | None = None) -> SWIFTDataset:
 
 def load_statistics(filename: str | Path) -> SWIFTStatisticsFile:
     """
-    Loads a SWIFT statistics file (``SFR.txt``, ``energy.txt``).
+    Load a SWIFT statistics file (``SFR.txt``, ``energy.txt``).
 
     Parameters
     ----------
-
     filename : str or Path
-        SWIFT statistics file path
+        SWIFT statistics file path.
     """
-
     return SWIFTStatisticsFile(filename=filename)
 
 

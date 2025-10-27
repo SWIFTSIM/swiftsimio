@@ -1,8 +1,5 @@
-"""
-Calls functions from `projection_backends`.
-"""
+"""Calls functions from `projection_backends`."""
 
-from typing import Union
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 
@@ -20,17 +17,19 @@ from swiftsimio.visualisation._vistools import (
 def project_pixel_grid(
     data: __SWIFTGroupDataset,
     resolution: int,
-    project: Union[str, None] = "masses",
-    region: Union[None, cosmo_array] = None,
-    mask: Union[None, np.array] = None,
-    rotation_matrix: Union[None, np.array] = None,
-    rotation_center: Union[None, cosmo_array] = None,
+    project: str | None = "masses",
+    region: cosmo_array | None = None,
+    mask: np.ndarray | None = None,
+    rotation_matrix: np.ndarray | None = None,
+    rotation_center: cosmo_array | None = None,
     parallel: bool = False,
     backend: str = "fast",
     periodic: bool = True,
-):
+) -> cosmo_array:
     r"""
-    Creates a 2D projection of a SWIFT dataset, projected by the "project"
+    Create a 2D projection of a particle-carried field onto a 2D grid.
+
+    Create a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
 
@@ -39,71 +38,68 @@ def project_pixel_grid(
 
     Parameters
     ----------
+    data : __SWIFTGroupDataset
+        The SWIFT dataset that you wish to visualise (get this from ``load``).
 
-    data: __SWIFTGroupDataset
-        The SWIFT dataset that you wish to visualise (get this from ``load``)
-
-    resolution: int
+    resolution : int
         The resolution of the image. All images returned are square, ``res``
         by ``res``, pixel grids.
 
-    project: str, optional
+    project : str, optional
         Variable to project to get the weighted density of. By default, this
         is mass. If you would like to mass-weight any other variable, you can
         always create it as ``data.gas.my_variable = data.gas.other_variable
         * data.gas.masses``. The result is comoving if this is comoving, else
         it is physical.
 
-    region: cosmo_array, optional
+    region : cosmo_array, optional
         Region, determines where the image will be created (this corresponds
         to the left and right-hand edges, and top and bottom edges) if it is
         not None. It should have a length of four or six, and take the form:
-        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``
+        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``.
 
-    mask: np.array, optional
+    mask : np.array, optional
         Allows only a sub-set of the particles in data to be visualised. Useful
         in cases where you have read data out of a ``velociraptor`` catalogue,
         or if you only want to visualise e.g. star forming particles. This boolean
         mask is applied just before visualisation.
 
-    rotation_center: np.array, optional
-        Center of the rotation. If you are trying to rotate around a galaxy, this
-        should be the most bound particle.
-
-    rotation_matrix: np.array, optional
+    rotation_matrix : np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a projection
         along the z axis.
 
-    parallel: bool, optional
+    rotation_center : np.array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
+
+    parallel : bool, optional
         Defaults to ``False``, whether or not to create the image in parallel.
         The parallel version of this function uses significantly more memory.
 
-    backend: str, optional
+    backend : str, optional
         Backend to use. See documentation for details. Defaults to 'fast'.
 
-    periodic: bool, optional
+    periodic : bool, optional
         Account for periodic boundary conditions for the simulation box?
         Defaults to ``True``.
 
     Returns
     -------
-
-    image: cosmo_array
+    cosmo_array
         Projected image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
 
-
     Notes
     -----
-
     + Particles outside of this range are still considered if their smoothing
       lengths overlap with the range.
+
     + The returned array has x as the first component and y as the second component,
       which is the opposite to what ``imshow`` requires. You should transpose the
-      array if you want it to be visualised the 'right way up'.
+      array if you want it to be visualised the 'right way up'. Also use
+      `origin="lower"` with `imshow`.
     """
-
     m = _get_projection_field(data, project)
     region_info = _get_region_info(data, region, periodic=periodic)
     hsml = backends_get_hsml["sph" if backend != "histogram" else "histogram"](data)
@@ -169,17 +165,19 @@ def project_pixel_grid(
 def project_gas(
     data: SWIFTDataset,
     resolution: int,
-    project: Union[str, None] = "masses",
-    region: Union[None, cosmo_array] = None,
-    mask: Union[None, np.array] = None,
-    rotation_center: Union[None, cosmo_array] = None,
-    rotation_matrix: Union[None, np.array] = None,
+    project: str | None = "masses",
+    region: cosmo_array | None = None,
+    mask: np.ndarray | None = None,
+    rotation_center: cosmo_array | None = None,
+    rotation_matrix: np.ndarray | None = None,
     parallel: bool = False,
     backend: str = "fast",
     periodic: bool = True,
-):
+) -> cosmo_array:
     r"""
-    Creates a 2D projection of a SWIFT dataset, projected by the "project"
+    Create a 2D projection of a gas particle-carried field onto a 2D grid.
+
+    Create a 2D projection of a SWIFT dataset, projected by the "project"
     variable (e.g. if project is Temperature, we return: \bar{T} = \sum_j T_j
     W_{ij}).
 
@@ -188,72 +186,68 @@ def project_gas(
 
     Parameters
     ----------
+    data : SWIFTDataset
+        The SWIFT dataset that you wish to visualise (get this from ``load``).
 
-    data: SWIFTDataset
-        The SWIFT dataset that you wish to visualise (get this from ``load``)
-
-    resolution: int
+    resolution : int
         The resolution of the image. All images returned are square, ``res``
         by ``res``, pixel grids.
 
-    project: str, optional
+    project : str, optional
         Variable to project to get the weighted density of. By default, this
         is mass. If you would like to mass-weight any other variable, you can
         always create it as ``data.gas.my_variable = data.gas.other_variable
         * data.gas.masses``. The result is comoving if this is comoving, else
         it is physical.
 
-    region: cosmo_array, optional
+    region : cosmo_array, optional
         Region, determines where the image will be created (this corresponds
         to the left and right-hand edges, and top and bottom edges) if it is
         not None. It should have a length of four or six, and take the form:
-        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``
+        ``[x_min, x_max, y_min, y_max, {z_min, z_max}]``.
 
-    mask: np.array, optional
+    mask : np.array, optional
         Allows only a sub-set of the particles in data to be visualised. Useful
         in cases where you have read data out of a ``velociraptor`` catalogue,
         or if you only want to visualise e.g. star forming particles. This boolean
         mask is applied just before visualisation.
 
-    rotation_center: np.array, optional
+    rotation_center : np.array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
-    rotation_matrix: np.array, optional
+    rotation_matrix : np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a projection
         along the z axis.
 
-    parallel: bool, optional
+    parallel : bool, optional
         Defaults to ``False``, whether or not to create the image in parallel.
         The parallel version of this function uses significantly more memory.
 
-    backend: str, optional
+    backend : str, optional
         Backend to use. See documentation for details. Defaults to 'fast'.
 
-    periodic: bool, optional
+    periodic : bool, optional
         Account for periodic boundary conditions for the simulation box?
         Defaults to ``True``.
 
-
     Returns
     -------
-
-    image: cosmo_array
+    cosmo_array
         Projected image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
 
-
     Notes
     -----
-
     + Particles outside of this range are still considered if their smoothing
       lengths overlap with the range.
+
     + The returned array has x as the first component and y as the second component,
       which is the opposite to what ``imshow`` requires. You should transpose the
-      array if you want it to be visualised the 'right way up'.
+      array if you want it to be visualised the 'right way up'. Also use
+      `origin="lower"` with `imshow`.
     """
-
     return project_pixel_grid(
         data=data.gas,
         resolution=resolution,

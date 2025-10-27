@@ -1,6 +1,4 @@
-"""
-Basic integration test!
-"""
+"""Basic integration test."""
 
 from swiftsimio import load
 from swiftsimio import Writer
@@ -12,9 +10,7 @@ import os
 
 
 def test_write():
-    """
-    Creates a sample dataset.
-    """
+    """Create a sample dataset. Should not crash."""
     # Box is 100 Mpc
     boxsize = 100 * unyt.Mpc
 
@@ -47,9 +43,7 @@ def test_write():
 
 
 def test_load():
-    """
-    Tries to load the dataset we just made.
-    """
+    """Try to load the dataset we just made. Should not crash."""
     x = load("test.hdf5")
 
     x.gas.internal_energy

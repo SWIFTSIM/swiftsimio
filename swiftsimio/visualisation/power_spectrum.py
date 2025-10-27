@@ -1,8 +1,5 @@
-"""
-Tools for creating power spectra from SWIFT data.
-"""
+"""Tools for creating power spectra from SWIFT data."""
 
-from numpy import float32, float64, int32, zeros, ndarray, zeros_like
 import numpy as np
 import scipy.fft
 
@@ -11,61 +8,67 @@ from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio import cosmo_array, cosmo_quantity
 from swiftsimio.reader import __SWIFTGroupDataset
 
-from typing import Optional, Dict, Tuple
-
 
 @jit(nopython=True, fastmath=True)
 def deposit(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    res: int32,
-    fold: float64,
-    box_x: float64,
-    box_y: float64,
-    box_z: float64,
-) -> ndarray:
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    res: np.int32,
+    fold: np.float64,
+    box_x: np.float64,
+    box_y: np.float64,
+    box_z: np.float64,
+) -> np.ndarray:
     """
-    Deposit the particles to a 3D grid, with the potential
-    for folding. Note that unlike the other vis tools, this
-    requires the 'raw' positions of the particles.
+    Deposit the particles to a (potentially folded) 3D grid.
+
+    Note that unlike the other vis tools, this requires the 'raw' positions of the
+    particles.
 
     Parameters
     ----------
-    x : np.array[float64]
-        array of x-positions of the particles. Scaled by box_x by this
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Scaled by box_x by this
         function, so ensure they have the same units.
-    y: np.array[float64]
-        array of y-positions of the particles. Scaled by box_x by this
+
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Scaled by box_x by this
         function, so ensure they have the same units.
-    z: np.array[float64]
-        array of z-positions of the particles. Scaled by box_x by this
+
+    z : np.ndarray[np.float64]
+        Array of z-positions of the particles. Scaled by box_x by this
         function, so ensure they have the same units.
-    m: np.array[float32]
-        array of masses (or otherwise weights) of the particles
-    res: int
-        the number of pixels along one axis, i.e. this returns a cube
+
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
+
+    res : int
+        The number of pixels along one axis, i.e. this returns a cube
         of res * res * res.
-    fold: float64
-        the number of times to fold the box. Note that this is the
+
+    fold : np.float64
+        The number of times to fold the box. Note that this is the
         floating-point version (i.e. 2.0^folding).
-    box_x: float64
-        box size in x, in the same rescaled length units as x, y, and z.
-    box_y: float64
-        box size in y, in the same rescaled length units as x, y, and z.
-    box_z: float64
-        box size in z, in the same rescaled length units as x, y, and z.
+
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x, y, and z.
+
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x, y, and z.
+
+    box_z : np.float64
+        Box size in z, in the same rescaled length units as x, y, and z.
 
     Returns
     -------
-    np.array[float32, float32, float32]
+    np.ndarray[np.float32, np.float32, np.float32]
         Pixel grid of deposited quantity density.
     """
+    output = np.zeros((res, res, res), dtype=np.float32)
 
-    output = zeros((res, res, res), dtype=float32)
-
-    float_res = float32(res)
+    float_res = np.float32(res)
 
     # Fold the box
     box_over_fold_x = box_x / fold
@@ -87,9 +90,9 @@ def deposit(
         z_pos_scaled = (z_pos % box_over_fold_z) * inv_box_over_fold_z
 
         # Convert to grid position
-        x_pix = int32(x_pos_scaled * float_res)
-        y_pix = int32(y_pos_scaled * float_res)
-        z_pix = int32(z_pos_scaled * float_res)
+        x_pix = np.int32(x_pos_scaled * float_res)
+        y_pix = np.int32(y_pos_scaled * float_res)
+        z_pix = np.int32(z_pos_scaled * float_res)
 
         # Deposit the mass
         output[x_pix, y_pix, z_pix] += mass * inv_volume_element
@@ -99,57 +102,65 @@ def deposit(
 
 @jit(nopython=True, fastmath=True, parallel=True)
 def deposit_parallel(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    res: int32,
-    fold: float64,
-    box_x: float64,
-    box_y: float64,
-    box_z: float64,
-) -> ndarray:
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    res: np.int32,
+    fold: np.float64,
+    box_x: np.float64,
+    box_y: np.float64,
+    box_z: np.float64,
+) -> np.ndarray:
     """
-    Deposit the particles to a 3D grid, with the potential
-    for folding. Note that unlike the other vis tools, this
-    requires the 'raw' positions of the particles.
+    Deposit the particles to a (potentially folded) 3D grid, in parallel.
+
+    Note that unlike the other vis tools, this requires the 'raw' positions of the
+    particles.
 
     Parameters
     ----------
-    x : np.array[float64]
-        array of x-positions of the particles. Scaled by box_x by this
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Scaled by box_x by this
         function, so ensure they have the same units.
-    y: np.array[float64]
-        array of y-positions of the particles. Scaled by box_x by this
+
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Scaled by box_x by this
         function, so ensure they have the same units.
-    z: np.array[float64]
-        array of z-positions of the particles. Scaled by box_x by this
+
+    z : np.ndarray[np.float64]
+        Array of z-positions of the particles. Scaled by box_x by this
         function, so ensure they have the same units.
-    m: np.array[float32]
-        array of masses (or otherwise weights) of the particles
-    res: int
-        the number of pixels along one axis, i.e. this returns a cube
+
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
+
+    res : int
+        The number of pixels along one axis, i.e. this returns a cube
         of res * res * res.
-    fold: float64
-        the number of times to fold the box. Note that this is the
+
+    fold : np.float64
+        The number of times to fold the box. Note that this is the
         floating-point version (i.e. 2.0^folding).
-    box_x: float64
-        box size in x, in the same rescaled length units as x, y, and z.
-    box_y: float64
-        box size in y, in the same rescaled length units as x, y, and z.
-    box_z: float64
-        box size in z, in the same rescaled length units as x, y, and z.
+
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x, y, and z.
+
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x, y, and z.
+
+    box_z : np.float64
+        Box size in z, in the same rescaled length units as x, y, and z.
 
     Returns
     -------
-    np.array[float32, float32, float32]
+    np.ndarray[np.float32, np.float32, np.float32]
         Pixel grid of deposited quantity density.
     """
-
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
 
-    output = zeros((res, res, res), dtype=float32)
+    output = np.zeros((res, res, res), dtype=np.float32)
 
     for thread in prange(NUM_THREADS):
         start = thread * core_particles
@@ -185,24 +196,27 @@ def render_to_deposit(
 
     Parameters
     ----------
-    data: SWIFTDataset
+    data : SWIFTDataset
         The dataset to render to a deposition.
-    resolution: int
+
+    resolution : int
         The resolution of the deposition.
-    project: str
+
+    project : str
         The quantity to project to the deposition. Must be a valid quantity
         in the dataset.
-    folding: int
+
+    folding : int
         The number of times to fold the box.
-    parallel: bool
+
+    parallel : bool
         Whether to use parallel deposition.
 
     Returns
     -------
-    cosmo_array[float32, float32, float32]
+    cosmo_array[np.float32, np.float32, np.float32]
         The deposition.
     """
-
     # Get the positions and masses
     folding = 2.0**folding
     positions = data.coordinates
@@ -262,77 +276,85 @@ def render_to_deposit(
 
 
 def folded_depositions_to_power_spectrum(
-    depositions: Dict[int, cosmo_array],
+    depositions: dict[int, cosmo_array],
     boxsize: cosmo_array,
     number_of_wavenumber_bins: int,
-    cross_depositions: Optional[Dict[int, cosmo_array]] = None,
-    wavenumber_range: Optional[Tuple[cosmo_quantity]] = None,
+    cross_depositions: dict[int, cosmo_array] | None = None,
+    wavenumber_range: tuple[cosmo_quantity] | None = None,
     log_wavenumber_bins: bool = True,
-    workers: Optional[int] = None,
-    minimal_sample_modes: Optional[int] = 0,
-    cutoff_above_wavenumber_fraction: Optional[float] = None,
+    workers: int | None = None,
+    minimal_sample_modes: int | None = 0,
+    cutoff_above_wavenumber_fraction: float | None = None,
     track_progress: bool = False,
     transition: str = "simple",
-    shot_noise_norm: Optional[float] = None,
-) -> Tuple[cosmo_array]:
+    shot_noise_norm: float | None = None,
+) -> tuple[cosmo_array]:
     """
     Convert some folded depositions to power spectra.
 
     Parameters
     ----------
-
-    depositions: dict[int, cosmo_array]
+    depositions : dict[int, cosmo_array]
         Dictionary of depositions, where the key is the base folding.
         So that would be 0 for no folding, 1 for a half-box-size folding,
         2 for a quarter, etc. The 'real' folding is 2 ** depositions.keys().
-    boxsize: cosmo_array
+
+    boxsize : cosmo_array
         The box size of the deposition, from the dataset.
-    number_of_wavenumber_bins: int
+
+    number_of_wavenumber_bins : int
         The number of bins to use in the power spectrum.
-    cross_depositions: Optional[dict[int, cosmo_array]]
+
+    cross_depositions : dict[int, cosmo_array] or None
         An optional dictionary of cross-depositions, where the key is the folding.
-    wavenumber_range: Optional[tuple[cosmo_quantity]]
+
+    wavenumber_range : tuple[cosmo_quantity] or None
         The range of wavenumbers to use. Officially optional, but is required for
         now.
-    log_wavenumber_bins: bool
+
+    log_wavenumber_bins : bool
         Whether to use logarithmic bins. By default true.
-    workers: Optional[int]
+
+    workers : int or None
         The number of threads to use.
-    minimal_sample_modes: Optional[int]
+
+    minimal_sample_modes : int or None
         The minimum number of modes to sample from each indivudal
         power spectrum. Useful to cut down on small-scale sample noise
         completely.
-    cutoff_above_wavenumber_fraction: Optional[float]
+
+    cutoff_above_wavenumber_fraction : float or None
         Cut off the individual spectra at this fraction of their
         maximally sampled wavenumber. Ignored for the last fold.
-    track_progress: bool = False
+
+    track_progress : bool = False
         Whether to display a progress bar representing each fold.
         Requires the tqdm package to be installed.
-    transition: str
+
+    transition : str
         How to transition between different folds.
         "simple" means use a simple scheme where the highest number
         of modes is used. "average" uses a weighted averaging
         scheme.
-    shot_noise_norm: Optional[float]
+
+    shot_noise_norm : float or None
         The normalization to apply to the shot noise. Usually the number of
         particles or galaxies used to create the mesh.
 
     Returns
     -------
-
-    wavenumber_bins: cosmo_array[float32]
+    cosmo_array[np.float32]
         The wavenumber bins.
 
-    wavenumber_centers: cosmo_array[float32]
+    cosmo_array[np.float32]
         The centers of the wavenumber bins.
 
-    power_spectrum: cosmo_array[float32]
+    cosmo_array[np.float32]
         The power spectrum.
 
-    folding_tracker: np.array
+    np.ndarray
         A tracker of the contribution of various folded elements.
     """
-
     if cross_depositions is not None:
         if not set(depositions.keys()) == set(cross_depositions.keys()):
             raise ValueError(
@@ -485,56 +507,59 @@ def deposition_to_power_spectrum(
     deposition: cosmo_array,
     boxsize: cosmo_array,
     folding: int = 0,
-    cross_deposition: Optional[cosmo_array] = None,
-    wavenumber_bins: Optional[cosmo_array] = None,
-    workers: Optional[int] = None,
-    shot_noise_norm: Optional[float] = None,
-) -> Tuple[cosmo_array]:
+    cross_deposition: cosmo_array | None = None,
+    wavenumber_bins: cosmo_array | None = None,
+    workers: int | None = None,
+    shot_noise_norm: float | None = None,
+) -> tuple[cosmo_array]:
     """
-    Convert a deposition to a power spectrum, by default
-    using a linear binning strategy.
+    Convert a deposition to a power spectrum.
+
+    Uses a linear binning strategy by default.
 
     Parameters
     ----------
-    deposition: ~swiftsimio.objects.cosmo_array[float32, float32, float32]
+    deposition : ~swiftsimio.objects.cosmo_array[np.float32, np.float32, np.float32]
         The deposition to convert to a power spectrum.
-    boxsize: ~swiftsimio.objects.cosmo_array
+
+    boxsize : ~swiftsimio.objects.cosmo_array
         The box size of the deposition, from the dataset.
-    folding: int
+
+    folding : int
         The folding number (i.e. box-size is divided by 2^folding)
         that was used here.
-    cross_deposition: ~swiftsimio.objects.cosmo_array[float32, float32, float32]
+
+    cross_deposition : ~swiftsimio.objects.cosmo_array[np.float32, np.float32, np.float32]
         An optional second deposition to cross-correlate with the first.
         If not provided, we assume you want an auto-spectrum.
-    wavenumber_bins: ~swiftsimio.objects.cosmo_array[float32], optional
+
+    wavenumber_bins : ~swiftsimio.objects.cosmo_array[np.float32], optional
         Optionally you can provide the specific bins that you would like to use.
-    workers: Optional[int]
+
+    workers : int or None
         The number of threads to use.
-    shot_noise_norm: Optional[float]
+
+    shot_noise_norm : float or None
         The normalization to apply to the shot noise. Usually the number of
         particles or galaxies used to create the mesh.
 
     Returns
     -------
+    ~swiftsimio.objects.cosmo_array[np.float32]
+        The k-values of the power spectrum. These are the real bin centers, calculated
+        from the mean value of k that was used in the binning process.
 
-    wavenumber_centers: ~swiftsimio.objects.cosmo_array[float32]
-        The k-values of the power spectrum, with units. These are the
-        real bin centers, calculated from the mean value of k that was
-        used in the binning process.
+    ~swiftsimio.objects.cosmo_array[np.float32]
+        The power spectrum.
 
-    power_spectrum: ~swiftsimio.objects.cosmo_array[float32]
-        The power spectrum, with units.
-
-    binned_counts: np.array[int32]
+    np.ndarray[np.int32]
         Bin counts for the power spectrum; useful for shot noise.
 
     Notes
     -----
-
     This is adapted from Bert Vandenbroucke's code at
     https://bertvandenbroucke.netlify.app/2019/05/24/computing-a-power-spectrum-in-python/
     """
-
     if not len(deposition.shape) == 3:
         raise ValueError("Deposition must be a 3D array")
 
@@ -542,9 +567,9 @@ def deposition_to_power_spectrum(
         raise ValueError("Deposition must be a cube")
 
     if cross_deposition is not None:
-        assert (
-            deposition.shape == cross_deposition.shape
-        ), "Depositions must have the same shape"
+        assert deposition.shape == cross_deposition.shape, (
+            "Depositions must have the same shape"
+        )
 
     folding = 2.0**folding
 
@@ -609,7 +634,7 @@ def deposition_to_power_spectrum(
     shot_noise = (
         (boxsize[0] ** 3 / shot_noise_norm)
         if shot_noise_norm is not None
-        else zeros_like(boxsize[0] ** 3)  # copy cosmo properties
+        else (boxsize[0] ** 3)  # copy cosmo properties
     )
     power_spectrum = (binned_amplitudes / divisor) - shot_noise
 

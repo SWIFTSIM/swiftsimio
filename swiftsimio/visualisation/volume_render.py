@@ -1,10 +1,10 @@
 """
-Basic volume render for SPH data. This takes the 3D positions
-of the particles and projects them onto a grid.
+Basic volume render for SPH data.
+
+This takes the 3D positions of the particles and projects them onto a grid.
 """
 
-from typing import List, Literal, Tuple, Union
-from math import sqrt, exp, pi
+from typing import Literal
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.accelerated import jit
@@ -24,24 +24,23 @@ from swiftsimio.visualisation._vistools import (
 def render_gas(
     data: SWIFTDataset,
     resolution: int,
-    project: Union[str, None] = "masses",
+    project: str | None = "masses",
     parallel: bool = False,
-    rotation_matrix: Union[None, np.array] = None,
-    rotation_center: Union[None, cosmo_array] = None,
-    region: Union[None, cosmo_array] = None,
+    rotation_matrix: np.ndarray | None = None,
+    rotation_center: cosmo_array | None = None,
+    region: cosmo_array | None = None,
     periodic: bool = True,
-):
+) -> cosmo_array:
     """
-    Creates a 3D render of a SWIFT dataset, weighted by data field, in the
-    form of a voxel grid.
+    Create a data-field weighted 3D render of a SWIFT dataset as a voxel grid.
 
     Parameters
     ----------
     data : SWIFTDataset
-        Dataset from which render is extracted
+        Dataset from which render is extracted.
 
     resolution : int
-        Specifies size of return np.array
+        Specifies size of return np.array.
 
     project : str, optional
         Data field to be projected. Default is ``"mass"``. If ``None`` then simply
@@ -49,21 +48,21 @@ def render_gas(
         it is physical.
 
     parallel : bool
-        used to determine if we will create the image in parallel. This
+        Used to determine if we will create the image in parallel. This
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix: np.np.array, optional
+    rotation_matrix : np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a volume render
         viewed along the z axis.
 
-    rotation_center: cosmo_array, optional
+    rotation_center : cosmo_array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
     region : cosmo_array, optional
-        determines where the image will be created
+        Determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom
         edges, and front and back edges) if it is not None. It should have a
         length of six, and take the form:
@@ -86,8 +85,8 @@ def render_gas(
 
     See Also
     --------
-    slice_gas_pixel_grid : Creates a 2D slice of a SWIFT dataset
-
+    slice_gas_pixel_grid
+        Creates a 2D slice of a SWIFT dataset.
     """
     data = data.gas
 
@@ -125,7 +124,26 @@ def render_gas(
 
 
 @jit(nopython=True, fastmath=True)
-def render_voxel_to_array(data, center, width):
+def render_voxels_to_array(data: np.array, center: float, width: float) -> np.array:
+    """
+    Insert voxel values into a 2D image grid.
+
+    Handles a single render function (call multiple times for multiple render functions).
+
+    Parameters
+    ----------
+    data : np.ndarray
+        The 3D voxel array.
+    center : float
+        The center of the rendering function.
+    width : float
+        The width of the rendering function.
+
+    Returns
+    -------
+    np.ndarray
+        The 2D image array.
+    """
     output = np.zeros((data.shape[0], data.shape[1]))
 
     for i in range(data.shape[0]):
@@ -133,8 +151,8 @@ def render_voxel_to_array(data, center, width):
             out = 0.0
             for k in range(data.shape[2]):
                 inner = (center - data[i, j, k]) / width
-                const = 1.0 / (width * sqrt(2.0 * pi))
-                fac = exp(-0.5 * inner * inner)
+                const = 1.0 / (width * np.sqrt(2.0 * np.pi))
+                fac = np.exp(-0.5 * inner * inner)
 
                 out += fac * const
             output[j, i] = out
@@ -144,28 +162,27 @@ def render_voxel_to_array(data, center, width):
 
 def visualise_render(
     render: np.ndarray,
-    centers: List[float],
-    widths: Union[List[float], float],
+    centers: list[float],
+    widths: list[float] | float,
     cmap: str = "viridis",
     return_type: Literal["all", "lighten", "add"] = "lighten",
-    norm: Union[List["plt.Normalize"], "plt.Normalize", None] = None,
-) -> Tuple[Union[List[np.ndarray], np.ndarray], List["plt.Normalize"]]:
+    norm: "list[plt.Normalize] | plt.Normalize | None" = None,
+) -> "tuple[list[np.ndarray] | np.ndarray, list[plt.Normalize]]":
     """
-    Visualises a render with multiple centers and widths.
+    Visualise a render with multiple centers and widths.
 
     Parameters
     ----------
-
-    render : np.np.array
+    render : np.array
         The render to visualise. You should scale this appropriately
         before using this function (e.g. use a logarithmic transform!)
         and pass in the 'value' np.array, not the original cosmo_array or
         unyt_array.
 
     centers : list[float]
-        The centers of your rendering functions
+        The centers of your rendering functions.
 
-    widths: list[float] | float
+    widths : list[float] | float
         The widths of your rendering functions. If a single float, all functions
         will have the same width.
 
@@ -183,8 +200,7 @@ def visualise_render(
 
     Returns
     -------
-
-    list[np.np.array] | np.np.array
+    list[np.array] | np.array
         The images of the rendering functions. If return_type is "all", this
         will be a list of images. If return_type is "lighten" or "add", this
         will be a single image.
@@ -192,7 +208,6 @@ def visualise_render(
     list[plt.Normalize]
         The normalisations used for the rendering functions.
     """
-
     if isinstance(widths, float):
         widths = [widths] * len(centers)
 
@@ -204,7 +219,7 @@ def visualise_render(
     colors = plt.get_cmap(cmap)(np.linspace(0, 1, len(centers)))[:, :3]
 
     images = [
-        n(render_voxel_to_array(render, center, width))
+        n(render_voxels_to_array(render, center, width))
         for n, center, width in zip(norm, centers, widths)
     ]
 
@@ -224,19 +239,19 @@ def visualise_render(
 
 
 def visualise_render_options(
-    centers: List[float], widths: Union[List[float], float], cmap: str = "viridis"
-) -> Tuple["plt.Figure", "plt.Axes"]:
+    centers: list[float], widths: list[float] | float, cmap: str = "viridis"
+) -> tuple["plt.Figure", "plt.Axes"]:
     """
-    Creates a figure of your rendering options. The y-axis is the output value
-    of the rendering function. The x-axis is your input quantity. You may wish
-    to plot a histogram on top of this figure; this is why the figure axes and
-    figure are returned.
+    Create a figure of your rendering options.
+
+    The y-axis is the output value of the rendering function. The x-axis is your input
+    quantity. You may wish to plot a histogram on top of this figure; this is why the
+    figure axes and figure are returned.
 
     Parameters
     ----------
-
     centers : list[float]
-        The centers of your rendering functions
+        The centers of your rendering functions.
 
     widths : list[float] | float
         The widths of your rendering functions. If a single float, all functions
@@ -247,9 +262,11 @@ def visualise_render_options(
 
     Returns
     -------
+    plt.Figure
+        The matplotlib figure object used for the plot.
 
-    plt.Figure, plt.Axes
-        The figure and axes of the plot.
+    plt.Axes
+        The matplotlib axes object used for the plot.
     """
     fig, ax = plt.subplots()
 
@@ -261,7 +278,7 @@ def visualise_render_options(
     for center, width, color in zip(centers, widths, colors):
         xs = np.linspace(center - 5.0 * width, center + 5.0 * width, 100)
         ys = [
-            exp(-0.5 * ((center - x) / width) ** 2) / (width * sqrt(2.0 * pi))
+            np.exp(-0.5 * ((center - x) / width) ** 2) / (width * np.sqrt(2.0 * np.pi))
             for x in xs
         ]
 

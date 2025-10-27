@@ -1,7 +1,7 @@
 SWIFTsimIO
 ==========
 
-|Python version| |PyPI version| |Repostatus| |Build status| |Documentation status| |JOSS| |Black|
+|Python version| |PyPI version| |Repostatus| |Build status| |Documentation status| |JOSS| |Ruff|
 
 .. |Python version| image:: https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FSWIFTSIM%2Fswiftsimio%2Fmaster%2Fpyproject.toml
    :alt: Supported python versions
@@ -20,9 +20,9 @@ SWIFTsimIO
 .. |JOSS| image:: https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331/status.svg
    :target: https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331
    :alt: JOSS publication
-.. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
-   :target: https://github.com/psf/black
-   :alt: Black code style
+.. |Ruff| image:: https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json
+    :target: https://github.com/astral-sh/ruff
+    :alt: Ruff
 
 .. INTRO_START_LABEL
 

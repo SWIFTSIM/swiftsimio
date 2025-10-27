@@ -1,3 +1,5 @@
+"""Citation information."""
+
 __cite__ = """@article{Borrow2020,
   doi = {10.21105/joss.02430},
   url = {https://doi.org/10.21105/joss.02430},

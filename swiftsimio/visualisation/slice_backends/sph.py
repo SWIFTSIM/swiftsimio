@@ -1,7 +1,6 @@
-from typing import Union
-from math import sqrt, ceil
-from numpy import float64, float32, int32, zeros, ndarray
+"""Backend tools for image slices weightd by SPH kernel."""
 
+import numpy as np
 from swiftsimio.accelerated import jit, prange, NUM_THREADS
 
 
@@ -11,22 +10,22 @@ kernel_constant = 21.0 * 0.31830988618379067154 / 2.0
 
 
 @jit(nopython=True, fastmath=True)
-def kernel(r: Union[float, float32], H: Union[float, float32]):
+def kernel(r: float | np.float32, H: float | np.float32) -> float:
     """
     Kernel implementation for swiftsimio.
 
     Parameters
     ----------
-    r : float or float32
-        Distance from particle
+    r : float or np.float32
+        Distance from particle.
 
-    H : float or float32
-        Kernel width (i.e. radius of compact support of kernel)
+    H : float or np.float32
+        Kernel width (i.e. radius of compact support of kernel).
 
     Returns
     -------
     float
-        Contribution to density by particle at distance `r`
+        Contribution to density by particle at distance `r`.
 
     Notes
     -----
@@ -35,7 +34,6 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
     References
     ----------
     .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
-
     """
     inverse_H = 1.0 / H
     ratio = r * inverse_H
@@ -56,60 +54,67 @@ def kernel(r: Union[float, float32], H: Union[float, float32]):
 
 @jit(nopython=True, fastmath=True)
 def slice_scatter(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
-    z_slice: float64,
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    h: np.float32,
+    z_slice: np.float64,
     xres: int,
     yres: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
-) -> ndarray:
+    box_x: np.float64 = 0.0,
+    box_y: np.float64 = 0.0,
+    box_z: np.float64 = 0.0,
+) -> np.ndarray:
     """
+    Create a 2D image slice through a volume.
+
     Creates a 2D numpy array (image) of the given quantities of all particles in
     a data slice including periodic boundary effects.
 
     Parameters
     ----------
-    x : array of float64
-        x-positions of the particles. Must be bounded by [0, 1].
-    y : array of float64
-        y-positions of the particles. Must be bounded by [0, 1].
-    z : array of float64
-        z-positions of the particles. Must be bounded by [0, 1].
-    m : array of float32
-        masses (or otherwise weights) of the particles
-    h : array of float32
-        smoothing lengths of the particles
-    z_slice : float64
-        the position at which we wish to create the slice
+    x : array of np.float64
+        The x-positions of the particles. Must be bounded by [0, 1].
+    y : array of np.float64
+        The y-positions of the particles. Must be bounded by [0, 1].
+    z : array of np.float64
+        The z-positions of the particles. Must be bounded by [0, 1].
+    m : array of np.float32
+        Masses (or otherwise weights) of the particles.
+    h : array of np.float32
+        Smoothing lengths of the particles.
+    z_slice : np.float64
+        The position at which we wish to create the slice.
     xres : int
-        the number of pixels in the x-direction.
+        The number of pixels in the x-direction.
     yres : int
-        the number of pixels in the y-direction.
-    box_x: float64
-        box size in x, in the same rescaled length units as x, y and z.
+        The number of pixels in the y-direction.
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_y: float64
-        box size in y, in the same rescaled length units as x, y and z.
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_z: float64
-        box size in z, in the same rescaled length units as x, y and z.
+    box_z : np.float64
+        Box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
     Returns
     -------
-    ndarray of float32
-        output array for the slice image
+    np.ndarray of np.float32
+        Output array for the slice image.
 
     See Also
     --------
-    scatter : Create 3D scatter plot of SWIFT data
-    scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
-    slice_scatter_parallel : Create scatter plot of a slice of data in parallel
+    scatter
+        Create 3D scatter plot of SWIFT data.
+
+    scatter_parallel
+        Create 3D scatter plot of SWIFT data in parallel.
+
+    slice_scatter_parallel
+        Create scatter plot of a slice of data in parallel.
 
     Notes
     -----
@@ -119,35 +124,35 @@ def slice_scatter(
     """
     # Output array for our image
     res = int(max(xres, yres))
-    image = zeros((res, res), dtype=float32)
-    maximal_array_index = int32(res) - 1
+    image = np.zeros((res, res), dtype=np.float32)
+    maximal_array_index = np.int32(res) - 1
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
-    float_res = float32(res)
+    float_res = np.float32(res)
     pixel_width = 1.0 / float_res
 
     # We need this for combining with the x_pos and y_pos variables.
-    float_res_64 = float64(res)
+    float_res_64 = np.float64(res)
 
     if box_x == 0.0:
         xshift_min = 0
         xshift_max = 1
     else:
         xshift_min = -1  # x_min is always at x=0
-        xshift_max = ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
+        xshift_max = np.ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
         yshift_min = -1  # y_min is always at y=0
-        yshift_max = ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
+        yshift_max = np.ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
     if box_z == 0.0:
         zshift_min = 0
         zshift_max = 1
     else:
         zshift_min = -1  # z_min is always at z=0
-        zshift_max = ceil(1 / box_z) + 1  # tile the box to cover [0, 1]
+        zshift_max = np.ceil(1 / box_z) + 1  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
         x, y, z, m, h
@@ -162,8 +167,8 @@ def slice_scatter(
 
                     # Calculate the cell that this particle lives above; use 64 bits
                     # resolution as this is the same type as the positions
-                    particle_cell_x = int32(float_res_64 * x_pos)
-                    particle_cell_y = int32(float_res_64 * y_pos)
+                    particle_cell_x = np.int32(float_res_64 * x_pos)
+                    particle_cell_y = np.int32(float_res_64 * y_pos)
 
                     # This is a constant for this particle
                     distance_z = z_pos - z_slice
@@ -172,7 +177,7 @@ def slice_scatter(
                     # SWIFT stores hsml as the FWHM.
                     kernel_width = kernel_gamma * hsml
                     # The number of cells that this kernel spans
-                    cells_spanned = int32(1.0 + kernel_width * float_res)
+                    cells_spanned = np.int32(1.0 + kernel_width * float_res)
 
                     if (
                         # No overlap in z
@@ -197,9 +202,9 @@ def slice_scatter(
                         # The distance in x to our new favourite cell -- remember that our
                         # x, y are all in a box of [0, 1]; calculate the distance to the
                         # cell centre
-                        distance_x = (float32(cell_x) + 0.5) * pixel_width - float32(
-                            x_pos
-                        )
+                        distance_x = (
+                            np.float32(cell_x) + 0.5
+                        ) * pixel_width - np.float32(x_pos)
                         distance_x_2 = distance_x * distance_x
                         for cell_y in range(
                             max(0, particle_cell_y - cells_spanned),
@@ -208,11 +213,11 @@ def slice_scatter(
                             ),
                         ):
                             distance_y = (
-                                float32(cell_y) + 0.5
-                            ) * pixel_width - float32(y_pos)
+                                np.float32(cell_y) + 0.5
+                            ) * pixel_width - np.float32(y_pos)
                             distance_y_2 = distance_y * distance_y
 
-                            r = sqrt(distance_x_2 + distance_y_2 + distance_z_2)
+                            r = np.sqrt(distance_x_2 + distance_y_2 + distance_z_2)
 
                             kernel_eval = kernel(r, kernel_width)
 
@@ -224,62 +229,77 @@ def slice_scatter(
 
 @jit(nopython=True, fastmath=True, parallel=True)
 def slice_scatter_parallel(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
-    z_slice: float64,
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    h: np.float32,
+    z_slice: np.float64,
     xres: int,
     yres: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-    box_z: float64 = 0.0,
-) -> ndarray:
+    box_x: np.float64 = 0.0,
+    box_y: np.float64 = 0.0,
+    box_z: np.float64 = 0.0,
+) -> np.ndarray:
     """
-    Parallel implementation of slice_scatter
+    Parallel implementation of slice_scatter.
 
     Creates a scatter plot of the given quantities for a particles in a data slice
     including periodic boundary effects.
 
     Parameters
     ----------
-    x : array of float64
-        x-positions of the particles. Must be bounded by [0, 1].
-    y : array of float64
-        y-positions of the particles. Must be bounded by [0, 1].
-    z : array of float64
-        z-positions of the particles. Must be bounded by [0, 1].
-    m : array of float32
-        masses (or otherwise weights) of the particles
-    h : array of float32
-        smoothing lengths of the particles
-    z_slice : float64
-        the position at which we wish to create the slice
+    x : array of np.float64
+        The x-positions of the particles. Must be bounded by [0, 1].
+
+    y : array of np.float64
+        The y-positions of the particles. Must be bounded by [0, 1].
+
+    z : array of np.float64
+        The z-positions of the particles. Must be bounded by [0, 1].
+
+    m : array of np.float32
+        Masses (or otherwise weights) of the particles.
+
+    h : array of np.float32
+        Smoothing lengths of the particles.
+
+    z_slice : np.float64
+        The position at which we wish to create the slice.
+
     xres : int
-        the number of pixels in the x-direction.
+        The number of pixels in the x-direction.
+
     yres : int
-        the number of pixels in the y-direction.
-    box_x: float64
-        box size in x, in the same rescaled length units as x, y and z.
+        The number of pixels in the y-direction.
+
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_y: float64
-        box size in y, in the same rescaled length units as x, y and z.
+
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
-    box_z: float64
-        box size in z, in the same rescaled length units as x, y and z.
+
+    box_z : np.float64
+        Box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping.
 
     Returns
     -------
-    ndarray of float32
-        output array for the slice image
+    np.ndarray of np.float32
+        Output array for the slice image.
 
     See Also
     --------
-    scatter : Create 3D scatter plot of SWIFT data
-    scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
-    slice_scatter : Create scatter plot of a slice of data
+    scatter
+        Create 3D scatter plot of SWIFT data.
+
+    scatter_parallel
+        Create 3D scatter plot of SWIFT data in parallel.
+
+    slice_scatter
+        Create scatter plot of a slice of data.
 
     Notes
     -----
@@ -293,7 +313,7 @@ def slice_scatter_parallel(
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
 
-    output = zeros((xres, int(yres)), dtype=float32)
+    output = np.zeros((xres, int(yres)), dtype=np.float32)
 
     for thread in prange(NUM_THREADS):
         # Left edge is easy, just start at 0 and go to 'final'

@@ -1,6 +1,4 @@
-"""
-Contains the names and types of the units as read from the file.
-"""
+"""Define the names and types of the units as read from file."""
 
 import unyt
 from numpy import log
@@ -32,9 +30,13 @@ possible_base_units = {
 }
 
 
-def find_nearest_base_unit(unit: unyt.unyt_quantity, dimension: str):
+def find_nearest_base_unit(
+    unit: unyt.unyt_quantity, dimension: str
+) -> unyt.unyt_quantity:
     """
-    Uses the possible_base_units dictionary to find the closest
+    Find the nearest base units to given units.
+
+    Uses the ``possible_base_units`` dictionary to find the closest
     base unit to your internal units, and returns that. This assumes
     that internal units and unyt units should line up to within
     1e-5 relative precision (i.e. to 5 significant figures), as
@@ -42,31 +44,27 @@ def find_nearest_base_unit(unit: unyt.unyt_quantity, dimension: str):
 
     Parameters
     ----------
+    unit : unyt_quantity
+        Quantity to convert to a nearby unit.
 
-    unit: unyt_quantity
-        Quantity to convert to a nearby unit
-
-    dimension: str
+    dimension : str
         Dimension. Supports ``length``, ``mass``, ``time``,
         ``current`` and ``temperature``.
 
-
     Returns
     -------
-
     unyt_quantity
         Output quantity corresponding to ``unit`` converted to the
-        closest unit.
+        closest base unit.
 
-    Example
-    -------
+    Examples
+    --------
 
-    .. code-block::python
+    .. code-block:: python
 
         find_nearest_base_unit(1e43 * unyt.g, "mass")
         >>> 1e10 * unyt.Solar_Mass
     """
-
     possible_bases = possible_base_units[dimension]
 
     closest_unit = min(possible_bases, key=lambda x: abs(log((1.0 * x).to(unit))))

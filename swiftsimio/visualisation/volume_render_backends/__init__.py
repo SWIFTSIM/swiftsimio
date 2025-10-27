@@ -1,6 +1,4 @@
-"""
-Backends for volume rendering
-"""
+"""Backends for volume rendering."""
 
 from swiftsimio.visualisation.volume_render_backends.scatter import (
     scatter,

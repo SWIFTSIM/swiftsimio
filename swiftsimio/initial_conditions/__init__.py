@@ -1,3 +1,0 @@
-"""
-Initial conditions generation.
-"""

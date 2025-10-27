@@ -1,7 +1,6 @@
-"""
-Tests the initialisation of a cosmo_array.
-"""
+"""Tests the initialisation of a cosmo_array."""
 
+from typing import Callable
 import pytest
 import os
 import warnings
@@ -14,10 +13,21 @@ from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
 savetxt_file = "saved_array.txt"
 
 
-def getfunc(fname):
+def getfunc(fname: str) -> Callable:
     """
-    Helper for our tests: get the function handle from a name (possibly with attribute
-    access).
+    Test helper: get the function handle from a name.
+
+    Possibly with attribute access.
+
+    Parameters
+    ----------
+    fname : str
+        Name of the numpy function.
+
+    Returns
+    -------
+    Callable
+        The function handle.
     """
     func = np
     for attr in fname.split("."):
@@ -25,24 +35,62 @@ def getfunc(fname):
     return func
 
 
-def cosmo_object(x, unit=u.Mpc):
+def ca(x: np.ndarray, unit: u.Unit = u.Mpc) -> cosmo_array:
     """
-    Helper for our tests: turn an array into a cosmo_array.
+    Test helper: turn an array into a cosmo_array.
+
+    Parameters
+    ----------
+    x : ndarray
+        The numerical array.
+
+    unit : Unit
+        The units for the array.
+
+    Returns
+    -------
+    cosmo_array
+        A cosmo_array with the requested data and units.
     """
     return cosmo_array(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
-def cq(x, unit=u.Mpc):
+def cq(x: float, unit: u.Unit = u.Mpc) -> cosmo_quantity:
     """
-    Helper for our tests: turn a scalar into a cosmo_quantity.
+    Test helper: turn a scalar into a cosmo_quantity.
+
+    Parameters
+    ----------
+    x : float
+        The numerical value.
+
+    unit : Unit
+        The units for the quantity.
+
+    Returns
+    -------
+    cosmo_quantity
+        A cosmo_quantity wih the requested data and units.
     """
     return cosmo_quantity(x, unit, comoving=False, scale_factor=0.5, scale_exponent=1)
 
 
-def arg_to_ua(arg):
+def arg_to_ua(arg: cosmo_array) -> u.unyt_array:
     """
-    Helper for our tests: recursively convert cosmo_* in an argument (possibly an
+    Test helper: recursively convert cosmo_* to unyt_*.
+
+    Recurseively converts cosmo_* items in an argument (possibly an
     iterable) to their unyt_* equivalents.
+
+    Parameters
+    ----------
+    arg : cosmo_array
+        The cosmo object to be converted.
+
+    Returns
+    -------
+    unyt_array
+        The unyt version(s) of the input.
     """
     if type(arg) in (list, tuple):
         return type(arg)([arg_to_ua(a) for a in arg])
@@ -50,22 +98,52 @@ def arg_to_ua(arg):
         return to_ua(arg)
 
 
-def to_ua(x):
+def to_ua(x: cosmo_array) -> u.unyt_array:
     """
-    Helper for our tests: turn a cosmo_* object into its unyt_* equivalent.
+    Test helper to turn a cosmo_* object into its unyt_* equivalent.
+
+    Parameters
+    ----------
+    x : cosmo_array
+        The cosmo object to be converted.
+
+    Returns
+    -------
+    unyt_array
+        The unyt version of the input.
     """
     return u.unyt_array(x) if hasattr(x, "comoving") else x
 
 
-def check_result(x_c, x_u, ignore_values=False):
+def check_result(
+    x_c: cosmo_array, x_u: u.unyt_array, ignore_values: bool = False
+) -> None:
     """
-    Helper for our tests: check that a result with cosmo input matches what we
-    expected based on the result with unyt input.
+    Test helper to compare cosmo and unyt results.
+
+    Check that a result with cosmo input matches what we expected based on the result with
+    unyt input.
 
     We check:
      - that the type of the result makes sense, recursing if needed.
      - that the value of the result matches (unless ignore_values=False).
      - that the units match.
+
+    Parameters
+    ----------
+    x_c : cosmo_array
+        The cosmo_* object to be compared.
+
+    x_u : unyt_array
+        The unyt_* object to be compared.
+
+    ignore_values : bool
+        If ``True``, only compare non-data attributes.
+
+    Raises
+    ------
+    AssertionError
+        If the two inputs are not equivalent for attributes in common.
     """
     if x_u is None:
         assert x_c is None
@@ -103,14 +181,10 @@ def check_result(x_c, x_u, ignore_values=False):
 
 
 class TestCosmoArrayInit:
-    """
-    Test different ways of initializing a cosmo_array.
-    """
+    """Test different ways of initializing a cosmo_array."""
 
     def test_init_from_ndarray(self):
-        """
-        Check initializing from a bare numpy array.
-        """
+        """Check initializing from a bare numpy array."""
         arr = cosmo_array(
             np.ones(5), units=u.Mpc, scale_factor=1.0, scale_exponent=1, comoving=False
         )
@@ -129,9 +203,7 @@ class TestCosmoArrayInit:
         assert isinstance(arr, cosmo_array)
 
     def test_init_from_list(self):
-        """
-        Check initializing from a list of values.
-        """
+        """Check initializing from a list of values."""
         arr = cosmo_array(
             [1, 1, 1, 1, 1],
             units=u.Mpc,
@@ -154,9 +226,7 @@ class TestCosmoArrayInit:
         assert isinstance(arr, cosmo_array)
 
     def test_init_from_unyt_array(self):
-        """
-        Check initializing from a unyt_array.
-        """
+        """Check initializing from a unyt_array."""
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=u.Mpc),
             scale_factor=1.0,
@@ -241,6 +311,7 @@ class TestCosmoArrayInit:
         assert hasattr(arr, "comoving") and arr.comoving is False
 
     def test_expected_init_failures(self):
+        """Test desired failure modes for initialising cosmo_array & cosmo_quantity."""
         for cls, inp in ((cosmo_array, [1]), (cosmo_quantity, 1)):
             # we refuse both cosmo_factor and scale_factor/scale_exponent provided:
             with pytest.raises(ValueError):
@@ -295,9 +366,7 @@ class TestCosmoArrayInit:
             )
 
     def test_init_from_not_iterable_invalid(self):
-        """
-        cosmo_array data must be iterable (scalar handled by cosmo_quantity).
-        """
+        """Check initializing with a scalar raises (should use cosmo_quantity)."""
         with pytest.raises(ValueError, match="cosmo_array data must be iterable"):
             cosmo_array(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
         # make sure inheriting class doesn't do anything silly:
@@ -305,13 +374,12 @@ class TestCosmoArrayInit:
 
 
 class TestNumpyFunctions:
-    """
-    Check that numpy functions recognize our cosmo classes as input and handle them
-    correctly.
-    """
+    """Check that numpy functions recognize and handle our cosmo classes."""
 
     def test_explicitly_handled_funcs(self):
         """
+        Test consistency with unyt for functions that we handle explicitly.
+
         Make sure we at least handle everything that unyt does, and anything that
         'just worked' for unyt but that we need to handle by hand.
 
@@ -339,291 +407,291 @@ class TestNumpyFunctions:
 
         functions_to_check = {
             # FUNCTIONS UNYT HANDLES EXPLICITLY:
-            "array2string": (cosmo_object(np.arange(3)),),
-            "dot": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "vdot": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "inner": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "outer": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "kron": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "histogram_bin_edges": (cosmo_object(np.arange(3)),),
-            "linalg.inv": (cosmo_object(np.eye(3)),),
-            "linalg.tensorinv": (cosmo_object(np.eye(9).reshape((3, 3, 3, 3))),),
-            "linalg.pinv": (cosmo_object(np.eye(3)),),
-            "linalg.svd": (cosmo_object(np.eye(3)),),
-            "histogram": (cosmo_object(np.arange(3)),),
-            "histogram2d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "histogramdd": (cosmo_object(np.arange(3)).reshape((1, 3)),),
-            "concatenate": (cosmo_object(np.eye(3)),),
-            "cross": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "intersect1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "union1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "linalg.norm": (cosmo_object(np.arange(3)),),
-            "vstack": (cosmo_object(np.arange(3)),),
-            "hstack": (cosmo_object(np.arange(3)),),
-            "dstack": (cosmo_object(np.arange(3)),),
-            "column_stack": (cosmo_object(np.arange(3)),),
-            "stack": (cosmo_object(np.arange(3)),),
-            "around": (cosmo_object(np.arange(3)),),
-            "block": ([[cosmo_object(np.arange(3))], [cosmo_object(np.arange(3))]],),
-            "fft.fft": (cosmo_object(np.arange(3)),),
-            "fft.fft2": (cosmo_object(np.eye(3)),),
-            "fft.fftn": (cosmo_object(np.arange(3)),),
-            "fft.hfft": (cosmo_object(np.arange(3)),),
-            "fft.rfft": (cosmo_object(np.arange(3)),),
-            "fft.rfft2": (cosmo_object(np.eye(3)),),
-            "fft.rfftn": (cosmo_object(np.arange(3)),),
-            "fft.ifft": (cosmo_object(np.arange(3)),),
-            "fft.ifft2": (cosmo_object(np.eye(3)),),
-            "fft.ifftn": (cosmo_object(np.arange(3)),),
-            "fft.ihfft": (cosmo_object(np.arange(3)),),
-            "fft.irfft": (cosmo_object(np.arange(3)),),
-            "fft.irfft2": (cosmo_object(np.eye(3)),),
-            "fft.irfftn": (cosmo_object(np.arange(3)),),
-            "fft.fftshift": (cosmo_object(np.arange(3)),),
-            "fft.ifftshift": (cosmo_object(np.arange(3)),),
-            "sort_complex": (cosmo_object(np.arange(3)),),
-            "isclose": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "allclose": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "array_equal": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "array_equiv": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "array2string": (ca(np.arange(3)),),
+            "dot": (ca(np.arange(3)), ca(np.arange(3))),
+            "vdot": (ca(np.arange(3)), ca(np.arange(3))),
+            "inner": (ca(np.arange(3)), ca(np.arange(3))),
+            "outer": (ca(np.arange(3)), ca(np.arange(3))),
+            "kron": (ca(np.arange(3)), ca(np.arange(3))),
+            "histogram_bin_edges": (ca(np.arange(3)),),
+            "linalg.inv": (ca(np.eye(3)),),
+            "linalg.tensorinv": (ca(np.eye(9).reshape((3, 3, 3, 3))),),
+            "linalg.pinv": (ca(np.eye(3)),),
+            "linalg.svd": (ca(np.eye(3)),),
+            "histogram": (ca(np.arange(3)),),
+            "histogram2d": (ca(np.arange(3)), ca(np.arange(3))),
+            "histogramdd": (ca(np.arange(3)).reshape((1, 3)),),
+            "concatenate": (ca(np.eye(3)),),
+            "cross": (ca(np.arange(3)), ca(np.arange(3))),
+            "intersect1d": (ca(np.arange(3)), ca(np.arange(3))),
+            "union1d": (ca(np.arange(3)), ca(np.arange(3))),
+            "linalg.norm": (ca(np.arange(3)),),
+            "vstack": (ca(np.arange(3)),),
+            "hstack": (ca(np.arange(3)),),
+            "dstack": (ca(np.arange(3)),),
+            "column_stack": (ca(np.arange(3)),),
+            "stack": (ca(np.arange(3)),),
+            "around": (ca(np.arange(3)),),
+            "block": ([[ca(np.arange(3))], [ca(np.arange(3))]],),
+            "fft.fft": (ca(np.arange(3)),),
+            "fft.fft2": (ca(np.eye(3)),),
+            "fft.fftn": (ca(np.arange(3)),),
+            "fft.hfft": (ca(np.arange(3)),),
+            "fft.rfft": (ca(np.arange(3)),),
+            "fft.rfft2": (ca(np.eye(3)),),
+            "fft.rfftn": (ca(np.arange(3)),),
+            "fft.ifft": (ca(np.arange(3)),),
+            "fft.ifft2": (ca(np.eye(3)),),
+            "fft.ifftn": (ca(np.arange(3)),),
+            "fft.ihfft": (ca(np.arange(3)),),
+            "fft.irfft": (ca(np.arange(3)),),
+            "fft.irfft2": (ca(np.eye(3)),),
+            "fft.irfftn": (ca(np.arange(3)),),
+            "fft.fftshift": (ca(np.arange(3)),),
+            "fft.ifftshift": (ca(np.arange(3)),),
+            "sort_complex": (ca(np.arange(3)),),
+            "isclose": (ca(np.arange(3)), ca(np.arange(3))),
+            "allclose": (ca(np.arange(3)), ca(np.arange(3))),
+            "array_equal": (ca(np.arange(3)), ca(np.arange(3))),
+            "array_equiv": (ca(np.arange(3)), ca(np.arange(3))),
             "linspace": (cq(1), cq(2)),
             "logspace": (cq(1, unit=u.dimensionless), cq(2, unit=u.dimensionless)),
             "geomspace": (cq(1), cq(1)),
-            "copyto": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "prod": (cosmo_object(np.arange(3)),),
-            "var": (cosmo_object(np.arange(3)),),
-            "trace": (cosmo_object(np.eye(3)),),
-            "percentile": (cosmo_object(np.arange(3)), 30),
-            "quantile": (cosmo_object(np.arange(3)), 0.3),
-            "nanpercentile": (cosmo_object(np.arange(3)), 30),
-            "nanquantile": (cosmo_object(np.arange(3)), 0.3),
-            "linalg.det": (cosmo_object(np.eye(3)),),
-            "diff": (cosmo_object(np.arange(3)),),
-            "ediff1d": (cosmo_object(np.arange(3)),),
-            "ptp": (cosmo_object(np.arange(3)),),
-            "cumprod": (cosmo_object(np.arange(3)),),
-            "pad": (cosmo_object(np.arange(3)), 3),
-            "choose": (np.arange(3), cosmo_object(np.eye(3))),
-            "insert": (cosmo_object(np.arange(3)), 1, cq(1)),
-            "linalg.lstsq": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
-            "linalg.solve": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
+            "copyto": (ca(np.arange(3)), ca(np.arange(3))),
+            "prod": (ca(np.arange(3)),),
+            "var": (ca(np.arange(3)),),
+            "trace": (ca(np.eye(3)),),
+            "percentile": (ca(np.arange(3)), 30),
+            "quantile": (ca(np.arange(3)), 0.3),
+            "nanpercentile": (ca(np.arange(3)), 30),
+            "nanquantile": (ca(np.arange(3)), 0.3),
+            "linalg.det": (ca(np.eye(3)),),
+            "diff": (ca(np.arange(3)),),
+            "ediff1d": (ca(np.arange(3)),),
+            "ptp": (ca(np.arange(3)),),
+            "cumprod": (ca(np.arange(3)),),
+            "pad": (ca(np.arange(3)), 3),
+            "choose": (np.arange(3), ca(np.eye(3))),
+            "insert": (ca(np.arange(3)), 1, cq(1)),
+            "linalg.lstsq": (ca(np.eye(3)), ca(np.eye(3))),
+            "linalg.solve": (ca(np.eye(3)), ca(np.eye(3))),
             "linalg.tensorsolve": (
-                cosmo_object(np.eye(24).reshape((6, 4, 2, 3, 4))),
-                cosmo_object(np.ones((6, 4))),
+                ca(np.eye(24).reshape((6, 4, 2, 3, 4))),
+                ca(np.ones((6, 4))),
             ),
-            "linalg.eig": (cosmo_object(np.eye(3)),),
-            "linalg.eigh": (cosmo_object(np.eye(3)),),
-            "linalg.eigvals": (cosmo_object(np.eye(3)),),
-            "linalg.eigvalsh": (cosmo_object(np.eye(3)),),
-            "savetxt": (savetxt_file, cosmo_object(np.arange(3))),
-            "fill_diagonal": (cosmo_object(np.eye(3)), cosmo_object(np.arange(3))),
-            "apply_over_axes": (lambda x, axis: x, cosmo_object(np.eye(3)), (0, 1)),
-            "isin": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "linalg.eig": (ca(np.eye(3)),),
+            "linalg.eigh": (ca(np.eye(3)),),
+            "linalg.eigvals": (ca(np.eye(3)),),
+            "linalg.eigvalsh": (ca(np.eye(3)),),
+            "savetxt": (savetxt_file, ca(np.arange(3))),
+            "fill_diagonal": (ca(np.eye(3)), ca(np.arange(3))),
+            "apply_over_axes": (lambda x, axis: x, ca(np.eye(3)), (0, 1)),
+            "isin": (ca(np.arange(3)), ca(np.arange(3))),
             "place": (
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
                 np.arange(3) > 0,
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
             ),
             "put": (
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
                 np.arange(3),
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
             ),
             "put_along_axis": (
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
                 np.arange(3),
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
                 0,
             ),
             "putmask": (
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
                 np.arange(3),
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
             ),
-            "searchsorted": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
+            "searchsorted": (ca(np.arange(3)), ca(np.arange(3))),
             "select": (
                 [np.arange(3) < 1, np.arange(3) > 1],
-                [cosmo_object(np.arange(3)), cosmo_object(np.arange(3))],
+                [ca(np.arange(3)), ca(np.arange(3))],
                 cq(1),
             ),
-            "setdiff1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3, 6))),
-            "sinc": (cosmo_object(np.arange(3)),),
-            "clip": (cosmo_object(np.arange(3)), cq(1), cq(2)),
+            "setdiff1d": (ca(np.arange(3)), ca(np.arange(3, 6))),
+            "sinc": (ca(np.arange(3)),),
+            "clip": (ca(np.arange(3)), cq(1), cq(2)),
             "where": (
-                cosmo_object(np.arange(3)),
-                cosmo_object(np.arange(3)),
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
             ),
-            "triu": (cosmo_object(np.ones((3, 3))),),
-            "tril": (cosmo_object(np.ones((3, 3))),),
-            "einsum": ("ii->i", cosmo_object(np.eye(3))),
-            "convolve": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "correlate": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "tensordot": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
-            "unwrap": (cosmo_object(np.arange(3)),),
+            "triu": (ca(np.ones((3, 3))),),
+            "tril": (ca(np.ones((3, 3))),),
+            "einsum": ("ii->i", ca(np.eye(3))),
+            "convolve": (ca(np.arange(3)), ca(np.arange(3))),
+            "correlate": (ca(np.arange(3)), ca(np.arange(3))),
+            "tensordot": (ca(np.eye(3)), ca(np.eye(3))),
+            "unwrap": (ca(np.arange(3)),),
             "interp": (
-                cosmo_object(np.arange(3)),
-                cosmo_object(np.arange(3)),
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
             ),
-            "array_repr": (cosmo_object(np.arange(3)),),
-            "linalg.outer": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "trapezoid": (cosmo_object(np.arange(3)),),
+            "array_repr": (ca(np.arange(3)),),
+            "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
+            "trapezoid": (ca(np.arange(3)),),
             "in1d": (
-                cosmo_object(np.arange(3)),
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
             ),  # np deprecated
-            "take": (cosmo_object(np.arange(3)), np.arange(3)),
+            "take": (ca(np.arange(3)), np.arange(3)),
             # FUNCTIONS THAT UNYT DOESN'T HANDLE EXPLICITLY (THEY "JUST WORK"):
-            "all": (cosmo_object(np.arange(3)),),
-            "amax": (cosmo_object(np.arange(3)),),  # implemented via max
-            "amin": (cosmo_object(np.arange(3)),),  # implemented via min
+            "all": (ca(np.arange(3)),),
+            "amax": (ca(np.arange(3)),),  # implemented via max
+            "amin": (ca(np.arange(3)),),  # implemented via min
             "angle": (cq(complex(1, 1)),),
-            "any": (cosmo_object(np.arange(3)),),
-            "append": (cosmo_object(np.arange(3)), cq(1)),
-            "apply_along_axis": (lambda x: x, 0, cosmo_object(np.eye(3))),
-            "argmax": (cosmo_object(np.arange(3)),),  # implemented via max
-            "argmin": (cosmo_object(np.arange(3)),),  # implemented via min
+            "any": (ca(np.arange(3)),),
+            "append": (ca(np.arange(3)), cq(1)),
+            "apply_along_axis": (lambda x: x, 0, ca(np.eye(3))),
+            "argmax": (ca(np.arange(3)),),  # implemented via max
+            "argmin": (ca(np.arange(3)),),  # implemented via min
             "argpartition": (
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
                 1,
             ),  # implemented via partition
-            "argsort": (cosmo_object(np.arange(3)),),  # implemented via sort
-            "argwhere": (cosmo_object(np.arange(3)),),
-            "array_str": (cosmo_object(np.arange(3)),),
-            "atleast_1d": (cosmo_object(np.arange(3)),),
-            "atleast_2d": (cosmo_object(np.arange(3)),),
-            "atleast_3d": (cosmo_object(np.arange(3)),),
-            "average": (cosmo_object(np.arange(3)),),
-            "can_cast": (cosmo_object(np.arange(3)), np.float64),
-            "common_type": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "result_type": (cosmo_object(np.ones(3)), cosmo_object(np.ones(3))),
-            "iscomplex": (cosmo_object(np.arange(3)),),
-            "iscomplexobj": (cosmo_object(np.arange(3)),),
-            "isreal": (cosmo_object(np.arange(3)),),
-            "isrealobj": (cosmo_object(np.arange(3)),),
-            "nan_to_num": (cosmo_object(np.arange(3)),),
-            "nanargmax": (cosmo_object(np.arange(3)),),  # implemented via max
-            "nanargmin": (cosmo_object(np.arange(3)),),  # implemented via min
-            "nanmax": (cosmo_object(np.arange(3)),),  # implemented via max
-            "nanmean": (cosmo_object(np.arange(3)),),  # implemented via mean
-            "nanmedian": (cosmo_object(np.arange(3)),),  # implemented via median
-            "nanmin": (cosmo_object(np.arange(3)),),  # implemented via min
-            "trim_zeros": (cosmo_object(np.arange(3)),),
-            "max": (cosmo_object(np.arange(3)),),
-            "mean": (cosmo_object(np.arange(3)),),
-            "median": (cosmo_object(np.arange(3)),),
-            "min": (cosmo_object(np.arange(3)),),
-            "ndim": (cosmo_object(np.arange(3)),),
-            "shape": (cosmo_object(np.arange(3)),),
-            "size": (cosmo_object(np.arange(3)),),
-            "sort": (cosmo_object(np.arange(3)),),
-            "sum": (cosmo_object(np.arange(3)),),
-            "repeat": (cosmo_object(np.arange(3)), 2),
-            "tile": (cosmo_object(np.arange(3)), 2),
-            "shares_memory": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "nonzero": (cosmo_object(np.arange(3)),),
-            "count_nonzero": (cosmo_object(np.arange(3)),),
-            "flatnonzero": (cosmo_object(np.arange(3)),),
-            "isneginf": (cosmo_object(np.arange(3)),),
-            "isposinf": (cosmo_object(np.arange(3)),),
-            "empty_like": (cosmo_object(np.arange(3)),),
-            "full_like": (cosmo_object(np.arange(3)), cq(1)),
-            "ones_like": (cosmo_object(np.arange(3)),),
-            "zeros_like": (cosmo_object(np.arange(3)),),
-            "copy": (cosmo_object(np.arange(3)),),
-            "meshgrid": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "transpose": (cosmo_object(np.eye(3)),),
-            "reshape": (cosmo_object(np.arange(3)), (3,)),
-            "resize": (cosmo_object(np.arange(3)), 6),
-            "roll": (cosmo_object(np.arange(3)), 1),
-            "rollaxis": (cosmo_object(np.arange(3)), 0),
-            "rot90": (cosmo_object(np.eye(3)),),
-            "expand_dims": (cosmo_object(np.arange(3)), 0),
-            "squeeze": (cosmo_object(np.arange(3)),),
-            "flip": (cosmo_object(np.eye(3)),),
-            "fliplr": (cosmo_object(np.eye(3)),),
-            "flipud": (cosmo_object(np.eye(3)),),
-            "delete": (cosmo_object(np.arange(3)), 0),
-            "partition": (cosmo_object(np.arange(3)), 1),
-            "broadcast_to": (cosmo_object(np.arange(3)), 3),
-            "broadcast_arrays": (cosmo_object(np.arange(3)),),
-            "split": (cosmo_object(np.arange(3)), 1),
-            "array_split": (cosmo_object(np.arange(3)), 1),
-            "dsplit": (cosmo_object(np.arange(27)).reshape(3, 3, 3), 1),
-            "hsplit": (cosmo_object(np.arange(3)), 1),
-            "vsplit": (cosmo_object(np.eye(3)), 1),
-            "swapaxes": (cosmo_object(np.eye(3)), 0, 1),
-            "moveaxis": (cosmo_object(np.eye(3)), 0, 1),
-            "nansum": (cosmo_object(np.arange(3)),),  # implemented via sum
-            "std": (cosmo_object(np.arange(3)),),
-            "nanstd": (cosmo_object(np.arange(3)),),
-            "nanvar": (cosmo_object(np.arange(3)),),
-            "nanprod": (cosmo_object(np.arange(3)),),
-            "diag": (cosmo_object(np.eye(3)),),
-            "diag_indices_from": (cosmo_object(np.eye(3)),),
-            "diagflat": (cosmo_object(np.eye(3)),),
-            "diagonal": (cosmo_object(np.eye(3)),),
-            "ravel": (cosmo_object(np.arange(3)),),
+            "argsort": (ca(np.arange(3)),),  # implemented via sort
+            "argwhere": (ca(np.arange(3)),),
+            "array_str": (ca(np.arange(3)),),
+            "atleast_1d": (ca(np.arange(3)),),
+            "atleast_2d": (ca(np.arange(3)),),
+            "atleast_3d": (ca(np.arange(3)),),
+            "average": (ca(np.arange(3)),),
+            "can_cast": (ca(np.arange(3)), np.float64),
+            "common_type": (ca(np.arange(3)), ca(np.arange(3))),
+            "result_type": (ca(np.ones(3)), ca(np.ones(3))),
+            "iscomplex": (ca(np.arange(3)),),
+            "iscomplexobj": (ca(np.arange(3)),),
+            "isreal": (ca(np.arange(3)),),
+            "isrealobj": (ca(np.arange(3)),),
+            "nan_to_num": (ca(np.arange(3)),),
+            "nanargmax": (ca(np.arange(3)),),  # implemented via max
+            "nanargmin": (ca(np.arange(3)),),  # implemented via min
+            "nanmax": (ca(np.arange(3)),),  # implemented via max
+            "nanmean": (ca(np.arange(3)),),  # implemented via mean
+            "nanmedian": (ca(np.arange(3)),),  # implemented via median
+            "nanmin": (ca(np.arange(3)),),  # implemented via min
+            "trim_zeros": (ca(np.arange(3)),),
+            "max": (ca(np.arange(3)),),
+            "mean": (ca(np.arange(3)),),
+            "median": (ca(np.arange(3)),),
+            "min": (ca(np.arange(3)),),
+            "ndim": (ca(np.arange(3)),),
+            "shape": (ca(np.arange(3)),),
+            "size": (ca(np.arange(3)),),
+            "sort": (ca(np.arange(3)),),
+            "sum": (ca(np.arange(3)),),
+            "repeat": (ca(np.arange(3)), 2),
+            "tile": (ca(np.arange(3)), 2),
+            "shares_memory": (ca(np.arange(3)), ca(np.arange(3))),
+            "nonzero": (ca(np.arange(3)),),
+            "count_nonzero": (ca(np.arange(3)),),
+            "flatnonzero": (ca(np.arange(3)),),
+            "isneginf": (ca(np.arange(3)),),
+            "isposinf": (ca(np.arange(3)),),
+            "empty_like": (ca(np.arange(3)),),
+            "full_like": (ca(np.arange(3)), cq(1)),
+            "ones_like": (ca(np.arange(3)),),
+            "zeros_like": (ca(np.arange(3)),),
+            "copy": (ca(np.arange(3)),),
+            "meshgrid": (ca(np.arange(3)), ca(np.arange(3))),
+            "transpose": (ca(np.eye(3)),),
+            "reshape": (ca(np.arange(3)), (3,)),
+            "resize": (ca(np.arange(3)), 6),
+            "roll": (ca(np.arange(3)), 1),
+            "rollaxis": (ca(np.arange(3)), 0),
+            "rot90": (ca(np.eye(3)),),
+            "expand_dims": (ca(np.arange(3)), 0),
+            "squeeze": (ca(np.arange(3)),),
+            "flip": (ca(np.eye(3)),),
+            "fliplr": (ca(np.eye(3)),),
+            "flipud": (ca(np.eye(3)),),
+            "delete": (ca(np.arange(3)), 0),
+            "partition": (ca(np.arange(3)), 1),
+            "broadcast_to": (ca(np.arange(3)), 3),
+            "broadcast_arrays": (ca(np.arange(3)),),
+            "split": (ca(np.arange(3)), 1),
+            "array_split": (ca(np.arange(3)), 1),
+            "dsplit": (ca(np.arange(27)).reshape(3, 3, 3), 1),
+            "hsplit": (ca(np.arange(3)), 1),
+            "vsplit": (ca(np.eye(3)), 1),
+            "swapaxes": (ca(np.eye(3)), 0, 1),
+            "moveaxis": (ca(np.eye(3)), 0, 1),
+            "nansum": (ca(np.arange(3)),),  # implemented via sum
+            "std": (ca(np.arange(3)),),
+            "nanstd": (ca(np.arange(3)),),
+            "nanvar": (ca(np.arange(3)),),
+            "nanprod": (ca(np.arange(3)),),
+            "diag": (ca(np.eye(3)),),
+            "diag_indices_from": (ca(np.eye(3)),),
+            "diagflat": (ca(np.eye(3)),),
+            "diagonal": (ca(np.eye(3)),),
+            "ravel": (ca(np.arange(3)),),
             "ravel_multi_index": (np.eye(2, dtype=int), (2, 2)),
             "unravel_index": (np.arange(3), (3,)),
-            "fix": (cosmo_object(np.arange(3)),),
-            "round": (cosmo_object(np.arange(3)),),  # implemented via around
+            "fix": (ca(np.arange(3)),),
+            "round": (ca(np.arange(3)),),  # implemented via around
             "may_share_memory": (
-                cosmo_object(np.arange(3)),
-                cosmo_object(np.arange(3)),
+                ca(np.arange(3)),
+                ca(np.arange(3)),
             ),
-            "linalg.matrix_power": (cosmo_object(np.eye(3)), 2),
-            "linalg.cholesky": (cosmo_object(np.eye(3)),),
-            "linalg.multi_dot": ((cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),),
-            "linalg.matrix_rank": (cosmo_object(np.eye(3)),),
-            "linalg.qr": (cosmo_object(np.eye(3)),),
-            "linalg.slogdet": (cosmo_object(np.eye(3)),),
-            "linalg.cond": (cosmo_object(np.eye(3)),),
-            "gradient": (cosmo_object(np.arange(3)),),
-            "cumsum": (cosmo_object(np.arange(3)),),
-            "nancumsum": (cosmo_object(np.arange(3)),),
-            "nancumprod": (cosmo_object(np.arange(3)),),
-            "bincount": (cosmo_object(np.arange(3)),),
-            "unique": (cosmo_object(np.arange(3)),),
-            "min_scalar_type": (cosmo_object(np.arange(3)),),
-            "extract": (0, cosmo_object(np.arange(3))),
-            "setxor1d": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "lexsort": (cosmo_object(np.arange(3)),),
-            "digitize": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "tril_indices_from": (cosmo_object(np.eye(3)),),
-            "triu_indices_from": (cosmo_object(np.eye(3)),),
-            "imag": (cosmo_object(np.arange(3)),),
-            "real": (cosmo_object(np.arange(3)),),
-            "real_if_close": (cosmo_object(np.arange(3)),),
+            "linalg.matrix_power": (ca(np.eye(3)), 2),
+            "linalg.cholesky": (ca(np.eye(3)),),
+            "linalg.multi_dot": ((ca(np.eye(3)), ca(np.eye(3))),),
+            "linalg.matrix_rank": (ca(np.eye(3)),),
+            "linalg.qr": (ca(np.eye(3)),),
+            "linalg.slogdet": (ca(np.eye(3)),),
+            "linalg.cond": (ca(np.eye(3)),),
+            "gradient": (ca(np.arange(3)),),
+            "cumsum": (ca(np.arange(3)),),
+            "nancumsum": (ca(np.arange(3)),),
+            "nancumprod": (ca(np.arange(3)),),
+            "bincount": (ca(np.arange(3)),),
+            "unique": (ca(np.arange(3)),),
+            "min_scalar_type": (ca(np.arange(3)),),
+            "extract": (0, ca(np.arange(3))),
+            "setxor1d": (ca(np.arange(3)), ca(np.arange(3))),
+            "lexsort": (ca(np.arange(3)),),
+            "digitize": (ca(np.arange(3)), ca(np.arange(3))),
+            "tril_indices_from": (ca(np.eye(3)),),
+            "triu_indices_from": (ca(np.eye(3)),),
+            "imag": (ca(np.arange(3)),),
+            "real": (ca(np.arange(3)),),
+            "real_if_close": (ca(np.arange(3)),),
             "einsum_path": (
                 "ij,jk->ik",
-                cosmo_object(np.eye(3)),
-                cosmo_object(np.eye(3)),
+                ca(np.eye(3)),
+                ca(np.eye(3)),
             ),
-            "cov": (cosmo_object(np.arange(3)),),
-            "corrcoef": (cosmo_object(np.arange(3)),),
-            "compress": (np.zeros(3), cosmo_object(np.arange(3))),
-            "take_along_axis": (cosmo_object(np.arange(3)), np.ones(3, dtype=int), 0),
-            "linalg.cross": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "linalg.diagonal": (cosmo_object(np.eye(3)),),
-            "linalg.matmul": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
-            "linalg.matrix_norm": (cosmo_object(np.eye(3)),),
-            "linalg.matrix_transpose": (cosmo_object(np.eye(3)),),
-            "linalg.svdvals": (cosmo_object(np.eye(3)),),
-            "linalg.tensordot": (cosmo_object(np.eye(3)), cosmo_object(np.eye(3))),
-            "linalg.trace": (cosmo_object(np.eye(3)),),
-            "linalg.vecdot": (cosmo_object(np.arange(3)), cosmo_object(np.arange(3))),
-            "linalg.vector_norm": (cosmo_object(np.arange(3)),),
-            "astype": (cosmo_object(np.arange(3)), float),
-            "matrix_transpose": (cosmo_object(np.eye(3)),),
-            "unique_all": (cosmo_object(np.arange(3)),),
-            "unique_counts": (cosmo_object(np.arange(3)),),
-            "unique_inverse": (cosmo_object(np.arange(3)),),
-            "unique_values": (cosmo_object(np.arange(3)),),
-            "cumulative_sum": (cosmo_object(np.arange(3)),),
-            "cumulative_prod": (cosmo_object(np.arange(3)),),
-            "unstack": (cosmo_object(np.arange(3)),),
+            "cov": (ca(np.arange(3)),),
+            "corrcoef": (ca(np.arange(3)),),
+            "compress": (np.zeros(3), ca(np.arange(3))),
+            "take_along_axis": (ca(np.arange(3)), np.ones(3, dtype=int), 0),
+            "linalg.cross": (ca(np.arange(3)), ca(np.arange(3))),
+            "linalg.diagonal": (ca(np.eye(3)),),
+            "linalg.matmul": (ca(np.eye(3)), ca(np.eye(3))),
+            "linalg.matrix_norm": (ca(np.eye(3)),),
+            "linalg.matrix_transpose": (ca(np.eye(3)),),
+            "linalg.svdvals": (ca(np.eye(3)),),
+            "linalg.tensordot": (ca(np.eye(3)), ca(np.eye(3))),
+            "linalg.trace": (ca(np.eye(3)),),
+            "linalg.vecdot": (ca(np.arange(3)), ca(np.arange(3))),
+            "linalg.vector_norm": (ca(np.arange(3)),),
+            "astype": (ca(np.arange(3)), float),
+            "matrix_transpose": (ca(np.eye(3)),),
+            "unique_all": (ca(np.arange(3)),),
+            "unique_counts": (ca(np.arange(3)),),
+            "unique_inverse": (ca(np.arange(3)),),
+            "unique_values": (ca(np.arange(3)),),
+            "cumulative_sum": (ca(np.arange(3)),),
+            "cumulative_prod": (ca(np.arange(3)),),
+            "unstack": (ca(np.arange(3)),),
         }
         functions_checked = list()
         bad_funcs = dict()
@@ -789,7 +857,7 @@ class TestNumpyFunctions:
             np.array([1, 2, 3]),
         ),
     )
-    @pytest.mark.parametrize("bins_type", ("int", "np", "cosmo_object"))
+    @pytest.mark.parametrize("bins_type", ("int", "np", "cosmo"))
     @pytest.mark.parametrize("density", (None, True))
     def test_histograms(self, func_args, weights, bins_type, density):
         """
@@ -803,7 +871,7 @@ class TestNumpyFunctions:
         bins = {
             "int": 10,
             "np": [np.linspace(0, 5, 11)] * 3,
-            "cosmo_object": [
+            "cosmo": [
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.kpc,
@@ -835,7 +903,7 @@ class TestNumpyFunctions:
                     np.histogramdd: np.s_[:],
                 }[func]
             ]
-            if bins_type in ("np", "cosmo_object")
+            if bins_type in ("np", "cosmo")
             else bins
         )
         result = func(*args, bins=bins, density=density, weights=weights)
@@ -914,29 +982,21 @@ class TestNumpyFunctions:
             assert b.cosmo_factor == expt_cf
 
     def test_getitem(self):
-        """
-        Make sure that we don't degrade to an ndarray on slicing.
-        """
-        assert isinstance(cosmo_object(np.arange(3))[0], cosmo_quantity)
+        """Make sure that we don't degrade to an ndarray on slicing."""
+        assert isinstance(ca(np.arange(3))[0], cosmo_quantity)
 
     def test_reshape_to_scalar(self):
-        """
-        Make sure that we convert to a cosmo_quantity when we reshape to a scalar.
-        """
-        assert isinstance(cosmo_object(np.ones(1)).reshape(tuple()), cosmo_quantity)
+        """Make sure that we convert to a cosmo_quantity when we reshape to a scalar."""
+        assert isinstance(ca(np.ones(1)).reshape(tuple()), cosmo_quantity)
 
     def test_iter(self):
-        """
-        Make sure that we get cosmo_quantity's when iterating over a cosmo_array.
-        """
-        for cq in cosmo_object(np.arange(3)):
+        """Make sure that we get cosmo_quantity's when iterating over a cosmo_array."""
+        for cq in ca(np.arange(3)):
             assert isinstance(cq, cosmo_quantity)
 
     def test_dot(self):
-        """
-        Make sure that we get a cosmo_array when we use array attribute dot.
-        """
-        res = cosmo_object(np.arange(3)).dot(cosmo_object(np.arange(3)))
+        """Make sure that we get a cosmo_array when we use array attribute dot."""
+        res = ca(np.arange(3)).dot(ca(np.arange(3)))
         assert isinstance(res, cosmo_quantity)
         assert res.comoving is False
         assert res.cosmo_factor == cosmo_factor(a**2, 0.5)
@@ -945,8 +1005,9 @@ class TestNumpyFunctions:
 
 class TestCosmoQuantity:
     """
-    Test that the cosmo_quantity class works as desired, mostly around issues converting
-    back and forth with cosmo_array.
+    Test that the cosmo_quantity class works as desired.
+
+    Mostly test around issues converting back and forth with cosmo_array.
     """
 
     @pytest.mark.parametrize(
@@ -966,9 +1027,7 @@ class TestCosmoQuantity:
         ],
     )
     def test_propagation_func(self, func, args):
-        """
-        Test that functions that are supposed to propagate our attributes do so.
-        """
+        """Test that functions that are supposed to propagate our attributes do so."""
         cq = cosmo_quantity(
             1,
             u.m,
@@ -983,9 +1042,7 @@ class TestCosmoQuantity:
         assert res.valid_transform is True
 
     def test_round(self):
-        """
-        Test that attributes propagate through the round builtin.
-        """
+        """Test that attributes propagate through the round builtin."""
         cq = cosmo_quantity(
             1.03,
             u.m,
@@ -1002,10 +1059,12 @@ class TestCosmoQuantity:
 
     def test_scalar_return_func(self):
         """
-        Make sure that default-wrapped functions that take a cosmo_array and return a
-        scalar convert to a cosmo_quantity.
+        Make sure that default-wrapped functions convert to a cosmo_quantity.
+
+        Many functions behave similarly. Check that the ones that take a
+        cosmo_array and return a scalar convert to a cosmo_quantity.
         """
-        cosmo_object = cosmo_array(
+        ca = cosmo_array(
             np.arange(3),
             u.m,
             comoving=False,
@@ -1013,14 +1072,12 @@ class TestCosmoQuantity:
             scale_exponent=1,
             valid_transform=True,
         )
-        res = np.min(cosmo_object)
+        res = np.min(ca)
         assert isinstance(res, cosmo_quantity)
 
     @pytest.mark.parametrize("prop", ["T", "ua", "unit_array"])
     def test_propagation_props(self, prop):
-        """
-        Test that properties propagate our attributes as intended.
-        """
+        """Test that properties propagate our attributes as intended."""
         cq = cosmo_quantity(
             1,
             u.m,
@@ -1054,14 +1111,10 @@ class TestCosmoQuantity:
 
 
 class TestCosmoArrayCopy:
-    """
-    Tests of explicit (deep)copying of cosmo_array.
-    """
+    """Tests of explicit (deep)copying of cosmo_array."""
 
     def test_copy(self):
-        """
-        Check that when we copy a cosmo_array it preserves its values and attributes.
-        """
+        """Check that when we copy values and attributes are preserved."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1076,9 +1129,7 @@ class TestCosmoArrayCopy:
         assert arr.comoving == copy_arr.comoving
 
     def test_deepcopy(self):
-        """
-        Check that when we deepcopy a cosmo_array it preserves its values and attributes
-        """
+        """Check that when we deepcopy values and attributes are preserved."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1093,9 +1144,7 @@ class TestCosmoArrayCopy:
         assert arr.comoving == copy_arr.comoving
 
     def test_to_cgs(self):
-        """
-        Check that using to_cgs properly preserves attributes.
-        """
+        """Check that using to_cgs properly preserves attributes."""
         units = u.Mpc
         arr = cosmo_array(
             u.unyt_array(np.ones(5), units=units),
@@ -1111,8 +1160,12 @@ class TestCosmoArrayCopy:
 
 
 class TestMultiplicationByUnyt:
+    """Tests for multiplying cosmo_array by a unyt unit."""
+
     def test_multiplication_by_unyt(self):
         """
+        Check that left-sided multiplication behaves itself.
+
         We desire consistent behaviour for example for `cosmo_array(...) * (1 * u.Mpc)` as
         for `cosmo_array(...) * u.Mpc`.
         """
@@ -1145,11 +1198,10 @@ class TestMultiplicationByUnyt:
 
 
 class TestPickle:
-    """
-    Test that the cosmo_array attributes survive being pickled and unpickled.
-    """
+    """Test that the cosmo_array attributes survive being pickled and unpickled."""
 
     def test_pickle(self):
+        """Test that the cosmo_array attributes survive pickle/unpickle."""
         attrs = {
             "comoving": False,
             "cosmo_factor": cosmo_factor(a**1, 0.5),

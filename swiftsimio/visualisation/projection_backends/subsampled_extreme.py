@@ -1,18 +1,16 @@
 """
-Sub-sampled smoothing kernel with each kernel evaluated
-at least 64^2 times. This uses a dithered pre-calculated
-kernel for cell overlaps at small scales, and at large
-scales uses subsampling.
+Sub-samples smoothing kernel with at least 64^2 samples.
+
+Sub-sampled smoothing kernel with each kernel evaluated at least 64^2 times. This uses a
+dithered pre-calculated kernel for cell overlaps at small scales, and at large scales
+uses subsampling.
 
 Uses double precision.
 
-The original smoothing code. This provides a paranoid supersampling
-of the kernel.
+This is the original smoothing code. This provides a paranoid supersampling of the kernel.
 """
 
-from math import sqrt, ceil
-from numpy import float32, float64, int32, zeros, ndarray
-
+import numpy as np
 from swiftsimio.accelerated import jit, NUM_THREADS, prange
 from swiftsimio.visualisation.projection_backends.kernels import (
     kernel_double_precision as kernel,
@@ -22,22 +20,22 @@ from swiftsimio.visualisation.projection_backends.kernels import (
     kernel_gamma,
 )
 
-kernel_constant = float64(kernel_constant)
-kernel_gamma = float64(kernel_gamma)
+kernel_constant = np.float64(kernel_constant)
+kernel_gamma = np.float64(kernel_gamma)
 
 
 @jit(nopython=True, fastmath=True)
 def scatter(
-    x: float64,
-    y: float64,
-    m: float32,
-    h: float32,
+    x: np.float64,
+    y: np.float64,
+    m: np.float32,
+    h: np.float32,
     res: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-) -> ndarray:
+    box_x: np.float64 = 0.0,
+    box_y: np.float64 = 0.0,
+) -> np.ndarray:
     """
-    Creates a weighted scatter plot
+    Create a weighted scatter plot.
 
     Computes contributions to from particles with positions
     (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
@@ -45,58 +43,55 @@ def scatter(
 
     Parameters
     ----------
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    x : np.array[float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    m : np.array[float32]
-        array of masses (or otherwise weights) of the particles
-
-    h : np.array[float32]
-        array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of pixels along one axis, i.e. this returns a square
+        The number of pixels along one axis, i.e. this returns a square
         of res * res.
 
-    box_x: float64
-        box size in x, in the same rescaled length units as x and y. Used
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
-    box_y: float64
-        box size in y, in the same rescaled length units as x and y. Used
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
     Returns
     -------
-
-    np.array[float32, float32, float32]
-        pixel grid of quantity
+    np.ndarray[np.float32, np.float32, np.float32]
+        Pixel grid of quantity.
 
     See Also
     --------
-
-    scatter_parallel : Parallel implementation of this function
+    scatter_parallel
+        Parallel implementation of this function.
 
     Notes
     -----
+    Explicitly defining the types in this function allows for a 25-50% performance
+    improvement. In our testing, using numpy floats and integers is also an improvement
+    over using the numba ones.
 
-    Explicitly defining the types in this function allows
-    for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba ones.
-
-    Uses 4x the number of sampling points as in scatter in subsampled.py
+    Uses 4x the number of sampling points as in scatter in ``subsampled.py``.
     """
     # Output array for our image
-    image = zeros((res, res), dtype=float64)
-    maximal_array_index = int32(res) - 1
+    image = np.zeros((res, res), dtype=np.float64)
+    maximal_array_index = np.int32(res) - 1
 
     # Change that integer to a float, we know that our x, y are bounded
     # by [0, 1].
-    float_res = float64(res)
+    float_res = np.float64(res)
     pixel_width = 1.0 / float_res
 
     # Pre-calculate this constant for use with the above
@@ -104,30 +99,30 @@ def scatter(
 
     # Minimum number of kernel evaluations for each particle (this x2 squared)
     MIN_KERNEL_EVALUATIONS = 32
-    float_MIN_KERNEL_EVALUATIONS = float64(MIN_KERNEL_EVALUATIONS)
+    float_MIN_KERNEL_EVALUATIONS = np.float64(MIN_KERNEL_EVALUATIONS)
 
     # Dithered kernel evaluations - note it is a 2x DITHER_EVALUATIONS^2 grid
     DITHER_EVALUATIONS = 64
-    float_DITHER_EVALUATIONS = float64(DITHER_EVALUATIONS)
+    float_DITHER_EVALUATIONS = np.float64(DITHER_EVALUATIONS)
     float_DITHER_EVALUATIONS_inv = 1.0 / float_DITHER_EVALUATIONS
 
     # Pre-comute a min_kernel_evaluations x min_kernel_evaluations square
     # for dithering in cases of small kernel overlap
-    dithered_kernel = zeros(
-        (2 * DITHER_EVALUATIONS, 2 * DITHER_EVALUATIONS), dtype=float64
+    dithered_kernel = np.zeros(
+        (2 * DITHER_EVALUATIONS, 2 * DITHER_EVALUATIONS), dtype=np.float64
     )
 
     # Fill with kernel evaluations
     for x_dither_cell in range(2 * DITHER_EVALUATIONS):
-        x_float = float64(x_dither_cell) + 0.5
+        x_float = np.float64(x_dither_cell) + 0.5
         x_dither_distance = x_float - float_DITHER_EVALUATIONS
         x_dither_distance_squared = x_dither_distance * x_dither_distance
         for y_dither_cell in range(2 * DITHER_EVALUATIONS):
-            y_float = float64(y_dither_cell) + 0.5
+            y_float = np.float64(y_dither_cell) + 0.5
             y_dither_distance = y_float - float_DITHER_EVALUATIONS
             y_dither_distance_squared = y_dither_distance * y_dither_distance
 
-            r = sqrt(x_dither_distance_squared + y_dither_distance_squared)
+            r = np.sqrt(x_dither_distance_squared + y_dither_distance_squared)
             dithered_kernel[x_dither_cell, y_dither_cell] += kernel(
                 r, H=float_DITHER_EVALUATIONS
             )
@@ -140,13 +135,13 @@ def scatter(
         xshift_max = 1
     else:
         xshift_min = -1  # x_min is always at x=0
-        xshift_max = ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
+        xshift_max = np.ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
         yshift_min = -1  # y_min is always at y=0
-        yshift_max = ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
+        yshift_max = np.ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
         # loop over periodic copies of this particle
@@ -157,16 +152,16 @@ def scatter(
 
                 # Calculate the cell that this particle; use the 64 bit version of the
                 # resolution as this is the same type as the positions
-                particle_cell_x = int32(float_res * x_pos)
-                particle_cell_y = int32(float_res * y_pos)
+                particle_cell_x = np.int32(float_res * x_pos)
+                particle_cell_y = np.int32(float_res * y_pos)
 
                 # SWIFT stores hsml as the FWHM.
-                float_mass = float64(mass)
-                kernel_width = float64(kernel_gamma * hsml)
+                float_mass = np.float64(mass)
+                kernel_width = np.float64(kernel_gamma * hsml)
 
                 # The number of cells that this kernel spans
                 float_cells_spanned = 1.0 + kernel_width * float_res
-                cells_spanned = int32(float_cells_spanned)
+                cells_spanned = np.int32(float_cells_spanned)
 
                 if (
                     particle_cell_x + cells_spanned < 0
@@ -184,10 +179,10 @@ def scatter(
                     # Here we check for overlaps between this kernel and boundaries.
                     # If they exist, we must use the sub-sampled kernel.
 
-                    dx_left = x_pos - float64(particle_cell_x)
-                    dx_right = float64(particle_cell_x) + 1.0 - x_pos
-                    dy_down = y_pos - float64(particle_cell_y)
-                    dy_up = float64(particle_cell_y) + 1.0 - y_pos
+                    dx_left = x_pos - np.float64(particle_cell_x)
+                    dx_right = np.float64(particle_cell_x) + 1.0 - x_pos
+                    dy_down = y_pos - np.float64(particle_cell_y)
+                    dy_up = np.float64(particle_cell_y) + 1.0 - y_pos
 
                     overlaps_left = dx_left < kernel_width
                     overlaps_right = dx_right < kernel_width
@@ -205,8 +200,8 @@ def scatter(
                         # Use pre-calculated kernel with a basic dither to lay down
                         # overlap
                         for x_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
-                            float_x_dither_cell = float64(x_dither_cell)
-                            pixel_x = int32(
+                            float_x_dither_cell = np.float64(x_dither_cell)
+                            pixel_x = np.int32(
                                 float_res
                                 * (
                                     x_pos
@@ -219,8 +214,8 @@ def scatter(
                                 )
                             )
                             for y_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
-                                float_y_dither_cell = float64(y_dither_cell)
-                                pixel_y = int32(
+                                float_y_dither_cell = np.float64(y_dither_cell)
+                                pixel_y = np.int32(
                                     float_res
                                     * (
                                         y_pos
@@ -249,11 +244,11 @@ def scatter(
                     subsample_factor = max(
                         1,
                         2
-                        * int32(
-                            ceil(float_MIN_KERNEL_EVALUATIONS / float_cells_spanned)
+                        * np.int32(
+                            np.ceil(float_MIN_KERNEL_EVALUATIONS / float_cells_spanned)
                         ),
                     )
-                    float_subsample_factor = float64(subsample_factor)
+                    float_subsample_factor = np.float64(subsample_factor)
                     inv_float_subsample_factor = 1.0 / float_subsample_factor
                     inv_float_subsample_factor_square = (
                         inv_float_subsample_factor * inv_float_subsample_factor
@@ -269,7 +264,7 @@ def scatter(
                             particle_cell_x + cells_spanned + 1, maximal_array_index + 1
                         ),
                     ):
-                        float_cell_x = float64(cell_x)
+                        float_cell_x = np.float64(cell_x)
                         for cell_y in range(
                             max(0, particle_cell_y - cells_spanned),
                             min(
@@ -277,16 +272,16 @@ def scatter(
                                 maximal_array_index + 1,
                             ),
                         ):
-                            float_cell_y = float64(cell_y)
+                            float_cell_y = np.float64(cell_y)
                             # Now we subsample the pixels to get a more accurate
                             # determination of the kernel weight. We take the mean of the
                             # kernel evaluations within a given pixel and apply this as
                             # the true 'kernel evaluation'.
-                            kernel_eval = float64(0.0)
+                            kernel_eval = np.float64(0.0)
 
                             for subsample_x in range(0, subsample_factor):
                                 subsample_position_x = (
-                                    float64(subsample_x) + 0.5
+                                    np.float64(subsample_x) + 0.5
                                 ) * inv_float_subsample_factor
 
                                 distance_x = (
@@ -297,7 +292,7 @@ def scatter(
 
                                 for subsample_y in range(0, subsample_factor):
                                     subsample_position_y = (
-                                        float64(subsample_y) + 0.5
+                                        np.float64(subsample_y) + 0.5
                                     ) * inv_float_subsample_factor
 
                                     distance_y = (
@@ -306,7 +301,7 @@ def scatter(
 
                                     distance_y_2 = distance_y * distance_y
 
-                                    r = sqrt(distance_x_2 + distance_y_2)
+                                    r = np.sqrt(distance_x_2 + distance_y_2)
                                     kernel_eval += kernel(r, kernel_width)
 
                             image[cell_x, cell_y] += (
@@ -320,67 +315,65 @@ def scatter(
 
 @jit(nopython=True, fastmath=True, parallel=True)
 def scatter_parallel(
-    x: float64,
-    y: float64,
-    m: float32,
-    h: float32,
+    x: np.float64,
+    y: np.float64,
+    m: np.float32,
+    h: np.float32,
     res: int,
-    box_x: float64 = 0.0,
-    box_y: float64 = 0.0,
-) -> ndarray:
+    box_x: np.float64 = 0.0,
+    box_y: np.float64 = 0.0,
+) -> np.ndarray:
     """
-    Parallel implementation of scatter
+    Parallel implementation of scatter.
 
-    Creates a weighted scatter plot. Computes contributions from
-    particles with positions (`x`,`y`) with smoothing lengths `h`
-    weighted by quantities `m`.
+    Create a weighted scatter plot. Computes contributions from particles with positions
+    (`x`,`y`) with smoothing lengths `h` weighted by quantities `m`.
+
     This includes periodic boundary effects.
 
     Parameters
     ----------
-    x : np.array[float64]
-        array of x-positions of the particles. Must be bounded by [0, 1].
+    x : np.ndarray[np.float64]
+        Array of x-positions of the particles. Must be bounded by [0, 1].
 
-    y : np.array[float64]
-        array of y-positions of the particles. Must be bounded by [0, 1].
+    y : np.ndarray[np.float64]
+        Array of y-positions of the particles. Must be bounded by [0, 1].
 
-    m : np.array[float32]
-        array of masses (or otherwise weights) of the particles
+    m : np.ndarray[np.float32]
+        Array of masses (or otherwise weights) of the particles.
 
-    h : np.array[float32]
-        array of smoothing lengths of the particles
+    h : np.ndarray[np.float32]
+        Array of smoothing lengths of the particles.
 
     res : int
-        the number of pixels along one axis, i.e. this returns a square
+        The number of pixels along one axis, i.e. this returns a square
         of res * res.
 
-    box_x: float64
-        box size in x, in the same rescaled length units as x and y. Used
+    box_x : np.float64
+        Box size in x, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
-    box_y: float64
-        box size in y, in the same rescaled length units as x and y. Used
+    box_y : np.float64
+        Box size in y, in the same rescaled length units as x and y. Used
         for periodic wrapping.
 
     Returns
     -------
-
-    np.array[float32, float32, float32]
-        pixel grid of quantity
+    np.ndarray[np.float32, np.float32, np.float32]
+        Pixel grid of quantity.
 
     See Also
     --------
-
-    scatter : Creates 2D scatter plot from SWIFT data
+    scatter
+        Creates 2D scatter plot from SWIFT data.
 
     Notes
     -----
+    Explicitly defining the types in this function allows for a 25-50% performance
+    improvement. In our testing, using numpy floats and integers is also an improvement
+    over using the numba ones.
 
-    Explicitly defining the types in this function allows
-    for a 25-50% performance improvement. In our testing, using numpy
-    floats and integers is also an improvement over using the numba ones.
-
-    Uses 4x the number of sampling points as in scatter_parallel in subsampled.py
+    Uses 4x the number of sampling points as in scatter_parallel in ``subsampled.py``.
     """
     # Same as scatter, but executes in parallel! This is actually trivial,
     # we just make NUM_THREADS images and add them together at the end.
@@ -388,7 +381,7 @@ def scatter_parallel(
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
 
-    output = zeros((res, res), dtype=float64)
+    output = np.zeros((res, res), dtype=np.float64)
 
     for thread in prange(NUM_THREADS):
         # Left edge is easy, just start at 0 and go to 'final'
