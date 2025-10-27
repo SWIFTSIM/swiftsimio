@@ -24,10 +24,10 @@ htmlcov/*
 # MacOS
 *.DS_Store
 
-# Formatting venv
-black_formatting_env/*
-
 # Leftovers
 *.png
 *.hdf5
 *.pkl
+
+# Unused configs
+.flake8
