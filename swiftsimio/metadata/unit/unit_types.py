@@ -1,7 +1,7 @@
 """Define the names and types of the units as read from file."""
 
 import unyt
-from numpy import log
+import numpy as np
 
 unit_names_to_unyt = {
     "Unit mass in cgs (U_M)": unyt.g,
@@ -67,7 +67,7 @@ def find_nearest_base_unit(
     """
     possible_bases = possible_base_units[dimension]
 
-    closest_unit = min(possible_bases, key=lambda x: abs(log((1.0 * x).to(unit))))
+    closest_unit = min(possible_bases, key=lambda x: abs(np.log10((1.0 * x).to(unit))))
 
     return unyt.unyt_quantity(
         float("%.5g" % float(unit.to(closest_unit))), units=closest_unit
