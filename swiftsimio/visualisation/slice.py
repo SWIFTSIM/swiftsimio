@@ -1,8 +1,5 @@
-"""
-Sub-module for slice plots in SWFITSIMio.
-"""
+"""Create image slices through a volume."""
 
-from typing import Union, Optional
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
@@ -18,26 +15,25 @@ from swiftsimio.visualisation._vistools import (
 def slice_gas(
     data: SWIFTDataset,
     resolution: int,
-    z_slice: Optional[cosmo_quantity] = None,
-    project: Union[str, None] = "masses",
+    z_slice: cosmo_quantity | None = None,
+    project: str | None = "masses",
     parallel: bool = False,
-    rotation_matrix: Union[None, np.array] = None,
-    rotation_center: Union[None, cosmo_array] = None,
-    region: Union[None, cosmo_array] = None,
+    rotation_matrix: np.ndarray | None = None,
+    rotation_center: cosmo_array | None = None,
+    region: cosmo_array | None = None,
     backend: str = "sph",
     periodic: bool = True,
-):
+) -> cosmo_array:
     """
-    Creates a 2D slice of a SWIFT dataset, weighted by data field, in the
-    form of a pixel grid.
+    Create a data field-weighted 2D slice through a SWIFT dataset as a pixel grid.
 
     Parameters
     ----------
     data : SWIFTDataset
-        Dataset from which slice is extracted
+        Dataset from which slice is extracted.
 
     resolution : int
-        Specifies size of return np.array
+        Specifies size of return np.array.
 
     z_slice : cosmo_quantity
         Specifies the location along the z-axis where the slice is to be
@@ -51,21 +47,21 @@ def slice_gas(
         else it is physical.
 
     parallel : bool
-        used to determine if we will create the image in parallel. This
+        Used to determine if we will create the image in parallel. This
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix: np.np.array, optional
+    rotation_matrix : np.np.array, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a slice
         perpendicular to the z axis.
 
-    rotation_center: np.np.array, optional
+    rotation_center : np.np.array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
     region : cosmo_array, optional
-        determines where the image will be created
+        Determines where the image will be created
         (this corresponds to the left and right-hand edges, and top and bottom edges)
         if it is not None. It should have a length of four, and take the form:
 
@@ -84,14 +80,14 @@ def slice_gas(
 
     Returns
     -------
-    image : cosmo_array
+    cosmo_array
         Slice image with units of project / length^2, of size ``res`` x ``res``.
         Comoving if ``project`` data are comoving, else physical.
 
     See Also
     --------
-    render_gas_voxel_grid : Creates a 3D voxel grid from a SWIFT dataset
-
+    render_gas_voxel_grid
+        Creates a 3D voxel grid from a SWIFT dataset.
     """
     data = data.gas
     z_slice = np.zeros_like(data.metadata.boxsize[0]) if z_slice is None else z_slice

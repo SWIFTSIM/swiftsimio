@@ -1,5 +1,0 @@
-"""
-Particle generation code.
-
-TBD
-"""

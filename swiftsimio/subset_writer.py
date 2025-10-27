@@ -1,7 +1,4 @@
-"""
-Contains functions for reading a subset of a SWIFT dataset and writing
-it to a new file.
-"""
+"""Functions for reading a subset of a SWIFT dataset and writing it to a new file."""
 
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
@@ -9,22 +6,21 @@ import swiftsimio.metadata as metadata
 
 import h5py
 import numpy as np
-from typing import Optional, List
 
 
 def get_swift_name(name: str) -> str:
     """
-    Returns the particle type name used in SWIFT
+    Return the particle type name used in SWIFT.
 
     Parameters
     ----------
     name : str
-        swiftsimio particle name (e.g. gas)
+        Swiftsimio particle name (e.g. gas).
 
     Returns
     -------
     str
-        SWIFT particle type corresponding to `name` (e.g. PartType0)
+        SWIFT particle type corresponding to `name` (e.g. PartType0).
     """
     part_type_names = [
         k for k, v in metadata.particle_types.particle_name_underscores.items()
@@ -36,29 +32,28 @@ def get_swift_name(name: str) -> str:
 
 
 def get_dataset_mask(
-    mask: SWIFTMask, dataset_name: str, suffix: Optional[str] = None
+    mask: SWIFTMask, dataset_name: str, suffix: str | None = None
 ) -> np.ndarray:
     """
-    Return appropriate mask or mask size for given dataset
+    Return appropriate mask or mask size for given dataset.
 
     Parameters
     ----------
     mask : SWIFTMask
-        the mask used to define subset that is written to new snapshot
+        The mask used to define subset that is written to new snapshot.
     dataset_name : str
-        the name of the dataset we're interested in. This is the name from the
-        hdf5 file (i.e. "PartType0", rather than "gas")
+        The name of the dataset we're interested in. This is the name from the
+        hdf5 file (i.e. "PartType0", rather than "gas").
     suffix : str, optional
-        specify a suffix string to append to dataset underscore name to return
+        Specify a suffix string to append to dataset underscore name to return
         something other than the dataset mask. This is specifically used for
         returning the mask size by setting suffix="_size", which would return,
-        for example mask.gas_size
+        for example mask.gas_size.
 
     Returns
     -------
     np.ndarray
-        mask for the appropriate dataset
-
+        Mask for the appropriate dataset.
     """
     suffix = "" if suffix is None else suffix
 
@@ -73,26 +68,32 @@ def get_dataset_mask(
 
 
 def find_datasets(
-    input_file: h5py.File, dataset_names=[], path=None, recurse=False
-) -> List[str]:
+    input_file: h5py.File,
+    dataset_names: list[str] = [],
+    path: str | None = None,
+    recurse: bool = False,
+) -> list[str]:
     """
-    Recursively finds all the datasets in the snapshot and writes them to a list
+    Recursively finds all the datasets in the snapshot and writes them to a list.
 
     Parameters
     ----------
     input_file : h5py.File
-        hdf5 file handle for snapshot
+        HDF5 file handle for snapshot.
+
     dataset_names : list of str, optional
-        names of datasets found in the snapshot
+        Names of datasets found in the snapshot.
+
     path : str, optional
-        the path to the current location in the snapshot
+        The path to the current location in the snapshot.
+
     recurse : bool, optional
-        flag to indicate whether we're recursing or not
+        Flag to indicate whether we're recursing or not.
 
     Returns
     -------
-    dataset_names : list of str
-        names of datasets in `path` in `input_file`
+    list of str
+        Names of datasets in ``path`` in ``input_file``.
     """
     if not recurse:
         dataset_names = []
@@ -115,28 +116,34 @@ def find_datasets(
 
 def find_links(
     input_file: h5py.File,
-    link_names: Optional[List] = [],
-    link_paths: Optional[List] = [],
-    path: Optional[str] = None,
-) -> (List[str], List[str]):
+    link_names: list = [],
+    link_paths: list = [],
+    path: str | None = None,
+) -> tuple[list[str], list[str]]:
     """
-    Recursively finds all the links in the snapshot and writes them to a list
+    Recursively finds all the links in the snapshot and writes them to a list.
 
     Parameters
     ----------
     input_file : h5py.File
-        hdf5 file handle for snapshot
-    link_names : list of str, optional
-        names of links found in the snapshot
-    link_paths : list of str, optional
-        paths where links found in the snapshot point to
+        HDF5 file handle for snapshot.
+
+    link_names : list of str
+        Names of links found in the snapshot.
+
+    link_paths : list of str
+        Paths where links found in the snapshot point to.
+
     path : str, optional
-        the path to the current location in the snapshot
+        The path to the current location in the snapshot.
 
     Returns
     -------
-    link_names, link_paths : list of str, list of str
-        lists of the names and links of paths in `input_file`
+    list of str
+        List of the names in ``input_file``.
+
+    list of str
+        List of the paths in ``input_file``.
     """
     if path is not None:
         keys = input_file[path].keys()
@@ -156,25 +163,29 @@ def find_links(
             try:
                 if input_file[subpath].keys() is not None:
                     find_links(input_file, link_names, link_paths, subpath)
-            except:
+            except AttributeError:
+                # it's a Dataset (so has no `keys` attribute), skip
                 pass
 
     return link_names, link_paths
 
 
-def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMask):
+def update_metadata_counts(
+    infile: h5py.File, outfile: h5py.File, mask: SWIFTMask
+) -> None:
     """
-    Recalculates the cell particle counts and offsets based on the particles present in
-    the subset.
+    Recalculate the cell particle counts and offsets from particles present in the subset.
 
     Parameters
     ----------
     infile : h5py.File
-        File handle for input snapshot
+        File handle for input snapshot.
+
     outfile : h5py.File
-        File handle for output subset of snapshot
+        File handle for output subset of snapshot.
+
     mask : SWIFTMask
-        the mask being used to define subset
+        The mask being used to define subset.
     """
     offsets_path = (
         "Cells/OffsetsInFile" if "Cells/OffsetsInFile" in infile else "Cells/Offsets"
@@ -221,23 +232,25 @@ def update_metadata_counts(infile: h5py.File, outfile: h5py.File, mask: SWIFTMas
 
 
 def write_metadata(
-    infile: h5py.File, outfile: h5py.File, links_list: List[str], mask: SWIFTMask
-):
+    infile: h5py.File, outfile: h5py.File, links_list: list[str], mask: SWIFTMask
+) -> None:
     """
-    Copy over all the metadata from snapshot to output file
+    Copy over all the metadata from snapshot to output file.
 
     Parameters
     ----------
     infile : h5py.File
-        hdf5 file handle for input snapshot
-    outfile : h5py.File
-        hdf5 file handle for output snapshot
-    links_list : list of str
-        names of links found in the snapshot
-    mask : SWIFTMask
-        the mask being used to define subset
-    """
+        HDF5 file handle for input snapshot.
 
+    outfile : h5py.File
+        HDF5 file handle for output snapshot.
+
+    links_list : list of str
+        Names of links found in the snapshot.
+
+    mask : SWIFTMask
+        The mask being used to define subset.
+    """
     update_metadata_counts(infile, outfile, mask)
 
     skip_list = links_list.copy()
@@ -259,23 +272,28 @@ def write_datasubset(
     infile: h5py.File,
     outfile: h5py.File,
     mask: SWIFTMask,
-    dataset_names: List[str],
-    links_list: List[str],
-):
+    dataset_names: list[str],
+    links_list: list[str],
+) -> None:
     """
-    Writes subset of all datasets contained in snapshot according to specified mask
+    Write subset of all datasets contained in snapshot according to specified mask.
+
     Parameters
     ----------
     infile : h5py.File
-        hdf5 file handle for input snapshot
+        HDF5 file handle for input snapshot.
+
     outfile : h5py.File
-        hdf5 file handle for output snapshot
+        HDF5 file handle for output snapshot.
+
     mask : SWIFTMask
-        the mask used to define subset that is written to new snapshot
+        The mask used to define subset that is written to new snapshot.
+
     dataset_names : list of str
-        names of datasets found in the snapshot
+        Names of datasets found in the snapshot.
+
     links_list : list of str
-        names of links found in the snapshot
+        Names of links found in the snapshot.
     """
     skip_list = links_list.copy()
     skip_list.extend(["Cells", "SubgridScheme", "PartTypeNames"])
@@ -309,35 +327,41 @@ def write_datasubset(
                 outfile[name].attrs.create(attr_name, attr_value)
 
 
-def connect_links(outfile: h5py.File, links_list: List[str], paths_list: List[str]):
+def connect_links(
+    outfile: h5py.File, links_list: list[str], paths_list: list[str]
+) -> None:
     """
-    Connects up the links to the appropriate path
+    Connect up the links to the appropriate path.
 
     Parameters
     ----------
     outfile : h5py.File
-        file containing the hdf5 subsnapshot
+        File containing the hdf5 subsnapshot.
+
     links_list : list of str
-        list of names of soft links
+        List of names of soft links.
+
     paths_list : list of str
-        list of paths specifying how to link each soft link
+        List of paths specifying how to link each soft link.
     """
     for i in range(len(links_list)):
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
 
 
-def write_subset(output_file: str, mask: SWIFTMask):
+def write_subset(output_file: str, mask: SWIFTMask) -> None:
     """
-    Writes subset of snapshot according to specified mask to new snapshot file
+    Write subset of snapshot according to specified mask to new snapshot file.
 
     Parameters
     ----------
-    input_file : str
-        path to input snapshot
     output_file : str
-        path to output snapshot
+        Path to input snapshot.
+
+    output_file : str
+        Path to output snapshot.
+
     mask : SWIFTMask
-        the mask used to define subset that is written to new snapshot
+        The mask used to define subset that is written to new snapshot.
     """
     # Open the files
     infile = h5py.File(mask.metadata.filename, "r")

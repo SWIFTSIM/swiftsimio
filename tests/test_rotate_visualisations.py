@@ -1,3 +1,5 @@
+"""Tests for visualisations including rotations."""
+
 from tests.helper import create_n_particle_dataset
 from swiftsimio import load
 from swiftsimio.visualisation.projection import project_gas
@@ -9,15 +11,7 @@ from os import remove
 
 
 def test_project(cosmological_volume_only_single):
-    """
-    Checks that gas projection of a single particle snapshot is invariant under
-    rotations around the particle
-
-    Parameters
-    ----------
-    cosmological_volume_only_single: str
-        name of file providing metadata to copy
-    """
+    """Check that projection is invariant under rotations around a single particle."""
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
     create_n_particle_dataset(cosmological_volume_only_single, output_filename)
@@ -47,15 +41,7 @@ def test_project(cosmological_volume_only_single):
 
 
 def test_slice(cosmological_volume_only_single):
-    """
-    Checks that a slice of a single particle snapshot is invariant under
-    rotations around the particle
-
-    Parameters
-    ----------
-    cosmological_volume_only_single: str
-        name of file providing metadata to copy
-    """
+    """Check that slicing is invariant under rotations around a single particle."""
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
     create_n_particle_dataset(cosmological_volume_only_single, output_filename)
@@ -95,15 +81,7 @@ def test_slice(cosmological_volume_only_single):
 
 
 def test_render(cosmological_volume_only_single):
-    """
-    Checks that a volume render of a single particle snapshot is invariant under
-    rotations around the particle
-
-    Parameters
-    ----------
-    cosmological_volume_only_single: str
-        name of file providing metadata to copy
-    """
+    """Check that volume render is invariant under rotations around a single particle."""
     # Start from the beginning, open the file
     output_filename = "single_particle.hdf5"
     create_n_particle_dataset(cosmological_volume_only_single, output_filename)

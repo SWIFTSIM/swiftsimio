@@ -1,6 +1,7 @@
 # Development
 pytest
-black
+ruff
+numpydoc
 matplotlib
 scipy
 wily

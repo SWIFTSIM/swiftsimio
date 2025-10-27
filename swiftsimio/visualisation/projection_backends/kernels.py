@@ -1,6 +1,4 @@
-"""
-Projection kernels.
-"""
+"""Projection kernels."""
 
 import numpy as np
 from swiftsimio.accelerated import jit
@@ -11,7 +9,7 @@ kernel_constant = np.float32(7.0 / 3.14159)
 
 
 @jit("float32(float32, float32)", nopython=True, fastmath=True)
-def kernel_single_precision(r: np.float32, H: np.float32):
+def kernel_single_precision(r: np.float32, H: np.float32) -> np.float32:
     """
     Single precision kernel implementation for swiftsimio.
 
@@ -19,27 +17,23 @@ def kernel_single_precision(r: np.float32, H: np.float32):
 
     Parameters
     ----------
-
     r : np.float32
-        radius used in kernel computation
+        Radius used in kernel computation.
 
     H : np.float32
-        kernel width (i.e. radius of compact support for the kernel)
+        Kernel width (i.e. radius of compact support for the kernel).
 
     Returns
     -------
-
     np.float32
-        Contribution to the density by the particle
+        Contribution to the density by the particle.
 
     See Also
     --------
-
     kernel_double_precision
 
     References
     ----------
-
     .. [1] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = np.float32(2.22817109)
@@ -62,7 +56,7 @@ def kernel_single_precision(r: np.float32, H: np.float32):
 
 
 @jit("float64(float64, float64)", nopython=True, fastmath=True)
-def kernel_double_precision(r: np.float64, H: np.float64):
+def kernel_double_precision(r: np.float64, H: np.float64) -> np.float64:
     """
     Single precision kernel implementation for swiftsimio.
 
@@ -70,26 +64,22 @@ def kernel_double_precision(r: np.float64, H: np.float64):
 
     Parameters
     ----------
-
-    r : np.float32
-        radius used in kernel computation
-    H : np.float32
-        kernel width (i.e. radius of compact support for the kernel)
+    r : np.float64
+        Radius used in kernel computation.
+    H : np.float64
+        Kernel width (i.e. radius of compact support for the kernel).
 
     Returns
     -------
-
-    np.float32
-        Contribution to the density by the particle
+    np.float64
+        Contribution to the density by the particle.
 
     See Also
     --------
-
     kernel_single_precision
 
     References
     ----------
-
     .. [2] Dehnen W., Aly H., 2012, MNRAS, 425, 1068
     """
     kernel_constant = np.float64(2.22817109)

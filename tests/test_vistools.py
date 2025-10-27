@@ -1,6 +1,4 @@
-"""
-Tests the visualisation tools.
-"""
+"""Tests the utilities for the visualisation tools."""
 
 from swiftsimio.visualisation.tools.cmaps import (
     LinearSegmentedCmap2D,
@@ -12,6 +10,7 @@ from swiftsimio import load
 
 
 def test_basic_linear_2d():
+    """Just check that we don't crash when creating a 2D color map."""
     x = LinearSegmentedCmap2D(
         colors=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0]],
         coordinates=[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
@@ -23,6 +22,7 @@ def test_basic_linear_2d():
 
 
 def test_apply_to_data_2d():
+    """Just check that we don't crash when creating a non-linear 2D color map."""
     bower = LinearSegmentedCmap2D(
         colors=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 0.0]],
         coordinates=[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
@@ -33,10 +33,12 @@ def test_apply_to_data_2d():
         coordinates=[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
     )
 
-    def vertical_func(x):
+    def vertical_func(x: np.array) -> np.array:
+        """Sample function to applied vertically."""
         return abs(1.0 - 2.0 * x)
 
-    def horizontal_func(y):
+    def horizontal_func(y: np.array) -> np.array:
+        """Sample function applied horizontally."""
         return y**2
 
     raster_at = np.linspace(0, 1, 1024)
@@ -50,6 +52,11 @@ def test_apply_to_data_2d():
 
 
 def test_get_projection_field(cosmological_volume_only_single):
+    """
+    Check that we get the data that we asked for.
+
+    Covers both regular field and namedcolumn cases.
+    """
     sd = load(cosmological_volume_only_single)
     expected_dataset = sd.gas.masses
     obtained_dataset = _get_projection_field(sd.gas, "masses")

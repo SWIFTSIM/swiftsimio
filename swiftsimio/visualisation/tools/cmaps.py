@@ -1,10 +1,9 @@
-"""
-Two-dimensional colour map support, along with example colour maps.
-"""
+"""Two-dimensional colour map support, along with example colour maps."""
 
-from typing import List, Optional, Iterable
+from typing import Iterable
 
 import numpy as np
+import matplotlib
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 
 from swiftsimio.accelerated import jit
@@ -12,28 +11,23 @@ from swiftsimio.accelerated import jit
 COLOR_MAP_GRID_SIZE = 256
 
 
-def ensure_rgba(input_color: Iterable[float]) -> np.array:
+def ensure_rgba(input_color: Iterable[float]) -> np.ndarray:
     """
-    Ensures a colour is RGBA compliant.
+    Ensure a colour is RGBA compliant.
 
     Default alpha if missing: 1.0.
 
     Parameters
     ----------
-
-    input_color: iterable
-        An iterable of maximum length 4, with RGBA values
-        encoded as floating point 0.0 -> 1.0.
-
+    input_color : iterable
+        An iterable of maximum length 4, with RGBA values encoded as floating point
+        0.0 -> 1.0.
 
     Returns
     -------
-
-    array_color: np.array
+    np.ndarray
         An array of length 4 as an RGBA color.
-
     """
-
     array_color = np.zeros(4, dtype=np.float32)
     array_color[-1] = 1.0
 
@@ -44,8 +38,12 @@ def ensure_rgba(input_color: Iterable[float]) -> np.array:
 
 
 @jit(nopython=True, fastmath=True)
-def apply_color_map(first_values, second_values, map_grid):
+def apply_color_map(
+    first_values: Iterable[float], second_values: Iterable[float], map_grid: np.ndarray
+) -> np.ndarray:
     """
+    Apply a 2D colour map.
+
     Applies a 2D colour map by providing a 2D linear interpolation
     to the known fixed grid points. Not to be called on its own,
     as the map itself is provided by the ``LinearSegmentedCmap2D``,
@@ -53,29 +51,25 @@ def apply_color_map(first_values, second_values, map_grid):
 
     Parameters
     ----------
-
-    first_values: iterable[float]
+    first_values : iterable[float]
         Array or list to loop over, containing floats ranging from 0.0
         to 1.0. Provides the normalisation for the horizontal
         component. Must be one-dimensional.
 
-    second_values: iterable[float]
+    second_values : iterable[float]
         Array or list to loop over, containing floats ranging from 0.0
         to 1.0. Provides the normalisation for the vertical
         component. Must be one-dimensional.
 
-    map_grid: np.ndarray
+    map_grid : np.ndarray
         2D numpy array proided by ``LinearSegmentedCmap2D``.
-
 
     Returns
     -------
-
     np.ndarray
-        An N by 4 array (where N is the length of ``first_value`` and
+        An (N, 4) array (where N is the length of ``first_value`` and
         ``second_value``) of RGBA components.
     """
-
     number_of_values = len(first_values)
     output_values = np.empty(number_of_values * 4, dtype=np.float32).reshape(
         (number_of_values, 4)
@@ -102,26 +96,34 @@ class Cmap2D(object):
     A generic two dimensional implementation of a colour map.
 
     Developer use only.
+
+    Parameters
+    ----------
+    name : str | None
+        Name of the color map grid.
+
+    description : str | None
+        Description of the color map grid.
     """
 
-    _color_map_grid: Optional[np.array] = None
+    _color_map_grid: np.ndarray | None = None
 
     # Properties for color maps that generate
-    colors: List[List[float]] = None
-    coordinates: List[List[float]] = None
+    colors: list[list[float]] | None = None
+    coordinates: list[list[float]] | None = None
 
-    def __init__(self, name: Optional[str] = None, description: Optional[str] = None):
+    def __init__(self, name: str | None = None, description: str | None = None) -> None:
         self.name = name
         self.description = description
 
         return
 
-    def generate_color_map_grid(self):
+    def generate_color_map_grid(self) -> None:
         """
-        Generates the colour map grid and stores it in
-        ``_color_map_grid``. Imeplementation dependent.
-        """
+        Generate the colour map grid and store it in ``_color_map_grid``.
 
+        Implementation dependent.
+        """
         self._color_map_grid = np.empty(
             (COLOR_MAP_GRID_SIZE, COLOR_MAP_GRID_SIZE), dtype=np.float32
         )
@@ -129,32 +131,33 @@ class Cmap2D(object):
         return
 
     @property
-    def color_map_grid(self):
+    def color_map_grid(self) -> np.ndarray:
         """
-        Generates, or gets, the color map grid.
-        """
+        Generate, or get, the color map grid.
 
+        Returns
+        -------
+        np.ndarray
+            The color map grid.
+        """
         if self._color_map_grid is None:
             # Better make it!
             self.generate_color_map_grid()
 
         return self._color_map_grid
 
-    def plot(self, ax, include_points: bool = False):
+    def plot(self, ax: matplotlib.axes.Axes, include_points: bool = False) -> None:
         """
         Plot the color map on axes.
 
         Parameters
         ----------
-
-        ax: matplotlib.Axis
+        ax : matplotlib.Axis
             Axis to be plotted on.
 
-        include_points: bool, optional
-            If true, plot the individual colours as points that make
-            up the color map. Default: False.
+        include_points : bool, optional
+            If true, plot the individual colours as points that make up the color map.
         """
-
         ax.imshow(self.color_map_grid, origin="lower", extent=[0, 1, 0, 1])
         ax.set_xlabel("Horizontal Value (first index)")
         ax.set_ylabel("Vertical Value (second index)")
@@ -167,27 +170,27 @@ class Cmap2D(object):
 
         return
 
-    def __call__(self, horizontal_values, vertical_values):
+    def __call__(
+        self, horizontal_values: Iterable, vertical_values: Iterable
+    ) -> np.ndarray:
         """
-        Apply the 2D color map to some data. Both sets of values
-        must be of the same shape.
+        Apply the 2D color map to some data.
+
+        Both sets of values must be of the same shape.
 
         Parameters
         ----------
+        horizontal_values : iterable
+            Values for the first parameter in the color map.
 
-        horizontal_values: iterable
-            Values for the first parameter in the color map
-
-        vertical_values: iterable
-            Values for the second parameter in the color map
+        vertical_values : iterable
+            Values for the second parameter in the color map.
 
         Returns
         -------
-
-        mapped: np.ndarray
+        np.ndarray
             RGBA array using the internal colour map.
         """
-
         if isinstance(horizontal_values, list) or isinstance(horizontal_values, tuple):
             horizontal_values = np.array(horizontal_values)
 
@@ -207,43 +210,36 @@ class Cmap2D(object):
 
 class LinearSegmentedCmap2D(Cmap2D):
     """
-    A two dimensional implementation of the linear segmented
-    colour map.
+    Two-dimensional implementation of the linear segmented color map.
+
+    Parameters
+    ----------
+    colors : list[list[float]]
+        Individual colors (at ``coordinates`` below) that make up the color map.
+
+    coordinates : list[list[float]]
+        2D coordinates in the plane to place the above ``colors`` at.
+
+    name : str, optional
+        Name of this color map (metadata).
+
+    description : str, optional
+        Optional metadata description of this colour map.
+
+    See Also
+    --------
+    LinearSegmentedCmap2DHSV
+        A cousin of this class that combines colours using the HSV space rather than RGB
+        used here.
     """
 
     def __init__(
         self,
-        colors: List[List[float]],
-        coordinates: List[List[float]],
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ):
-        """
-        Parameters
-        ----------
-
-        colors: List[List[float]]
-            Individual colors (at ``coordinates`` below) that make up
-            the color map.
-
-        coordinates: List[List[float]]
-            2D coordinates in the plane to place the above ``colors``
-            at.
-
-        name: str, optional
-            Name of this color map (metadata)
-
-        description: str, optional
-            Optional metadata description of this colour map.
-
-
-        See Also
-        --------
-
-        ``LinearSegmentedCmap2DHSV``, a cousin of this class that
-        combines colours using the HSV space rather than RGB used
-        here.
-        """
+        colors: list[list[float]],
+        coordinates: list[list[float]],
+        name: str | None = None,
+        description: str | None = None,
+    ) -> None:
         super().__init__(name, description)
 
         self.colors = colors
@@ -251,9 +247,14 @@ class LinearSegmentedCmap2D(Cmap2D):
 
         return
 
-    def generate_color_map_grid(self):
+    def generate_color_map_grid(self) -> np.ndarray:
         """
-        Generates the color map grid.
+        Generate the color map grid.
+
+        Returns
+        -------
+        np.ndarray
+            The color map grid.
         """
         rgba_grid = np.zeros(
             COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 4, dtype=np.float32
@@ -287,42 +288,38 @@ class LinearSegmentedCmap2D(Cmap2D):
 
 class LinearSegmentedCmap2DHSV(Cmap2D):
     """
-    A two dimensional implementation of the linear segmented
-    colour map, using the HSV space to combine the colours.
+    Two-dimensional implementation of the linear segmented color map.
+
+    Uses the HSV space to combine the colours.
 
     Parameters
     ----------
+    colors : list[list[float]]
+        Individual colors (at ``coordinates`` below) that make up the color map.
 
-    colors: List[List[float]]
-        Individual colors (at ``coordinates`` below) that make up
-        the color map.
+    coordinates : list[list[float]]
+        2D coordinates in the plane to place the above ``colors`` at.
 
-    coordinates: List[List[float]]
-        2D coordinates in the plane to place the above ``colors``
-        at.
+    name : str, optional
+        Name of this color map (metadata).
 
-    name: str, optional
-        Name of this color map (metadata)
-
-    description: str, optional
+    description : str, optional
         Optional metadata description of this colour map.
-
 
     See Also
     --------
-
-    ``LinearSegmentedCmap2D``, a cousin of this class that
-    combines colours using the RGB space rather than HSV used
-    here.
+    LinearSegmentedCmap2D
+        A cousin of this class that combines colours using the RGB space rather than HSV
+        used here.
     """
 
     def __init__(
         self,
-        colors: List[List[float]],
-        coordinates: List[List[float]],
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ):
+        colors: list[list[float]],
+        coordinates: list[list[float]],
+        name: str | None = None,
+        description: str | None = None,
+    ) -> None:
         super().__init__(name, description)
 
         self.colors = colors
@@ -330,9 +327,14 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
 
         return
 
-    def generate_color_map_grid(self):
+    def generate_color_map_grid(self) -> np.ndarray:
         """
-        Generates the color map grid.
+        Generate the color map grid.
+
+        Returns
+        -------
+        np.ndarray
+            The color map grid.
         """
         hsv_grid = np.zeros(
             COLOR_MAP_GRID_SIZE * COLOR_MAP_GRID_SIZE * 3, dtype=np.float32
@@ -381,44 +383,37 @@ class LinearSegmentedCmap2DHSV(Cmap2D):
 
 class ImageCmap2D(Cmap2D):
     """
-    Creates a 2D color map from an image loaded from disk.
+    Handle creating a 2D color map from an image loaded from disk.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the image to use as the color map.
+
+    name : str, optional
+        Name of this color map (metadata).
+
+    description : str, optional
+        Optional metadata description of this colour map.
     """
 
     def __init__(
         self,
         filename: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-    ):
-        """
-        Parameters
-        ----------
-
-        file_path: str
-            Path to the image to use as the color map.
-
-        name: str, optional
-            Name of this color map (metadata)
-
-        description: str, optional
-            Optional metadata description of this colour map.
-        """
-
+        name: str | None = None,
+        description: str | None = None,
+    ) -> None:
         super().__init__(name=name, description=description)
 
         self.filename = filename
 
         return
 
-    def generate_color_map_grid(self):
-        """
-        Loads the image from file and stores it as the internal
-        array.
-        """
-
+    def generate_color_map_grid(self) -> None:
+        """Load the image from file and store it as the internal array."""
         try:
             from PIL import Image
-        except:
+        except ImportError:
             raise ImportError(
                 "Unable to import pillow, which must be installed "
                 "to use color maps generated from images."

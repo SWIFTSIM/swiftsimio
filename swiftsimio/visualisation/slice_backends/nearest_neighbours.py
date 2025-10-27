@@ -1,3 +1,5 @@
+"""Backend tools for image slices with nearest neighbour interpolation."""
+
 from numpy import float64, float32, ndarray, linspace, array, stack, meshgrid
 
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
@@ -8,31 +10,37 @@ def build_tree(
 ) -> KDTree:
     """
     Build the tree used for the nearest-neighbour calculations.
+
     In the periodic case, we must make sure that all particle coordinates
     fall inside the box.
 
     Parameters
     ----------
     x : array of float64
-        x-positions of the particles. Must be bounded by [0, 1].
+        The x-positions of the particles. Must be bounded by [0, 1].
+
     y : array of float64
-        y-positions of the particles. Must be bounded by [0, 1].
+        The y-positions of the particles. Must be bounded by [0, 1].
+
     z : array of float64
-        z-positions of the particles. Must be bounded by [0, 1].
-    box_x: float
-        box size in x, in the same rescaled length units as x, y and z.
+        The z-positions of the particles. Must be bounded by [0, 1].
+
+    box_x : float
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
-    box_y: float
-        box size in y, in the same rescaled length units as x, y and z.
+
+    box_y : float
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
-    box_z: float
-        box size in z, in the same rescaled length units as x, y and z.
+
+    box_z : float
+        Box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
 
     Returns
     -------
-    KDTree object
-        A KD-tree built from the particle positions
+    KDTree
+        A KD-tree built from the particle positions.
     """
     if not TREE_AVAILABLE:
         raise ImportError(
@@ -68,36 +76,49 @@ def slice_scatter(
     workers: int = 1,
 ) -> ndarray:
     """
+    Create a 2D image slice through a volume.
+
     Creates a 2D numpy array (image) of the given quantities of all particles in
     a data slice including periodic boundary effects.
 
     Parameters
     ----------
     x : array of float64
-        x-positions of the particles. Must be bounded by [0, 1].
+        The x-positions of the particles. Must be bounded by [0, 1].
+
     y : array of float64
-        y-positions of the particles. Must be bounded by [0, 1].
+        The y-positions of the particles. Must be bounded by [0, 1].
+
     z : array of float64
-        z-positions of the particles. Must be bounded by [0, 1].
+        The z-positions of the particles. Must be bounded by [0, 1].
+
     m : array of float32
-        masses (or otherwise weights) of the particles
+        Masses (or otherwise weights) of the particles.
+
     h : array of float32
-        smoothing lengths of the particles
+        Smoothing lengths of the particles.
+
     z_slice : float64
-        the position at which we wish to create the slice
+        The position at which we wish to create the slice.
+
     xres : int
-        the number of pixels in x direction.
+        The number of pixels in x direction.
+
     yres : int
-        the number of pixels in the y direction.
-    box_x: float
-        box size in x, in the same rescaled length units as x, y and z.
+        The number of pixels in the y direction.
+
+    box_x : float
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
-    box_y: float
-        box size in y, in the same rescaled length units as x, y and z.
+
+    box_y : float
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
-    box_z: float
-        box size in z, in the same rescaled length units as x, y and z.
+
+    box_z : float
+        Box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
+
     workers : int
         The number of workers to use for the nearest-neighbour calculations.
         Set to -1 to use all available cpus.
@@ -105,13 +126,18 @@ def slice_scatter(
     Returns
     -------
     ndarray of float32
-        output array for the slice image
+        Output array for the slice image.
 
     See Also
     --------
-    scatter : Create 3D scatter plot of SWIFT data
-    scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
-    slice_scatter_parallel : Create scatter plot of a slice of data in parallel
+    scatter
+        Create 3D scatter plot of SWIFT data.
+
+    scatter_parallel
+        Create 3D scatter plot of SWIFT data in parallel.
+
+    slice_scatter_parallel
+        Create scatter plot of a slice of data in parallel.
     """
     res = max(xres, yres)
     pixel_coordinates = stack(
@@ -148,7 +174,7 @@ def slice_scatter_parallel(
     box_z: float = 0.0,
 ) -> ndarray:
     """
-    Parallel implementation of slice_scatter
+    Parallel implementation of slice_scatter.
 
     Creates a 2D numpy array (image) of the given quantities of all particles in
     a data slice including periodic boundary effects.
@@ -156,41 +182,56 @@ def slice_scatter_parallel(
     Parameters
     ----------
     x : array of float64
-        x-positions of the particles. Must be bounded by [0, 1].
+        The x-positions of the particles. Must be bounded by [0, 1].
+
     y : array of float64
-        y-positions of the particles. Must be bounded by [0, 1].
+        The y-positions of the particles. Must be bounded by [0, 1].
+
     z : array of float64
-        z-positions of the particles. Must be bounded by [0, 1].
+        The z-positions of the particles. Must be bounded by [0, 1].
+
     m : array of float32
-        masses (or otherwise weights) of the particles
+        Masses (or otherwise weights) of the particles.
+
     h : array of float32
-        smoothing lengths of the particles
+        Smoothing lengths of the particles.
+
     z_slice : float64
-        the position at which we wish to create the slice
+        The position at which we wish to create the slice.
+
     xres : int
-        the number of pixels in x direction.
+        The number of pixels in x direction.
+
     yres : int
-        the number of pixels in the y direction.
-    box_x: float
-        box size in x, in the same rescaled length units as x, y and z.
+        The number of pixels in the y direction.
+
+    box_x : float
+        Box size in x, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
-    box_y: float
-        box size in y, in the same rescaled length units as x, y and z.
+
+    box_y : float
+        Box size in y, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
-    box_z: float
-        box size in z, in the same rescaled length units as x, y and z.
+
+    box_z : float
+        Box size in z, in the same rescaled length units as x, y and z.
         Used for periodic wrapping (if not 0).
 
     Returns
     -------
     ndarray of float32
-        output array for the slice image
+        Output array for the slice image.
 
     See Also
     --------
-    scatter : Create 3D scatter plot of SWIFT data
-    scatter_parallel : Create 3D scatter plot of SWIFT data in parallel
-    slice_scatter_parallel : Create scatter plot of a slice of data in parallel
+    scatter
+        Create 3D scatter plot of SWIFT data.
+
+    scatter_parallel
+        Create 3D scatter plot of SWIFT data in parallel.
+
+    slice_scatter_parallel
+        Create scatter plot of a slice of data in parallel.
     """
     return slice_scatter(
         x=x,

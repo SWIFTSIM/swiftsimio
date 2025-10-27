@@ -5,6 +5,7 @@ This will ensure that all particle fields are populated correctly, and that they
 be read in.
 """
 
+import pytest
 import numpy as np
 from swiftsimio import load
 from .helper import _mask_without_warning as mask
@@ -13,7 +14,7 @@ from os import remove
 import h5py
 
 from unyt import K, Msun
-from numpy import logical_and, isclose, float64
+from numpy import isclose
 from numpy import array as numpy_array
 
 from swiftsimio.objects import cosmo_array
@@ -21,10 +22,7 @@ from tests.helper import create_n_particle_dataset
 
 
 def test_cosmology_metadata(cosmological_volume):
-    """
-    Tests to see if we get the unpacked cosmology metadata correct.
-    """
-
+    """Test to see if we get the unpacked cosmology metadata correct."""
     data = load(cosmological_volume)
 
     assert data.metadata.a == data.metadata.scale_factor
@@ -35,10 +33,10 @@ def test_cosmology_metadata(cosmological_volume):
 
 def test_time_metadata(cosmological_volume):
     """
-    This tests the time metadata and also tests the ability to include two items at once
-    from the same header attribute.
-    """
+    Test the time metadata.
 
+    Also tests the ability to include two items at once from the same header attribute.
+    """
     data = load(cosmological_volume)
 
     assert data.metadata.z == data.metadata.redshift
@@ -50,10 +48,10 @@ def test_time_metadata(cosmological_volume):
 
 def test_temperature_units(cosmological_volume):
     """
-    This tests checks if we correctly read in temperature units. Based
-    on a past bug, to make sure we never break this again.
-    """
+    Check if we correctly read in temperature units.
 
+    Based on a past bug, to make sure we never break this again.
+    """
     data = load(cosmological_volume)
     data.gas.temperatures.convert_to_units(K)
     return
@@ -61,10 +59,10 @@ def test_temperature_units(cosmological_volume):
 
 def test_initial_mass_table(cosmological_volume):
     """
-    This tests checks if we correctly read in the initial mass table. Based
-    on a past bug, to make sure we never break this again.
-    """
+    Check if we correctly read in the initial mass table.
 
+    Based on a past bug, to make sure we never break this again.
+    """
     data = load(cosmological_volume)
     data.metadata.initial_mass_table.gas.convert_to_units(Msun)
 
@@ -72,11 +70,7 @@ def test_initial_mass_table(cosmological_volume):
 
 
 def test_units(cosmological_volume):
-    """
-    Tests that these fields have the same units within SWIFTsimIO as they
-    do in the SWIFT code itself.
-    """
-
+    """Test that these fields have the same units in SWIFTsimIO as in SWIFT."""
     data = load(cosmological_volume)
 
     shared = ["coordinates", "masses", "particle_ids", "velocities"]
@@ -117,7 +111,7 @@ def test_units(cosmological_volume):
         for property in properties:
             # Read the 0th element, and compare in CGS units.
             # We need to use doubles here as sometimes we can overflow!
-            our_units = getattr(field, property).astype(float64)[0]
+            our_units = getattr(field, property).astype(np.float64)[0]
 
             our_units.convert_to_cgs()
 
@@ -138,7 +132,7 @@ def test_units(cosmological_volume):
 
 def test_cell_metadata_is_valid(cosmological_volume):
     """
-    Test that the metadata does what we think it does!
+    Test that the metadata does what we think it does.
 
     I.e. that it sets the particles contained in a top-level cell.
     """
@@ -181,12 +175,10 @@ def test_cell_metadata_is_valid(cosmological_volume):
 
 def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
     """
-    Test that the metadata does what we think it does, in the
-    dithered case.
+    Test that the metadata does what we think it does, in the dithered case.
 
     I.e. that it sets the particles contained in a top-level cell.
     """
-
     mask_region = mask(cosmological_volume_dithered)
     # Because we sort by offset if we are using the metadata we
     # must re-order the data to be in the correct order
@@ -226,15 +218,13 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
             assert min > lower * 0.95
 
 
-def test_reading_select_region_metadata(cosmological_volume):
-    """
-    Tests reading select regions of the volume.
-    """
-
+@pytest.mark.parametrize("spatial_only", [True, False])
+def test_reading_select_region_metadata(cosmological_volume, spatial_only):
+    """Test reading select regions of the volume."""
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
-    mask_region = mask(cosmological_volume, spatial_only=True)
+    mask_region = mask(cosmological_volume, spatial_only=spatial_only)
 
     restrict = cosmo_array(
         [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]
@@ -248,64 +238,18 @@ def test_reading_select_region_metadata(cosmological_volume):
 
     # Now need to repeat teh selection by hand:
 
-    subset_mask = logical_and.reduce(
+    subset_mask = np.logical_and.reduce(
         [
-            logical_and(x > y_lower, x < y_upper)
+            np.logical_and(x > y_lower, x < y_upper)
             for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
         ]
     )
 
     # We also need to repeat for the thing we just selected; the cells only give
     # us an _approximate_ selection!
-    selected_subset_mask = logical_and.reduce(
+    selected_subset_mask = np.logical_and.reduce(
         [
-            logical_and(x > y_lower, x < y_upper)
-            for x, (y_lower, y_upper) in zip(selected_data.gas.coordinates.T, restrict)
-        ]
-    )
-
-    hand_selected_coordinates = full_data.gas.coordinates[subset_mask]
-
-    assert (
-        hand_selected_coordinates.value
-        == selected_coordinates[selected_subset_mask].value
-    ).all()
-    return
-
-
-def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
-    """
-    The same as test_reading_select_region_metadata but for spatial_only=False.
-    """
-
-    full_data = load(cosmological_volume)
-
-    # Mask off the centre of the volume.
-    mask_region = mask(cosmological_volume, spatial_only=False)
-
-    restrict = cosmo_array(
-        [full_data.metadata.boxsize * 0.26, full_data.metadata.boxsize * 0.74]
-    ).T
-
-    mask_region.constrain_spatial(restrict=restrict)
-
-    selected_data = load(cosmological_volume, mask=mask_region)
-
-    selected_coordinates = selected_data.gas.coordinates
-
-    # Now need to repeat the selection by hand:
-    subset_mask = logical_and.reduce(
-        [
-            logical_and(x > y_lower, x < y_upper)
-            for x, (y_lower, y_upper) in zip(full_data.gas.coordinates.T, restrict)
-        ]
-    )
-
-    # We also need to repeat for the thing we just selected; the cells only give
-    # us an _approximate_ selection!
-    selected_subset_mask = logical_and.reduce(
-        [
-            logical_and(x > y_lower, x < y_upper)
+            np.logical_and(x > y_lower, x < y_upper)
             for x, (y_lower, y_upper) in zip(selected_data.gas.coordinates.T, restrict)
         ]
     )
@@ -315,15 +259,15 @@ def test_reading_select_region_metadata_not_spatial_only(cosmological_volume):
     assert (
         hand_selected_coordinates == selected_coordinates[selected_subset_mask]
     ).all()
-
     return
 
 
 def test_reading_empty_dataset(cosmological_volume):
     """
-    Test that we can read in a zero-particle dataset (e.g. Type4 or Type5 present in
-    snapshot but no particles exist yet). Here we make a snapshot file with Type1
-    present but empty.
+    Test that we can read in a zero-particle dataset.
+
+    E.g. Type4 or Type5 present in snapshot but no particles exist yet. Here we make a
+    snapshot file with Type1 present but empty.
     """
     # unmasked case
     output_filename = "zero_particle.hdf5"

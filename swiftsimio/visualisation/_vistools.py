@@ -1,17 +1,68 @@
+"""Shared utility functions & decorators for the visualisation tools."""
+
 import numpy as np
 from warnings import warn
 from functools import reduce
-from swiftsimio.objects import cosmo_array
+from typing import Callable, Any
+from swiftsimio.objects import cosmo_array, cosmo_quantity
+from swiftsimio.reader import __SWIFTGroupDataset
 from swiftsimio._array_functions import _copy_cosmo_array_attributes_if_present
 
 
-def _get_projection_field(data, field_name):
+def _get_projection_field(data: __SWIFTGroupDataset, field_name: str) -> cosmo_array:
+    """
+    Fetch the particle field requested for visualisation.
+
+    Can get attributes, e.g. ``gas.temperatures``, and nested attributes, e.g.
+    ``gas.element_abundances.carbon``.
+
+    Parameters
+    ----------
+    data : __SWIFTGroupDataset
+        The dataset to get the field data from.
+
+    field_name : str
+        The name of the dataset.
+
+    Returns
+    -------
+    cosmo_array
+        The requested particle field.
+    """
     if field_name is None:
         return np.ones_like(data.particle_ids)
     return reduce(getattr, field_name.split("."), data)
 
 
-def _get_region_info(data, region, require_cubic=False, periodic=True):
+def _get_region_info(
+    data: __SWIFTGroupDataset,
+    region: cosmo_array | None,
+    require_cubic: bool = False,
+    periodic: bool = True,
+) -> dict:
+    """
+    Unpack the region information into the parameter list we want for backend functions.
+
+    Parameters
+    ----------
+    data : __SWIFTGroupDataset
+        The dataset (with ``coordinates`` attribute).
+
+    region : cosmo_array or None
+        A (3,2) cosmo_array giving the (min, max) along each coordinate axis.
+
+    require_cubic : bool
+        Some backend functions require the region to be cubic, this flag enforces this if
+        ``True``.
+
+    periodic : bool
+        If ``True``, set parameters to wrap the periodic box.
+
+    Returns
+    -------
+    dict
+        A dictionary of kwargs for use with backend visualisation functions.
+    """
     boxsize = data.metadata.boxsize
     if region is not None:
         region = cosmo_array(region)
@@ -73,8 +124,35 @@ def _get_region_info(data, region, require_cubic=False, periodic=True):
 
 
 def _get_rotated_and_wrapped_coordinates(
-    data, rotation_matrix, rotation_center, periodic
-):
+    data: __SWIFTGroupDataset,
+    rotation_matrix: np.ndarray,
+    rotation_center: cosmo_array | None,
+    periodic: bool,
+) -> cosmo_array:
+    """
+    Get the coordinate dataset and apply rotation or box wrapping.
+
+    A rotated periodic cube can't be straightforwardly wrapped so disallow applying both.
+
+    Parameters
+    ----------
+    data : __SWIFTGroupDataset
+        The dataset to transform (i.e. with a ``coordinates`` attribute).
+
+    rotation_matrix : ndarray
+        The rotation matrix to apply. Ignored if ``rotation_center is None``.
+
+    rotation_center : cosmo_array | None
+        The center to rotate around, if ``None`` no rotation is applied.
+
+    periodic : bool
+        If ``True`` then wrap the periodic box.
+
+    Returns
+    -------
+    cosmo_array
+       The rotated or wrapped coordinates.
+    """
     if rotation_center is not None and periodic is True:
         raise ValueError(
             "Rotation and periodic boundaries in visualisation are incompatible."
@@ -96,8 +174,47 @@ def _get_rotated_and_wrapped_coordinates(
     return coords.T
 
 
-def backend_restore_cosmo_and_units(backend_func, norm=1.0):
-    def wrapper(*args, **kwargs):
+def backend_restore_cosmo_and_units(
+    backend_func: Callable, norm: cosmo_quantity | float = 1.0
+) -> Callable:
+    """
+    Decorate a function to re-attach cosmology metadata to an array.
+
+    Parameters
+    ----------
+    backend_func : Callable
+        The visualisation backend function to wrap.
+
+    norm : float or cosmo_quantity, optional
+        An optional scaling to apply to the result.
+
+    Returns
+    -------
+    Callable
+        The wrapped function.
+    """
+
+    def wrapper(*args: tuple[Any], **kwargs: dict[str, Any]) -> cosmo_array:
+        """
+        Wrap function to re-attach cosmology metadata to output.
+
+        To put things through numba we need to strip off our cosmology metadata. This
+        wrapper restores it. This is intended to be applied to the visualisation
+        "backend" functions.
+
+        Parameters
+        ----------
+        *args : tuple
+            Arbitrary arguments for the wrapped function.
+
+        **kwargs : dict
+            Arbitrary kwargs for the wrapped function.
+
+        Returns
+        -------
+        cosmo_array
+            The result with cosmology metadata reattached.
+        """
         comoving = getattr(kwargs["m"], "comoving", None)
         if comoving is True:
             if kwargs["x"].comoving is False or kwargs["y"].comoving is False:

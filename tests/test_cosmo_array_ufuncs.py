@@ -1,6 +1,4 @@
-"""
-Tests that ufuncs handling cosmo_array's properly handle our extra attributes.
-"""
+"""Tests that ufuncs handling cosmo_array's properly handle our extra attributes."""
 
 import pytest
 import numpy as np
@@ -16,17 +14,17 @@ from swiftsimio.objects import (
 
 
 class TestCopyFuncs:
-    """
-    Test ufuncs that copy arrays.
-    """
+    """Test ufuncs that copy arrays."""
 
     @pytest.mark.parametrize(
         ("func"), ["byteswap", "diagonal", "flatten", "ravel", "transpose", "view"]
     )
     def test_argless_copyfuncs(self, func):
         """
-        Make sure that our attributes are preserved through copying functions that
-        take no arguments.
+        Make sure that our attributes are preserved through copying functions.
+
+        This test checks the simplest ones that take no arguments. Others are handled
+        in other tests in this class.
         """
         arr = cosmo_array(
             np.ones((10, 10)),
@@ -38,9 +36,7 @@ class TestCopyFuncs:
         assert hasattr(getattr(arr, func)(), "comoving")
 
     def test_astype(self):
-        """
-        Make sure that our attributes are preserved through astype.
-        """
+        """Make sure that our attributes are preserved through astype."""
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
@@ -52,9 +48,7 @@ class TestCopyFuncs:
         assert hasattr(res, "comoving")
 
     def test_in_units(self):
-        """
-        Make sure that our attributes are preserved through in_units (from unyt).
-        """
+        """Make sure that our attributes are preserved through in_units (from unyt)."""
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
@@ -66,9 +60,7 @@ class TestCopyFuncs:
         assert hasattr(res, "comoving")
 
     def test_compress(self):
-        """
-        Make sure that our attributes are preserved through compress.
-        """
+        """Make sure that our attributes are preserved through compress."""
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
@@ -80,9 +72,7 @@ class TestCopyFuncs:
         assert hasattr(res, "comoving")
 
     def test_repeat(self):
-        """
-        Make sure that our attributes are preserved through repeat.
-        """
+        """Make sure that our attributes are preserved through repeat."""
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
@@ -94,9 +84,7 @@ class TestCopyFuncs:
         assert hasattr(res, "comoving")
 
     def test_T(self):
-        """
-        Make sure that our attributes are preserved through transpose (T).
-        """
+        """Make sure that our attributes are preserved through transpose (T)."""
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
@@ -108,9 +96,7 @@ class TestCopyFuncs:
         assert hasattr(res, "comoving")
 
     def test_ua(self):
-        """
-        Make sure that our attributes are preserved through ua (from unyt).
-        """
+        """Make sure that our attributes are preserved through ua (from unyt)."""
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
@@ -122,9 +108,7 @@ class TestCopyFuncs:
         assert hasattr(res, "comoving")
 
     def test_unit_array(self):
-        """
-        Make sure that our attributes are preserved through unit_array (from unyt).
-        """
+        """Make sure that our attributes are preserved through unit_array (from unyt)."""
         arr = cosmo_array(
             np.ones((10, 10)),
             units="Mpc",
@@ -137,6 +121,8 @@ class TestCopyFuncs:
 
     def test_compatibility(self):
         """
+        Check comoving/physical conversion compatibility flags for consistency.
+
         Check that the compatible_with_comoving and compatible_with_physical functions
         give correct compatibility checks.
         """
@@ -197,37 +183,30 @@ class TestCopyFuncs:
 
 
 class TestCheckUfuncCoverage:
-    """
-    Check that we've wrapped all functions that unyt wraps.
-    """
+    """Check that we've wrapped all functions that unyt wraps."""
 
     def test_multi_output_coverage(self):
         """
-        Compare our list of multi_output_operators with unyt's to make sure we cover
-        everything.
+        Make sure we cover all multi-output operators that unyt does.
+
+        We compare our list of multi_output_operators and unyt's to check.
         """
         assert set(multiple_output_operators.keys()) == set(
             (np.modf, np.frexp, np.divmod)
         )
 
     def test_ufunc_coverage(self):
-        """
-        Compare our list of ufuncs with unyt's to make sure we cover everything.
-        """
+        """Compare our list of ufuncs with unyt's to make sure we cover everything."""
         assert set(u.unyt_array._ufunc_registry.keys()) == set(
             cosmo_array._ufunc_registry.keys()
         )
 
 
 class TestCosmoArrayUfuncs:
-    """
-    Test some example functions using each of our wrappers for correct output.
-    """
+    """Test some example functions using each of our wrappers for correct output."""
 
     def test_preserving_ufunc(self):
-        """
-        Tests of the _preserve_cosmo_factor wrapper.
-        """
+        """Test the _preserve_cosmo_factor wrapper."""
         # 1 argument
         inp = cosmo_array(
             [2],
@@ -315,9 +294,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor
 
     def test_multiplying_ufunc(self):
-        """
-        Tests of the _multiply_cosmo_factor wrapper.
-        """
+        """Test the _multiply_cosmo_factor wrapper."""
         # no cosmo_factors
         inp = cosmo_array([2], u.kpc, comoving=False)
         res = inp * inp
@@ -371,9 +348,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_dividing_ufunc(self):
-        """
-        Tests of the _divide_cosmo_factor wrapper.
-        """
+        """Test the _divide_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2.0],
             u.kpc,
@@ -386,9 +361,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**0
 
     def test_return_without_ufunc(self):
-        """
-        Tests of the _return_without_cosmo_factor wrapper.
-        """
+        """Test the _return_without_cosmo_factor wrapper."""
         # 1 argument
         inp = cosmo_array(
             [1],
@@ -478,9 +451,7 @@ class TestCosmoArrayUfuncs:
         assert isinstance(res, np.ndarray) and not isinstance(res, u.unyt_array)
 
     def test_sqrt_ufunc(self):
-        """
-        Tests of the _sqrt_cosmo_factor wrapper.
-        """
+        """Test the _sqrt_cosmo_factor wrapper."""
         inp = cosmo_array(
             [4],
             u.kpc,
@@ -493,9 +464,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**0.5
 
     def test_square_ufunc(self):
-        """
-        Tests of the _square_cosmo_factor wrapper.
-        """
+        """Test the _square_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2],
             u.kpc,
@@ -508,9 +477,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_cbrt_ufunc(self):
-        """
-        Tests of the _cbrt_cosmo_factor wrapper.
-        """
+        """Test the _cbrt_cosmo_factor wrapper."""
         inp = cosmo_array(
             [8],
             u.kpc,
@@ -523,9 +490,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor ** (1.0 / 3.0)
 
     def test_reciprocal_ufunc(self):
-        """
-        Tests of the _reciprocal_cosmo_factor wrapper.
-        """
+        """Test the _reciprocal_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2.0],
             u.kpc,
@@ -538,9 +503,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**-1
 
     def test_passthrough_ufunc(self):
-        """
-        Tests of the _passthrough_cosmo_factor wrapper.
-        """
+        """Test the _passthrough_cosmo_factor wrapper."""
         # 1 argument
         inp = cosmo_array(
             [2],
@@ -582,9 +545,7 @@ class TestCosmoArrayUfuncs:
             np.copysign(inp1, inp2)
 
     def test_arctan2_ufunc(self):
-        """
-        Tests of the _arctan2_cosmo_factor wrapper.
-        """
+        """Test the _arctan2_cosmo_factor wrapper."""
         inp = cosmo_array(
             [2],
             u.kpc,
@@ -597,9 +558,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor.a_factor == 1  # also ensures cosmo_factor present
 
     def test_comparison_ufunc(self):
-        """
-        Tests of the _comparison_cosmo_factor wrapper.
-        """
+        """Test the _comparison_cosmo_factor wrapper."""
         inp1 = cosmo_array(
             [1],
             u.kpc,
@@ -617,9 +576,7 @@ class TestCosmoArrayUfuncs:
         assert isinstance(res, np.ndarray) and not isinstance(res, u.unyt_array)
 
     def test_out_arg(self):
-        """
-        Test that our helpers can handle functions with an ``out`` kwarg.
-        """
+        """Test that our helpers can handle functions with an ``out`` kwarg."""
         inp = cosmo_array(
             [1],
             u.kpc,
@@ -643,9 +600,7 @@ class TestCosmoArrayUfuncs:
         assert out == np.abs(inp.to_value(u.kpc))
 
     def test_reduce_multiply(self):
-        """
-        Test that we can handle the reduce method for the multiply ufunc.
-        """
+        """Test that we can handle the reduce method for the multiply ufunc."""
         inp = cosmo_array(
             [[1, 2], [3, 4]],
             u.kpc,
@@ -658,9 +613,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**2
 
     def test_reduce_divide(self):
-        """
-        Test that we can handle the reduce method for the divide ufunc.
-        """
+        """Test that we can handle the reduce method for the divide ufunc."""
         inp = cosmo_array(
             [[1.0, 2.0], [1.0, 4.0], [1.0, 1.0]],
             u.kpc,
@@ -673,9 +626,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor**-1
 
     def test_reduce_other(self):
-        """
-        Test that we can handle other ufuncs with a reduce method.
-        """
+        """Test that we can handle other ufuncs with a reduce method."""
         inp = cosmo_array(
             [[1.0, 2.0], [1.0, 2.0]],
             u.kpc,
@@ -688,9 +639,7 @@ class TestCosmoArrayUfuncs:
         assert res.cosmo_factor == inp.cosmo_factor
 
     def test_multi_output(self):
-        """
-        Test that we can handle functions with multiple return values.
-        """
+        """Test that we can handle functions with multiple return values."""
         # with passthrough
         inp = cosmo_array(
             [2.5],
@@ -719,10 +668,7 @@ class TestCosmoArrayUfuncs:
         assert isinstance(res2, np.ndarray) and not isinstance(res2, u.unyt_array)
 
     def test_multi_output_with_out_arg(self):
-        """
-        Test that we can handle multiple return values in conjunction with an ``out``
-        kwarg.
-        """
+        """Test that we can handle multiple return values with an ``out`` kwarg."""
         # with two out arrays
         inp = cosmo_array(
             [2.5],
@@ -741,10 +687,7 @@ class TestCosmoArrayUfuncs:
         assert out2.cosmo_factor == inp.cosmo_factor
 
     def test_comparison_with_zero(self):
-        """
-        Test that we don't produce warnings for dangerous comparisons on comparison with
-        zero.
-        """
+        """Test that we don't warn on dangerous comparisons on zero comparison."""
         inp1 = cosmo_array(
             [1, 1, 1],
             u.kpc,
@@ -825,8 +768,12 @@ class TestCosmoArrayUfuncs:
 
 
 class TestComovingConversion:
+    """Tests of physical/comoving conversion."""
+
     def test_conversion_happens(self):
         """
+        Check that physical/comoving conversion happens when needed.
+
         Given a physical and a comoving input to e.g. addition, conversion
         should happen and we should get a correct result.
         """

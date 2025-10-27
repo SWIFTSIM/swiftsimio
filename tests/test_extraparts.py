@@ -1,74 +1,122 @@
-"""
-Test for extra particle types.
-"""
+"""Test for extra particle types."""
 
-from swiftsimio import load, metadata
-from swiftsimio import Writer
-from swiftsimio.units import cosmo_units
+from sympy import Expr
+from swiftsimio import load, metadata, Writer
+from swiftsimio.objects import cosmo_factor
 import swiftsimio.metadata.particle as swp
 import swiftsimio.metadata.writer.required_fields as swmw
 import swiftsimio.metadata.unit.unit_fields as swuf
 import swiftsimio.metadata.cosmology as swcf
 
 import unyt
+from unyt import Unit
 import numpy as np
 
 import os
 
-from copy import deepcopy
 
-
-def generate_units(m, l, t, I, T):
+def generate_units(
+    mass: Unit, length: Unit, time: Unit, current: Unit, temperature: Unit
+) -> dict[str, dict[str, Unit]]:
     """
+    Generate units differently for testing.
+
     This function is used to override the inbuilt swiftsimio generate_units function from
     metadata.unit.unit_fields. This allows the specification of a new particle type and
        metadata.unit.unit_fields. This allows the specification of a new particle type and
     metadata.unit.unit_fields. This allows the specification of a new particle type and
     the values and types associated with that type.
+
+    Parameters
+    ----------
+    mass : Unit
+        The mass unit.
+
+    length : Unit
+        The length unit.
+
+    time : Unit
+        The time unit.
+
+    current : Unit
+        The current unit.
+
+    temperature : Unit
+        The temperature unit.
+
+    Returns
+    -------
+    dict[str, Unit]
+        A dictionary mapping field names to units.
     """
-    dict_out = swuf.generate_units(m, l, t, I, T)
+    dict_out = swuf.generate_units(mass, length, time, current, temperature)
 
     extratype = {
-        "coordinates": l,
-        "masses": m,
+        "coordinates": length,
+        "masses": mass,
         "particle_ids": None,
-        "velocities": l / t,
-        "potential": l * l / (t * t),
-        "density": m / (l**3),
-        "entropy": m * l**2 / (t**2 * T),
-        "internal_energy": (l / t) ** 2,
-        "smoothing_length": l,
-        "pressure": m / (l * t**2),
+        "velocities": length / time,
+        "potential": length * length / (time * time),
+        "density": mass / (length**3),
+        "entropy": mass * length**2 / (time**2 * temperature),
+        "internal_energy": (length / time) ** 2,
+        "smoothing_length": length,
+        "pressure": mass / (length * time**2),
         "diffusion": None,
-        "sfr": m / t,
-        "temperature": T,
+        "sfr": mass / time,
+        "temperature": temperature,
         "viscosity": None,
-        "specific_sfr": 1 / t,
+        "specific_sfr": 1 / time,
         "material_id": None,
-        "diffusion": None,
-        "viscosity": None,
-        "radiated_energy": m * (l / t) ** 2,
+        "radiated_energy": mass * (length / time) ** 2,
     }
 
     dict_out["extratype"] = extratype
     return dict_out
 
 
-def generate_cosmology(scale_factor: float, gamma: float):
+def generate_cosmology(
+    scale_factor: float, gamma: float
+) -> dict[str, dict[str, cosmo_factor]]:
     """
+    Generate cosmology differently for testing.
+
     This function is used to override the inbuilt swiftsimio generate_cosmology function
     from metadata.cosmology. This allows the specification of a new particle type and
     affects how the type is influenced by cosmology. Required only for reading in new
     particle types.
-    """
-    from swiftsimio.objects import cosmo_factor, a
 
-    def cosmo_factory(a_dependence):
+    Parameters
+    ----------
+    scale_factor : float
+        The scale factor.
+
+    gamma : float
+        The gas adiabatic index.
+
+    Returns
+    -------
+    dict[str, dict[str, cosmo_factor]]
+        The mapping between particle types and cosmology metadata dicts.
+    """
+
+    def cosmo_factory(a_dependence: Expr) -> cosmo_factor:
+        """
+        Generate a ``cosmo_factor``.
+
+        Parameters
+        ----------
+        a_dependence : Expr
+            The scale factor dependence desired.
+
+        Returns
+        -------
+        cosmo_factor
+            One of our ``cosmo_factor`` objects.
+        """
         return cosmo_factor(a_dependence, scale_factor)
 
     dict_out = swcf.generate_cosmology(scale_factor, gamma)
-    no_cosmology = cosmo_factory(a / a)
-    UNKNOWN = no_cosmology
 
     extratype = {**dict_out["gas"]}
 
@@ -79,20 +127,22 @@ def generate_cosmology(scale_factor: float, gamma: float):
 
 def test_write():
     """
-    Tests whether swiftsimio can handle a new particle type. If the test doesn't crash
-    this is a success.
+    Tests whether swiftsimio can handle a new particle type.
+
+    If the test doesn't crash this is a success.
     """
     # Use default units, i.e. cm, grams, seconds, Ampere, Kelvin
     unit_system = unyt.UnitSystem(
         name="default", length_unit=unyt.cm, mass_unit=unyt.g, time_unit=unyt.s
     )
-    # Specify a new type in the metadata - currently done by editing the dictionaries directly.
+    # Specify a new type in the metadata - currently done by editing the dictionaries
+    # directly.
     # TODO: Remove this terrible way of setting up different particle types.
     swp.particle_name_underscores["PartType7"] = "extratype"
     swp.particle_name_class["PartType7"] = "Extratype"
     swp.particle_name_text["PartType7"] = "Extratype"
 
-    swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw.shared}
+    swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw._shared}
 
     boxsize = 10 * unyt.cm
 
@@ -118,14 +168,15 @@ def test_write():
 
 def test_read():
     """
-    Tests whether swiftsimio can handle a new particle type. Has a few asserts to check the
-    data is read in correctly.
+    Test whether swiftsimio can handle a new particle type.
+
+    Has a few asserts to check the data is read in correctly.
     """
     swp.particle_name_underscores["PartType7"] = "extratype"
     swp.particle_name_class["PartType7"] = "Extratype"
     swp.particle_name_text["PartType7"] = "Extratype"
 
-    swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw.shared}
+    swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw._shared}
 
     metadata.particle_fields.extratype = {**metadata.particle_fields.gas}
 

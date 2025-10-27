@@ -1,6 +1,4 @@
-"""
-Tests the masking using some test data.
-"""
+"""Tests the masking using some test data."""
 
 import warnings
 import h5py
@@ -13,10 +11,10 @@ from .helper import _mask_without_warning as mask
 
 def test_reading_select_region_spatial(cosmological_volume):
     """
-    Tests reading select regions of the volume, comparing the masks attained with
-    spatial_only = True and spatial_only = False.
-    """
+    Test reading select regions of the volume.
 
+    Compares the masks attained with spatial_only=True and spatial_only=False.
+    """
     full_data = load(cosmological_volume)
 
     # Mask off the lower bottom corner of the volume.
@@ -42,13 +40,7 @@ def test_reading_select_region_spatial(cosmological_volume):
 
 
 def test_reading_select_region_half_box(cosmological_volume):
-    """
-    Tests reading the spatial region and sees if it lies within the region
-    we told it to!
-
-    Specifically, we test to see if all particles lie within half a boxsize.
-    """
-
+    """Test that particles lie in the selected spatial region (half a box length)."""
     # Mask off the lower bottom corner of the volume.
     mask_region = mask(cosmological_volume, spatial_only=True)
 
@@ -80,11 +72,10 @@ def test_reading_select_region_half_box(cosmological_volume):
 
 def test_region_mask_not_modified(cosmological_volume):
     """
-    Tests if a mask region is modified during the course of its use.
+    Test if a mask region is modified during the course of its use.
 
     Checks if https://github.com/SWIFTSIM/swiftsimio/issues/22 is broken.
     """
-
     this_mask = mask(cosmological_volume, spatial_only=True)
     bs = this_mask.metadata.boxsize
 
@@ -98,6 +89,8 @@ def test_region_mask_not_modified(cosmological_volume):
 
 def test_region_mask_intersection(cosmological_volume):
     """
+    Check that poorly-named "intersection" of two regions selects both.
+
     Tests that the intersection of two spatial mask regions includes the same cells as two
     separate masks of the same two regions.
     """
@@ -121,6 +114,8 @@ def test_region_mask_intersection(cosmological_volume):
 
 def test_mask_periodic_wrapping(cosmological_volume):
     """
+    Check that selection out of box wraps.
+
     Check that a region that runs off the upper edge of the box gives the same
     mask as one that runs off the lower edge (they are chosen to be equivalent
     under periodic wrapping).
@@ -154,10 +149,11 @@ def test_mask_periodic_wrapping(cosmological_volume):
 
 def test_mask_padding(cosmological_volume):
     """
-    Check that the padding of a mask when we don't have cell bounding box metadata
-    works correctly.
-    """
+    Check that mask is padded.
 
+    Check that the padding of a mask when we don't have cell bounding box metadata
+    works correctly. See comments below for detailed cases.
+    """
     # Mask off the lower bottom corner of the volume.
     mask_pad_onecell = mask(cosmological_volume, spatial_only=True, safe_padding=1.0)
     mask_pad_tenthcell = mask(cosmological_volume, spatial_only=True)  # default 0.1
@@ -195,11 +191,12 @@ def test_mask_padding(cosmological_volume):
 
 def test_mask_pad_wrapping(cosmological_volume):
     """
+    Check that the cell padding wraps.
+
     When we mask all the way to the edge of the box, we should get a cell on the
     opposite edge as padding in case particles have drifted out of their cell,
     unless the cell metadata with max positions is present.
     """
-
     mask_region_upper = mask(cosmological_volume, spatial_only=True)
     mask_region_lower = mask(cosmological_volume, spatial_only=True)
     restrict_lower = cosmo_array(
@@ -244,9 +241,7 @@ def test_mask_pad_wrapping(cosmological_volume):
 
 
 def test_mask_entire_box(cosmological_volume):
-    """
-    When we explicitly set the region to the whole box, we'd better get all of the cells!
-    """
+    """Check that we get all cells when we select the whole box."""
     mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * 0.0, mask_region.metadata.boxsize]
@@ -258,9 +253,7 @@ def test_mask_entire_box(cosmological_volume):
 
 
 def test_invalid_mask_interval(cosmological_volume):
-    """
-    We should get an error if the mask boundaries go out of bounds.
-    """
+    """Check that we get an error if the mask boundaries go out of bounds."""
     mask_region = mask(cosmological_volume, spatial_only=True)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * -2, mask_region.metadata.boxsize * 2]
@@ -271,6 +264,8 @@ def test_invalid_mask_interval(cosmological_volume):
 
 def test_inverted_mask_boundaries(cosmological_volume):
     """
+    Check that wrapping in the spatial selection works.
+
     Upper boundary can be below lower boundary, in that case we select wrapping
     in the other direction. Check this by making an "inverted" selection and
     comparing to the "uninverted" selection through the boundary.
@@ -295,10 +290,8 @@ def test_inverted_mask_boundaries(cosmological_volume):
     assert np.array_equal(selected_coordinates, selected_coordinates_inverted)
 
 
-def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_legacy
-    """
-    Tests that a mask containing no particles doesn't cause any problems.
-    """
+def test_empty_mask(cosmological_volume):
+    """Test that a mask containing no particles doesn't cause any problems."""
     empty_mask = mask(cosmological_volume, spatial_only=False)
     # mask a region just to run faster:
     region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]
@@ -328,9 +321,11 @@ def test_empty_mask(cosmological_volume):  # replace with cosmoogical_volume_no_
 
 def test_mask_pad_warning(cosmological_volume):
     """
-    Test that the user gets a warning when masking a snapshot without cell bbox metadata
-    and doesn't otherwise. The ``cosmological_volume`` fixture will run this with both
-    recent (with bbox metadata) and legacy (without bbox metadata) snapshots.
+    Test that the user gets a warning when masking a snapshot without cell bbox metadata.
+
+    Otherwise there should be no warning. The ``cosmological_volume`` fixture will run
+    this with both recent (with bbox metadata) and legacy (without bbox metadata)
+    snapshots.
     """
     from swiftsimio import mask  # not the helper that silences warnings!
 
