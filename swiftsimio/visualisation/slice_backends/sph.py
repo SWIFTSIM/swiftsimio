@@ -313,7 +313,7 @@ def slice_scatter_parallel(
     number_of_particles = x.size
     core_particles = number_of_particles // NUM_THREADS
 
-    output = np.zeros((xres, int(yres)), dtype=np.float32)
+    output = np.zeros((int(xres), int(yres)), dtype=np.float32)
 
     for thread in prange(NUM_THREADS):
         # Left edge is easy, just start at 0 and go to 'final'
