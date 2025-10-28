@@ -201,29 +201,33 @@ def scatter(
                         for x_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
                             float_x_dither_cell = np.float64(x_dither_cell)
                             pixel_x = np.int32(
-                                float_res
-                                * (
-                                    x_pos
-                                    + (
-                                        float_x_dither_cell
-                                        * float_DITHER_EVALUATIONS_inv
-                                        - 1.0
+                                np.floor(
+                                    float_res
+                                    * (
+                                        x_pos
+                                        + (
+                                            float_x_dither_cell
+                                            * float_DITHER_EVALUATIONS_inv
+                                            - 1.0
+                                        )
+                                        * kernel_width
                                     )
-                                    * kernel_width
                                 )
                             )
                             for y_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
                                 float_y_dither_cell = np.float64(y_dither_cell)
                                 pixel_y = np.int32(
-                                    float_res
-                                    * (
-                                        y_pos
-                                        + (
-                                            float_y_dither_cell
-                                            * float_DITHER_EVALUATIONS_inv
-                                            - 1.0
+                                    np.floor(
+                                        float_res
+                                        * (
+                                            y_pos
+                                            + (
+                                                float_y_dither_cell
+                                                * float_DITHER_EVALUATIONS_inv
+                                                - 1.0
+                                            )
+                                            * kernel_width
                                         )
-                                        * kernel_width
                                     )
                                 )
 
