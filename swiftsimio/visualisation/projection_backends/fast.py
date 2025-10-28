@@ -92,13 +92,13 @@ def scatter(
         xshift_max = 1
     else:
         xshift_min = -1  # x_min is always at x=0
-        xshift_max = np.ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
+        xshift_max = int(np.ceil(1 / box_x) + 1)  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
         yshift_min = -1  # y_min is always at y=0
-        yshift_max = np.ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
+        yshift_max = int(np.ceil(1 / box_y) + 1)  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
         # loop over periodic copies of this particle
@@ -109,8 +109,8 @@ def scatter(
 
                 # Calculate the cell that this particle; use the 64 bit version of the
                 # resolution as this is the same type as the positions
-                particle_cell_x = np.int32(float_res_64 * x_pos)
-                particle_cell_y = np.int32(float_res_64 * y_pos)
+                particle_cell_x = np.int32(np.floor(float_res_64 * x_pos))
+                particle_cell_y = np.int32(np.floor(float_res_64 * y_pos))
 
                 # SWIFT stores hsml as the FWHM.
                 kernel_width = kernel_gamma * hsml

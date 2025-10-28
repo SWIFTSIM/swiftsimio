@@ -140,19 +140,19 @@ def slice_scatter(
         xshift_max = 1
     else:
         xshift_min = -1  # x_min is always at x=0
-        xshift_max = np.ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
+        xshift_max = int(np.ceil(1 / box_x) + 1)  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
         yshift_min = -1  # y_min is always at y=0
-        yshift_max = np.ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
+        yshift_max = int(np.ceil(1 / box_y) + 1)  # tile the box to cover [0, 1]
     if box_z == 0.0:
         zshift_min = 0
         zshift_max = 1
     else:
         zshift_min = -1  # z_min is always at z=0
-        zshift_max = np.ceil(1 / box_z) + 1  # tile the box to cover [0, 1]
+        zshift_max = int(np.ceil(1 / box_z) + 1)  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, z_pos_original, mass, hsml in zip(
         x, y, z, m, h
@@ -167,8 +167,8 @@ def slice_scatter(
 
                     # Calculate the cell that this particle lives above; use 64 bits
                     # resolution as this is the same type as the positions
-                    particle_cell_x = np.int32(float_res_64 * x_pos)
-                    particle_cell_y = np.int32(float_res_64 * y_pos)
+                    particle_cell_x = np.int32(np.floor(float_res_64 * x_pos))
+                    particle_cell_y = np.int32(np.floor(float_res_64 * y_pos))
 
                     # This is a constant for this particle
                     distance_z = z_pos - z_slice
