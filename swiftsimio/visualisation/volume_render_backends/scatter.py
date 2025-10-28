@@ -355,9 +355,9 @@ def scatter_limited_z(
 
                     # Calculate the cell that this particle; use the 64 bit version of the
                     # resolution as this is the same type as the positions
-                    particle_cell_x = np.int32(float_res_64 * x_pos)
-                    particle_cell_y = np.int32(float_res_64 * y_pos)
-                    particle_cell_z = np.int32(float_res_z_64 * z_pos)
+                    particle_cell_x = np.int32(np.floor(float_res_64 * x_pos))
+                    particle_cell_y = np.int32(np.floor(float_res_64 * y_pos))
+                    particle_cell_z = np.int32(np.floor(float_res_z_64 * z_pos))
 
                     # SWIFT stores hsml as the FWHM.
                     kernel_width = kernel_gamma * hsml
