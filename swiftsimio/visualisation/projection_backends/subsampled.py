@@ -178,10 +178,10 @@ def scatter(
                     # Here we check for overlaps between this kernel and boundaries.
                     # If they exist, we must use the sub-sampled kernel.
 
-                    dx_left = x_pos - np.float64(particle_cell_x)
-                    dx_right = np.float64(particle_cell_x) + 1.0 - x_pos
-                    dy_down = y_pos - np.float64(particle_cell_y)
-                    dy_up = np.float64(particle_cell_y) + 1.0 - y_pos
+                    dx_left = x_pos - np.float64(particle_cell_x) / float_res
+                    dx_right = 1 - dx_left
+                    dy_down = y_pos - np.float64(particle_cell_y) / float_res
+                    dy_up = 1 - dy_down
 
                     overlaps_left = dx_left < kernel_width
                     overlaps_right = dx_right < kernel_width
