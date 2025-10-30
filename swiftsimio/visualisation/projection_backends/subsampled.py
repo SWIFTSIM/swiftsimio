@@ -190,6 +190,11 @@ def scatter(
 
                     if not (
                         overlaps_left or overlaps_right or overlaps_down or overlaps_up
+                    ) and (
+                        particle_cell_x >= 0
+                        and particle_cell_x <= maximal_array_index
+                        and particle_cell_y >= 0
+                        and particle_cell_y <= maximal_array_index
                     ):
                         # Very simple case - no overlaps.
                         image[particle_cell_x, particle_cell_y] += (
