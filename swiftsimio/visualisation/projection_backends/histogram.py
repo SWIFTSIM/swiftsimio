@@ -83,31 +83,30 @@ def scatter(
         xshift_max = 1
     else:
         xshift_min = -1  # x_min is always at x=0
-        xshift_max = np.ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
+        xshift_max = int(np.ceil(1 / box_x) + 1)  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
         yshift_min = -1  # y_min is always at y=0
-        yshift_max = np.ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
+        yshift_max = int(np.ceil(1 / box_y) + 1)  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, mass in zip(x, y, m):
         # loop over periodic copies of this particle
         for xshift in range(xshift_min, xshift_max):
             for yshift in range(yshift_min, yshift_max):
-                x_pos = x_pos_original + xshift * box_y
+                x_pos = x_pos_original + xshift * box_x
                 y_pos = y_pos_original + yshift * box_y
 
                 # Calculate the cell that this particle; use the 64 bit version of the
                 # resolution as this is the same type as the positions
-                particle_cell_x = np.int32(float_res * x_pos)
-                particle_cell_y = np.int32(float_res * y_pos)
-
+                particle_cell_x = np.int32(np.floor(float_res * x_pos))
+                particle_cell_y = np.int32(np.floor(float_res * y_pos))
                 if not (
                     particle_cell_x < 0
-                    or particle_cell_x >= maximal_array_index
+                    or particle_cell_x > maximal_array_index
                     or particle_cell_y < 0
-                    or particle_cell_y >= maximal_array_index
+                    or particle_cell_y > maximal_array_index
                 ):
                     image[particle_cell_x, particle_cell_y] += (
                         np.float64(mass) * inverse_cell_area

@@ -134,13 +134,13 @@ def scatter(
         xshift_max = 1
     else:
         xshift_min = -1  # x_min is always at x=0
-        xshift_max = np.ceil(1 / box_x) + 1  # tile the box to cover [0, 1]
+        xshift_max = int(np.ceil(1 / box_x) + 1)  # tile the box to cover [0, 1]
     if box_y == 0.0:
         yshift_min = 0
         yshift_max = 1
     else:
         yshift_min = -1  # y_min is always at y=0
-        yshift_max = np.ceil(1 / box_y) + 1  # tile the box to cover [0, 1]
+        yshift_max = int(np.ceil(1 / box_y) + 1)  # tile the box to cover [0, 1]
 
     for x_pos_original, y_pos_original, mass, hsml in zip(x, y, m, h):
         # loop over periodic copies of this particle
@@ -151,8 +151,8 @@ def scatter(
 
                 # Calculate the cell that this particle; use the 64 bit version of the
                 # resolution as this is the same type as the positions
-                particle_cell_x = np.int32(float_res * x_pos)
-                particle_cell_y = np.int32(float_res * y_pos)
+                particle_cell_x = np.int32(np.floor(float_res * x_pos))
+                particle_cell_y = np.int32(np.floor(float_res * y_pos))
 
                 # SWIFT stores hsml as the FWHM.
                 float_mass = np.float64(mass)
@@ -178,10 +178,10 @@ def scatter(
                     # Here we check for overlaps between this kernel and boundaries.
                     # If they exist, we must use the sub-sampled kernel.
 
-                    dx_left = x_pos - np.float64(particle_cell_x)
-                    dx_right = np.float64(particle_cell_x) + 1.0 - x_pos
-                    dy_down = y_pos - np.float64(particle_cell_y)
-                    dy_up = np.float64(particle_cell_y) + 1.0 - y_pos
+                    dx_left = x_pos - np.float64(particle_cell_x) / float_res
+                    dx_right = 1 - dx_left
+                    dy_down = y_pos - np.float64(particle_cell_y) / float_res
+                    dy_up = 1 - dy_down
 
                     overlaps_left = dx_left < kernel_width
                     overlaps_right = dx_right < kernel_width
@@ -190,6 +190,11 @@ def scatter(
 
                     if not (
                         overlaps_left or overlaps_right or overlaps_down or overlaps_up
+                    ) and (
+                        particle_cell_x >= 0
+                        and particle_cell_x <= maximal_array_index
+                        and particle_cell_y >= 0
+                        and particle_cell_y <= maximal_array_index
                     ):
                         # Very simple case - no overlaps.
                         image[particle_cell_x, particle_cell_y] += (
@@ -201,29 +206,33 @@ def scatter(
                         for x_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
                             float_x_dither_cell = np.float64(x_dither_cell)
                             pixel_x = np.int32(
-                                float_res
-                                * (
-                                    x_pos
-                                    + (
-                                        float_x_dither_cell
-                                        * float_DITHER_EVALUATIONS_inv
-                                        - 1.0
+                                np.floor(
+                                    float_res
+                                    * (
+                                        x_pos
+                                        + (
+                                            float_x_dither_cell
+                                            * float_DITHER_EVALUATIONS_inv
+                                            - 1.0
+                                        )
+                                        * kernel_width
                                     )
-                                    * kernel_width
                                 )
                             )
                             for y_dither_cell in range(0, 2 * DITHER_EVALUATIONS):
                                 float_y_dither_cell = np.float64(y_dither_cell)
                                 pixel_y = np.int32(
-                                    float_res
-                                    * (
-                                        y_pos
-                                        + (
-                                            float_y_dither_cell
-                                            * float_DITHER_EVALUATIONS_inv
-                                            - 1.0
+                                    np.floor(
+                                        float_res
+                                        * (
+                                            y_pos
+                                            + (
+                                                float_y_dither_cell
+                                                * float_DITHER_EVALUATIONS_inv
+                                                - 1.0
+                                            )
+                                            * kernel_width
                                         )
-                                        * kernel_width
                                     )
                                 )
 

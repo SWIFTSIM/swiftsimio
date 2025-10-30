@@ -42,7 +42,7 @@ except ImportError:
 
 
 def fraction_within_tolerance(
-    a: np.ndarray, b: np.ndarray, frac: float = 0.99, tol: float = 0.1
+    a: np.ndarray, b: np.ndarray, frac: float = 1.0, tol: float = 1e-3
 ) -> bool:
     """
     Check that two arrays have most values within a desired tolerance.
@@ -77,7 +77,7 @@ def fraction_within_tolerance(
         sup.filter(RuntimeWarning, "invalid value encountered in divide")
         ratios = np.abs((a / b).to_value(unyt.dimensionless) - 1)
     ratios[np.isnan(ratios)] = 0  # 0 == 0 is a match
-    return np.sum(ratios < tol) / a.size > frac
+    return np.sum(ratios < tol) / a.size >= frac
 
 
 class TestProjection:
@@ -193,6 +193,9 @@ class TestProjection:
         + The edge_img is the only non-periodic case, framed to only partially contain the
           box. We check that it matches the expected region of the ref_img (with the edges
           trimmed a bit).
+
+        It would be good to split this test into several tests, but avoid re-computing the
+        ref_img for each one. Could use a fixture.
         """
         sd = load(cosmological_volume_only_single)
         if backend == "gpu":
@@ -221,7 +224,7 @@ class TestProjection:
             big_img = project_gas(
                 sd,
                 region=cosmo_array(
-                    [0, 3 * lbox, 0, 3 * lbox],
+                    [0 * lbox, 3 * lbox, 0 * lbox, 3 * lbox],
                     unyt.Mpc,
                     comoving=True,
                     scale_factor=sd.metadata.a,
@@ -318,9 +321,39 @@ class TestProjection:
             ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
         )
         assert np.allclose(far_img, ref_img)
+        # The comparison of the periodic box projection (ref_img) and the version
+        # rendering the same number of pixels per periodic box but tiling the box 3x3
+        # times (big_img) is infuriatingly tricky. Tests in TestProjectionBackends show
+        # that rendering works correctly at the particle level in simplified versions of
+        # this test. It seems trivial that the two setups should give the same answer, but
+        # it seems like differences sneak in because for the ref_img in the backend one
+        # box is mapped to a normalized coordinate interval [0, 1). However for the big
+        # image the same box is mapped to [0, 0.333) such that the three boxes per image
+        # axis fit in [0, 1). This seems to introduce unavoidable floating point
+        # arithmetic differences that lead to residuals in the images (or there's another
+        # bug that hasn't been found yet). Assuming the former, I'm setting the test to
+        # require 99% of pixels to agree within 1%, and adding an additional assertion
+        # that there are no differences bigger than 2%. This holds even when setting
+        # box_res=16 in this test (issues tend to get worse at lower pixel counts), and at
+        # box_res=256 (which is what we run the test at) all pixels agree to about one
+        # part in ~1e13.
         assert fraction_within_tolerance(
-            big_img, np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1), frac=0.98
+            big_img,
+            np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1),
+            frac=0.99,
+            tol=0.01,
         )
+        with np.testing.suppress_warnings() as sup:
+            sup.filter(RuntimeWarning, "invalid value encountered in divide")
+            assert (
+                np.nanmax(
+                    np.abs(
+                        big_img / np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
+                    ).to_physical_value(unyt.dimensionless)
+                    - 1
+                )
+                < 0.02
+            )
         assert np.allclose(depth_img, neg_depth_img)
         assert np.allclose(depth_img, wrap_depth_img)
         assert np.allclose(ref_img, straddled_depth_img)
@@ -515,6 +548,9 @@ class TestSlice:
         + The edge_img is the only non-periodic case, framed to only partially contain the
           box. We check that it matches the expected region of the ref_img (with the edges
           trimmed a bit).
+
+        It would be good to split this test into several tests, but avoid re-computing the
+        ref_img for each one. Could use a fixture.
         """
         sd = load(cosmological_volume_only_single)
         parallel = True
@@ -648,13 +684,13 @@ class TestSlice:
         assert fraction_within_tolerance(
             edge_img[box_res // 4 :, : box_res // 2][edge_mask],
             ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
-            frac={"nearest_neighbours": 0.8}.get(backend, 0.99),
+            frac={"nearest_neighbours": 0.75}.get(backend, 1.0),
         )
         assert np.allclose(far_img, ref_img)
         assert fraction_within_tolerance(
             big_img,
             np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1),
-            frac={"nearest_neighbours": 0.8}.get(backend, 0.99),
+            frac={"nearest_neighbours": 0.75}.get(backend, 1.0),
         )
         assert np.allclose(neg_img, ref_img)
         assert np.allclose(wrap_img, ref_img)
@@ -864,6 +900,9 @@ class TestVolumeRender:
         + The edge_img is the only non-periodic case, framed to only partially contain the
           box. We check that it matches the expected region of the ref_img (with the edges
           trimmed a bit).
+
+        It would be good to split this test into several tests, but avoid re-computing the
+        ref_img for each one. Could use a fixture.
         """
         sd = load(cosmological_volume_only_single)
         parallel = False  # memory gets a bit out of hand otherwise
@@ -1277,3 +1316,210 @@ class TestPowerSpectrum:
                 plt.savefig("dark_matter_power_spectrum.png")
 
         return
+
+
+class TestProjectionBackends:
+    """Unit tests for projection backends by inserting single or very few particles."""
+
+    @pytest.mark.parametrize(
+        "backend",
+        (
+            "subsampled",
+            "subsampled_extreme",
+            "fast",
+            "renormalised",
+            "gpu",
+            "histogram",
+        ),
+    )
+    def test_subsampled_no_overlap(self, backend, res=8, save=False):
+        """Check a particle fully contained in a pixel."""
+        if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
+            pytest.xfail("gpu backend currently broken")
+        if save:
+            import matplotlib.pyplot as plt
+        # very small kernel centred in a pixel
+        scatter = projection_backends[backend]
+        kwargs = {
+            "x": np.array([0.45], dtype=np.float64),
+            "y": np.array([0.45], dtype=np.float64),
+            "m": np.array([1 / res**2], dtype=np.float32),
+            "h": np.array([0.01], dtype=np.float32),
+            "res": res,
+            "box_x": np.float64(1),
+            "box_y": np.float64(1),
+        }
+        one_px_img = scatter(**kwargs)
+        # should have one non-zero pixel
+        if save:
+            plt.imsave("test_image_creation.png", one_px_img.T, origin="lower")
+        assert np.isclose(
+            one_px_img[
+                int(np.floor(kwargs["x"][0] * 10) - 1),
+                int(np.floor(kwargs["y"][0] * 10) - 1),
+            ],
+            1.0,
+        )
+        assert (one_px_img > 0).sum() == 1
+
+    @pytest.mark.parametrize("backend", ("subsampled", "subsampled_extreme", "gpu"))
+    def test_subsampled_bisected_unresolved(self, backend, res=8, save=False):
+        """Check a particle bisected twice into 4 pixels but smaller than the pixels."""
+        if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
+            pytest.xfail("gpu backend currently broken")
+        if save:
+            import matplotlib.pyplot as plt
+        # kernel bisected in both directions, smaller than pixel
+        scatter = projection_backends[backend]
+        kwargs = {
+            "x": np.array([0.5], dtype=np.float64),
+            "y": np.array([0.5], dtype=np.float64),
+            "m": np.array([1 / res**2], dtype=np.float32),
+            "h": np.array([0.02], dtype=np.float32),
+            "res": res,
+            "box_x": np.float64(1),
+            "box_y": np.float64(1),
+        }
+        four_px_img = scatter(**kwargs)
+        # should have 4 non-zero pixels
+        if save:
+            plt.imsave("test_image_creation.png", four_px_img.T, origin="lower")
+        assert np.allclose(
+            four_px_img[
+                int(np.floor(kwargs["x"][0] * 10) - 2) : int(
+                    np.floor(kwargs["x"][0] * 10)
+                ),
+                int(np.floor(kwargs["y"][0] * 10) - 2) : int(
+                    np.floor(kwargs["y"][0] * 10)
+                ),
+            ],
+            np.array([[0.25, 0.25], [0.25, 0.25]]),
+            atol=0.0001,
+        )
+        assert (four_px_img > 0).sum() == 4
+
+    @pytest.mark.parametrize(
+        "backend", ("subsampled", "subsampled_extreme", "fast", "renormalised", "gpu")
+    )
+    def test_subsampled_bisected_resolved(self, backend, res=8, save=False):
+        """Check a particle bisected twice and resolved by many pixels."""
+        if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
+            pytest.xfail("gpu backend currently broken")
+        if save:
+            import matplotlib.pyplot as plt
+        # kernel bisected in both directions, touches edge of box
+        scatter = projection_backends[backend]
+        kwargs = {
+            "x": np.array([0.5], dtype=np.float64),
+            "y": np.array([0.5], dtype=np.float64),
+            "m": np.array([1 / res**2], dtype=np.float32),
+            "h": np.array([0.2], dtype=np.float32),
+            "res": res,
+            "box_x": np.float64(1),
+            "box_y": np.float64(1),
+        }
+        smooth_img = scatter(**kwargs)
+        # should have 36 (subsampled) or 44 (subsampled_extreme) non-zero pixels
+        if save:
+            plt.imsave("test_image_creation.png", smooth_img.T, origin="lower")
+        assert (smooth_img > 0).sum() == {
+            "subsampled": 36,
+            "subsampled_extreme": 44,
+            "fast": 32,
+            "renormalised": 32,
+        }[backend]
+        assert np.isclose(smooth_img.sum(), 1.0, atol=1e-2)
+
+    @pytest.mark.parametrize("backend", ("subsampled", "subsampled_extreme", "gpu"))
+    def test_subsampled_corner_pixels(self, backend, res=8, save=False):
+        """Check a particle that "touches" pixels in all 4 corners."""
+        if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
+            pytest.xfail("gpu backend currently broken")
+        if save:
+            import matplotlib.pyplot as plt
+        # kernel in upper right corner, wraps to all 4 corners
+        scatter = projection_backends[backend]
+        kwargs = {
+            "x": np.array([0.98], dtype=np.float64),
+            "y": np.array([0.98], dtype=np.float64),
+            "m": np.array([1 / res**2], dtype=np.float32),
+            "h": np.array([0.03], dtype=np.float32),
+            "res": res,
+            "box_x": np.float64(1),
+            "box_y": np.float64(1),
+        }
+        corner_img = scatter(**kwargs)
+        # should have 4 corners non-zero
+        if save:
+            plt.imsave("test_image_creation.png", corner_img.T, origin="lower")
+        assert corner_img[0, 0] > 0
+        assert corner_img[-1, 0] > 0
+        assert corner_img[0, -1] > 0
+        assert corner_img[-1, -1] > 0
+        assert (corner_img > 0).sum() == 4
+
+    @pytest.mark.parametrize(
+        "backend", ("subsampled", "subsampled_extreme", "fast", "renormalised", "gpu")
+    )
+    def test_subsampled_tiled_box(self, backend, res=8, save=True):
+        """
+        Check agreement between a box image and an image tiling the box.
+
+        This time we use more than one particle to check wrapping behaviour for particles
+        in different cases (resolved, unresolved, split across pixels, or not). Individual
+        cases are covered in other tests, this test is intended to catch errors such as
+        unintentionally writing to negative image offsets (img[-1, -1]) that can arise
+        when multiple box lengths are covered in the region.
+        """
+        if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
+            pytest.xfail("gpu backend currently broken")
+        if save:
+            import matplotlib.pyplot as plt
+        # image repeats in each quadrant with periodic wrapping
+        from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
+
+        scatter = projection_backends[backend]
+        pos = np.array([0.49, 0.27, 0.25, 0.25], dtype=np.float64)
+        h = np.array([0.1, 0.001, 0.001, 0.1], dtype=np.float32) / kernel_gamma
+        kwargs = {
+            "x": pos,
+            "y": pos,
+            "m": np.array([1 / res**2] * pos.size, dtype=np.float32),
+            "h": h,
+            "res": res,
+            "box_x": np.float64(0.5),
+            "box_y": np.float64(0.5),
+        }
+        ref_kwargs = {
+            "x": pos * 2,
+            "y": pos * 2,
+            "m": np.array([1 / res**2 * 4] * pos.size, dtype=np.float32),
+            "h": h * 2,
+            "res": res // 2,
+            "box_x": np.float64(1),
+            "box_y": np.float64(1),
+        }
+        ref_img = scatter(**ref_kwargs)
+        repeating_img = scatter(**kwargs)
+        # first quadrant image tiled should match explicitly tiled image
+        diff = repeating_img - np.block([[ref_img, ref_img], [ref_img, ref_img]])
+        if backend == "gpu":
+            # https://github.com/SWIFTSIM/swiftsimio/issues/229
+            pytest.xfail("gpu backend currently broken")
+        if save:
+            plt.imsave("test_image_creation.png", repeating_img.T, origin="lower")
+            plt.imsave(
+                "test_image_diff.png",
+                diff.T,
+                cmap="RdBu",
+                vmin=-np.abs(diff).max(),
+                vmax=np.abs(diff).max(),
+            )
+        assert np.allclose(
+            repeating_img, np.block([[ref_img, ref_img], [ref_img, ref_img]])
+        )

@@ -136,8 +136,8 @@ def scatter_gpu(
 
         # Calculate the cell that this particle; use the 64 bit version of the
         # resolution as this is the same type as the positions
-        particle_cell_x = np.int32(float_res_64 * x_pos)
-        particle_cell_y = np.int32(float_res_64 * y_pos)
+        particle_cell_x = np.int32(np.floor(float_res_64 * x_pos))
+        particle_cell_y = np.int32(np.floor(float_res_64 * y_pos))
 
         # SWIFT stores hsml as the FWHM.
         kernel_width = kernel_gamma * hsml
@@ -264,11 +264,11 @@ def scatter(
     if box_x == 0.0:
         n_xshift = 1
     else:
-        n_xshift = np.ceil(1 / box_x) + 2
+        n_xshift = int(np.ceil(1 / box_x) + 2)
     if box_y == 0.0:
         n_yshift = 1
     else:
-        n_yshift = np.ceil(1 / box_y) + 2
+        n_yshift = int(np.ceil(1 / box_y) + 2)
     # set up a 3D grid:
     # the first dimension are the particles
     # the second and third dimension are the periodic
