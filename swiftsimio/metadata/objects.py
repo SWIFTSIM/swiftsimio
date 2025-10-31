@@ -1157,7 +1157,7 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
         compiled = re.compile(regex)
 
         for key, data in zip(available_keys, available_data):
-            matched = compiled.matched(key)
+            matched = compiled.match(key)
             snake_case = _convert_snake_to_camel(key)
 
             if matched:
