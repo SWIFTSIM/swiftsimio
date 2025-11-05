@@ -23,7 +23,7 @@ class HandleProvider:
     """
 
     def __init__(self, filename: Path, handle: h5py.File | None = None) -> None:
-        self.filename = filename
+        self.filename = Path(filename)
         self._handle = handle
 
         self.handle_manager = not self._handle
