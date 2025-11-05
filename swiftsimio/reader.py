@@ -704,7 +704,7 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert self.filename == self.mask.filename, (
+            assert self.filename.samefile(self.mask.filename), (
                 f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
             )
             self.units = self.mask.units
@@ -722,7 +722,7 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert self.filename == self.mask.filename, (
+            assert self.filename.samefile(self.mask.filename), (
                 f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
             )
             self.metadata = self.mask.metadata
