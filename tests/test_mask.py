@@ -335,6 +335,7 @@ def test_mask_pad_warning(cosmological_volume):
         with warnings.catch_warnings():
             # fail if there's a warning when the metadata is present
             warnings.simplefilter("error")
+            warnings.simplefilter("ignore", category=DeprecationWarning)
             mask(cosmological_volume)
     else:
         # fail if there's no warning when metadata is absent

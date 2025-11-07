@@ -62,6 +62,7 @@ def _requires(filename: str) -> str:
         "EagleDistributed.hdf5",
         "EagleSingle.hdf5",
         "LegacyCosmologicalVolume.hdf5",
+        "COLIBRE_L006m7.hdf5",
     ]
 )
 def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:

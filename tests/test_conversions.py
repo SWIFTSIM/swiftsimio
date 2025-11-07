@@ -27,6 +27,7 @@ def test_nonzero_tcmb(cosmological_volume):
     cosmo = data.metadata.cosmology_raw
 
     cosmo["Omega_r"] = [0.1]
+    cosmo["T_CMB_0 [K]"] = [0.]
 
     output_cosmology = swift_cosmology_to_astropy(cosmo=cosmo, units=units)
 
