@@ -10,9 +10,10 @@ def test_basic_tcmb(cosmological_volume):
     data = load(cosmological_volume)
 
     try:
-        assert (
-            data.metadata.cosmology._Ogamma0
-            == data.metadata.cosmology_raw["Omega_r"][0]
+        assert np.isclose(
+            data.metadata.cosmology._Ogamma0,
+            data.metadata.cosmology_raw["Omega_r"][0]
+            - data.metadata.cosmology_raw["Omega_ur"][0],
         )
     except AttributeError:
         # Broken astropy install
@@ -27,7 +28,7 @@ def test_nonzero_tcmb(cosmological_volume):
     cosmo = data.metadata.cosmology_raw
 
     cosmo["Omega_r"] = [0.1]
-    cosmo["T_CMB_0 [K]"] = [0.]
+    cosmo["T_CMB_0 [K]"] = [0.0]
 
     output_cosmology = swift_cosmology_to_astropy(cosmo=cosmo, units=units)
 
