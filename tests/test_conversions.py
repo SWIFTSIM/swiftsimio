@@ -10,7 +10,7 @@ def test_basic_tcmb(cosmological_volume):
     data = load(cosmological_volume)
 
     try:
-        assert np.isclose(
+        assert isclose(
             data.metadata.cosmology._Ogamma0,
             data.metadata.cosmology_raw["Omega_r"][0]
             - data.metadata.cosmology_raw["Omega_ur"][0],
