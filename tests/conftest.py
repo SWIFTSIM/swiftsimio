@@ -2,6 +2,7 @@
 
 import os
 import subprocess
+import itertools
 import pytest
 from collections.abc import Generator
 import numpy as np
@@ -72,14 +73,24 @@ def _repeat_tests(filenames):
         ]
     return all_tests
 
-
-@pytest.fixture(
-    params=_repeat_tests([
-        "EagleDistributed.hdf5",
-        "EagleSingle.hdf5",
-        "LegacyCosmologicalVolume.hdf5",
-    ])
-)
+#
+# Will repeat each test opening the file in several ways:
+#
+# - Using the path as a string
+# - Using a h5py.File
+# - Using a hdfstream.RemoteFile
+#
+methods = [
+    lambda filename: _requires(filename),
+    lambda filename: h5py.File(_requires(filename), "r"),
+    lambda filename: hdfstream.open("cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"),
+]
+filenames = [
+    "EagleDistributed.hdf5",
+    "EagleSingle.hdf5",
+    "LegacyCosmologicalVolume.hdf5",
+]
+@pytest.fixture(params=itertools.product(filenames, methods))
 def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides single, distributed and legacy datasets to test on.
@@ -94,11 +105,12 @@ def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, 
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield _requires(request.param)
+    filename, method = request.param
+    yield method(filename)
 
 
-@pytest.fixture
-def cosmological_volume_only_single() -> Generator[str, None, None]:
+@pytest.fixture(params=methods)
+def cosmological_volume_only_single(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides only a single (non-distributed) dataset to test on.
 
@@ -107,11 +119,11 @@ def cosmological_volume_only_single() -> Generator[str, None, None]:
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield _requires("EagleSingle.hdf5")
+    yield request.param("EagleSingle.hdf5")
 
 
-@pytest.fixture
-def cosmological_volume_only_distributed() -> Generator[str, None, None]:
+@pytest.fixture(params=methods)
+def cosmological_volume_only_distributed(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides only a distributed (not monolithic) dataset to test on.
 
@@ -120,11 +132,11 @@ def cosmological_volume_only_distributed() -> Generator[str, None, None]:
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield _requires("EagleDistributed.hdf5")
+    yield request.param("EagleDistributed.hdf5")
 
 
-@pytest.fixture
-def cosmological_volume_dithered() -> Generator[str, None, None]:
+@pytest.fixture(params=methods)
+def cosmological_volume_dithered(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides a dithered dataset to test on.
 
@@ -133,11 +145,11 @@ def cosmological_volume_dithered() -> Generator[str, None, None]:
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield _requires("LegacyCosmologicalVolumeDithered.hdf5")
+    yield request.param("LegacyCosmologicalVolumeDithered.hdf5")
 
 
-@pytest.fixture
-def soap_example() -> Generator[str, None, None]:
+@pytest.fixture(params=methods)
+def soap_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides a sample SOAP file to test on.
 
@@ -146,17 +158,16 @@ def soap_example() -> Generator[str, None, None]:
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield _requires("SoapExample.hdf5")
+    yield request.param("SoapExample.hdf5")
 
 
-@pytest.fixture(
-    params=[
-        "EagleDistributed.hdf5",
-        "EagleSingle.hdf5",
-        "LegacyCosmologicalVolume.hdf5",
-        "SoapExample.hdf5",
-    ]
-)
+filenames = [
+    "EagleDistributed.hdf5",
+    "EagleSingle.hdf5",
+    "LegacyCosmologicalVolume.hdf5",
+    "SoapExample.hdf5",
+]
+@pytest.fixture(params=itertools.product(filenames, methods))
 def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides distributed, single & legacy, and SOAP datasets to test on.
@@ -171,7 +182,8 @@ def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, Non
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield _requires(request.param)
+    filename, method = request.param
+    yield method(filename)
 
 
 @pytest.fixture(scope="function")

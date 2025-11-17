@@ -18,6 +18,7 @@ from numpy import isclose
 from numpy import array as numpy_array
 
 from swiftsimio.objects import cosmo_array
+from swiftsimio.file_opener import FileOpener
 from tests.helper import create_n_particle_dataset
 
 
@@ -118,7 +119,7 @@ def test_units(cosmological_volume):
             # Find the path in the HDF5 for our linked dataset
             path = paths[names == property][0]
 
-            with h5py.File(cosmological_volume, "r") as handle:
+            with FileOpener(cosmological_volume) as (filename, handle):
                 swift_units = handle[path].attrs[
                     "Conversion factor to CGS (not including cosmological corrections)"
                 ][0]
