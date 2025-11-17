@@ -4,6 +4,7 @@ import warnings
 import h5py
 import pytest
 from swiftsimio import load, cosmo_array, cosmo_quantity
+from swiftsimio.file_opener import FileOpener
 import numpy as np
 import unyt as u
 from .helper import _mask_without_warning as mask
@@ -168,7 +169,7 @@ def test_mask_padding(cosmological_volume):
     mask_pad_tenthcell.constrain_spatial(region)
     mask_pad_off.constrain_spatial(region)
 
-    with h5py.File(cosmological_volume, "r") as f:
+    with FileOpener(cosmological_volume) as (_, f):
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     if has_cell_bbox:
         # We should ignore `safe_padding` and just read the cell.
@@ -215,7 +216,8 @@ def test_mask_pad_wrapping(cosmological_volume):
     selected_data_upper = load(cosmological_volume, mask=mask_region_upper)
     selected_coordinates_lower = selected_data_lower.gas.coordinates
     selected_coordinates_upper = selected_data_upper.gas.coordinates
-    with h5py.File(cosmological_volume, "r") as f:
+
+    with FileOpener(cosmological_volume) as (_, f):
         if (
             "MinPositions" in f["/Cells"].keys()
             and "MaxPositions" in f["/Cells"].keys()
@@ -329,7 +331,7 @@ def test_mask_pad_warning(cosmological_volume):
     """
     from swiftsimio import mask  # not the helper that silences warnings!
 
-    with h5py.File(cosmological_volume, "r") as f:
+    with FileOpener(cosmological_volume) as (_, f):
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
     if has_cell_bbox:
         with warnings.catch_warnings():

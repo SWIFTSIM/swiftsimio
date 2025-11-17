@@ -2,6 +2,7 @@
 
 import warnings
 import h5py
+import hdfstream
 import numpy as np
 from pathlib import Path
 
@@ -9,6 +10,7 @@ from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 from swiftsimio._handle_provider import HandleProvider
+from swiftsimio.file_opener import FileOpener
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
@@ -450,15 +452,23 @@ class SWIFTMask(HandleProvider):
         cosmology_factor = cosmologies_dict[quantity]
 
         # Load in the relevant data.
+        with FileOpener(self.metadata.filename, self.metadata._handle) as (_, h5file):
+            if isinstance(h5file, hdfstream.RemoteFile):
+                # Passing a RemoteDataset to numpy is extremely slow because it
+                # results in a separate request for each element. Indexing
+                # generates a single http post request.
+                data = h5file[handle][current_mask,...]
+            else:
+                # Surprisingly this is faster than just using the boolean
+                # indexing because h5py has slow indexing routines.
+                data = np.take(h5file[handle], np.where(current_mask)[0], axis=0)
 
-        with h5py.File(self.metadata.filename, "r") as h5file:
-            # Surprisingly this is faster than just using the boolean
-            # indexing because h5py has slow indexing routines.
-            data = cosmo_array(
-                np.take(h5file[handle], np.where(current_mask)[0], axis=0),
-                units=unit,
-                comoving=not physical,
-                cosmo_factor=cosmology_factor,
+        # Wrap result in a cosmo array
+        data = cosmo_array(
+            data,
+            units=unit,
+            comoving=not physical,
+            cosmo_factor=cosmology_factor,
             )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
