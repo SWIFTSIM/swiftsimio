@@ -12,6 +12,7 @@ from .reader import SWIFTDataset
 from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
+from .file_opener import FileOpener
 from .__version__ import __version__
 from .__cite__ import __cite__
 
@@ -85,7 +86,7 @@ def validate_file(filename: str) -> bool:
         If the file is not a SWIFT data file.
     """
     try:
-        with h5py.File(filename, "r") as handle:
+        with FileOpener(filename) as (filename, handle):
             if handle["Code"].attrs["Code"] != b"SWIFT":
                 raise KeyError
     except KeyError:
@@ -142,7 +143,7 @@ def mask(
     """
     if isinstance(filename, str):
         filename = Path(filename)
-    with h5py.File(filename, "r") as handle:
+    with FileOpener(filename) as (filename, handle):
         units = SWIFTUnits(filename, handle=handle)
         metadata = _metadata_discriminator(filename, units, handle=handle)
         mask = SWIFTMask(
@@ -175,7 +176,7 @@ def load(filename: str | Path, mask: SWIFTMask | None = None) -> SWIFTDataset:
     if isinstance(filename, str):
         filename = Path(filename)
 
-    with h5py.File(filename, "r") as handle:
+    with FileOpener(filename) as (filename, handle):
         data = SWIFTDataset(filename, mask=mask, handle=handle)
 
     return data
