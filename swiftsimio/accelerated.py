@@ -9,6 +9,7 @@ import numpy as np
 from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
+from .file_utils import is_hdfstream_dataset
 
 __all__ = [
     "jit",
@@ -481,7 +482,7 @@ def eliminate_zero_sized_and_merge(ranges):
 def read_ranges_from_hdfstream(
     handle: Dataset,
     ranges: np.ndarray,
-    output_shape: Tuple,
+    output_shape: tuple,
     output_type: type = np.float64,
     columns: slice = np.s_[:],
 ) -> np.array:
@@ -605,8 +606,7 @@ def read_ranges_from_file(
         if handle.chunks is not None and average_range_size < cross_over_range_size
         else read_ranges_from_file_unchunked
     )
-
-    return read_ranges(handle, ranges, output_shape, output_type, columns)
+    return (read_ranges_from_hdfstream if is_hdfstream_dataset(handle) else read_ranges)(handle, ranges, output_shape, output_type, columns)
 
 
 def list_of_strings_to_arrays(lines: list[str]) -> np.array:
