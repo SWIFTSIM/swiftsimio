@@ -146,7 +146,7 @@ def _generate_getter(
         if current_value is not None:
             return current_value
         else:
-            with FileOpener(self.filename, self.handle) as (filename, handle):
+            with FileOpener(self.filename, self._handle) as (filename, handle):
                 try:
                     if mask is not None:
                         output_type = handle[field].dtype
@@ -705,7 +705,7 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert (self.handle is self.mask.handle) or self.filename.samefile(self.mask.filename), (
+            assert (self._handle is self.mask._handle) or self.filename.samefile(self.mask.filename), (
                 f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
             )
             self.units = self.mask.units
@@ -723,7 +723,7 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert (self.handle is self.mask.handle) or self.filename.samefile(self.mask.filename), (
+            assert (self._handle is self.mask._handle) or self.filename.samefile(self.mask.filename), (
                 f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
             )
             self.metadata = self.mask.metadata

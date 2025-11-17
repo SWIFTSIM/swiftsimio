@@ -18,6 +18,9 @@ class FileOpener(HandleProvider):
                 handle = None
         else:
             filename = name_or_handle
+        # If the handle is closed, open a new one
+        if not handle:
+            handle = None
         super().__init__(filename, handle=handle)
 
     def __enter__(self):
