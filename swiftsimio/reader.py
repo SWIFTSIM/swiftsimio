@@ -22,6 +22,7 @@ from swiftsimio.metadata.objects import (
     SWIFTGroupMetadata,
 )
 from swiftsimio._handle_provider import HandleProvider
+from swiftsimio.file_opener import FileOpener
 
 import h5py
 import unyt
@@ -145,7 +146,7 @@ def _generate_getter(
         if current_value is not None:
             return current_value
         else:
-            with h5py.File(filename, "r") as handle:
+            with FileOpener(self.filename, self.handle) as (filename, handle):
                 try:
                     if mask is not None:
                         output_type = handle[field].dtype
