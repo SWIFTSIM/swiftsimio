@@ -6,6 +6,8 @@ import pytest
 from collections.abc import Generator
 import numpy as np
 import unyt
+import h5py
+import hdfstream
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
 
@@ -30,6 +32,10 @@ def _requires(filename: str) -> str:
     str
         The location of the desired file.
     """
+
+    if isinstance(filename, hdfstream.RemoteFile):
+        return filename
+
     if filename == "EagleDistributed.hdf5":
         _requires("eagle_0025.0.hdf5")
         _requires("eagle_0025.1.hdf5")
@@ -57,12 +63,22 @@ def _requires(filename: str) -> str:
         return file_location
 
 
+def _repeat_tests(filenames):
+    all_tests = []
+    for filename in filenames:
+        all_tests += [
+            filename,
+            #hdfstream.open("cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"),
+        ]
+    return all_tests
+
+
 @pytest.fixture(
-    params=[
+    params=_repeat_tests([
         "EagleDistributed.hdf5",
         "EagleSingle.hdf5",
         "LegacyCosmologicalVolume.hdf5",
-    ]
+    ])
 )
 def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
