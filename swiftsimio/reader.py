@@ -361,7 +361,7 @@ class __SWIFTGroupDataset(HandleProvider):
         return self.__str__()
 
 
-class __SWIFTNamedColumnDataset(object):
+class __SWIFTNamedColumnDataset(HandleProvider):
     r"""
     Holder class for individual named datasets.
 
@@ -377,6 +377,9 @@ class __SWIFTNamedColumnDataset(object):
 
     name : str
         The variable of interest.
+
+    handle : h5py.File, optional
+        File handle to read from.
 
     Examples
     --------
@@ -404,7 +407,8 @@ class __SWIFTNamedColumnDataset(object):
         data.gas.element_mass_fraction.helium
     """
 
-    def __init__(self, field_path: str, named_columns: list[str], name: str) -> None:
+    def __init__(self, field_path: str, named_columns: list[str], name: str, handle: h5py.File | None = None) -> None:
+        super().__init__(handle.filename, handle=handle)
         self.field_path = field_path
         self.named_columns = named_columns
         self.name = name
@@ -413,6 +417,10 @@ class __SWIFTNamedColumnDataset(object):
         for column in named_columns:
             setattr(self, f"_{column}", None)
 
+        # Close is probably not needed: either handle is None and we
+        # never opened anything, or it's a file which we will not
+        # close because it's managed by a parent object.
+        self._close_handle_if_manager()
         return
 
     def __str__(self) -> str:
@@ -589,7 +597,7 @@ def _generate_datasets(
             # like {ptype}.{ThisNamedColumnDataset}.column_name. This follows from the
             # above templating.
 
-            this_named_column_dataset_bases = (__SWIFTNamedColumnDataset, object)
+            this_named_column_dataset_bases = (__SWIFTNamedColumnDataset, HandleProvider)
             this_named_column_dataset_dict = {}
 
             for index, column in enumerate(named_columns):
@@ -619,7 +627,7 @@ def _generate_datasets(
             )
 
             field_property = ThisNamedColumnDataset(
-                field_path=field_path, named_columns=named_columns, name=field_name
+                handle=handle, field_path=field_path, named_columns=named_columns, name=field_name
             )
 
         this_dataset_dict[field_name] = field_property
