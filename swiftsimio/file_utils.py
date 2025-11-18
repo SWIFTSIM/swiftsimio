@@ -1,5 +1,8 @@
+from ._handle_provider import HandleProvider
+
 import h5py
 import hdfstream
+from pathlib import Path
 
 
 def is_soft_link(obj):
@@ -46,3 +49,16 @@ def is_hdfstream_dataset(obj):
         return False
     else:
         return isinstance(obj, hdfstream.RemoteDataset)
+
+
+def open_path_or_handle(obj):
+    """
+    Context manager to open a file, given a path or handle
+    """
+    if isinstance(obj, (str, Path)):
+        filename = Path(obj)
+        handle = None
+    else:
+        filename = Path(obj.filename)
+        handle = obj
+    return HandleProvider(filename, handle).open_file()

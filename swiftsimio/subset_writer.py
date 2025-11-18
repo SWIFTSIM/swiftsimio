@@ -3,7 +3,6 @@
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
 from swiftsimio.file_utils import is_dataset, is_soft_link
-from swiftsimio.file_opener import FileOpener
 import swiftsimio.metadata as metadata
 
 import h5py
@@ -366,7 +365,7 @@ def write_subset(output_file: str, mask: SWIFTMask) -> None:
         The mask used to define subset that is written to new snapshot.
     """
     # Open the files
-    with FileOpener(mask.metadata._handle) as (_, infile), h5py.File(output_file, "w") as outfile:
+    with mask.metadata.open_file() as infile, h5py.File(output_file, "w") as outfile:
 
         # Write metadata and data subset
         list_of_links, list_of_link_paths = find_links(infile)

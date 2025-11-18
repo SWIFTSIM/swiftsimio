@@ -6,13 +6,12 @@ The :mod:`~swiftsimio.visualisation` sub-module provides visualisation tools.
 """
 
 from pathlib import Path
-import h5py
 
 from .reader import SWIFTDataset
 from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
-from .file_opener import FileOpener
+from .file_utils import open_path_or_handle
 from .__version__ import __version__
 from .__cite__ import __cite__
 
@@ -86,7 +85,7 @@ def validate_file(filename: str) -> bool:
         If the file is not a SWIFT data file.
     """
     try:
-        with FileOpener(filename) as (filename, handle):
+        with open_path_or_handle(filename) as handle:
             if handle["Code"].attrs["Code"] != b"SWIFT":
                 raise KeyError
     except KeyError:
@@ -141,11 +140,10 @@ def mask(
     more expensive, ~bytes per particle instead of ~bytes per cell
     spatial_only=False version).
     """
-    if isinstance(filename, str):
-        filename = Path(filename)
-    with FileOpener(filename) as (filename, handle):
-        units = SWIFTUnits(filename, handle=handle)
-        metadata = _metadata_discriminator(filename, units, handle=handle)
+    with open_path_or_handle(filename) as handle:
+        filename = Path(handle.filename)
+        units = SWIFTUnits(handle.filename, handle=handle)
+        metadata = _metadata_discriminator(handle.filename, units, handle=handle)
         mask = SWIFTMask(
             filename,
             metadata=metadata,
@@ -173,10 +171,8 @@ def load(filename: str | Path, mask: SWIFTMask | None = None) -> SWIFTDataset:
     SWIFTDataset
         Dataset object providing an interface to the data file.
     """
-    if isinstance(filename, str):
-        filename = Path(filename)
-
-    with FileOpener(filename) as (filename, handle):
+    with open_path_or_handle(filename) as handle:
+        filename = Path(handle.filename)
         data = SWIFTDataset(filename, mask=mask, handle=handle)
 
     return data

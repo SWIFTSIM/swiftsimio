@@ -58,3 +58,34 @@ class HandleProvider:
         """Close the file handle if this object is the manager of the handle."""
         if self.handle_manager:
             self._handle.close()
+
+    def open_file(self):
+        """"Return the file handle, re-opening if necessary"""
+        return HandleProviderContextManager(self)
+
+
+class HandleProviderContextManager:
+    """
+    Class which can be used to open the file associated with a
+    HandleProvider even if it has been closed. Uses the existing
+    handle if possible, or opens a new handle otherwise. Leaves the
+    state of the HandleProvider unchanged.
+
+    Implemented as a separate class in case any HandleProvider
+    subclass is also a context manager.
+    """
+    def __init__(self, provider: HandleProvider) -> None:
+        self.provider = provider
+        self.handle = None
+
+    def __enter__(self):
+        if self.provider._handle:
+            return self.provider._handle
+        else:
+            self.handle = h5py.File(self.provider.filename, "r")
+            return self.handle
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.handle:
+            self.handle.close()
+        return False

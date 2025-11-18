@@ -7,7 +7,7 @@ import unyt as u
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
 from swiftsimio.masks import SWIFTMask
-from swiftsimio.file_opener import FileOpener
+from swiftsimio.file_utils import open_path_or_handle
 
 
 def _mask_without_warning(fname: str, **kwargs: dict) -> SWIFTMask:
@@ -27,7 +27,7 @@ def _mask_without_warning(fname: str, **kwargs: dict) -> SWIFTMask:
     SWIFTMask
         The mask object.
     """
-    with FileOpener(fname) as (_, f):
+    with open_path_or_handle(fname) as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
         is_soap = f["/Header"].attrs.get("OutputType", "FullVolume") == "SOAP"
     if has_cell_bbox or is_soap:
@@ -87,7 +87,7 @@ def create_n_particle_dataset(
     data_mask.constrain_spatial(region)
 
     # Write the metadata
-    with FileOpener(filename) as (_, infile), h5py.File(output_name, "w") as outfile:
+    with open_path_or_handle(filename) as infile, h5py.File(output_name, "w") as outfile:
 
         list_of_links, _ = find_links(infile)
         write_metadata(infile, outfile, list_of_links, data_mask)

@@ -10,7 +10,6 @@ from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 from swiftsimio._handle_provider import HandleProvider
-from swiftsimio.file_opener import FileOpener
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
@@ -452,7 +451,7 @@ class SWIFTMask(HandleProvider):
         cosmology_factor = cosmologies_dict[quantity]
 
         # Load in the relevant data.
-        with FileOpener(self.metadata.filename, self.metadata._handle) as (_, h5file):
+        with self.metadata.open_file() as h5file:
             if isinstance(h5file, hdfstream.RemoteFile):
                 # Passing a RemoteDataset to numpy is extremely slow because it
                 # results in a separate request for each element. Indexing
