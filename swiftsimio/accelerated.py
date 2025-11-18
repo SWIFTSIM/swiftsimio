@@ -464,19 +464,31 @@ def eliminate_zero_sized_and_merge(ranges):
     if len(ranges) == 0:
         return np.empty((0, 2), dtype=ranges.dtype)
 
-    # Otherwise we always store the first range
-    merged = [ranges[0]]
+    # Sort the ranges by starting index
+    order = np.argsort(ranges[:,0])
+    ranges = ranges[order,:]
 
-    # Check if any subsequent ranges are adjacent
-    for current in ranges[1:]:
-        last = merged[-1]
-        if last[1] == current[0]:
-            # Ranges are adjacent, so merge this range with the previous one
-            assert current[1] > last[1]
-            last[1] = current[1]
-        else:
-            merged.append(current.copy())
-    return np.array(merged)
+    # Determine starts to keep: every starting offset which is NOT
+    # equal to the end of the previous range. Always keep the first.
+    nr_ranges = ranges.shape[0]
+    keep_start = np.ones(nr_ranges, dtype=bool)
+    keep_start[1:] = (ranges[1:,0] != ranges[:-1,1])
+
+    # Determine ends to keep: every end offset which is NOT equal
+    # to the start of the next range. Always keep the last one.
+    keep_end = np.ones(nr_ranges, dtype=bool)
+    keep_end[:-1] = (ranges[:-1,1] != ranges[1:,0])
+
+    # Construct the new ranges array
+    starts = ranges[keep_start,0]
+    ends   = ranges[keep_end,1]
+    assert len(starts) == len(ends)
+    nr_ranges = len(starts)
+    ranges = np.ndarray((nr_ranges,2), dtype=int)
+    ranges[:,0] = starts
+    ranges[:,1] = ends
+
+    return ranges
 
 
 def read_ranges_from_hdfstream(
