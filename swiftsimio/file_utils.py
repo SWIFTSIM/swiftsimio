@@ -51,9 +51,9 @@ def is_hdfstream_dataset(obj):
         return isinstance(obj, hdfstream.RemoteDataset)
 
 
-def open_path_or_handle(obj):
+def split_path_or_handle(obj):
     """
-    Context manager to open a file, given a path or handle
+    Given a filename or handle, return a (filename, handle) tuple
     """
     if isinstance(obj, (str, Path)):
         filename = Path(obj)
@@ -61,4 +61,12 @@ def open_path_or_handle(obj):
     else:
         filename = Path(obj.filename)
         handle = obj
+    return filename, handle
+
+
+def open_path_or_handle(obj):
+    """
+    Context manager to open a file, given a path or handle
+    """
+    filename, handle = split_path_or_handle(obj)
     return HandleProvider(filename, handle).open_file()
