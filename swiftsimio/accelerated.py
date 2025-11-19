@@ -519,22 +519,21 @@ def read_ranges_from_hdfstream(
 
     Parameters
     ----------
-    handle: Dataset
-        HDF5 dataset to slice data from
+    handle : Dataset
+        HDF5 dataset to slice data from.
 
-    ranges: np.ndarray
-        Array of ranges (see :func:`ranges_from_array`)
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
 
-    output_shape: Tuple
+    output_shape : Tuple
         Resultant shape of output.
 
-    output_type: type, optional
+    output_type : type, optional
         ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
 
-    columns: slice, optional
+    columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
-
 
     Returns
     -------

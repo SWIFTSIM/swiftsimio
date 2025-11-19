@@ -19,12 +19,12 @@ def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     Parameters
     ----------
     obj : Group, Dataset or SoftLink
-        object returned by Group.get(key, getlink=True)
+        Object returned by Group.get(key, getlink=True).
 
     Returns
     -------
     bool
-        True if obj is a soft link
+        True if obj is a soft link.
     """
     if hdfstream is not None and isinstance(obj, hdfstream.SoftLink):
         return True
@@ -38,12 +38,12 @@ def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     Parameters
     ----------
     obj : Group, Dataset or SoftLink
-        object returned by Group.get(key, getlink=True)
+        Object returned by Group.get(key, getlink=True).
 
     Returns
     -------
     bool
-        True if obj is a dataset
+        True if obj is a dataset.
     """
     return isinstance(obj, (hdfstream.RemoteDataset, h5py.Dataset))
 
@@ -55,12 +55,12 @@ def is_hdfstream_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool
     Parameters
     ----------
     obj : h5py.Dataset or hdfstream.RemoteDataset
-        a dataset like object in a local or remote file
+        A dataset like object in a local or remote file.
 
     Returns
     -------
     bool
-        True if obj is a hdfstream.RemoteDataset
+        True if obj is a hdfstream.RemoteDataset.
     """
     return isinstance(obj, hdfstream.RemoteDataset)
 
@@ -72,12 +72,12 @@ def split_path_or_handle(obj: str | Path | h5py.File) -> tuple[Path, h5py.File]:
     Parameters
     ----------
     obj : str, Path or h5py.File
-        a path to a file or a file handle object
+        A path to a file or a file handle object.
 
     Returns
     -------
     tuple[Path, h5py.File]
-        tuple with the path and file handle
+        Tuple with the path and file handle.
     """
     if isinstance(obj, (str, Path)):
         filename = Path(obj)
@@ -95,12 +95,12 @@ def open_path_or_handle(obj: str | Path | h5py.File) -> h5py.File:
     Parameters
     ----------
     obj : str, Path or h5py.File
-        a path to a file or a file handle object
+        A path to a file or a file handle object.
 
     Returns
     -------
     h5py.File
-        the file handle
+        The file handle.
     """
     filename, handle = split_path_or_handle(obj)
     return HandleProvider(filename, handle).open_file()

@@ -73,7 +73,6 @@ class HandleProvider:
         -------
         ContextManager
             A context manager which can be used to read the file.
-
         """
         if self._handle:
             yield self._handle

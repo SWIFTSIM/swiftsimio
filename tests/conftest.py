@@ -63,7 +63,20 @@ def _requires(filename: str) -> str:
         return file_location
 
 
-def _repeat_tests(filenames):
+def _repeat_tests(filenames: list[str]) -> list[str]:
+    """
+    For each filename also return a h5py.File and a hdfstream.RemoteFile.
+
+    Parameters
+    ----------
+    filenames : list[str]
+        List of filenames to use in a test.
+
+    Returns
+    -------
+    list[str | h5py.File | hdfstream.RemoteFile]
+        List containing filenames and local and remote file objects.
+    """
     all_tests = []
     for filename in filenames:
         all_tests += [
@@ -113,6 +126,11 @@ def cosmological_volume_only_single(request: pytest.FixtureRequest) -> Generator
     """
     Fixture provides only a single (non-distributed) dataset to test on.
 
+    Parameters
+    ----------
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
     Yields
     ------
     out : Generator[str, None, None]
@@ -125,6 +143,11 @@ def cosmological_volume_only_single(request: pytest.FixtureRequest) -> Generator
 def cosmological_volume_only_distributed(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides only a distributed (not monolithic) dataset to test on.
+
+    Parameters
+    ----------
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
 
     Yields
     ------
@@ -139,6 +162,11 @@ def cosmological_volume_dithered(request: pytest.FixtureRequest) -> Generator[st
     """
     Fixture provides a dithered dataset to test on.
 
+    Parameters
+    ----------
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
     Yields
     ------
     out : Generator[str, None, None]
@@ -151,6 +179,11 @@ def cosmological_volume_dithered(request: pytest.FixtureRequest) -> Generator[st
 def soap_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides a sample SOAP file to test on.
+
+    Parameters
+    ----------
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
 
     Yields
     ------
