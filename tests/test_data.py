@@ -11,8 +11,6 @@ from swiftsimio import load
 from .helper import _mask_without_warning as mask
 from os import remove
 
-import h5py
-
 from unyt import K, Msun
 from numpy import isclose
 from numpy import array as numpy_array

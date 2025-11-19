@@ -68,7 +68,6 @@ def test_file_handle_cleanup(cosmological_volume_only_single):
     If a handle is passed in to SWIFTUnits or similar, then the handle should
     NOT be closed.
     """
-
     # The input cosmological_volume_only_single may be a filename or a handle,
     # so separate them. Handle will be None if we got a filename.
     filename, handle = split_path_or_handle(cosmological_volume_only_single)
@@ -161,7 +160,6 @@ def test_file_handle_shared_when_masked(cosmological_volume_only_single):
     ``test_mask_and_dataset_share_metadata``) so we don't expect the metadata
     to have the same handle in this case.
     """
-
     # The input cosmological_volume_only_single may be a filename or a handle,
     # so separate them. Handle will be None if we got a filename.
     filename, handle = split_path_or_handle(cosmological_volume_only_single)

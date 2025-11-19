@@ -33,7 +33,6 @@ def _requires(filename: str) -> str:
     str
         The location of the desired file.
     """
-
     if isinstance(filename, hdfstream.RemoteFile):
         return filename
 

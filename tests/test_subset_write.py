@@ -74,7 +74,6 @@ def test_subset_writer(snapshot_or_soap):
     Writes a subset of the input file to a new file
     and compares result against masked load of the original file.
     """
-
     # Get the name of the input test file
     if isinstance(snapshot_or_soap, (Path, str)):
         filename = str(snapshot_or_soap)

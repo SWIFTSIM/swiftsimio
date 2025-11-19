@@ -1,7 +1,6 @@
 """Tests the masking using some test data."""
 
 import warnings
-import h5py
 import pytest
 from swiftsimio import load, cosmo_array, cosmo_quantity
 from swiftsimio.file_utils import open_path_or_handle
