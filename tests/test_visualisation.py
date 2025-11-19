@@ -175,7 +175,7 @@ class TestProjection:
         return
 
     @pytest.mark.parametrize("backend", projection_backends.keys())
-    def test_equivalent_regions(self, backend, cosmological_volume_only_single):
+    def test_equivalent_regions(self, backend, cosmological_volume_only_single_local):
         """
         Check that equivalent regions are (close enough to) equivalent.
 
@@ -197,7 +197,7 @@ class TestProjection:
         It would be good to split this test into several tests, but avoid re-computing the
         ref_img for each one. Could use a fixture.
         """
-        sd = load(cosmological_volume_only_single)
+        sd = load(cosmological_volume_only_single_local)
         if backend == "gpu":
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
@@ -534,7 +534,7 @@ class TestSlice:
         assert (image1 == image2).all()
 
     @pytest.mark.parametrize("backend", slice_backends.keys())
-    def test_equivalent_regions(self, backend, cosmological_volume_only_single):
+    def test_equivalent_regions(self, backend, cosmological_volume_only_single_local):
         """
         Check that slices of equivalent regions are (close enough to) equivalent.
 
@@ -552,7 +552,7 @@ class TestSlice:
         It would be good to split this test into several tests, but avoid re-computing the
         ref_img for each one. Could use a fixture.
         """
-        sd = load(cosmological_volume_only_single)
+        sd = load(cosmological_volume_only_single_local)
         parallel = True
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
         box_res = 256
@@ -808,10 +808,10 @@ class TestVolumeRender:
         assert deposition_1[100, 100, 100] * 8.0 == deposition_2[200, 200, 200]
 
     def test_volume_render_and_unfolded_deposit_with_units(
-        self, cosmological_volume_only_single
+        self, cosmological_volume_only_single_local
     ):
         """Check that the density in the render matches the input density."""
-        data = load(cosmological_volume_only_single)
+        data = load(cosmological_volume_only_single_local)
         data.gas.smoothing_lengths = 1e-30 * data.gas.smoothing_lengths
         npix = 64
 
@@ -886,7 +886,7 @@ class TestVolumeRender:
 
         assert (image1 == image2).all()
 
-    def test_equivalent_regions(self, cosmological_volume_only_single):
+    def test_equivalent_regions(self, cosmological_volume_only_single_local):
         """
         Test that volume renders of equivalent regions are (close enough to) equivalent.
 
@@ -904,7 +904,7 @@ class TestVolumeRender:
         It would be good to split this test into several tests, but avoid re-computing the
         ref_img for each one. Could use a fixture.
         """
-        sd = load(cosmological_volume_only_single)
+        sd = load(cosmological_volume_only_single_local)
         parallel = False  # memory gets a bit out of hand otherwise
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
         box_res = 32
@@ -1004,13 +1004,13 @@ class TestVolumeRender:
         )
 
 
-def test_selection_render(cosmological_volume_only_single):
+def test_selection_render(cosmological_volume_only_single_local):
     """
     Check that we can run rendering on a sub-region of the volume.
 
     Just checks that nothing crashes.
     """
-    data = load(cosmological_volume_only_single)
+    data = load(cosmological_volume_only_single_local)
     bs = data.metadata.boxsize[0]
 
     # Projection
@@ -1050,10 +1050,10 @@ def test_selection_render(cosmological_volume_only_single):
     return
 
 
-def test_comoving_versus_physical(cosmological_volume_only_single):
+def test_comoving_versus_physical(cosmological_volume_only_single_local):
     """Test what happens if you try to mix up physical and comoving quantities."""
     # this test is pretty slow if we don't mask out some particles
-    m = mask(cosmological_volume_only_single)
+    m = mask(cosmological_volume_only_single_local)
     boxsize = m.metadata.boxsize
     m.constrain_spatial([[0.0 * b, 0.05 * b] for b in boxsize])
     region = [
@@ -1066,7 +1066,7 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
     ]
     for func, aexp in [(project_gas, -2.0), (slice_gas, -3.0), (render_gas, -3.0)]:
         # normal case: everything comoving
-        data = load(cosmological_volume_only_single, mask=m)
+        data = load(cosmological_volume_only_single_local, mask=m)
         # we force the default (project="masses") to check the cosmo_factor
         # conversion in this case
         img = func(data, resolution=64, project="masses", region=region, parallel=True)
@@ -1145,7 +1145,7 @@ def test_comoving_versus_physical(cosmological_volume_only_single):
         assert (img.cosmo_factor.expr - a ** (aexp - 3.0)).simplify() == 0
 
 
-def test_nongas_smoothing_lengths(cosmological_volume_only_single):
+def test_nongas_smoothing_lengths(cosmological_volume_only_single_local):
     """
     Check that calculating smoothing lengths give usable results.
 
@@ -1155,7 +1155,7 @@ def test_nongas_smoothing_lengths(cosmological_volume_only_single):
     a cosmo_array for cosmo_array input.
     """
     # If project_gas runs without error the smoothing lengths seem usable.
-    data = load(cosmological_volume_only_single)
+    data = load(cosmological_volume_only_single_local)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
     )
@@ -1181,7 +1181,7 @@ class TestPowerSpectrum:
     """Tests for the visualisation module's power spectrum tools."""
 
     def test_dark_matter_power_spectrum(
-        self, cosmological_volume_only_single, save=False
+        self, cosmological_volume_only_single_local, save=False
     ):
         """
         Check that power spectra can be calculated.
@@ -1189,7 +1189,7 @@ class TestPowerSpectrum:
         Runs both a series of "raw" depositions with different fold values and
         combining them into a power spectrum. Can save a plot for inspection.
         """
-        data = load(cosmological_volume_only_single)
+        data = load(cosmological_volume_only_single_local)
 
         data.dark_matter.smoothing_lengths = generate_smoothing_lengths(
             data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8

@@ -139,6 +139,24 @@ def cosmological_volume_only_single(request: pytest.FixtureRequest) -> Generator
     yield request.param("EagleSingle.hdf5")
 
 
+@pytest.fixture
+def cosmological_volume_only_single_local() -> Generator[str, None, None]:
+    """
+    Fixture provides only a single (non-distributed) dataset to test on.
+
+    This version only opens the file by name. Tests using this fixture will
+    only run once and will not try passing in an already open h5py.File or
+    a hdfstream.RemoteFile. This is intended for expensive tests where we
+    are not testing the file access mechanism.
+
+    Yields
+    ------
+    out : Generator[str, None, None]
+        The file name, after downloading if required.
+    """
+    yield _requires("EagleSingle.hdf5")
+
+
 @pytest.fixture(params=methods)
 def cosmological_volume_only_distributed(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
