@@ -454,8 +454,20 @@ def read_ranges_from_file_chunked(
         return output
 
 
-def eliminate_zero_sized_and_merge(ranges):
+def eliminate_zero_sized_and_merge(ranges: np.ndarray) -> np.ndarray:
+    """
+    Merge adjacent ranges and remove empty ranges from the input array.
 
+    Parameters
+    ----------
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
+
+    Returns
+    -------
+    np.ndarray
+        Result from reading only the relevant values from ``handle``.
+    """
     # First eliminate any zero length ranges
     non_zero_size = (ranges[:, 1] - ranges[:, 0]) > 0
     ranges = ranges[non_zero_size, :]
@@ -467,6 +479,7 @@ def eliminate_zero_sized_and_merge(ranges):
     # Sort the ranges by starting index
     order = np.argsort(ranges[:,0])
     ranges = ranges[order,:]
+    assert np.all(ranges[1:,0] > ranges[:-1,0])
 
     # Determine starts to keep: every starting offset which is NOT
     # equal to the end of the previous range. Always keep the first.
@@ -499,12 +512,13 @@ def read_ranges_from_hdfstream(
     columns: slice = np.s_[:],
 ) -> np.array:
     """
+    Request the specified ranges from the hdfstream server.
+
     Takes a hdfstream remote dataset, and the set of ranges from
     ranges_from_array, and sends a http request for those ranges.
 
     Parameters
     ----------
-
     handle: Dataset
         HDF5 dataset to slice data from
 
@@ -524,11 +538,9 @@ def read_ranges_from_hdfstream(
 
     Returns
     -------
-
-    array: np.ndarray
+    np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
-
     # Merge any adjacent ranges: input may contain a range for every cell,
     # even if we're reading the whole array.
     ranges = eliminate_zero_sized_and_merge(ranges)
@@ -606,6 +618,10 @@ def read_ranges_from_file(
     read_ranges_from_file_unchunked
         Reads data ranges for unchunked hdf5 file.
     """
+    # Sort the ranges by starting index
+    order = np.argsort(ranges[:,0])
+    ranges = ranges[order,:]
+
     # It was found that the range size for which read_ranges_from_file_chunked was
     # faster than unchunked was approximately 5e5. For ranges larger than this the
     # overheads associated with read_ranges_from_file_chunked caused slightly worse
