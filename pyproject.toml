@@ -43,7 +43,7 @@ dependencies = [
     "h5py",
     "unyt>=3.0.4",
     "numba>=0.50.0",
-    "hdfstream>=0.0.20",
+    "hdfstream>=0.0.21",
 ]
 
 [project.urls]
