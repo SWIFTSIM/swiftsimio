@@ -208,6 +208,14 @@ def read_ranges_from_file_low_level(
     np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
+
+    # This will only work if slices do not overlap
+    order = np.argsort(ranges[:,0])
+    sorted_starts = ranges[order,0]
+    sorted_stops  = ranges[order,1]
+    if np.any(sorted_stops[:-1] > sorted_starts[1:]):
+        raise RuntimeError("slices must not overlap")
+
     # Get dataset handle
     dataset_id = handle.id
 
@@ -264,6 +272,26 @@ def read_ranges_from_file_low_level(
 
     # Reshape: if columns was an integer we need to remove a dimension
     result = result.reshape(output_shape)
+
+    # If the slices were not sorted by start index, we'll need to reorder the data
+    if np.any(ranges[1:,0] <= ranges[:-1,0]):
+        # Compute the offset into the result array for each slice.
+        # HDF5 reads the slices in order of starting index.
+        ranges_read = np.empty_like(ranges)
+        offset = 0
+        for i in np.argsort(ranges[:,0]):
+            n = ranges[i,1] - ranges[i,0]
+            ranges_read[i,0] = offset
+            ranges_read[i,1] = offset + n
+            offset += n
+        # Copy the slices to a new array in the input slice order
+        result_sorted = np.empty_like(result)
+        offset = 0
+        for start, stop in ranges_read:
+            n = stop - start
+            result_sorted[offset:offset+n,...] = result[start:stop,...]
+            offset += n
+        result = result_sorted
 
     if not result.dtype.isnative:
         # The data type we have read in is the opposite endian-ness to the
