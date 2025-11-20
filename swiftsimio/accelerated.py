@@ -5,7 +5,7 @@ Numba does not use classes, unfortunately.
 """
 
 import numpy as np
-
+import h5py
 from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
@@ -209,26 +209,45 @@ def read_ranges_from_file_low_level(
         Result from reading only the relevant values from ``handle``.
     """
     # Get dataset handle
-    dataset_id = dataset.id
+    dataset_id = handle.id
 
     # Get file dataspace handle
     file_space_id = dataset_id.get_space()
     file_shape = file_space_id.get_simple_extent_dims()
 
+    # Determine range of elements to read in the second dimension (if any)
+    if len(handle.shape) == 1:
+        column_start = ()
+        column_count = ()
+    elif len(handle.shape) == 2:
+        if isinstance(columns, slice):
+            start, stop, step = columns.indices(handle.shape[1])
+            if step != 1:
+                raise RuntimeError("Can only handle column slices with step=1")
+            column_start = (start,)
+            column_count = (stop-start,)
+        elif isinstance(columns, int):
+            column_start = (columns,)
+            column_count = (1,)
+        else:
+            raise RuntimeError("columns parameter must be slice or integer")
+    else:
+        raise RuntimeError("Can only handle 1 or 2 dimensional datasets")
+
     # Select the slices to read
     nr_in_first_dim = 0
     file_space_id.select_none()
-    for start, count in ranges:
+    for start, stop in ranges:
+        count = stop - start
         if count > 0:
             # Select this slice
-            slice_start = tuple([start,]+[0 for fs in file_shape[1:]])
-            slice_count = tuple([count,]+[fs for fs in file_shape[1:]])
+            slice_start = (start,)+column_start
+            slice_count = (count,)+column_count
             file_space_id.select_hyperslab(slice_start, slice_count, op=h5py.h5s.SELECT_OR)
             nr_in_first_dim += count
 
     # Allocate the output array
-    result_shape = [nr_in_first_dim,]+list(file_shape[1:])
-    result_shape = tuple([int(rs) for rs in result_shape])
+    result_shape = (nr_in_first_dim,)+column_count
     result = np.ndarray(result_shape, dtype=output_type)
 
     # Output array must have the expected number of elements
@@ -241,13 +260,10 @@ def read_ranges_from_file_low_level(
         mem_space_id = h5py.h5s.create_simple(result_shape)
         dataset_id.read(mem_space_id, file_space_id, result)
         mem_space_id.close()
-
-    # Tidy up
     file_space_id.close()
 
-    # Select columns if necessary
-    if len(result.shape) > 1:
-        result = result[:, columns, ...]
+    # Reshape: if columns was an integer we need to remove a dimension
+    result = result.reshape(output_shape)
 
     if not result.dtype.isnative:
         # The data type we have read in is the opposite endian-ness to the
