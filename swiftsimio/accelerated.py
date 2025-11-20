@@ -454,56 +454,6 @@ def read_ranges_from_file_chunked(
         return output
 
 
-def eliminate_zero_sized_and_merge(ranges: np.ndarray) -> np.ndarray:
-    """
-    Merge adjacent ranges and remove empty ranges from the input array.
-
-    Parameters
-    ----------
-    ranges : np.ndarray
-        Array of ranges (see :func:`ranges_from_array`).
-
-    Returns
-    -------
-    np.ndarray
-        Result from reading only the relevant values from ``handle``.
-    """
-    # First eliminate any zero length ranges
-    non_zero_size = (ranges[:, 1] - ranges[:, 0]) > 0
-    ranges = ranges[non_zero_size, :]
-
-    # We might now have no ranges left
-    if len(ranges) == 0:
-        return np.empty((0, 2), dtype=ranges.dtype)
-
-    # Sort the ranges by starting index
-    order = np.argsort(ranges[:,0])
-    ranges = ranges[order,:]
-    assert np.all(ranges[1:,0] > ranges[:-1,0])
-
-    # Determine starts to keep: every starting offset which is NOT
-    # equal to the end of the previous range. Always keep the first.
-    nr_ranges = ranges.shape[0]
-    keep_start = np.ones(nr_ranges, dtype=bool)
-    keep_start[1:] = (ranges[1:,0] != ranges[:-1,1])
-
-    # Determine ends to keep: every end offset which is NOT equal
-    # to the start of the next range. Always keep the last one.
-    keep_end = np.ones(nr_ranges, dtype=bool)
-    keep_end[:-1] = (ranges[:-1,1] != ranges[1:,0])
-
-    # Construct the new ranges array
-    starts = ranges[keep_start,0]
-    ends   = ranges[keep_end,1]
-    assert len(starts) == len(ends)
-    nr_ranges = len(starts)
-    ranges = np.ndarray((nr_ranges,2), dtype=int)
-    ranges[:,0] = starts
-    ranges[:,1] = ends
-
-    return ranges
-
-
 def read_ranges_from_hdfstream(
     handle: Dataset,
     ranges: np.ndarray,
@@ -540,13 +490,20 @@ def read_ranges_from_hdfstream(
     np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
-    # Merge any adjacent ranges: input may contain a range for every cell,
-    # even if we're reading the whole array.
-    ranges = eliminate_zero_sized_and_merge(ranges)
+    # Merge any adjacent ranges
+    ranges = concatenate_ranges(ranges)
 
-    # Construct list of slices to read
+    # If the ranges are not sorted, get the ordering by start index
+    if np.any(ranges[1:,0] < ranges[:-1,1]):
+        order = np.argsort(ranges[:,0])
+        need_reorder = True
+    else:
+        order = np.arange(ranges.shape[0], dtype=int)
+        need_reorder = False
+
+    # Construct an ordered list of slices to request from the server
     slices = []
-    for read_start, read_end in ranges:
+    for read_start, read_end in ranges[order]:
         if handle.ndim > 1:
             this_slice = np.s_[read_start:read_end, columns]
         else:
@@ -560,8 +517,26 @@ def read_ranges_from_hdfstream(
     # not what we expected.
     output = np.empty(output_shape, dtype=output_type)
     if len(slices) > 0:
-        # Requesting zero slices does not work (what shape would the result be?)
         handle.request_slices(slices, dest=output)
+
+    # Put the result into the same order as the ranges array
+    if need_reorder:
+        # Compute the offset into the output array for each slice.
+        ranges_read = np.empty_like(ranges)
+        offset = 0
+        for i in order:
+            n = ranges[i,1] - ranges[i,0]
+            ranges_read[i,0] = offset
+            ranges_read[i,1] = offset + n
+            offset += n
+        # Copy the slices to a new array in the input slice order
+        output_sorted = np.empty_like(output)
+        offset = 0
+        for start, stop in ranges_read:
+            n = stop - start
+            output_sorted[offset:offset+n,...] = output[start:stop,...]
+            offset += n
+        output = output_sorted
 
     if not output.dtype.isnative:
         # The data type we have read in is the opposite endian-ness to the
