@@ -592,10 +592,6 @@ def read_ranges_from_file(
     read_ranges_from_file_unchunked
         Reads data ranges for unchunked hdf5 file.
     """
-    # Sort the ranges by starting index
-    order = np.argsort(ranges[:,0])
-    ranges = ranges[order,:]
-
     # It was found that the range size for which read_ranges_from_file_chunked was
     # faster than unchunked was approximately 5e5. For ranges larger than this the
     # overheads associated with read_ranges_from_file_chunked caused slightly worse
