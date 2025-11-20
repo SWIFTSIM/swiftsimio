@@ -10,6 +10,7 @@ from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
 from ._ordered_slices import OrderedSlices
+from .slice_utils import read_slices
 
 __all__ = [
     "jit",
@@ -166,6 +167,63 @@ def read_ranges_from_file_unchunked(
 
     # Ensure the result is a native endian type
     to_native_byteorder_inplace(output)
+
+    return output
+
+
+def read_ranges_from_file_low_level(
+    handle: Dataset,
+    ranges: np.ndarray,
+    output_shape: tuple,
+    output_type: type = np.float64,
+    columns: slice = np.s_[:],
+) -> np.array:
+    """
+    Read only a selection of index ranges from a dataset that is not chunked.
+
+    Takes a hdf5 dataset, and the set of ranges from
+    ranges_from_array, and reads only those ranges from the file.
+
+    This version uses the h5py low level API.
+
+    Parameters
+    ----------
+    handle : Dataset
+        HDF5 dataset to slice data from.
+
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
+
+    output_shape : tuple
+        Resultant shape of output.
+
+    output_type : type, optional
+        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+
+    columns : slice, optional
+        Selector for columns if using a multi-dimensional array. If the array is only
+        a single dimension this is not used.
+
+    Returns
+    -------
+    np.ndarray
+        Result from reading only the relevant values from ``handle``.
+    """
+    starts = ranges[:,0]
+    counts = ranges[:,1] - ranges[:,0]
+    output = read_slices(handle, starts, counts).astype(output_type)
+    if len(output.shape) > 1:
+        output = output[:, columns, ...]
+
+    if not output.dtype.isnative:
+        # The data type we have read in is the opposite endian-ness to the
+        # machine we're on. Convert it here, to save pain down the line.
+        output = output.byteswap(inplace=True).newbyteorder()
+
+        if not output.dtype.isnative:
+            raise RuntimeError(
+                "Unable to find a native type that is a match to read data."
+            )
 
     return output
 
@@ -522,20 +580,8 @@ def read_ranges_from_file(
     read_ranges_from_file_unchunked
         Reads data ranges for unchunked hdf5 file.
     """
-    # It was found that the range size for which read_ranges_from_file_chunked was
-    # faster than unchunked was approximately 5e5. For ranges larger than this the
-    # overheads associated with read_ranges_from_file_chunked caused slightly worse
-    # performance than read_ranges_from_file_unchunked
-    cross_over_range_size = 5e5
-
-    average_range_size = np.diff(ranges).mean()
-    read_ranges = (
-        read_ranges_from_file_chunked
-        if handle.chunks is not None and average_range_size < cross_over_range_size
-        else read_ranges_from_file_unchunked
-    )
     return (
-        read_ranges_from_hdfstream if hasattr(handle, "request_slices") else read_ranges
+        read_ranges_from_hdfstream if hasattr(handle, "request_slices") else read_ranges_from_file_low_level
     )(handle, ranges, output_shape, output_type, columns)
 
 
