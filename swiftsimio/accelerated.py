@@ -10,7 +10,6 @@ from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
 from ._ordered_slices import OrderedSlices
-from .slice_utils import read_slices
 
 __all__ = [
     "jit",
@@ -209,23 +208,58 @@ def read_ranges_from_file_low_level(
     np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
-    starts = ranges[:,0]
-    counts = ranges[:,1] - ranges[:,0]
-    output = read_slices(handle, starts, counts).astype(output_type)
-    if len(output.shape) > 1:
-        output = output[:, columns, ...]
+    # Get dataset handle
+    dataset_id = dataset.id
 
-    if not output.dtype.isnative:
+    # Get file dataspace handle
+    file_space_id = dataset_id.get_space()
+    file_shape = file_space_id.get_simple_extent_dims()
+
+    # Select the slices to read
+    nr_in_first_dim = 0
+    file_space_id.select_none()
+    for start, count in ranges:
+        if count > 0:
+            # Select this slice
+            slice_start = tuple([start,]+[0 for fs in file_shape[1:]])
+            slice_count = tuple([count,]+[fs for fs in file_shape[1:]])
+            file_space_id.select_hyperslab(slice_start, slice_count, op=h5py.h5s.SELECT_OR)
+            nr_in_first_dim += count
+
+    # Allocate the output array
+    result_shape = [nr_in_first_dim,]+list(file_shape[1:])
+    result_shape = tuple([int(rs) for rs in result_shape])
+    result = np.ndarray(result_shape, dtype=output_type)
+
+    # Output array must have the expected number of elements
+    nr_selected = file_space_id.get_select_npoints()
+    if nr_selected != result.size:
+        raise RuntimeError("Output buffer is not the right size for the selected slices!")
+
+    # If we selected any elements, read the data
+    if nr_in_first_dim > 0:
+        mem_space_id = h5py.h5s.create_simple(result_shape)
+        dataset_id.read(mem_space_id, file_space_id, result)
+        mem_space_id.close()
+
+    # Tidy up
+    file_space_id.close()
+
+    # Select columns if necessary
+    if len(result.shape) > 1:
+        result = result[:, columns, ...]
+
+    if not result.dtype.isnative:
         # The data type we have read in is the opposite endian-ness to the
         # machine we're on. Convert it here, to save pain down the line.
-        output = output.byteswap(inplace=True).newbyteorder()
+        result = result.byteswap(inplace=True).newbyteorder()
 
-        if not output.dtype.isnative:
+        if not result.dtype.isnative:
             raise RuntimeError(
                 "Unable to find a native type that is a match to read data."
             )
 
-    return output
+    return result
 
 
 def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
