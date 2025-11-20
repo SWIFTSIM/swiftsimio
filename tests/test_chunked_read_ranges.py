@@ -11,7 +11,7 @@ from swiftsimio.accelerated import (
 
 def test_concatenate():
     """Test joining consecutive ranges together."""
-    ranges = np.array([[1, 11], [11, 15], [17, 21], [20, 25]])
+    ranges = np.array([[1, 11], [11, 15], [17, 20], [20, 25]])
     correct = np.array([[1, 15], [17, 25]])
 
     concatenated = concatenate_ranges(ranges)

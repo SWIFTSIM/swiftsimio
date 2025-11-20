@@ -210,7 +210,7 @@ def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
     for i in range(1, len(ranges)):
         lower = ranges[i][0]
         upper = ranges[i][1]
-        if lower <= concatenated[-1][1]:
+        if lower == concatenated[-1][1]:
             concatenated[-1][1] = upper
         else:
             concatenated.append(list(ranges[i]))
