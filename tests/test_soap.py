@@ -1,7 +1,9 @@
 """Tests that we can open SOAP files."""
 
 import pytest
+import numpy as np
 from swiftsimio import load, mask, cosmo_quantity
+from swiftsimio.file_utils import open_path_or_handle
 
 
 def test_soap_can_load(soap_example):
@@ -91,5 +93,15 @@ def test_soap_multiple_row_mask_non_spatial(soap_example, spatial_only):
     this_mask.constrain_indices(indices)
 
     data = load(soap_example, mask=this_mask)
-
     assert len(data.spherical_overdensity_200_mean.total_mass) == len(indices)
+
+    # Check that we read the right values in the right order
+    with open_path_or_handle(soap_example) as f:
+        all_values = f["SO/200_mean/TotalMass"][...]
+
+    # Expected ordering depends on whether we use spatial_only
+    values_read = data.spherical_overdensity_200_mean.total_mass.value
+    if spatial_only:
+        assert np.all(values_read == all_values[indices])
+    else:
+        assert np.all(values_read == all_values[sorted(indices)])
