@@ -63,29 +63,6 @@ def _requires(filename: str) -> str:
         return file_location
 
 
-def _repeat_tests(filenames: list[str]) -> list[str]:
-    """
-    For each filename also return a h5py.File and a hdfstream.RemoteFile.
-
-    Parameters
-    ----------
-    filenames : list[str]
-        List of filenames to use in a test.
-
-    Returns
-    -------
-    list[str | h5py.File | hdfstream.RemoteFile]
-        List containing filenames and local and remote file objects.
-    """
-    all_tests = []
-    for filename in filenames:
-        all_tests += [
-            filename,
-            # hdfstream.open("cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"),
-        ]
-    return all_tests
-
-
 #
 # Will repeat each test opening the file in several ways:
 #
