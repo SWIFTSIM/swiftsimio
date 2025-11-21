@@ -81,9 +81,10 @@ def _repeat_tests(filenames: list[str]) -> list[str]:
     for filename in filenames:
         all_tests += [
             filename,
-            #hdfstream.open("cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"),
+            # hdfstream.open("cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"),
         ]
     return all_tests
+
 
 #
 # Will repeat each test opening the file in several ways:
@@ -95,13 +96,17 @@ def _repeat_tests(filenames: list[str]) -> list[str]:
 methods = [
     lambda filename: _requires(filename),
     lambda filename: h5py.File(_requires(filename), "r"),
-    lambda filename: hdfstream.open("cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"),
+    lambda filename: hdfstream.open(
+        "cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"
+    ),
 ]
 filenames = [
     "EagleDistributed.hdf5",
     "EagleSingle.hdf5",
     "LegacyCosmologicalVolume.hdf5",
 ]
+
+
 @pytest.fixture(params=itertools.product(filenames, methods))
 def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
@@ -122,7 +127,9 @@ def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, 
 
 
 @pytest.fixture(params=methods)
-def cosmological_volume_only_single(request: pytest.FixtureRequest) -> Generator[str, None, None]:
+def cosmological_volume_only_single(
+    request: pytest.FixtureRequest,
+) -> Generator[str, None, None]:
     """
     Fixture provides only a single (non-distributed) dataset to test on.
 
@@ -158,7 +165,9 @@ def cosmological_volume_only_single_local() -> Generator[str, None, None]:
 
 
 @pytest.fixture(params=methods)
-def cosmological_volume_only_distributed(request: pytest.FixtureRequest) -> Generator[str, None, None]:
+def cosmological_volume_only_distributed(
+    request: pytest.FixtureRequest,
+) -> Generator[str, None, None]:
     """
     Fixture provides only a distributed (not monolithic) dataset to test on.
 
@@ -176,7 +185,9 @@ def cosmological_volume_only_distributed(request: pytest.FixtureRequest) -> Gene
 
 
 @pytest.fixture(params=methods)
-def cosmological_volume_dithered(request: pytest.FixtureRequest) -> Generator[str, None, None]:
+def cosmological_volume_dithered(
+    request: pytest.FixtureRequest,
+) -> Generator[str, None, None]:
     """
     Fixture provides a dithered dataset to test on.
 
@@ -217,6 +228,8 @@ filenames = [
     "LegacyCosmologicalVolume.hdf5",
     "SoapExample.hdf5",
 ]
+
+
 @pytest.fixture(params=itertools.product(filenames, methods))
 def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """

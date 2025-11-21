@@ -406,7 +406,13 @@ class __SWIFTNamedColumnDataset(HandleProvider):
         data.gas.element_mass_fraction.helium
     """
 
-    def __init__(self, field_path: str, named_columns: list[str], name: str, handle: h5py.File | None = None) -> None:
+    def __init__(
+        self,
+        field_path: str,
+        named_columns: list[str],
+        name: str,
+        handle: h5py.File | None = None,
+    ) -> None:
         super().__init__(handle.filename, handle=handle)
         self.field_path = field_path
         self.named_columns = named_columns
@@ -596,7 +602,10 @@ def _generate_datasets(
             # like {ptype}.{ThisNamedColumnDataset}.column_name. This follows from the
             # above templating.
 
-            this_named_column_dataset_bases = (__SWIFTNamedColumnDataset, HandleProvider)
+            this_named_column_dataset_bases = (
+                __SWIFTNamedColumnDataset,
+                HandleProvider,
+            )
             this_named_column_dataset_dict = {}
 
             for index, column in enumerate(named_columns):
@@ -626,7 +635,10 @@ def _generate_datasets(
             )
 
             field_property = ThisNamedColumnDataset(
-                handle=handle, field_path=field_path, named_columns=named_columns, name=field_name
+                handle=handle,
+                field_path=field_path,
+                named_columns=named_columns,
+                name=field_name,
             )
 
         this_dataset_dict[field_name] = field_property
@@ -712,9 +724,9 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert (self._handle is self.mask._handle) or self.filename.samefile(self.mask.filename), (
-                f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
-            )
+            assert (self._handle is self.mask._handle) or self.filename.samefile(
+                self.mask.filename
+            ), f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
             self.units = self.mask.units
         else:
             self.units = SWIFTUnits(self.filename, handle=self.handle)
@@ -730,9 +742,9 @@ class SWIFTDataset(HandleProvider):
         """
         if self.mask is not None:
             # we can save ourselves the trouble of reading it again
-            assert (self._handle is self.mask._handle) or self.filename.samefile(self.mask.filename), (
-                f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
-            )
+            assert (self._handle is self.mask._handle) or self.filename.samefile(
+                self.mask.filename
+            ), f"Mask is for {self.mask.filename} but dataset is for {self.filename}."
             self.metadata = self.mask.metadata
         else:
             self.metadata = _metadata_discriminator(

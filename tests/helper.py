@@ -87,8 +87,10 @@ def create_n_particle_dataset(
     data_mask.constrain_spatial(region)
 
     # Write the metadata
-    with open_path_or_handle(filename) as infile, h5py.File(output_name, "w") as outfile:
-
+    with (
+        open_path_or_handle(filename) as infile,
+        h5py.File(output_name, "w") as outfile,
+    ):
         list_of_links, _ = find_links(infile)
         write_metadata(infile, outfile, list_of_links, data_mask)
 

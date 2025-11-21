@@ -366,7 +366,6 @@ def write_subset(output_file: str, mask: SWIFTMask) -> None:
     """
     # Open the files
     with mask.metadata.open_file() as infile, h5py.File(output_file, "w") as outfile:
-
         # Write metadata and data subset
         list_of_links, list_of_link_paths = find_links(infile)
         write_metadata(infile, outfile, list_of_links, mask)

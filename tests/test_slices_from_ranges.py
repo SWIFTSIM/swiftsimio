@@ -8,75 +8,101 @@ from swiftsimio.accelerated import slices_from_ranges
 range_cases = [
     # A single range
     {
-        "ranges"  : [[0,10],],
-        "slices"  : [np.s_[0:10],],
-        "error"   : None,
+        "ranges": [
+            [0, 10],
+        ],
+        "slices": [
+            np.s_[0:10],
+        ],
+        "error": None,
     },
     # Two ranges which cannot be merged
     {
-        "ranges"  : [[0,10],[20,40]],
-        "slices"  : [np.s_[0:10], np.s_[20:40]],
-        "error"   : None,
+        "ranges": [[0, 10], [20, 40]],
+        "slices": [np.s_[0:10], np.s_[20:40]],
+        "error": None,
     },
     # Two ranges which cannot be merged, in reverse order
     {
-        "ranges"  : [[20,40],[0,10]],
-        "slices"  : [np.s_[0:10], np.s_[20:40]], # output should be sorted
-        "error"   : None,
+        "ranges": [[20, 40], [0, 10]],
+        "slices": [np.s_[0:10], np.s_[20:40]],  # output should be sorted
+        "error": None,
     },
     # Two ranges which can be merged
     {
-        "ranges"  : [[0,20],[20,50]],
-        "slices"  : [np.s_[0:50]],
-        "error"   : None,
+        "ranges": [[0, 20], [20, 50]],
+        "slices": [np.s_[0:50]],
+        "error": None,
     },
     # Two ranges which can be merged, in reverse order
     {
-        "ranges"  : [[20,50],[0,20]],
-        "slices"  : [np.s_[0:50]],
-        "error"   : None,
+        "ranges": [[20, 50], [0, 20]],
+        "slices": [np.s_[0:50]],
+        "error": None,
     },
     # Including some zero sized ranges, which should be removed
     {
-        "ranges"  : [[5,10], [10,10], [20,15], [15,10], [15,0], [30,40], [40,40], [40,43]],
-        "slices"  : [np.s_[5:10], np.s_[30:43]],
-        "error"   : None,
+        "ranges": [
+            [5, 10],
+            [10, 10],
+            [20, 15],
+            [15, 10],
+            [15, 0],
+            [30, 40],
+            [40, 40],
+            [40, 43],
+        ],
+        "slices": [np.s_[5:10], np.s_[30:43]],
+        "error": None,
     },
     # As above, but not sorted
     {
-        "ranges"  : [[15,10], [5,10], [20,15], [40,40], [15,0], [30,40], [40,43], [10,10]],
-        "slices"  : [np.s_[5:10], np.s_[30:43]],
-        "error"   : None,
+        "ranges": [
+            [15, 10],
+            [5, 10],
+            [20, 15],
+            [40, 40],
+            [15, 0],
+            [30, 40],
+            [40, 43],
+            [10, 10],
+        ],
+        "slices": [np.s_[5:10], np.s_[30:43]],
+        "error": None,
     },
     # A case with overlapping ranges, which should fail
     {
-        "ranges"  : [[0,50], [40,100]],
-        "slices"  : [np.s_[0:100],],
-        "error"   : RuntimeError,
+        "ranges": [[0, 50], [40, 100]],
+        "slices": [
+            np.s_[0:100],
+        ],
+        "error": RuntimeError,
     },
     # Empty overlapping ranges don't matter
     {
-        "ranges"  : [[0,50], [20,20]],
-        "slices"  : [np.s_[0:50],],
-        "error"   : None,
+        "ranges": [[0, 50], [20, 20]],
+        "slices": [
+            np.s_[0:50],
+        ],
+        "error": None,
     },
 ]
 
 column_cases = [
     # 1D dataset with no column selection
     {
-        "ndim" : 1,
-        "columns" : None,
+        "ndim": 1,
+        "columns": None,
     },
     # 2D dataset with single slice column selection
     {
-        "ndim" : 2,
-        "columns" : np.s_[0:3],
+        "ndim": 2,
+        "columns": np.s_[0:3],
     },
     # 2D dataset with integer column selection
     {
-        "ndim" : 2,
-        "columns" : 5,
+        "ndim": 2,
+        "columns": 5,
     },
 ]
 
@@ -128,4 +154,3 @@ def test_slices_from_ranges(range_params, column_params):
     else:
         with pytest.raises(error):
             actual_slices, order = slices_from_ranges(ranges, columns, ndim)
-

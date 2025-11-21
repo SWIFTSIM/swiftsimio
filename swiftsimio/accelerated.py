@@ -418,7 +418,9 @@ def read_ranges_from_file_chunked(
         return output
 
 
-def slices_from_ranges(ranges : np.ndarray, columns : int | slice | None, ndim : int) -> tuple:
+def slices_from_ranges(
+    ranges: np.ndarray, columns: int | slice | None, ndim: int
+) -> tuple:
     """
     Convert an array of ranges into a sorted list of slices.
 
@@ -443,19 +445,19 @@ def slices_from_ranges(ranges : np.ndarray, columns : int | slice | None, ndim :
         List of slices and a sorting index for the input ranges.
     """
     # If the ranges are not sorted, get the ordering by start index
-    if np.any(ranges[1:,0] < ranges[:-1,1]):
-        order = np.argsort(ranges[:,0])
-        ordered_start  = ranges[order,0]
-        ordered_stop   = ranges[order,1]
+    if np.any(ranges[1:, 0] < ranges[:-1, 1]):
+        order = np.argsort(ranges[:, 0])
+        ordered_start = ranges[order, 0]
+        ordered_stop = ranges[order, 1]
     else:
         order = None
-        ordered_start  = ranges[:,0].copy()
-        ordered_stop   = ranges[:,1].copy()
+        ordered_start = ranges[:, 0].copy()
+        ordered_stop = ranges[:, 1].copy()
 
     # Drop any zero length ranges
     keep = ordered_stop > ordered_start
     ordered_start = ordered_start[keep]
-    ordered_stop  = ordered_stop[keep]
+    ordered_stop = ordered_stop[keep]
     nr_ranges = sum(keep)
 
     # We can't handle overlapping ranges
@@ -465,12 +467,12 @@ def slices_from_ranges(ranges : np.ndarray, columns : int | slice | None, ndim :
     # Determine starting indexes to keep: every starting index which is NOT
     # equal to the end of the previous range. Always keep the first.
     keep_start = np.ones(nr_ranges, dtype=bool)
-    keep_start[1:] = (ordered_start[1:] != ordered_stop[:-1])
+    keep_start[1:] = ordered_start[1:] != ordered_stop[:-1]
 
     # Determine ending indexes to keep: every end index which is NOT equal
     # to the start of the next slice. Always keep the last one.
     keep_stop = np.ones(nr_ranges, dtype=bool)
-    keep_stop[:-1] = (ordered_stop[:-1] != ordered_start[1:])
+    keep_stop[:-1] = ordered_stop[:-1] != ordered_start[1:]
 
     # Make a list of slices, skipping empty slices
     slices = []
@@ -538,16 +540,16 @@ def read_ranges_from_hdfstream(
         ranges_read = np.empty_like(ranges)
         offset = 0
         for i in order:
-            n = max(0, ranges[i,1] - ranges[i,0])
-            ranges_read[i,0] = offset
-            ranges_read[i,1] = offset + n
+            n = max(0, ranges[i, 1] - ranges[i, 0])
+            ranges_read[i, 0] = offset
+            ranges_read[i, 1] = offset + n
             offset += n
         # Copy the ranges to a new array in the input range order
         output_sorted = np.empty_like(output)
         offset = 0
         for start, stop in ranges_read:
             n = max(0, stop - start)
-            output_sorted[offset:offset+n,...] = output[start:stop,...]
+            output_sorted[offset : offset + n, ...] = output[start:stop, ...]
             offset += n
         output = output_sorted
 
@@ -617,7 +619,9 @@ def read_ranges_from_file(
         if handle.chunks is not None and average_range_size < cross_over_range_size
         else read_ranges_from_file_unchunked
     )
-    return (read_ranges_from_hdfstream if is_hdfstream_dataset(handle) else read_ranges)(handle, ranges, output_shape, output_type, columns)
+    return (
+        read_ranges_from_hdfstream if is_hdfstream_dataset(handle) else read_ranges
+    )(handle, ranges, output_shape, output_type, columns)
 
 
 def list_of_strings_to_arrays(lines: list[str]) -> np.array:

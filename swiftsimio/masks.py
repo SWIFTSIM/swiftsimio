@@ -456,7 +456,7 @@ class SWIFTMask(HandleProvider):
                 # Passing a RemoteDataset to numpy is extremely slow because it
                 # results in a separate request for each element. Indexing
                 # generates a single http post request.
-                data = h5file[handle][current_mask,...]
+                data = h5file[handle][current_mask, ...]
             else:
                 # Surprisingly this is faster than just using the boolean
                 # indexing because h5py has slow indexing routines.
@@ -468,7 +468,7 @@ class SWIFTMask(HandleProvider):
             units=unit,
             comoving=not physical,
             cosmo_factor=cosmology_factor,
-            )
+        )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
 

@@ -5,6 +5,7 @@ from typing import ContextManager
 from pathlib import Path
 import h5py
 
+
 class HandleProvider:
     """
     Mixin class for managing file handles.
