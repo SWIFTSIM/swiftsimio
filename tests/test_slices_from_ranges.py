@@ -107,8 +107,20 @@ column_cases = [
 ]
 
 
-def normalize_slice(s):
-    """Return slice components as int or None (not np.int64!)."""
+def normalize_slice(s: slice) -> tuple:
+    """
+    Return slice components as int or None (not np.int64!).
+
+    Parameters
+    ----------
+    s : slice
+        The slice object to operate on.
+
+    Returns
+    -------
+    (start, stop, step)
+        The start, stop and step values as int or None.
+    """
     return (
         int(s.start) if s.start is not None else None,
         int(s.stop) if s.stop is not None else None,
@@ -117,7 +129,21 @@ def normalize_slice(s):
 
 
 def slices_equal(s1, s2):
-    """Return True if slices have the same start, stop and step."""
+    """
+    Return True if slices have the same start, stop and step.
+
+    Parameters
+    ----------
+    s1 : slice
+        The first slice object to operate on.
+    s2 : slice
+        The second slice object to operate on.
+
+    Returns
+    -------
+    bool
+        True if slices are equivalent.
+    """
     return normalize_slice(s1) == normalize_slice(s2)
 
 

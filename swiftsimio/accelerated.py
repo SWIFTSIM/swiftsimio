@@ -433,11 +433,11 @@ def slices_from_ranges(
     ----------
     ranges : np.ndarray
         Array of ranges (see :func:`ranges_from_array`).
-    columns : slice, integer or None
+    columns : slice, int or None
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
-    ndim : integer
-        number of dimensions in the dataset
+    ndim : int
+        Number of dimensions in the dataset.
 
     Returns
     -------
