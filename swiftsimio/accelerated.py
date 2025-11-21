@@ -178,12 +178,12 @@ def read_ranges_from_file_low_level(
     columns: slice = np.s_[:],
 ) -> np.array:
     """
-    Read only a selection of index ranges from a dataset that is not chunked.
+    Read only a selection of index ranges from a dataset.
 
-    Takes a hdf5 dataset, and the set of ranges from
-    ranges_from_array, and reads only those ranges from the file.
-
-    This version uses the h5py low level API.
+    Takes a hdf5 dataset and the set of ranges from ranges_from_array,
+    selects all ranges with select_hyperslab(), then reads all of the
+    data with a single read() call. We do not distinguish between
+    chunked and un-chunked cases here.
 
     Parameters
     ----------
@@ -207,6 +207,7 @@ def read_ranges_from_file_low_level(
     -------
     np.ndarray
         Result from reading only the relevant values from ``handle``.
+
     """
 
     # This will only work if slices do not overlap
