@@ -40,11 +40,6 @@ jobs:
     services:
       hdfstream:
         image: ghcr.io/jchelly/hdfstream-api:0.0.2
-        options: >-
-          --health-cmd="curl --fail http://localhost:8080/hdfstream/msgpack -o /dev/null || exit 1"
-          --health-interval=10s
-          --health-retries=5
-          --health-timeout=5s
 
     steps:
     - name: Checkout swiftsimio
