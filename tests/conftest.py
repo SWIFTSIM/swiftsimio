@@ -74,7 +74,7 @@ methods = [
     lambda filename: _requires(filename),
     lambda filename: h5py.File(_requires(filename), "r"),
     lambda filename: hdfstream.open(
-        "cosma", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"
+        "http://localhost:8080/hdfstream", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"
     ),
 ]
 filenames = [
