@@ -43,7 +43,7 @@ jobs:
         ports:
           - 8080:8080   # map container port 8080 to host port 8080
         options: >-
-          --health-cmd="curl --fail http://localhost:8080/hdfstream/msgpack || exit 1"
+          --health-cmd="curl --fail http://localhost:8080/hdfstream/msgpack -o /dev/null || exit 1"
           --health-interval=10s
           --health-retries=5
           --health-timeout=5s
