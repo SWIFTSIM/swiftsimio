@@ -40,8 +40,6 @@ jobs:
     services:
       hdfstream:
         image: ghcr.io/jchelly/hdfstream-api:0.0.2
-        ports:
-          - 8080:8080   # map container port 8080 to host port 8080
         options: >-
           --health-cmd="curl --fail http://localhost:8080/hdfstream/msgpack -o /dev/null || exit 1"
           --health-interval=10s
