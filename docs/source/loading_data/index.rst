@@ -1,3 +1,5 @@
+.. _loading-data:
+
 Loading Data
 ============
 
@@ -269,3 +271,95 @@ in SWIFT will be automatically read.
        "extra_test.hdf5",
    )
 
+
+Reading from an open file
+-------------------------
+
+Swiftsimio normally opens and closes the HDF5 snapshot file for each
+operation. This is convenient for interactive use and avoids leaving
+files open for long periods of time, but sometimes it might be
+desirable to minimize the amount of file open and close operations.
+
+It is possible to pass an open ``h5py.File`` object to
+:mod:`swiftsimio.load` and :mod:`swiftsimio.mask` in place of the
+filename. In this case swiftsimio will do all file access through the
+provided file object. This allows us to read multiple datasets while
+only opening and closing the file once. For example:
+
+.. code-block:: python
+
+   import h5py
+   import swiftsimio as sw
+
+   with h5py.File("cosmo_volume_example.hdf5","r") as snap_file:
+      data = sw.load(snap_file)
+      pos = data.dark_matter.coordinates
+      vel = data.dark_matter.velocities
+      ids = data.dark_matter.particle_ids
+
+This would open the snapshot file, read the dark matter particle
+positions, velocities and IDs, then close the file.
+
+
+Reading from a remote file
+--------------------------
+
+Swiftsimio is able to read from snapshots hosted on a remote server
+using the `hdfstream
+<https://hdfstream-python.readthedocs.io/en/latest>`_ python
+module. This is useful if you're interested in accessing a small part
+of a larger snapshot: you can read a small region or a subset of
+particle properties without downloading the whole snapshot.
+
+To open a remote snapshot, you can pass a ``hdfstream.RemoteFile``
+object to :mod:`swiftsimio.load` and :mod:`swiftsimio.mask` in place
+of the filename. For example, you can open one of the SWIFT example
+snapshots with:
+
+.. code-block:: python
+
+   import hdfstream
+   from swiftsimio import load
+
+   snap_file = hdfstream.open("cosma", "Tests/SWIFT/IOExamples/ssio_ci_04_2025/EagleSingle.hdf5")
+   data = load(snap_file)
+
+Here, ``data`` will be a :obj:`swiftsimio.reader.SWIFTDataset`. It
+functions in the same way as described in the :ref:`loading-data`
+section above, except that instead of reading data from a local HDF5
+file, it requests data from the server.
+
+Opening a snapshot like this only downloads a small amount of
+metadata. Accessing particle properties, such as coordinates, will
+trigger another download:
+
+.. code-block:: python
+
+   pos = data.dark_matter.coordinates
+
+This will download the dark matter particle coordinates and return an
+array with units and cosmological factors attached.
+
+To read part of a remote snapshot, we can use swiftsimio's
+:ref:`masking` feature as we would with a local snapshot, but passing
+the remote file to :mod:`swiftsimio.mask` :mod:`swiftsimio.load` in
+place of the filename.
+
+.. code-block:: python
+
+   import hdfstream
+   import swiftsimio as sw
+
+   snap_file = hdfstream.open("cosma", "Tests/SWIFT/IOExamples/ssio_ci_04_2025/EagleSingle.hdf5")
+
+   mask = sw.mask(snap_file)
+   # The full metadata object is available from within the mask
+   boxsize = mask.metadata.boxsize
+   # load_region is a 3x2 list [[left, right], [bottom, top], [front, back]]
+   load_region = [[0.0 * b, 0.5 * b] for b in boxsize]
+
+   # Constrain the mask
+   mask.constrain_spatial(load_region)
+
+   # Now load the snapshot with this mask
+   data = sw.load(snap_file, mask=mask)
