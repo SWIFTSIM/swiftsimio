@@ -275,12 +275,12 @@ in SWIFT will be automatically read.
 Reading from an open file
 -------------------------
 
-Swiftsimio normally opens and closes the HDF5 snapshot file for each
-operation. This is convenient for interactive use and avoids leaving
-files open for long periods of time, but sometimes it might be
-desirable to minimize the amount of file open and close operations.
+``swiftsimio`` normally opens and closes the HDF5 snapshot file for
+each operation. This is convenient for interactive use and avoids
+leaving files open for long periods of time, but sometimes it might be
+desirable to minimize the number of file open and close operations.
 
-It is possible to pass an open ``h5py.File`` object to
+It is possible to pass an open :obj:`h5py.File` object to
 :mod:`swiftsimio.load` and :mod:`swiftsimio.mask` in place of the
 filename. In this case swiftsimio will do all file access through the
 provided file object. This allows us to read multiple datasets while
@@ -304,14 +304,14 @@ positions, velocities and IDs, then close the file.
 Reading from a remote file
 --------------------------
 
-Swiftsimio is able to read from snapshots hosted on a remote server
-using the `hdfstream
+``swiftsimio`` is able to read from snapshots hosted on a remote
+server using the `hdfstream
 <https://hdfstream-python.readthedocs.io/en/latest>`_ python
 module. This is useful if you're interested in accessing a small part
 of a larger snapshot: you can read a small region or a subset of
 particle properties without downloading the whole snapshot.
 
-To open a remote snapshot, you can pass a ``hdfstream.RemoteFile``
+To open a remote snapshot, you can pass a :obj:`hdfstream.RemoteFile`
 object to :mod:`swiftsimio.load` and :mod:`swiftsimio.mask` in place
 of the filename. For example, you can open one of the SWIFT example
 snapshots with:
