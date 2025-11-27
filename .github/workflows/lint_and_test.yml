@@ -39,7 +39,9 @@ jobs:
 
     services:
       hdfstream:
-        image: ghcr.io/jchelly/hdfstream-api:0.0.2
+        image: ghcr.io/jchelly/hdfstream-api:0.0.3
+        ports:
+          - 8080:8080
 
     steps:
     - name: Checkout swiftsimio
