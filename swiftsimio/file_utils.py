@@ -26,9 +26,7 @@ def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     bool
         True if obj is a soft link.
     """
-    if hdfstream is not None and isinstance(obj, hdfstream.SoftLink):
-        return True
-    return isinstance(obj, h5py.SoftLink)
+    return isinstance(obj, (h5py.SoftLink, hdfstream.SoftLink))
 
 
 def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
@@ -45,7 +43,7 @@ def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     bool
         True if obj is a dataset.
     """
-    return isinstance(obj, (hdfstream.RemoteDataset, h5py.Dataset))
+    return isinstance(obj, (h5py.Dataset, hdfstream.RemoteDataset))
 
 
 def is_hdfstream_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
