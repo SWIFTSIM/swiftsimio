@@ -68,6 +68,6 @@ jobs:
         pip install -e .
     - name: Test with pytest
       run: |
-        pytest
+        pytest --hdfstream-server=http://localhost:8080/hdfstream
       env:
         NUMBA_BOUNDSCHECK: 1

@@ -13,10 +13,30 @@ from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
 
 
+# URL to download the test data
 webstorage_location = (
     "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2025/"
 )
+
+# Where to write the downloaded files
 test_data_location = "test_data/"
+
+# Path to access the same files via the hdfstream service
+hdfstream_location = "Tests/SWIFT/IOExamples/ssio_ci_04_2025/"
+
+
+def pytest_addoption(parser):
+    """
+    Define a command line flag to set the server URL.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        The argument parser.
+    """
+    parser.addoption(
+        "--hdfstream-server", default=None, help="Hdfstream server URL for tests"
+    )
 
 
 def _requires(filename: str) -> str:
@@ -63,20 +83,77 @@ def _requires(filename: str) -> str:
         return file_location
 
 
-#
-# Will repeat each test opening the file in several ways:
-#
-# - Using the path as a string
-# - Using a h5py.File
-# - Using a hdfstream.RemoteFile
-#
-methods = [
-    lambda filename: _requires(filename),
-    lambda filename: h5py.File(_requires(filename), "r"),
-    lambda filename: hdfstream.open(
-        "http://localhost:8080/hdfstream", f"Tests/SWIFT/IOExamples/ssio_ci_04_2025/{filename}"
-    ),
+def open_local_with_filename(filename: str, request: pytest.FixtureRequest) -> str:
+    """
+    Return the name of a local HDF5 file to read.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file.
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
+    Returns
+    -------
+    str
+        The name of the file.
+    """
+    return _requires(filename)
+
+
+def open_local_with_handle(filename: str, request: pytest.FixtureRequest) -> h5py.File:
+    """
+    Return an open h5py.File to read.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file.
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
+    Returns
+    -------
+    h5py.File
+        The open file.
+    """
+    return h5py.File(_requires(filename), "r")
+
+
+def open_with_hdfstream(
+    filename: str, request: pytest.FixtureRequest
+) -> hdfstream.RemoteFile:
+    """
+    Return an open hdfstream.RemoteFile to read.
+
+    Skips the test if no server URL was specified.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file.
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
+    Returns
+    -------
+    hdfstream.RemoteFile
+        The open file.
+    """
+    server = request.config.getoption("--hdfstream-server")
+    if server is None:
+        pytest.skip("hdfstream server URL not specified")
+    return hdfstream.open(server, f"{hdfstream_location}/{filename}")
+
+
+access_methods = [
+    open_local_with_filename,
+    open_local_with_handle,
+    open_with_hdfstream,
 ]
+
+
 filenames = [
     "EagleDistributed.hdf5",
     "EagleSingle.hdf5",
@@ -84,7 +161,7 @@ filenames = [
 ]
 
 
-@pytest.fixture(params=itertools.product(filenames, methods))
+@pytest.fixture(params=itertools.product(filenames, access_methods))
 def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides single, distributed and legacy datasets to test on.
@@ -99,11 +176,11 @@ def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, 
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    filename, method = request.param
-    yield method(filename)
+    filename, access_method = request.param
+    yield access_method(filename, request)
 
 
-@pytest.fixture(params=methods)
+@pytest.fixture(params=access_methods)
 def cosmological_volume_only_single(
     request: pytest.FixtureRequest,
 ) -> Generator[str, None, None]:
@@ -120,7 +197,7 @@ def cosmological_volume_only_single(
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield request.param("EagleSingle.hdf5")
+    yield request.param("EagleSingle.hdf5", request)
 
 
 @pytest.fixture
@@ -141,7 +218,7 @@ def cosmological_volume_only_single_local() -> Generator[str, None, None]:
     yield _requires("EagleSingle.hdf5")
 
 
-@pytest.fixture(params=methods)
+@pytest.fixture(params=access_methods)
 def cosmological_volume_only_distributed(
     request: pytest.FixtureRequest,
 ) -> Generator[str, None, None]:
@@ -158,10 +235,10 @@ def cosmological_volume_only_distributed(
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield request.param("EagleDistributed.hdf5")
+    yield request.param("EagleDistributed.hdf5", request)
 
 
-@pytest.fixture(params=methods)
+@pytest.fixture(params=access_methods)
 def cosmological_volume_dithered(
     request: pytest.FixtureRequest,
 ) -> Generator[str, None, None]:
@@ -178,10 +255,10 @@ def cosmological_volume_dithered(
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield request.param("LegacyCosmologicalVolumeDithered.hdf5")
+    yield request.param("LegacyCosmologicalVolumeDithered.hdf5", request)
 
 
-@pytest.fixture(params=methods)
+@pytest.fixture(params=access_methods)
 def soap_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides a sample SOAP file to test on.
@@ -196,7 +273,7 @@ def soap_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield request.param("SoapExample.hdf5")
+    yield request.param("SoapExample.hdf5", request)
 
 
 filenames = [
@@ -207,7 +284,7 @@ filenames = [
 ]
 
 
-@pytest.fixture(params=itertools.product(filenames, methods))
+@pytest.fixture(params=itertools.product(filenames, access_methods))
 def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides distributed, single & legacy, and SOAP datasets to test on.
@@ -222,8 +299,8 @@ def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, Non
     out : Generator[str, None, None]
         The file name, after downloading if required.
     """
-    filename, method = request.param
-    yield method(filename)
+    filename, access_method = request.param
+    yield access_method(filename, request)
 
 
 @pytest.fixture(scope="function")
