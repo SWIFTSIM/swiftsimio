@@ -309,7 +309,7 @@ class SWIFTMask(HandleProvider):
                 centers_handle[:] - (pad_cells + 0.5) * metadata_handle.attrs["size"]
             )
             self.maxpositions["shared"] = (
-                centers_handle + (pad_cells + 0.5) * metadata_handle.attrs["size"]
+                centers_handle[:] + (pad_cells + 0.5) * metadata_handle.attrs["size"]
             )
         # Only want to compute this once (even if it is fast, we do not
         # have a reliable stable sort in the case where cells do not
