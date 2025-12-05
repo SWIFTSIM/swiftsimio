@@ -24,13 +24,10 @@ webstorage_location = (
 # Where to write the downloaded files
 test_data_location = "test_data/"
 
-# Path to access the same files via the hdfstream service
-hdfstream_location = "Tests/SWIFT/IOExamples/ssio_ci_04_2025/"
-
 
 def pytest_addoption(parser):
     """
-    Define a command line flag to set the server URL.
+    Define command line flags to set the server URL and path to test data.
 
     Parameters
     ----------
@@ -39,6 +36,9 @@ def pytest_addoption(parser):
     """
     parser.addoption(
         "--hdfstream-server", default=None, help="Hdfstream server URL for tests"
+    )
+    parser.addoption(
+        "--hdfstream-prefix", default=test_data_location, help="Directory with test data on the server"
     )
 
 
@@ -84,6 +84,28 @@ def _requires(filename: str) -> str:
 
     else:
         return file_location
+
+
+def preload_test_data():
+    """
+    Download all test data in advance for remote file tests.
+
+    Tests using the hdfstream service are implemented by running a local
+    copy of the server in a container when run through github actions.
+    In that case we need to ensure that all files are present before the
+    server is started.
+    """
+    all_filenames = [
+        "EagleDistributed.hdf5",
+        "eagle_0025.0.hdf5",
+        "eagle_0025.1.hdf5",
+        "EagleSingle.hdf5",
+        "LegacyCosmologicalVolume.hdf5",
+        "LegacyCosmologicalVolumeDithered.hdf5",
+        "SoapExample.hdf5",
+    ]
+    for name in all_filenames:
+        _requires(name)
 
 
 def open_local_with_filename(filename: str, request: pytest.FixtureRequest) -> str:
@@ -146,9 +168,10 @@ def open_with_hdfstream(filename: str, request: pytest.FixtureRequest) -> "hdfst
     if hdfstream is None:
         pytest.skip("hdfstream module could not be imported")
     server = request.config.getoption("--hdfstream-server")
+    prefix = request.config.getoption("--hdfstream-prefix")
     if server is None:
         pytest.skip("hdfstream server URL not specified")
-    return hdfstream.open(server, f"{hdfstream_location}/{filename}")
+    return hdfstream.open(server, f"{prefix}/{filename}")
 
 
 access_methods = [

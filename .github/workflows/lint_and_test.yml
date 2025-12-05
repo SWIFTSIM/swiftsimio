@@ -36,13 +36,6 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "~3.13.0 <= 3.13.3 || ~3.13.5"]  # exclude 3.13.4
-
-    services:
-      hdfstream:
-        image: ghcr.io/jchelly/hdfstream-api:0.0.3
-        ports:
-          - 8080:8080
-
     steps:
     - name: Checkout swiftsimio
       uses: actions/checkout@v4
@@ -66,8 +59,20 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f optional_requirements.txt ]; then pip install -r optional_requirements.txt; fi
         pip install -e .
+    - name: Preload test data files
+      run: |
+        python -c "from tests.conftest import preload_test_data; preload_test_data()"
+    - name: Start hdfstream service
+      uses: ./.github/actions/start-hdfstream
+      with:
+        data-dir: ./test_data
+        virtual-prefix: test_data
+        image: ghcr.io/jchelly/hdfstream-api:0.0.5
     - name: Test with pytest
       run: |
         pytest --hdfstream-server=http://localhost:8080/hdfstream
       env:
         NUMBA_BOUNDSCHECK: 1
+    - name: Stop hdfstream service
+      uses: ./.github/actions/stop-hdfstream
+      if: always()
