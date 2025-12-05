@@ -29,6 +29,18 @@ def pytest_addoption(parser):
     """
     Define command line flags to set the server URL and path to test data.
 
+    To test against the server on Cosma, use::
+
+        --hdfstream-server=https://dataweb.cosma.dur.ac.uk:8443/hdfstream
+        --hdfstream-prefix=Tests/SWIFT/IOExamples/ssio_ci_04_2025
+
+    To test against a local server (e.g. in a github workflow), use::
+
+        --hdfstream-server=http://localhost:8080/hdfstream
+        --hdfstream-prefix=test_data
+
+    Omit the server URL to skip remote file tests.
+
     Parameters
     ----------
     parser : argparse.ArgumentParser
