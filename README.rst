@@ -12,7 +12,7 @@ SWIFTsimIO
    :target: https://www.repostatus.org/#active
    :alt: Project status: Active - The project has reached a stable, usable state and is being actively developed.
 .. |Build status| image:: https://github.com/swiftsim/swiftsimio/actions/workflows/pytest.yml/badge.svg
-   :target: https://github.com/SWIFTSIM/swiftgalaxy/actions/workflows/lint_and_test.yml
+   :target: https://github.com/SWIFTSIM/swiftsimio/actions/workflows/lint_and_test.yml
    :alt: Build status
 .. |Documentation status| image:: https://readthedocs.org/projects/swiftsimio/badge/?version=latest
    :target: https://swiftsimio.readthedocs.io/en/latest/?badge=latest
@@ -40,13 +40,14 @@ system such as ``yt``; however these either are unsatisfactory
 most use-cases. ``swiftsimio`` provides an object-oriented API to
 dynamically read data from SWIFT outputs, including FOF and SOAP
 catalogues. An extension module for ``swiftsimio`` for using
-catalogues and snapshots in tandem is available: ``swiftgalaxy``.
+catalogues and snapshots in tandem is available: swiftgalaxy_.
 
 Getting set up with ``swiftsimio`` is easy; it (by design) has very few
 requirements. There are a number of optional packages that you can install
 to make the experience better and these are recommended.
 
 .. _SWIFT: https://swift.strw.leidenuniv.nl/
+.. _swiftgalaxy: https://gitub.com/SWIFTSIM/swiftgalaxy
 
 .. INTRO_END_LABEL
 
