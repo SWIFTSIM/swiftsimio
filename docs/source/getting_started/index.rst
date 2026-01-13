@@ -30,19 +30,12 @@ To set up the code for development, first clone the latest master from GitHub:
    
    git clone https://github.com/SWIFTSIM/swiftsimio.git
 
-and install with ``pip`` using the ``-e`` ("editable") flag,
+and install with ``pip`` using the ``-e`` ("editable") flag, and specifying optional dependencies for development and building the documentation:
 
 .. code-block::
 
    cd swiftsimio
-   pip install -e .
-
-Then install the optioanl dependencies for the code and the documentation:
-
-.. code-block::
-
-   pip install -r optional_requirements.txt
-   pip install -r docs/requirements.txt
+   pip install -e .[dev,docs]
 
 .. include:: ../../../README.rst
    :start-after: COMMUNITY_START_LABEL

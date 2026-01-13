@@ -1,5 +1,0 @@
-astropy
-h5py
-numba
-numpy
-git+https://github.com/yt-project/unyt.git@main

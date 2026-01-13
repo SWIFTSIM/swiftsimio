@@ -1,7 +1,0 @@
-# Development
-pytest
-ruff
-numpydoc
-matplotlib
-scipy
-wily
