@@ -118,6 +118,10 @@ from unyt._array_functions import (
     isin as unyt_in1d,
     take as unyt_take,
 )
+from importlib.metadata import version
+from packaging.version import Version
+
+NUMPY_VERSION = Version(version("numpy"))
 
 _HANDLED_FUNCTIONS = {}
 
@@ -2267,9 +2271,39 @@ implements(np.take)(_default_unary_wrapper(unyt_take, _preserve_cosmo_factor))
 
 # Now we wrap functions that unyt does not handle explicitly:
 
-implements(np.average)(
-    _propagate_cosmo_array_attributes_to_result(np.average._implementation)
-)
+
+if NUMPY_VERSION < Version("2.4.1"):
+
+    from unyt._array_functions import average as unyt_average
+
+    @implements(np.average)
+    def average(a, axis=None, weights=None, returned=False, *, keepdims=np._NoValue):
+        # Average suffered from a bug
+        # (https://github.com/SWIFTSIM/swiftsimio/issues/285)
+        # Correct results depend on unyt>=3.1.0
+        # (https://github.com/yt-project/unyt/pull/611)
+        # There is also a fix in numpy>=3.4.1
+        # (https://github.com/numpy/numpy/pull/30522)
+        # that means we no longer need any special handling here, but to support older
+        # versions we need a patch.
+        helper_result = _prepare_array_func_args(
+            a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
+        )
+        res = unyt_average(
+            a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
+        )
+        ret_cf_avg = _preserve_cosmo_factor(helper_result["cfs"][0])
+        if returned:
+            avg, wsum = res
+            ret_cf_wsum = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
+            return (
+                _return_helper(avg, helper_result, ret_cf_avg),
+                _return_helper(wsum, helper_result, ret_cf_wsum),
+            )
+        else:
+            return _return_helper(avg, helper_result, ret_cf_avg)
+
+
 implements(np.max)(_propagate_cosmo_array_attributes_to_result(np.max._implementation))
 implements(np.min)(_propagate_cosmo_array_attributes_to_result(np.min._implementation))
 implements(np.mean)(
