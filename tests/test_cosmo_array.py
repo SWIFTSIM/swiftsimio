@@ -9,6 +9,10 @@ import unyt as u
 from copy import copy, deepcopy
 import pickle
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
+from importlib.metadata import version
+from packaging.version import Version
+
+NUMPY_VERSION = Version(version("numpy"))
 
 savetxt_file = "saved_array.txt"
 
@@ -486,28 +490,10 @@ class TestNumpyFunctions:
             "savetxt": (savetxt_file, ca(np.arange(3))),
             "fill_diagonal": (ca(np.eye(3)), ca(np.arange(3))),
             "apply_over_axes": (lambda x, axis: x, ca(np.eye(3)), (0, 1)),
-            "isin": (ca(np.arange(3)), ca(np.arange(3))),
-            "place": (
-                ca(np.arange(3)),
-                np.arange(3) > 0,
-                ca(np.arange(3)),
-            ),
-            "put": (
-                ca(np.arange(3)),
-                np.arange(3),
-                ca(np.arange(3)),
-            ),
-            "put_along_axis": (
-                ca(np.arange(3)),
-                np.arange(3),
-                ca(np.arange(3)),
-                0,
-            ),
-            "putmask": (
-                ca(np.arange(3)),
-                np.arange(3),
-                ca(np.arange(3)),
-            ),
+            "place": (ca(np.arange(3)), np.arange(3) > 0, ca(np.arange(3))),
+            "put": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
+            "put_along_axis": (ca(np.arange(3)), np.arange(3), ca(np.arange(3)), 0),
+            "putmask": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
             "searchsorted": (ca(np.arange(3)), ca(np.arange(3))),
             "select": (
                 [np.arange(3) < 1, np.arange(3) > 1],
@@ -537,10 +523,7 @@ class TestNumpyFunctions:
             "array_repr": (ca(np.arange(3)),),
             "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
             "trapezoid": (ca(np.arange(3)),),
-            "in1d": (
-                ca(np.arange(3)),
-                ca(np.arange(3)),
-            ),  # np deprecated
+            "isin": (ca(np.arange(3)), ca(np.arange(3))),
             "take": (ca(np.arange(3)), np.arange(3)),
             # FUNCTIONS THAT UNYT DOESN'T HANDLE EXPLICITLY (THEY "JUST WORK"):
             "all": (ca(np.arange(3)),),
@@ -693,6 +676,8 @@ class TestNumpyFunctions:
             "cumulative_prod": (ca(np.arange(3)),),
             "unstack": (ca(np.arange(3)),),
         }
+        if NUMPY_VERSION < Version("2.4.1"):
+            functions_to_check["in1d"] = (ca(np.arange(3)), ca(np.arange(3)))
         functions_checked = list()
         bad_funcs = dict()
         for fname, args in functions_to_check.items():
@@ -857,7 +842,7 @@ class TestNumpyFunctions:
             np.array([1, 2, 3]),
         ),
     )
-    @pytest.mark.parametrize("bins_type", ("int", "np", "cosmo"))
+    @pytest.mark.parametrize("bins_type", ("int", "ca"))
     @pytest.mark.parametrize("density", (None, True))
     def test_histograms(self, func_args, weights, bins_type, density):
         """
@@ -870,8 +855,7 @@ class TestNumpyFunctions:
         func, args = func_args
         bins = {
             "int": 10,
-            "np": [np.linspace(0, 5, 11)] * 3,
-            "cosmo": [
+            "ca": [
                 cosmo_array(
                     np.linspace(0, 5, 11),
                     u.kpc,
@@ -903,7 +887,7 @@ class TestNumpyFunctions:
                     np.histogramdd: np.s_[:],
                 }[func]
             ]
-            if bins_type in ("np", "cosmo")
+            if bins_type == "ca"
             else bins
         )
         result = func(*args, bins=bins, density=density, weights=weights)
@@ -1001,6 +985,17 @@ class TestNumpyFunctions:
         assert res.comoving is False
         assert res.cosmo_factor == cosmo_factor(a**2, 0.5)
         assert res.valid_transform is True
+
+    def test_average_with_returned(self):
+        """Make sure that sum of weights in numpy's average gets cosmo attributes."""
+        # regression test for https://github.com/SWIFTSIM/swiftsimio/issues/285
+        x = cosmo_array(
+            np.arange(9).reshape((3, 3)), u.kpc, scale_factor=1.0, scale_exponent=1.0
+        )
+        w = cosmo_array(np.arange(3), u.solMass, scale_factor=1.0, scale_exponent=0.0)
+        avg, wsum = np.average(x, weights=w, axis=-1, returned=True)
+        assert avg.cosmo_factor == x.cosmo_factor
+        assert wsum.cosmo_factor == w.cosmo_factor
 
 
 class TestCosmoQuantity:
