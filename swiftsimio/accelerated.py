@@ -433,7 +433,7 @@ def slices_from_ranges(
     Parameters
     ----------
     ranges : np.ndarray
-        Array of ranges (see :func:`ranges_from_array`).
+        Array of ranges (see :func:`~swiftsimio.accelerated.ranges_from_array`).
     columns : slice, int or None
         Selector for columns if using a multi-dimensional array. If the array is only
         a single dimension this is not used.
