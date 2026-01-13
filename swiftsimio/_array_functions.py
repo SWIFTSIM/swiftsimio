@@ -93,7 +93,6 @@ from unyt._array_functions import (
     linalg_eigvalsh as unyt_linalg_eigvalsh,
     savetxt as unyt_savetxt,
     fill_diagonal as unyt_fill_diagonal,
-    isin as unyt_isin,
     place as unyt_place,
     put as unyt_put,
     put_along_axis as unyt_put_along_axis,
@@ -115,7 +114,7 @@ from unyt._array_functions import (
     array_repr as unyt_array_repr,
     linalg_outer as unyt_linalg_outer,
     trapezoid as unyt_trapezoid,
-    isin as unyt_in1d,
+    isin as unyt_isin,
     take as unyt_take,
 )
 from importlib.metadata import version
@@ -2266,42 +2265,44 @@ def trapezoid(y, x=None, dx=1.0, axis=-1):  # noqa numpydoc ignore=GL08
     return _return_helper(res, helper_result, ret_cf)
 
 
-implements(np.in1d)(_default_comparison_wrapper(unyt_in1d))
+implements(np.isin)(_default_comparison_wrapper(unyt_isin))
 implements(np.take)(_default_unary_wrapper(unyt_take, _preserve_cosmo_factor))
 
 # Now we wrap functions that unyt does not handle explicitly:
 
 
-if NUMPY_VERSION < Version("2.4.1"):
+@implements(np.average)
+def average(a, axis=None, weights=None, returned=False, *, keepdims=np._NoValue):  # noqa numpydoc ignore=GL08
+    # Average suffered from a bug
+    # (https://github.com/SWIFTSIM/swiftsimio/issues/285)
+    # Correct results depend on unyt>=3.1.0
+    # (https://github.com/yt-project/unyt/pull/611)
+    # There is also a fix in numpy>=3.4.1
+    # (https://github.com/numpy/numpy/pull/30522)
+    # that means we no longer need any special handling here, but to support older
+    # versions we need a patch.
+    helper_result = _prepare_array_func_args(
+        a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
+    )
+    if NUMPY_VERSION < Version("2.4.1"):
+        from unyt._array_functions import average as super_average
 
-    from unyt._array_functions import average as unyt_average
+    else:
+        super_average = np.average._implementation
 
-    @implements(np.average)
-    def average(a, axis=None, weights=None, returned=False, *, keepdims=np._NoValue):
-        # Average suffered from a bug
-        # (https://github.com/SWIFTSIM/swiftsimio/issues/285)
-        # Correct results depend on unyt>=3.1.0
-        # (https://github.com/yt-project/unyt/pull/611)
-        # There is also a fix in numpy>=3.4.1
-        # (https://github.com/numpy/numpy/pull/30522)
-        # that means we no longer need any special handling here, but to support older
-        # versions we need a patch.
-        helper_result = _prepare_array_func_args(
-            a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
+    res = super_average(
+        a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
+    )
+    ret_cf_avg = _preserve_cosmo_factor(helper_result["cfs"][0])
+    if returned:
+        avg, wsum = res
+        ret_cf_wsum = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
+        return (
+            _return_helper(avg, helper_result, ret_cf_avg),
+            _return_helper(wsum, helper_result, ret_cf_wsum),
         )
-        res = unyt_average(
-            a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
-        )
-        ret_cf_avg = _preserve_cosmo_factor(helper_result["cfs"][0])
-        if returned:
-            avg, wsum = res
-            ret_cf_wsum = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
-            return (
-                _return_helper(avg, helper_result, ret_cf_avg),
-                _return_helper(wsum, helper_result, ret_cf_wsum),
-            )
-        else:
-            return _return_helper(avg, helper_result, ret_cf_avg)
+    else:
+        return _return_helper(avg, helper_result, ret_cf_avg)
 
 
 implements(np.max)(_propagate_cosmo_array_attributes_to_result(np.max._implementation))
