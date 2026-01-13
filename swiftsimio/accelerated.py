@@ -440,15 +440,15 @@ def slices_from_ranges(
     ndim : int
         Number of dimensions in the dataset.
 
-    Raises
-    ------
-    RuntimeError
-        If any of the ranges overlap.
-
     Returns
     -------
     (list, np.ndarray)
         List of slices and a sorting index for the input ranges.
+
+    Raises
+    ------
+    RuntimeError
+        If any of the ranges overlap.
     """
     # If the ranges are not sorted, get the ordering by start index
     if np.any(ranges[1:, 0] < ranges[:-1, 1]):
