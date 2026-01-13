@@ -23,7 +23,9 @@ __all__ = [
     "extract_ranges_from_chunks",
     "read_ranges_from_file_chunked",
     "read_ranges_from_file",
+    "read_ranges_from_hdfstream",
     "list_of_strings_to_arrays",
+    "slices_from_ranges",
 ]
 
 
@@ -426,8 +428,7 @@ def slices_from_ranges(
 
     Sorts the input ranges, merges consecutive ranges, removes zero
     length ranges, and converts to a list of slice objects. Also
-    returns a sorting index for the input array of ranges. Will raise
-    a RuntimeError if ranges overlap.
+    returns a sorting index for the input array of ranges.
 
     Parameters
     ----------
@@ -438,6 +439,11 @@ def slices_from_ranges(
         a single dimension this is not used.
     ndim : int
         Number of dimensions in the dataset.
+
+    Raises
+    ------
+    RuntimeError
+        If any of the ranges overlap.
 
     Returns
     -------
