@@ -988,6 +988,17 @@ class TestNumpyFunctions:
         assert res.cosmo_factor == cosmo_factor(a**2, 0.5)
         assert res.valid_transform is True
 
+    def test_average_with_returned(self):
+        """Make sure that sum of weights in numpy's average gets cosmo attributes."""
+        # regression test for https://github.com/SWIFTSIM/swiftsimio/issues/285
+        x = cosmo_array(
+            np.arange(9).reshape((3, 3)), u.kpc, scale_factor=1.0, scale_exponent=1.0
+        )
+        w = cosmo_array(np.arange(3), u.solMass, scale_factor=1.0, scale_exponent=0.0)
+        avg, wsum = np.average(x, weights=w, axis=-1, returned=True)
+        assert avg.cosmo_factor == x.cosmo_factor
+        assert wsum.cosmo_factor == w.cosmo_factor
+
 
 class TestCosmoQuantity:
     """
