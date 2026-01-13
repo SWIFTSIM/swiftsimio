@@ -1274,39 +1274,8 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
 
 
 @implements(np.array2string)
-def array2string(  # noqa numpydoc ignore=GL08
-    a,  # noqa: ANN001
-    max_line_width=None,  # noqa: ANN001
-    precision=None,  # noqa: ANN001
-    suppress_small=None,  # noqa: ANN001
-    separator=" ",  # noqa: ANN001
-    prefix="",  # noqa: ANN001
-    style=np._NoValue,  # noqa: ANN001
-    formatter=None,  # noqa: ANN001
-    threshold=None,  # noqa: ANN001
-    edgeitems=None,  # noqa: ANN001
-    sign=None,  # noqa: ANN001
-    floatmode=None,  # noqa: ANN001
-    suffix="",  # noqa: ANN001
-    *,
-    legacy=None,  # noqa: ANN001
-):
-    res = unyt_array2string(
-        a,
-        max_line_width=max_line_width,
-        precision=precision,
-        suppress_small=suppress_small,
-        separator=separator,
-        prefix=prefix,
-        style=style,
-        formatter=formatter,
-        threshold=threshold,
-        edgeitems=edgeitems,
-        sign=sign,
-        floatmode=floatmode,
-        suffix=suffix,
-        legacy=legacy,
-    )
+def array2string(a, *args, **kwargs):  # noqa numpydoc ignore=GL08
+    res = unyt_array2string(a, *args, **kwargs)
     if a.comoving:
         append = " (comoving)"
     elif a.comoving is False:
@@ -2302,7 +2271,7 @@ def average(a, axis=None, weights=None, returned=False, *, keepdims=np._NoValue)
             _return_helper(wsum, helper_result, ret_cf_wsum),
         )
     else:
-        return _return_helper(avg, helper_result, ret_cf_avg)
+        return _return_helper(res, helper_result, ret_cf_avg)
 
 
 implements(np.max)(_propagate_cosmo_array_attributes_to_result(np.max._implementation))

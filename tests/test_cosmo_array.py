@@ -486,7 +486,6 @@ class TestNumpyFunctions:
             "savetxt": (savetxt_file, ca(np.arange(3))),
             "fill_diagonal": (ca(np.eye(3)), ca(np.arange(3))),
             "apply_over_axes": (lambda x, axis: x, ca(np.eye(3)), (0, 1)),
-            "isin": (ca(np.arange(3)), ca(np.arange(3))),
             "place": (ca(np.arange(3)), np.arange(3) > 0, ca(np.arange(3))),
             "put": (ca(np.arange(3)), np.arange(3), ca(np.arange(3))),
             "put_along_axis": (ca(np.arange(3)), np.arange(3), ca(np.arange(3)), 0),
@@ -512,7 +511,7 @@ class TestNumpyFunctions:
             "array_repr": (ca(np.arange(3)),),
             "linalg.outer": (ca(np.arange(3)), ca(np.arange(3))),
             "trapezoid": (ca(np.arange(3)),),
-            "in1d": (ca(np.arange(3)), ca(np.arange(3))),  # np deprecated
+            "isin": (ca(np.arange(3)), ca(np.arange(3))),
             "take": (ca(np.arange(3)), np.arange(3)),
             # FUNCTIONS THAT UNYT DOESN'T HANDLE EXPLICITLY (THEY "JUST WORK"):
             "all": (ca(np.arange(3)),),
@@ -658,13 +657,6 @@ class TestNumpyFunctions:
         functions_checked = list()
         bad_funcs = dict()
         for fname, args in functions_to_check.items():
-            # ----- this is to be removed ------
-            # ---- see test_block_is_broken ----
-            if fname == "block":
-                # we skip this function due to issue in unyt with unreleased fix
-                functions_checked.append(np.block)
-                continue
-            # ----------------------------------
             ua_args = list()
             for arg in args:
                 ua_args.append(arg_to_ua(arg))
@@ -751,23 +743,6 @@ class TestNumpyFunctions:
                 ],
             )
 
-    @pytest.mark.xfail
-    def test_block_is_broken(self):
-        """
-        Tracking upstream fix.
-
-        There is an issue in unyt affecting np.block and fixed in
-        https://github.com/yt-project/unyt/pull/571.
-
-        When this fix is released:
-        - This test will unexpectedly pass (instead of xfailing).
-        - Remove lines flagged with a comment in `test_explicitly_handled_funcs`.
-        - Remove this test.
-        """
-        assert isinstance(
-            np.block([[ca(np.arange(3))], [ca(np.arange(3))]]), cosmo_array
-        )
-
     # the combinations of units and cosmo_factors is nonsense but it's just for testing...
     @pytest.mark.parametrize(
         "func_args",
@@ -843,7 +818,7 @@ class TestNumpyFunctions:
             np.array([1, 2, 3]),
         ),
     )
-    @pytest.mark.parametrize("bins_type", ("int", "np", "ca"))
+    @pytest.mark.parametrize("bins_type", ("int", "ca"))
     @pytest.mark.parametrize("density", (None, True))
     def test_histograms(self, func_args, weights, bins_type, density):
         """
@@ -856,7 +831,6 @@ class TestNumpyFunctions:
         func, args = func_args
         bins = {
             "int": 10,
-            "np": [np.linspace(0, 5, 11)] * 3,
             "ca": [
                 cosmo_array(
                     np.linspace(0, 5, 11),
@@ -889,7 +863,7 @@ class TestNumpyFunctions:
                     np.histogramdd: np.s_[:],
                 }[func]
             ]
-            if bins_type in ("np", "ca")
+            if bins_type == "ca"
             else bins
         )
         result = func(*args, bins=bins, density=density, weights=weights)
