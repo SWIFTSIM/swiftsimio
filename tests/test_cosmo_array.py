@@ -9,6 +9,10 @@ import unyt as u
 from copy import copy, deepcopy
 import pickle
 from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
+from importlib.metadata import version
+from packaging.version import Version
+
+NUMPY_VERSION = Version(version("numpy"))
 
 savetxt_file = "saved_array.txt"
 
@@ -654,6 +658,8 @@ class TestNumpyFunctions:
             "cumulative_prod": (ca(np.arange(3)),),
             "unstack": (ca(np.arange(3)),),
         }
+        if NUMPY_VERSION < Version("2.4.1"):
+            functions_to_check["in1d"] = (ca(np.arange(3)), ca(np.arange(3)))
         functions_checked = list()
         bad_funcs = dict()
         for fname, args in functions_to_check.items():
