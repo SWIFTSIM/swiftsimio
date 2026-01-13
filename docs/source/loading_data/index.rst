@@ -275,7 +275,7 @@ in SWIFT will be automatically read.
 Reading from an open file
 -------------------------
 
-``swiftsimio`` normally opens and closes the HDF5 snapshot file for
+:mod:`swiftsimio` normally opens and closes the HDF5 snapshot file for
 each operation. This is convenient for interactive use and avoids
 leaving files open for long periods of time, but sometimes it might be
 desirable to minimize the number of file open and close operations.
@@ -304,7 +304,7 @@ positions, velocities and IDs, then close the file.
 Reading from a remote file
 --------------------------
 
-``swiftsimio`` is able to read from snapshots hosted on a remote
+:mod:`swiftsimio` is able to read from snapshots hosted on a remote
 server using the `hdfstream
 <https://hdfstream-python.readthedocs.io/en/latest>`_ python
 module. This is useful if you're interested in accessing a small part
