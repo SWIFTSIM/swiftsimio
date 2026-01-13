@@ -421,7 +421,9 @@ def read_ranges_from_file_chunked(
 
 
 def slices_from_ranges(
-    ranges: np.ndarray, columns: int | slice | None, ndim: int
+    ranges: np.ndarray,
+    ndim: int,
+    columns: slice | int = np.s_[:],
 ) -> tuple:
     """
     Convert an array of ranges into a sorted list of slices.
@@ -434,11 +436,11 @@ def slices_from_ranges(
     ----------
     ranges : np.ndarray
         Array of ranges (see :func:`~swiftsimio.accelerated.ranges_from_array`).
-    columns : slice, int or None
-        Selector for columns if using a multi-dimensional array. If the array is only
-        a single dimension this is not used.
     ndim : int
         Number of dimensions in the dataset.
+    columns : slice or int, optional
+        Selector for columns if using a multi-dimensional array. If the array is only
+        a single dimension this is not used. Defaults to all columns.
 
     Returns
     -------
@@ -530,7 +532,7 @@ def read_ranges_from_hdfstream(
         Result from reading only the relevant values from ``handle``.
     """
     # Get a sorted list of slices to request from the server
-    slices, order = slices_from_ranges(ranges, columns, handle.ndim)
+    slices, order = slices_from_ranges(ranges, handle.ndim, columns)
 
     # Request the slice data as a single ndarray. Here we read into an existing
     # buffer so that we should get an exception if the data type or shape is
