@@ -154,14 +154,16 @@ access_methods = [
 ]
 
 
-filenames = [
-    "EagleDistributed.hdf5",
-    "EagleSingle.hdf5",
-    "LegacyCosmologicalVolume.hdf5",
-]
-
-
-@pytest.fixture(params=itertools.product(filenames, access_methods))
+@pytest.fixture(
+    params=itertools.product(
+        [
+            "EagleDistributed.hdf5",
+            "EagleSingle.hdf5",
+            "LegacyCosmologicalVolume.hdf5",
+        ],
+        access_methods,
+    )
+)
 def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides single, distributed and legacy datasets to test on.
@@ -276,15 +278,17 @@ def soap_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     yield request.param("SoapExample.hdf5", request)
 
 
-filenames = [
-    "EagleDistributed.hdf5",
-    "EagleSingle.hdf5",
-    "LegacyCosmologicalVolume.hdf5",
-    "SoapExample.hdf5",
-]
-
-
-@pytest.fixture(params=itertools.product(filenames, access_methods))
+@pytest.fixture(
+    params=itertools.product(
+        [
+            "EagleDistributed.hdf5",
+            "EagleSingle.hdf5",
+            "LegacyCosmologicalVolume.hdf5",
+            "SoapExample.hdf5",
+        ],
+        access_methods,
+    )
+)
 def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     """
     Fixture provides distributed, single & legacy, and SOAP datasets to test on.
