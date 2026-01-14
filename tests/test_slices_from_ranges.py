@@ -165,7 +165,7 @@ def test_slices_from_ranges(range_params, column_params):
 
     if error is None:
         # This case should work
-        actual_slices, order = slices_from_ranges(ranges, columns, ndim)
+        actual_slices, order = slices_from_ranges(ranges, ndim, columns)
         assert len(actual_slices) == len(expected_slices)
         for expected_slice, actual_slice in zip(expected_slices, actual_slices):
             if ndim == 1:
@@ -179,4 +179,4 @@ def test_slices_from_ranges(range_params, column_params):
                 raise RuntimeError("Only implemented for ndim=1 or 2")
     else:
         with pytest.raises(error):
-            actual_slices, order = slices_from_ranges(ranges, columns, ndim)
+            actual_slices, order = slices_from_ranges(ranges, ndim, columns)
