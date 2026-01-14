@@ -14,41 +14,50 @@ from pathlib import Path
 
 def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     """
-    Return True if obj is a soft link.
+    Return ``True`` if ``obj`` is a soft link.
+
+    Note that soft links are usually dereferenced automatically, so to check
+    if an object is a soft link a reference to the object must be obtained
+    with::
+
+      obj = group.get(key, getlink=True)
+
+    where ``group`` is the group containing the object and ``key`` is the name
+    of the object.
 
     Parameters
     ----------
     obj : Group, Dataset or SoftLink
-        Object returned by Group.get(key, getlink=True).
+        The object to check.
 
     Returns
     -------
     bool
-        True if obj is a soft link.
+        ``True`` if ``obj`` is a soft link.
     """
     return isinstance(obj, (h5py.SoftLink, hdfstream.SoftLink))
 
 
 def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     """
-    Return True if obj is a dataset.
+    Return ``True`` if ``obj`` is a dataset.
 
     Parameters
     ----------
     obj : Group, Dataset or SoftLink
-        Object returned by Group.get(key, getlink=True).
+        The object to check.
 
     Returns
     -------
     bool
-        True if obj is a dataset.
+        ``True`` if ``obj`` is a dataset.
     """
     return isinstance(obj, (h5py.Dataset, hdfstream.RemoteDataset))
 
 
 def is_hdfstream_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     """
-    Return True if obj is a hdfstream.RemoteDataset.
+    Return ``True`` if ``obj`` is a hdfstream.RemoteDataset.
 
     Parameters
     ----------
@@ -58,14 +67,14 @@ def is_hdfstream_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool
     Returns
     -------
     bool
-        True if obj is a hdfstream.RemoteDataset.
+        ``True`` if ``obj`` is a hdfstream.RemoteDataset.
     """
     return isinstance(obj, hdfstream.RemoteDataset)
 
 
 def split_path_or_handle(obj: str | Path | h5py.File) -> tuple[Path, h5py.File]:
     """
-    Given a filename or handle, return a (filename, handle) tuple.
+    Given a filename or handle, return a ``(filename, handle)`` tuple.
 
     Parameters
     ----------
