@@ -26,7 +26,28 @@ __all__ = [
     "read_ranges_from_hdfstream",
     "list_of_strings_to_arrays",
     "slices_from_ranges",
+    "to_native_byteorder_inplace",
 ]
+
+
+def to_native_byteorder_inplace(arr: np.ndarray) -> None:
+    """
+    Ensure that arr is native endian without making a copy.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Array to convert to native endian.
+    """
+    if arr.dtype.isnative:
+        return
+    if arr.dtype.names is None:  # standard check for not a structured or recarray
+        arr.byteswap(inplace=True)
+    else:
+        for name in arr.dtype.names:
+            if not arr[name].dtype.isnative:
+                arr[name].byteswap(inplace=True)
+    arr.dtype = arr.dtype.newbyteorder("native")
 
 
 @jit(nopython=True)
@@ -144,15 +165,8 @@ def read_ranges_from_file_unchunked(
 
         already_read += size_of_range
 
-    if not output.dtype.isnative:
-        # The data type we have read in is the opposite endian-ness to the
-        # machine we're on. Convert it here, to save pain down the line.
-        output = output.byteswap(inplace=True).newbyteorder()
-
-        if not output.dtype.isnative:
-            raise RuntimeError(
-                "Unable to find a native type that is a match to read data."
-            )
+    # Ensure the result is a native endian type
+    to_native_byteorder_inplace(output)
 
     return output
 
@@ -404,20 +418,13 @@ def read_ranges_from_file_chunked(
 
         already_read += size_of_range
 
-    if not output.dtype.isnative:
-        # The data type we have read in is the opposite endian-ness to the
-        # machine we're on. Convert it here, to save pain down the line.
-        output = output.byteswap(inplace=True).newbyteorder()
-
-        if not output.dtype.isnative:
-            raise RuntimeError(
-                "Unable to find a native type that is a match to read data."
-            )
-
     if handle.chunks is not None:
-        return extract_ranges_from_chunks(output, chunk_ranges, ranges)
-    else:
-        return output
+        output = extract_ranges_from_chunks(output, chunk_ranges, ranges)
+
+    # Ensure the result is a native endian type
+    to_native_byteorder_inplace(output)
+
+    return output
 
 
 def slices_from_ranges(
@@ -561,15 +568,8 @@ def read_ranges_from_hdfstream(
             offset += n
         output = output_sorted
 
-    if not output.dtype.isnative:
-        # The data type we have read in is the opposite endian-ness to the
-        # machine we're on. Convert it here, to save pain down the line.
-        output = output.byteswap(inplace=True).newbyteorder()
-
-        if not output.dtype.isnative:
-            raise RuntimeError(
-                "Unable to find a native type that is a match to read data."
-            )
+    # Ensure the result is a native endian type
+    to_native_byteorder_inplace(output)
 
     return output
 
