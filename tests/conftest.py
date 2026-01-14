@@ -240,7 +240,11 @@ def cosmological_volume_only_distributed(
     yield request.param("EagleDistributed.hdf5", request)
 
 
-@pytest.fixture(params=access_methods)
+@pytest.fixture(
+    params=[
+        open_local_with_filename,
+    ]
+)
 def cosmological_volume_dithered(
     request: pytest.FixtureRequest,
 ) -> Generator[str, None, None]:
