@@ -2,7 +2,6 @@
 
 import warnings
 import h5py
-import hdfstream
 import numpy as np
 from pathlib import Path
 
@@ -454,15 +453,15 @@ class SWIFTMask(HandleProvider):
 
         # Load in the relevant data.
         with self.metadata.open_file() as h5file:
-            if isinstance(h5file, hdfstream.RemoteFile):
-                # Passing a RemoteDataset to numpy is extremely slow because it
-                # results in a separate request for each element. Indexing
-                # generates a single http post request.
-                data = h5file[handle][current_mask, ...]
-            else:
-                # Surprisingly this is faster than just using the boolean
-                # indexing because h5py has slow indexing routines.
+            if isinstance(h5file, (h5py.File, h5py.Group)):
+                # When reading from a local HDF5 file this is faster than
+                # just using the boolean indexing because h5py has slow
+                # indexing routines.
                 data = np.take(h5file[handle], np.where(current_mask)[0], axis=0)
+            else:
+                # Otherwise, assume we can just index the dataset. This
+                # generates a single http request for remote datasets.
+                data = h5file[handle][current_mask, ...]
 
         # Wrap result in a cosmo array
         data = cosmo_array(

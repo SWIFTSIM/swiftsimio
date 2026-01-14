@@ -8,9 +8,12 @@ from collections.abc import Generator
 import numpy as np
 import unyt
 import h5py
-import hdfstream
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
+try:
+    import hdfstream
+except ImportError:
+    hdfstream = None
 
 
 # URL to download the test data
@@ -53,7 +56,7 @@ def _requires(filename: str) -> str:
     str
         The location of the desired file.
     """
-    if isinstance(filename, hdfstream.RemoteFile):
+    if hdfstream is not None and isinstance(filename, hdfstream.RemoteFile):
         return filename
 
     if filename == "EagleDistributed.hdf5":
@@ -121,13 +124,12 @@ def open_local_with_handle(filename: str, request: pytest.FixtureRequest) -> h5p
     return h5py.File(_requires(filename), "r")
 
 
-def open_with_hdfstream(
-    filename: str, request: pytest.FixtureRequest
-) -> hdfstream.RemoteFile:
+def open_with_hdfstream(filename: str, request: pytest.FixtureRequest) -> "hdfstream.RemoteFile":
     """
-    Return an open hdfstream.RemoteFile to read.
+    Return an open :class:`hdfstream.RemoteFile` to read.
 
-    Skips the test if no server URL was specified.
+    Skips the test if no server URL was specified or the :mod:`hdfstream`
+    module cannot be imported.
 
     Parameters
     ----------
@@ -141,6 +143,8 @@ def open_with_hdfstream(
     hdfstream.RemoteFile
         The open file.
     """
+    if hdfstream is None:
+        pytest.skip("hdfstream module could not be imported")
     server = request.config.getoption("--hdfstream-server")
     if server is None:
         pytest.skip("hdfstream server URL not specified")

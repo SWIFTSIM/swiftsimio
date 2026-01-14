@@ -8,8 +8,8 @@ what type of file or dataset object we have.
 from ._handle_provider import HandleProvider
 
 import h5py
-import hdfstream
 from pathlib import Path
+from importlib.util import find_spec
 
 
 def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
@@ -35,7 +35,11 @@ def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     bool
         ``True`` if ``obj`` is a soft link.
     """
-    return isinstance(obj, (h5py.SoftLink, hdfstream.SoftLink))
+    if find_spec("hdfstream") is not None:
+        import hdfstream
+        return isinstance(obj, (h5py.SoftLink, hdfstream.SoftLink))
+    else:
+        return isinstance(obj, h5py.SoftLink)
 
 
 def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
@@ -52,24 +56,11 @@ def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     bool
         ``True`` if ``obj`` is a dataset.
     """
-    return isinstance(obj, (h5py.Dataset, hdfstream.RemoteDataset))
-
-
-def is_hdfstream_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
-    """
-    Return ``True`` if ``obj`` is a hdfstream.RemoteDataset.
-
-    Parameters
-    ----------
-    obj : h5py.Dataset or hdfstream.RemoteDataset
-        A dataset like object in a local or remote file.
-
-    Returns
-    -------
-    bool
-        ``True`` if ``obj`` is a hdfstream.RemoteDataset.
-    """
-    return isinstance(obj, hdfstream.RemoteDataset)
+    if find_spec("hdfstream") is not None:
+        import hdfstream
+        return isinstance(dataset, (h5py.Dataset, hdfstream.RemoteDataset))
+    else:
+        return isinstance(dataset, h5py.Dataset)
 
 
 def split_path_or_handle(obj: str | Path | h5py.File) -> tuple[Path, h5py.File]:

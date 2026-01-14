@@ -1,6 +1,5 @@
 astropy
 h5py
-hdfstream
 numba
 numpy
 unyt

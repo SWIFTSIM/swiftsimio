@@ -9,7 +9,6 @@ import numpy as np
 from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
-from .file_utils import is_hdfstream_dataset
 
 __all__ = [
     "jit",
@@ -628,7 +627,7 @@ def read_ranges_from_file(
         else read_ranges_from_file_unchunked
     )
     return (
-        read_ranges_from_hdfstream if is_hdfstream_dataset(handle) else read_ranges
+        read_ranges_from_hdfstream if hasattr(handle, "request_slices") else read_ranges
     )(handle, ranges, output_shape, output_type, columns)
 
 
