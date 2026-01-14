@@ -422,10 +422,9 @@ class __SWIFTNamedColumnDataset(HandleProvider):
         for column in named_columns:
             setattr(self, f"_{column}", None)
 
-        # Close is probably not needed: either handle is None and we
-        # never opened anything, or it's a file which we will not
-        # close because it's managed by a parent object.
-        self._close_handle_if_manager()
+        # Call to self._close_handle_if_manager() is not needed here:
+        # either handle is None and we never opened anything, or it's a file
+        # which we will not close because it's managed by a parent object.
         return
 
     def __str__(self) -> str:
