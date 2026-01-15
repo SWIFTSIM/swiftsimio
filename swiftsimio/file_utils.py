@@ -58,9 +58,9 @@ def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     """
     if find_spec("hdfstream") is not None:
         import hdfstream
-        return isinstance(dataset, (h5py.Dataset, hdfstream.RemoteDataset))
+        return isinstance(obj, (h5py.Dataset, hdfstream.RemoteDataset))
     else:
-        return isinstance(dataset, h5py.Dataset)
+        return isinstance(obj, h5py.Dataset)
 
 
 def split_path_or_handle(obj: str | Path | h5py.File) -> tuple[Path, h5py.File]:
