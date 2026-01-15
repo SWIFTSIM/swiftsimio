@@ -288,7 +288,7 @@ class __SWIFTGroupDataset(HandleProvider):
     group_metadata : SWIFTGroupMetadata
         The metadata used to generate empty properties.
 
-    handle : h5py.File, optional
+    handle : h5py.File
         File handle to read from.
     """
 
@@ -298,7 +298,7 @@ class __SWIFTGroupDataset(HandleProvider):
         self,
         filename: Path,
         group_metadata: SWIFTGroupMetadata,
-        handle: h5py.File | None = None,
+        handle: h5py.File,
     ) -> None:
         super().__init__(handle.filename, handle=handle)
         self.units = group_metadata.units
@@ -377,7 +377,7 @@ class __SWIFTNamedColumnDataset(HandleProvider):
     name : str
         The variable of interest.
 
-    handle : h5py.File, optional
+    handle : h5py.File
         File handle to read from.
 
     Examples
@@ -395,7 +395,8 @@ class __SWIFTNamedColumnDataset(HandleProvider):
         data.gas = __SWIFTNamedColumnDataset(
         "/PartType0/ElementMassFractions",
         ["hydrogen", "helium"],
-        "element_mass_fraction"
+        "element_mass_fraction",
+        handle
         )
 
     would make visible:
@@ -411,7 +412,7 @@ class __SWIFTNamedColumnDataset(HandleProvider):
         field_path: str,
         named_columns: list[str],
         name: str,
-        handle: h5py.File | None = None,
+        handle: h5py.File,
     ) -> None:
         super().__init__(handle.filename, handle=handle)
         self.field_path = field_path
