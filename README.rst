@@ -47,7 +47,7 @@ requirements. There are a number of optional packages that you can install
 to make the experience better and these are recommended.
 
 .. _SWIFT: https://swift.strw.leidenuniv.nl/
-.. _swiftgalaxy: https://gitub.com/SWIFTSIM/swiftgalaxy
+.. _swiftgalaxy: https://github.com/SWIFTSIM/swiftgalaxy
 
 .. INTRO_END_LABEL
 
