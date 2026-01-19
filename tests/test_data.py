@@ -16,7 +16,7 @@ from numpy import isclose
 from numpy import array as numpy_array
 
 from swiftsimio.objects import cosmo_array
-from swiftsimio.file_utils import open_path_or_handle
+from swiftsimio._file_utils import open_path_or_handle
 from tests.helper import create_n_particle_dataset
 
 

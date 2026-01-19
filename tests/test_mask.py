@@ -3,7 +3,7 @@
 import warnings
 import pytest
 from swiftsimio import load, cosmo_array, cosmo_quantity
-from swiftsimio.file_utils import open_path_or_handle
+from swiftsimio._file_utils import open_path_or_handle
 import numpy as np
 import unyt as u
 from .helper import _mask_without_warning as mask

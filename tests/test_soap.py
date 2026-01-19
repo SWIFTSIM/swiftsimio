@@ -3,7 +3,7 @@
 import pytest
 import numpy as np
 from swiftsimio import load, mask, cosmo_quantity
-from swiftsimio.file_utils import open_path_or_handle
+from swiftsimio._file_utils import open_path_or_handle
 
 
 def test_soap_can_load(soap_example):

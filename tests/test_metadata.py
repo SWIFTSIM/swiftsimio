@@ -4,7 +4,7 @@ import numpy as np
 import h5py
 from swiftsimio import metadata, load, mask, SWIFTUnits, cosmo_array
 from swiftsimio.metadata.objects import SWIFTSnapshotMetadata
-from swiftsimio.file_utils import split_path_or_handle
+from swiftsimio._file_utils import split_path_or_handle
 
 
 def _is_closed_hdf5_file(handle: h5py.File) -> bool:

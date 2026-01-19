@@ -2,7 +2,7 @@
 
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.accelerated import read_ranges_from_file
-from swiftsimio.file_utils import is_dataset, is_soft_link
+from swiftsimio._file_utils import is_dataset, is_soft_link
 import swiftsimio.metadata as metadata
 
 import h5py

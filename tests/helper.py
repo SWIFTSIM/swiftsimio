@@ -7,7 +7,7 @@ import unyt as u
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
 from swiftsimio.masks import SWIFTMask
-from swiftsimio.file_utils import open_path_or_handle
+from swiftsimio._file_utils import open_path_or_handle
 
 
 def _mask_without_warning(fname: str, **kwargs: dict) -> SWIFTMask:

@@ -11,7 +11,7 @@ from .reader import SWIFTDataset
 from .snapshot_writer import SWIFTSnapshotWriter
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
-from .file_utils import open_path_or_handle
+from ._file_utils import open_path_or_handle
 from .__version__ import __version__
 from .__cite__ import __cite__
 
