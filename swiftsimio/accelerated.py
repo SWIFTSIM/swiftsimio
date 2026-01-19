@@ -128,7 +128,7 @@ def read_ranges_from_file_unchunked(
         Resultant shape of output.
 
     output_type : type, optional
-        :mod:`numpy` type of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
 
     columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
@@ -368,7 +368,7 @@ def read_ranges_from_file_chunked(
         Resultant shape of output.
 
     output_type : type, optional
-        :mod:`numpy` type of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
 
     columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
@@ -526,7 +526,7 @@ def read_ranges_from_hdfstream(
         Resultant shape of output.
 
     output_type : type, optional
-        :mod:`numpy` type of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
 
     columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
@@ -595,7 +595,7 @@ def read_ranges_from_file(
         Resultant shape of output.
 
     output_type : type, optional
-        :mod:`numpy` type of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
 
     columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
