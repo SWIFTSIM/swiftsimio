@@ -141,11 +141,10 @@ def mask(
     spatial_only=False version).
     """
     with open_path_or_handle(filename) as handle:
-        filename = Path(handle.filename)
         units = SWIFTUnits(handle.filename, handle=handle)
         metadata = _metadata_discriminator(handle.filename, units, handle=handle)
         mask = SWIFTMask(
-            filename,
+            handle.filename,
             metadata=metadata,
             spatial_only=spatial_only,
             safe_padding=safe_padding,
@@ -172,8 +171,7 @@ def load(filename: str | Path, mask: SWIFTMask | None = None) -> SWIFTDataset:
         Dataset object providing an interface to the data file.
     """
     with open_path_or_handle(filename) as handle:
-        filename = Path(handle.filename)
-        data = SWIFTDataset(filename, mask=mask, handle=handle)
+        data = SWIFTDataset(handle.filename, mask=mask, handle=handle)
 
     return data
 
