@@ -434,10 +434,13 @@ def slices_from_ranges(
     """
     Convert an array of ranges into a sorted list of slices.
 
-    Removes any zero length ranges, sorts the ranges by starting index
-    and merges consecutive ranges. Also returns a sorting index and
-    the lengths of the ranges, which can be used to restore the
-    original order.
+    Returns a list of slices sorted by starting offset to request from
+    the hdfstream server. Any zero length slices are discarded and
+    adjacent slices are merged to minimize the size of the
+    request. Also returns the length of the slices in sorted order
+    BEFORE merging and a sorting index which can be used to put the
+    concatenated slices returned by the server back into the order
+    specified in the input ranges array.
 
     Parameters
     ----------
@@ -480,6 +483,9 @@ def slices_from_ranges(
     if np.any(ordered_start[1:] < ordered_stop[:-1]):
         raise RuntimeError("Ranges to request from the server must not overlap!")
 
+    # Store the slice lengths before merging adjacent slices
+    lengths = ordered_stop - ordered_start
+
     # Determine starting indexes to keep: every starting index which is NOT
     # equal to the end of the previous range. Always keep the first.
     keep_start = np.ones(nr_ranges, dtype=bool)
@@ -493,7 +499,6 @@ def slices_from_ranges(
     # Compute start and stop index for the merged slices
     ordered_start = ordered_start[keep_start]
     ordered_stop = ordered_stop[keep_stop]
-    lengths = ordered_stop - ordered_start
 
     # Make an ordered list of slices
     if ndim > 1:

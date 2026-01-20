@@ -158,15 +158,18 @@ def test_slices_from_ranges(range_params, column_params):
     ndim = column_params["ndim"]
     columns = column_params["columns"]
 
-    # Convert the ranges to a list of slices
+    # Sanity check the ranges parameter
     ranges = np.asarray(ranges, dtype=int)
     assert len(ranges.shape) == 2
     assert ranges.shape[1] == 2
 
     if error is None:
-        # This case should work
+
+        # Convert ranges to a list of slices
         actual_slices, order, lengths = slices_from_ranges(ranges, ndim, columns)
         assert len(actual_slices) == len(expected_slices)
+
+        # Check we got the expected slices
         for expected_slice, actual_slice in zip(expected_slices, actual_slices):
             if ndim == 1:
                 assert slices_equal(actual_slice, expected_slice)
@@ -177,6 +180,25 @@ def test_slices_from_ranges(range_params, column_params):
                 assert actual_slice[1] == columns
             else:
                 raise RuntimeError("Only implemented for ndim=1 or 2")
+
+        # Compute the result of using the input ranges to index a dataset
+        dataset_size = np.amax(ranges[:,1]) + 1
+        dataset = np.arange(dataset_size, dtype=int)
+        expected_result = np.concatenate([dataset[start:stop] for (start, stop) in ranges])
+
+        # Compute the result of using the list of slices from slices_from_ranges() to index a dataset
+        if ndim == 1:
+            actual_result = np.concatenate([dataset[s] for s in actual_slices])
+        else:
+            actual_result = np.concatenate([dataset[s[0]] for s in actual_slices])
+
+        # Apply the sorting index to reorder the result if necessary
+        if order is not None:
+            starts = np.cumsum(lengths) - lengths
+            actual_result = np.concatenate([actual_result[starts[i]:starts[i]+lengths[i]] for i in order])
+
+        # Results should now match
+        assert np.all(actual_result == expected_result)
     else:
         with pytest.raises(error):
             actual_slices, order, lengths = slices_from_ranges(ranges, ndim, columns)
