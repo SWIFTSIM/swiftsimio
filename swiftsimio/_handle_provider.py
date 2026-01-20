@@ -1,5 +1,7 @@
 """Provide a mixin class for managing file handles."""
 
+from contextlib import contextmanager
+from typing import ContextManager
 from pathlib import Path
 import h5py
 
@@ -58,3 +60,23 @@ class HandleProvider:
         """Close the file handle if this object is the manager of the handle."""
         if self.handle_manager:
             self._handle.close()
+
+    @contextmanager
+    def open_file(self) -> ContextManager[h5py.File]:
+        """
+        Return a context manager that can be used to read the file.
+
+        This will use the existing handle if it is open. If not, we
+        assume that we're reading local HDF5 files using h5py and
+        create a temporary handle.
+
+        Returns
+        -------
+        ContextManager
+            A context manager which can be used to read the file.
+        """
+        if self._handle:
+            yield self._handle
+        else:
+            with h5py.File(self.filename, "r") as handle:
+                yield handle

@@ -4,6 +4,8 @@ from swiftsimio.subset_writer import write_subset
 from swiftsimio import load, SWIFTDataset
 from .helper import _mask_without_warning as mask
 import os
+import os.path
+from pathlib import Path
 
 
 def compare_data_contents(A: SWIFTDataset, B: SWIFTDataset) -> None:
@@ -72,8 +74,14 @@ def test_subset_writer(snapshot_or_soap):
     Writes a subset of the input file to a new file
     and compares result against masked load of the original file.
     """
+    # Get the name of the input test file
+    if isinstance(snapshot_or_soap, (Path, str)):
+        filename = str(snapshot_or_soap)
+    else:
+        filename = snapshot_or_soap.filename
+
     # Specify output filepath
-    outfile = snapshot_or_soap.replace(".hdf5", "_subset.hdf5")
+    outfile = os.path.basename(filename).replace(".hdf5", "_subset.hdf5")
 
     # Create a mask
     full_mask = mask(snapshot_or_soap)
