@@ -434,9 +434,10 @@ def slices_from_ranges(
     """
     Convert an array of ranges into a sorted list of slices.
 
-    Sorts the input ranges, merges consecutive ranges, removes zero
-    length ranges, and converts to a list of slice objects. Also
-    returns a sorting index for the input array of ranges.
+    Removes any zero length ranges, sorts the ranges by starting index
+    and merges consecutive ranges. Also returns a sorting index and
+    the lengths of the ranges, which can be used to restore the
+    original order.
 
     Parameters
     ----------
@@ -450,14 +451,21 @@ def slices_from_ranges(
 
     Returns
     -------
-    (list, np.ndarray)
-        List of slices and a sorting index for the input ranges.
+    (list, np.ndarray, np.ndarray)
+        Sorted list of slices, a sorting index to restore the order, and the length of each range.
 
     Raises
     ------
     RuntimeError
         If any of the ranges overlap.
+
     """
+
+    # Drop any zero length ranges
+    keep = (ranges[:,1] - ranges[:,0]) > 0
+    ranges = ranges[keep,:]
+    nr_ranges = ranges.shape[0]
+
     # If the ranges are not sorted, get the ordering by start index
     if np.any(ranges[1:, 0] < ranges[:-1, 1]):
         order = np.argsort(ranges[:, 0])
@@ -465,14 +473,8 @@ def slices_from_ranges(
         ordered_stop = ranges[order, 1]
     else:
         order = None
-        ordered_start = ranges[:, 0].copy()
-        ordered_stop = ranges[:, 1].copy()
-
-    # Drop any zero length ranges
-    keep = ordered_stop > ordered_start
-    ordered_start = ordered_start[keep]
-    ordered_stop = ordered_stop[keep]
-    nr_ranges = sum(keep)
+        ordered_start = ranges[:, 0]
+        ordered_stop = ranges[:, 1]
 
     # We can't handle overlapping ranges
     if np.any(ordered_start[1:] < ordered_stop[:-1]):
@@ -488,17 +490,25 @@ def slices_from_ranges(
     keep_stop = np.ones(nr_ranges, dtype=bool)
     keep_stop[:-1] = ordered_stop[:-1] != ordered_start[1:]
 
-    # Make a list of slices, skipping empty slices
-    slices = []
-    for start, stop in zip(ordered_start[keep_start], ordered_stop[keep_stop]):
-        if stop > start:
-            if ndim > 1:
-                this_slice = np.s_[start:stop, columns]
-            else:
-                this_slice = np.s_[start:stop]
-            slices.append(this_slice)
+    # Compute start and stop index for the merged slices
+    ordered_start = ordered_start[keep_start]
+    ordered_stop = ordered_stop[keep_stop]
+    lengths = ordered_stop - ordered_start
 
-    return (slices, order)
+    # Make an ordered list of slices
+    if ndim > 1:
+        slices = [np.s_[start:stop, columns] for start, stop in zip(ordered_start, ordered_stop)]
+    else:
+        slices = [np.s_[start:stop] for start, stop in zip(ordered_start, ordered_stop)]
+
+    # Invert the sorting index so we can restore the original order later
+    if order is not None:
+        inverse_order = np.empty_like(order)
+        inverse_order[order] = np.arange(len(order), dtype=int)
+    else:
+        inverse_order = None
+
+    return (slices, inverse_order, lengths)
 
 
 def read_ranges_from_hdfstream(
@@ -538,7 +548,7 @@ def read_ranges_from_hdfstream(
         Result from reading only the relevant values from ``handle``.
     """
     # Get a sorted list of slices to request from the server
-    slices, order = slices_from_ranges(ranges, handle.ndim, columns)
+    slices, inverse_order, lengths = slices_from_ranges(ranges, handle.ndim, columns)
 
     # Request the slice data as a single ndarray. Here we read into an existing
     # buffer so that we should get an exception if the data type or shape is
@@ -547,25 +557,14 @@ def read_ranges_from_hdfstream(
     if len(slices) > 0:
         handle.request_slices(slices, dest=output)
 
-    # Put the result into the same order as the input ranges array
-    if order is not None:
-        # Compute the offset into the output array for each range, assuming
-        # that ranges have been returned in order of starting offset.
-        ranges_read = np.empty_like(ranges)
-        offset = 0
-        for i in order:
-            n = max(0, ranges[i, 1] - ranges[i, 0])
-            ranges_read[i, 0] = offset
-            ranges_read[i, 1] = offset + n
-            offset += n
-        # Copy the ranges to a new array in the input range order
-        output_sorted = np.empty_like(output)
-        offset = 0
-        for start, stop in ranges_read:
-            n = max(0, stop - start)
-            output_sorted[offset : offset + n, ...] = output[start:stop, ...]
-            offset += n
-        output = output_sorted
+    # Put the result into the same order as the input ranges array, if it isn't already
+    if inverse_order is not None:
+        # Split the array returned by request_slices() into separate ranges
+        ranges_in_returned_order = np.split(output, np.cumsum(lengths)[:-1])
+        # Put the ranges into the order in which they were requested
+        ranges_in_requested_order = np.take(ranges_in_returned_order, inverse_order)
+        # Concatenate the ranges back into a single array
+        output = np.concatenate(ranges_in_requested_order)
 
     # Ensure the result is a native endian type
     to_native_byteorder_inplace(output)
