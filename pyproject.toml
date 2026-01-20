@@ -41,7 +41,7 @@ dependencies = [
     "astropy>=5.0",
     "numpy>=2.1.0",
     "h5py",
-    "unyt>=3.0.4",
+    "unyt==3.0.4", # TODO: unpin unyt version
     "numba>=0.50.0",
 ]
 
