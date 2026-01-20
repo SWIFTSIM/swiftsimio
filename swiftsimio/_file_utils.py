@@ -37,6 +37,7 @@ def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     """
     if find_spec("hdfstream") is not None:
         import hdfstream
+
         return isinstance(obj, (h5py.SoftLink, hdfstream.SoftLink))
     else:
         return isinstance(obj, h5py.SoftLink)
@@ -58,6 +59,7 @@ def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     """
     if find_spec("hdfstream") is not None:
         import hdfstream
+
         return isinstance(obj, (h5py.Dataset, hdfstream.RemoteDataset))
     else:
         return isinstance(obj, h5py.Dataset)

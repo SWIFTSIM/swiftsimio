@@ -10,6 +10,7 @@ import unyt
 import h5py
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
+
 try:
     import hdfstream
 except ImportError:
@@ -50,7 +51,9 @@ def pytest_addoption(parser):
         "--hdfstream-server", default=None, help="Hdfstream server URL for tests"
     )
     parser.addoption(
-        "--hdfstream-prefix", default=test_data_location, help="Directory with test data on the server"
+        "--hdfstream-prefix",
+        default=test_data_location,
+        help="Directory with test data on the server",
     )
 
 
@@ -158,7 +161,9 @@ def open_local_with_handle(filename: str, request: pytest.FixtureRequest) -> h5p
     return h5py.File(_requires(filename), "r")
 
 
-def open_with_hdfstream(filename: str, request: pytest.FixtureRequest) -> "hdfstream.RemoteFile":
+def open_with_hdfstream(
+    filename: str, request: pytest.FixtureRequest
+) -> "hdfstream.RemoteFile":
     """
     Return an open :class:`hdfstream.RemoteFile` to read.
 
