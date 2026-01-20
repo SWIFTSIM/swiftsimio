@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from swiftsimio.accelerated import slices_from_ranges
+from swiftsimio._ordered_slices import OrderedSlices
 
 
 range_cases = [
@@ -164,13 +164,12 @@ def test_slices_from_ranges(range_params, column_params):
     assert ranges.shape[1] == 2
 
     if error is None:
-
         # Convert ranges to a list of slices
-        actual_slices, order, lengths = slices_from_ranges(ranges, ndim, columns)
-        assert len(actual_slices) == len(expected_slices)
+        ordered_slices = OrderedSlices(ranges, ndim, columns)
+        assert len(ordered_slices.slices) == len(expected_slices)
 
         # Check we got the expected slices
-        for expected_slice, actual_slice in zip(expected_slices, actual_slices):
+        for expected_slice, actual_slice in zip(expected_slices, ordered_slices.slices):
             if ndim == 1:
                 assert slices_equal(actual_slice, expected_slice)
             elif ndim == 2:
@@ -181,24 +180,36 @@ def test_slices_from_ranges(range_params, column_params):
             else:
                 raise RuntimeError("Only implemented for ndim=1 or 2")
 
-        # Compute the result of using the input ranges to index a dataset
-        dataset_size = np.amax(ranges[:,1]) + 1
-        dataset = np.arange(dataset_size, dtype=int)
-        expected_result = np.concatenate([dataset[start:stop] for (start, stop) in ranges])
-
-        # Compute the result of using the list of slices from slices_from_ranges() to index a dataset
+        # Create a dataset to try reading
+        max_index = np.amax(ranges.flatten())
+        n = max_index + 1
         if ndim == 1:
-            actual_result = np.concatenate([dataset[s] for s in actual_slices])
+            dataset = np.arange(n, dtype=int)
+        elif ndim == 2:
+            max_cols = 10
+            dataset = np.arange(max_cols * n, dtype=int).reshape((n, max_cols))
         else:
-            actual_result = np.concatenate([dataset[s[0]] for s in actual_slices])
+            raise RuntimeError("Only implemented for ndim=1 or 2")
 
-        # Apply the sorting index to reorder the result if necessary
-        if order is not None:
-            starts = np.cumsum(lengths) - lengths
-            actual_result = np.concatenate([actual_result[starts[i]:starts[i]+lengths[i]] for i in order])
+        # Use the input ranges to construct the correct result
+        if columns is None:
+            expected_data = np.concatenate(
+                [dataset[start:stop, ...] for (start, stop) in ranges]
+            )
+        else:
+            assert ndim == 2
+            expected_data = np.concatenate(
+                [dataset[start:stop, columns] for (start, stop) in ranges]
+            )
 
-        # Results should now match
-        assert np.all(actual_result == expected_result)
+        # Use the sorted slices to construct a result which may not be ordered correctly
+        wrong_order_data = np.concatenate([dataset[s] for s in ordered_slices.slices])
+
+        # Restore the correct ordering. Result should be the same as applying the ranges.
+        actual_data = ordered_slices.reorder_result(wrong_order_data)
+        assert np.all(actual_data == expected_data)
+
     else:
+        # This case is expected to fail
         with pytest.raises(error):
-            actual_slices, order, lengths = slices_from_ranges(ranges, ndim, columns)
+            ordered_slices = OrderedSlices(ranges, ndim, columns)

@@ -9,6 +9,7 @@ import numpy as np
 from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
+from ._ordered_slices import OrderedSlices
 
 __all__ = [
     "jit",
@@ -24,7 +25,6 @@ __all__ = [
     "read_ranges_from_file",
     "read_ranges_from_hdfstream",
     "list_of_strings_to_arrays",
-    "slices_from_ranges",
     "to_native_byteorder_inplace",
 ]
 
@@ -426,96 +426,6 @@ def read_ranges_from_file_chunked(
     return output
 
 
-def slices_from_ranges(
-    ranges: np.ndarray,
-    ndim: int,
-    columns: slice | int = np.s_[:],
-) -> tuple:
-    """
-    Convert an array of ranges into a sorted list of slices.
-
-    Returns a list of slices sorted by starting offset to request from
-    the hdfstream server. Any zero length slices are discarded and
-    adjacent slices are merged to minimize the size of the
-    request. Also returns the length of the slices in sorted order
-    BEFORE merging and a sorting index which can be used to put the
-    concatenated slices returned by the server back into the order
-    specified in the input ranges array.
-
-    Parameters
-    ----------
-    ranges : np.ndarray
-        Array of ranges (see :func:`~swiftsimio.accelerated.ranges_from_array`).
-    ndim : int
-        Number of dimensions in the dataset.
-    columns : slice or int, optional
-        Selector for columns if using a multi-dimensional array. If the array is only
-        a single dimension this is not used. Defaults to all columns.
-
-    Returns
-    -------
-    (list, np.ndarray, np.ndarray)
-        Sorted list of slices, a sorting index to restore the order, and the length of each range.
-
-    Raises
-    ------
-    RuntimeError
-        If any of the ranges overlap.
-
-    """
-
-    # Drop any zero length ranges
-    keep = (ranges[:,1] - ranges[:,0]) > 0
-    ranges = ranges[keep,:]
-    nr_ranges = ranges.shape[0]
-
-    # If the ranges are not sorted, get the ordering by start index
-    if np.any(ranges[1:, 0] < ranges[:-1, 1]):
-        order = np.argsort(ranges[:, 0])
-        ordered_start = ranges[order, 0]
-        ordered_stop = ranges[order, 1]
-    else:
-        order = None
-        ordered_start = ranges[:, 0]
-        ordered_stop = ranges[:, 1]
-
-    # We can't handle overlapping ranges
-    if np.any(ordered_start[1:] < ordered_stop[:-1]):
-        raise RuntimeError("Ranges to request from the server must not overlap!")
-
-    # Store the slice lengths before merging adjacent slices
-    lengths = ordered_stop - ordered_start
-
-    # Determine starting indexes to keep: every starting index which is NOT
-    # equal to the end of the previous range. Always keep the first.
-    keep_start = np.ones(nr_ranges, dtype=bool)
-    keep_start[1:] = ordered_start[1:] != ordered_stop[:-1]
-
-    # Determine ending indexes to keep: every end index which is NOT equal
-    # to the start of the next slice. Always keep the last one.
-    keep_stop = np.ones(nr_ranges, dtype=bool)
-    keep_stop[:-1] = ordered_stop[:-1] != ordered_start[1:]
-
-    # Compute start and stop index for the merged slices
-    ordered_start = ordered_start[keep_start]
-    ordered_stop = ordered_stop[keep_stop]
-
-    # Make an ordered list of slices
-    if ndim > 1:
-        slices = [np.s_[start:stop, columns] for start, stop in zip(ordered_start, ordered_stop)]
-    else:
-        slices = [np.s_[start:stop] for start, stop in zip(ordered_start, ordered_stop)]
-
-    # Invert the sorting index so we can restore the original order later
-    if order is not None:
-        inverse_order = np.empty_like(order)
-        inverse_order[order] = np.arange(len(order), dtype=int)
-    else:
-        inverse_order = None
-
-    return (slices, inverse_order, lengths)
-
-
 def read_ranges_from_hdfstream(
     handle: Dataset,
     ranges: np.ndarray,
@@ -553,23 +463,17 @@ def read_ranges_from_hdfstream(
         Result from reading only the relevant values from ``handle``.
     """
     # Get a sorted list of slices to request from the server
-    slices, inverse_order, lengths = slices_from_ranges(ranges, handle.ndim, columns)
+    ordered_slices = OrderedSlices(ranges, handle.ndim, columns)
 
     # Request the slice data as a single ndarray. Here we read into an existing
     # buffer so that we should get an exception if the data type or shape is
     # not what we expected.
     output = np.empty(output_shape, dtype=output_type)
-    if len(slices) > 0:
-        handle.request_slices(slices, dest=output)
+    if len(ordered_slices.slices) > 0:
+        handle.request_slices(ordered_slices.slices, dest=output)
 
     # Put the result into the same order as the input ranges array, if it isn't already
-    if inverse_order is not None:
-        # Split the array returned by request_slices() into separate ranges
-        ranges_in_returned_order = np.split(output, np.cumsum(lengths)[:-1])
-        # Put the ranges into the order in which they were requested
-        ranges_in_requested_order = np.take(ranges_in_returned_order, inverse_order)
-        # Concatenate the ranges back into a single array
-        output = np.concatenate(ranges_in_requested_order)
+    output = ordered_slices.reorder_result(output)
 
     # Ensure the result is a native endian type
     to_native_byteorder_inplace(output)
