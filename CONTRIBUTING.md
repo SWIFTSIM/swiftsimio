@@ -38,4 +38,4 @@ In addition to this there is "narrative documentation" that should describe the 
 Docstrings
 ----------
 
-Ruff currently has limited support for [numpydoc](https://numpydoc.readthedocs.io/en/latest/index.html)-style docstrings. To run additional checks on docstrings use `numpydoc lint **/*.py` in the same directory as the `pyproject.toml` file. As more style rules become supported by `ruff` this will hopefully be phased out.
+Ruff currently has limited support for [numpydoc](https://numpydoc.readthedocs.io)-style docstrings. To run additional checks on docstrings use `numpydoc lint **/*.py` in the same directory as the `pyproject.toml` file. As more style rules become supported by `ruff` this will hopefully be phased out.

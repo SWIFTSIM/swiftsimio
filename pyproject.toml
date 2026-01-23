@@ -48,7 +48,7 @@ dependencies = [
 [project.urls]
 "Homepage" = "https://github.com/SWIFTSIM/swiftsimio"
 "Bug Tracker" = "https://github.com/SWIFTSIM/swiftsimio/issues"
-"Documentation" = "https://swiftsimio.readthedocs.io/en/latest"
+"Documentation" = "https://swiftsimio.readthedocs.io"
 
 [project.scripts]
 swiftsnap = "swiftsimio.swiftsnap:swiftsnap"
