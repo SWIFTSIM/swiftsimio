@@ -16,7 +16,7 @@ def test_basic_tcmb(cosmological_volume):
         assert data.filename.name == "LegacyCosmologicalVolume.hdf5"
         Omega_ur = 0.0
     assert isclose(
-        data.metadata.cosmology._Ogamma0,
+        data.metadata.cosmology.Ogamma0,
         data.metadata.cosmology_raw["Omega_r"][0] - Omega_ur,
     )
 
