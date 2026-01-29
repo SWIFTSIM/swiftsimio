@@ -1114,6 +1114,8 @@ class TestCosmoQuantity:
         )
         assert ca.squeeze().ndim == 0
         assert isinstance(ca.squeeze(), cosmo_quantity)
+        assert np.squeeze(ca).ndim == 0
+        assert isinstance(np.squeeze(ca), cosmo_quantity)
 
 
 class TestCosmoArrayCopy:
