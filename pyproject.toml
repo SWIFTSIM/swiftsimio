@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 packages = [
     "swiftsimio",
     "swiftsimio.metadata",
-    "swiftsimio.metadata.cosmology",
     "swiftsimio.metadata.metadata",
     "swiftsimio.metadata.particle",
     "swiftsimio.metadata.unit",
