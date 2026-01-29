@@ -9,15 +9,16 @@ def test_basic_tcmb(cosmological_volume):
     """Tests we can recover omega_gamma = 0.0 and tcmb0 in the usual case."""
     data = load(cosmological_volume)
 
-    try:
-        assert isclose(
-            data.metadata.cosmology._Ogamma0,
-            data.metadata.cosmology_raw["Omega_r"][0]
-            - data.metadata.cosmology_raw["Omega_ur"][0],
-        )
-    except AttributeError:
-        # Broken astropy install
-        pass
+    if "Omega_ur" in data.metadata.cosmology_raw:
+        Omega_ur = data.metadata.cosmology_raw["Omega_ur"][0]
+    else:
+        # expected in LegacyCosmologicalVolume
+        assert data.filename.name == "LegacyCosmologicalVolume.hdf5"
+        Omega_ur = 0.0
+    assert isclose(
+        data.metadata.cosmology._Ogamma0,
+        data.metadata.cosmology_raw["Omega_r"][0] - Omega_ur,
+    )
 
 
 def test_nonzero_tcmb(cosmological_volume):
