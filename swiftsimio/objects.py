@@ -1384,6 +1384,7 @@ class cosmo_array(unyt_array):
         _ensure_result_is_cosmo_array_or_quantity(unyt_array.__getitem__)
     )
     dot = _default_binary_wrapper(unyt_array.dot, _multiply_cosmo_factor)
+    squeeze = _ensure_result_is_cosmo_array_or_quantity(unyt_array.squeeze)
 
     # Also wrap some array "properties":
     T = property(_propagate_cosmo_array_attributes_to_result(unyt_array.transpose))
