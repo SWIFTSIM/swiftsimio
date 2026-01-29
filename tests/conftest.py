@@ -11,7 +11,7 @@ from swiftsimio.units import cosmo_units
 
 
 webstorage_location = (
-    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2025/"
+    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_11_2025/"
 )
 test_data_location = "test_data/"
 
@@ -62,6 +62,7 @@ def _requires(filename: str) -> str:
         "EagleDistributed.hdf5",
         "EagleSingle.hdf5",
         "LegacyCosmologicalVolume.hdf5",
+        "ColibreSingle.hdf5",
     ]
 )
 def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, None]:
