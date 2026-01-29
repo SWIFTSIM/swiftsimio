@@ -109,7 +109,7 @@ intersphinx_mapping = dict(
     numba=("https://numba.readthedocs.io/en/stable/", None),
     unyt=("https://unyt.readthedocs.io/en/stable/", None),
     scipy=("https://docs.scipy.org/doc/scipy/", None),
-    swiftgalaxy=("https://swiftsimio.readthedocs.io/en/latest/", None),
+    swiftgalaxy=("https://swiftgalaxy.readthedocs.io/en/stable/", None),
     velociraptor=("https://velociraptor-python.readthedocs.io/en/latest/", None),
     astropy=("https://docs.astropy.org/en/stable/", None),
 )

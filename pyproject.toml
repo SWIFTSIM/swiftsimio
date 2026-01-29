@@ -38,20 +38,39 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "astropy>=5.0",
+    "astropy>=6.0",
     "numpy>=2.1.0",
     "h5py",
-    "unyt>=3.0.4",
+    "unyt>=3.1.0",
     "numba>=0.50.0",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/SWIFTSIM/swiftsimio"
 "Bug Tracker" = "https://github.com/SWIFTSIM/swiftsimio/issues"
-"Documentation" = "https://swiftsimio.readthedocs.io/en/latest"
+"Documentation" = "https://swiftsimio.readthedocs.io"
 
 [project.scripts]
 swiftsnap = "swiftsimio.swiftsnap:swiftsnap"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "numpydoc",
+    "matplotlib",
+    "scipy",
+    "wily",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "recommonmark",
+    "sphinx_design",
+]
+all = [
+    "swiftsimio[dev,docs]"
+]
 
 [tool.ruff]
 exclude = ["docs/source/conf.py"]

@@ -15,7 +15,7 @@ SWIFTsimIO
    :target: https://github.com/SWIFTSIM/swiftsimio/actions/workflows/lint_and_test.yml
    :alt: Build status
 .. |Documentation status| image:: https://readthedocs.org/projects/swiftsimio/badge/?version=latest
-   :target: https://swiftsimio.readthedocs.io/en/latest/?badge=latest
+   :target: https://swiftsimio.readthedocs.io
    :alt: Documentation status
 .. |JOSS| image:: https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331/status.svg
    :target: https://joss.theoj.org/papers/e85c85f49b99389d98f9b6d81f090331
