@@ -10,12 +10,7 @@ import unyt
 import h5py
 from swiftsimio import Writer
 from swiftsimio.units import cosmo_units
-
-try:
-    import hdfstream
-except ImportError:
-    hdfstream = None
-
+from swiftsimio.optional_packages import HDFSTREAM_AVAILABLE, hdfstream
 
 # URL to download the test data
 webstorage_location = (
@@ -71,7 +66,7 @@ def _requires(filename: str) -> str:
     str
         The location of the desired file.
     """
-    if hdfstream is not None and isinstance(filename, hdfstream.RemoteFile):
+    if HDFSTREAM_AVAILABLE and isinstance(filename, hdfstream.RemoteFile):
         return filename
 
     if filename == "EagleDistributed.hdf5":
@@ -182,7 +177,7 @@ def open_with_hdfstream(
     hdfstream.RemoteFile
         The open file.
     """
-    if hdfstream is None:
+    if not HDFSTREAM_AVAILABLE:
         pytest.skip("hdfstream module could not be imported")
     server = request.config.getoption("--hdfstream-server")
     prefix = request.config.getoption("--hdfstream-prefix")

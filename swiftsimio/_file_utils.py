@@ -9,7 +9,7 @@ from ._handle_provider import HandleProvider
 
 import h5py
 from pathlib import Path
-from importlib.util import find_spec
+from swiftsimio.optional_packages import HDFSTREAM_AVAILABLE, hdfstream
 
 
 def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
@@ -35,9 +35,7 @@ def is_soft_link(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     bool
         ``True`` if ``obj`` is a soft link.
     """
-    if find_spec("hdfstream") is not None:
-        import hdfstream
-
+    if HDFSTREAM_AVAILABLE:
         return isinstance(obj, (h5py.SoftLink, hdfstream.SoftLink))
     else:
         return isinstance(obj, h5py.SoftLink)
@@ -57,9 +55,7 @@ def is_dataset(obj: h5py.Group | h5py.Dataset | h5py.SoftLink) -> bool:
     bool
         ``True`` if ``obj`` is a dataset.
     """
-    if find_spec("hdfstream") is not None:
-        import hdfstream
-
+    if HDFSTREAM_AVAILABLE:
         return isinstance(obj, (h5py.Dataset, hdfstream.RemoteDataset))
     else:
         return isinstance(obj, h5py.Dataset)
