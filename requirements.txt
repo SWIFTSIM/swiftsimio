@@ -1,5 +1,0 @@
-astropy
-h5py
-numba
-numpy
-unyt

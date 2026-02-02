@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 packages = [
     "swiftsimio",
     "swiftsimio.metadata",
-    "swiftsimio.metadata.cosmology",
     "swiftsimio.metadata.metadata",
     "swiftsimio.metadata.particle",
     "swiftsimio.metadata.unit",
@@ -22,7 +21,7 @@ packages = [
 
 [project]
 name = "swiftsimio"
-version="10.7.2"
+version="11.0.0"
 authors = [
     { name="Josh Borrow", email="josh@joshborrow.com" },
 ]
@@ -38,25 +37,42 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "astropy>=5.0",
+    "astropy>=6.0",
     "numpy>=2.1.0",
     "h5py",
-    "unyt==3.0.4", # TODO: unpin unyt version
+    "unyt>=3.1.0",
     "numba>=0.50.0",
-]
-
-[project.optional-dependencies]
-hdfstream = [
-    "hdfstream >= 0.0.23",
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/SWIFTSIM/swiftsimio"
 "Bug Tracker" = "https://github.com/SWIFTSIM/swiftsimio/issues"
-"Documentation" = "https://swiftsimio.readthedocs.io/en/latest"
+"Documentation" = "https://swiftsimio.readthedocs.io"
 
 [project.scripts]
 swiftsnap = "swiftsimio.swiftsnap:swiftsnap"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "numpydoc",
+    "matplotlib",
+    "scipy",
+    "wily",
+]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "recommonmark",
+    "sphinx_design",
+]
+hdfstream = [
+    "hdfstream >= 0.0.23",
+]
+all = [
+    "swiftsimio[dev,docs,hdfstream]"
+]
 
 [tool.ruff]
 exclude = ["docs/source/conf.py"]

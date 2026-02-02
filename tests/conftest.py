@@ -14,7 +14,7 @@ from swiftsimio.optional_packages import HDFSTREAM_AVAILABLE, hdfstream
 
 # URL to download the test data
 webstorage_location = (
-    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2025/"
+    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_11_2025/"
 )
 
 # Where to write the downloaded files
@@ -113,6 +113,7 @@ def preload_test_data():
         "LegacyCosmologicalVolume.hdf5",
         "LegacyCosmologicalVolumeDithered.hdf5",
         "SoapExample.hdf5",
+        "ColibreSingle.hdf5",
     ]
     for name in all_filenames:
         _requires(name)
@@ -199,6 +200,7 @@ access_methods = [
             "EagleDistributed.hdf5",
             "EagleSingle.hdf5",
             "LegacyCosmologicalVolume.hdf5",
+            "ColibreSingle.hdf5",
         ],
         access_methods,
     )

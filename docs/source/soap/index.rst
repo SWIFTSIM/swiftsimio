@@ -38,4 +38,4 @@ swiftgalaxy
 
 The :mod:`swiftgalaxy` companion package to :mod:`swiftsimio` offers further integration with halo catalogues in SOAP, Caesar and Velociraptor formats (so far). It greatly simplifies efficient loading of particles belonging to an object from a catalogue, and additional tools that are useful when working with a galaxy or other localized collection of particles. Refer to the `swiftgalaxy documentation`_ for details.
 
-.. _swiftgalaxy documentation: https://swiftgalaxy.readthedocs.io/en/latest/
+.. _swiftgalaxy documentation: https://swiftgalaxy.readthedocs.io

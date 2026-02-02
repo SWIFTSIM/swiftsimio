@@ -110,7 +110,11 @@ def test_units(cosmological_volume):
         for property in properties:
             # Read the 0th element, and compare in CGS units.
             # We need to use doubles here as sometimes we can overflow!
-            our_units = getattr(field, property).astype(np.float64)[0]
+            # Not all our test datasets have all the test fields, so skip when missing
+            try:
+                our_units = getattr(field, property).astype(np.float64)[0]
+            except AttributeError:
+                continue
 
             our_units.convert_to_cgs()
 

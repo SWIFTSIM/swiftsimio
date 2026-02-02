@@ -2,7 +2,7 @@
 
 import numpy as np
 import h5py
-from swiftsimio import metadata, load, mask, SWIFTUnits, cosmo_array
+from swiftsimio import load, mask, SWIFTUnits, cosmo_array
 from swiftsimio.metadata.objects import SWIFTSnapshotMetadata
 from swiftsimio._file_utils import split_path_or_handle
 
@@ -22,34 +22,6 @@ def _is_closed_hdf5_file(handle: h5py.File) -> bool:
         ``True`` if ``handle`` is a closed file handle, else ``False``.
     """
     return isinstance(handle, h5py.File) and not handle
-
-
-def test_same_contents():
-    """
-    Tests that field metadata defined by hand covers same fields.
-
-    Checks that there are the same arrays in each of the following:
-
-        + particle fields
-        + unit fields
-        + cosmology fields
-
-    We treat the particle fields as the ground truth.
-    """
-    cosmology = metadata.cosmology_fields.generate_cosmology(1.0, 1.0)
-    units = metadata.unit_fields.generate_units(1.0, 1.0, 1.0, 1.0, 1.0)
-    particle = {x: getattr(metadata.particle_fields, x) for x in units.keys()}
-
-    # Do we cover all the same particle fields?
-
-    assert cosmology.keys() == particle.keys()
-    assert units.keys() == particle.keys()
-
-    for ptype in cosmology.keys():
-        assert set(units[ptype].keys()) == set(particle[ptype].values())
-        assert set(cosmology[ptype].keys()) == set(particle[ptype].values())
-
-    return
 
 
 def test_file_handle_cleanup(cosmological_volume_only_single):

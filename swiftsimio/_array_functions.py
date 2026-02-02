@@ -93,7 +93,6 @@ from unyt._array_functions import (
     linalg_eigvalsh as unyt_linalg_eigvalsh,
     savetxt as unyt_savetxt,
     fill_diagonal as unyt_fill_diagonal,
-    isin as unyt_isin,
     place as unyt_place,
     put as unyt_put,
     put_along_axis as unyt_put_along_axis,
@@ -115,9 +114,13 @@ from unyt._array_functions import (
     array_repr as unyt_array_repr,
     linalg_outer as unyt_linalg_outer,
     trapezoid as unyt_trapezoid,
-    isin as unyt_in1d,
+    isin as unyt_isin,
     take as unyt_take,
 )
+from importlib.metadata import version
+from packaging.version import Version
+
+NUMPY_VERSION = Version(version("numpy"))
 
 _HANDLED_FUNCTIONS = {}
 
@@ -1271,39 +1274,8 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
 
 
 @implements(np.array2string)
-def array2string(  # noqa numpydoc ignore=GL08
-    a,  # noqa: ANN001
-    max_line_width=None,  # noqa: ANN001
-    precision=None,  # noqa: ANN001
-    suppress_small=None,  # noqa: ANN001
-    separator=" ",  # noqa: ANN001
-    prefix="",  # noqa: ANN001
-    style=np._NoValue,  # noqa: ANN001
-    formatter=None,  # noqa: ANN001
-    threshold=None,  # noqa: ANN001
-    edgeitems=None,  # noqa: ANN001
-    sign=None,  # noqa: ANN001
-    floatmode=None,  # noqa: ANN001
-    suffix="",  # noqa: ANN001
-    *,
-    legacy=None,  # noqa: ANN001
-):
-    res = unyt_array2string(
-        a,
-        max_line_width=max_line_width,
-        precision=precision,
-        suppress_small=suppress_small,
-        separator=separator,
-        prefix=prefix,
-        style=style,
-        formatter=formatter,
-        threshold=threshold,
-        edgeitems=edgeitems,
-        sign=sign,
-        floatmode=floatmode,
-        suffix=suffix,
-        legacy=legacy,
-    )
+def array2string(a, *args, **kwargs):  # noqa numpydoc ignore=GL08
+    res = unyt_array2string(a, *args, **kwargs)
     if a.comoving:
         append = " (comoving)"
     elif a.comoving is False:
@@ -2262,14 +2234,46 @@ def trapezoid(y, x=None, dx=1.0, axis=-1):  # noqa numpydoc ignore=GL08
     return _return_helper(res, helper_result, ret_cf)
 
 
-implements(np.in1d)(_default_comparison_wrapper(unyt_in1d))
+implements(np.isin)(_default_comparison_wrapper(unyt_isin))
 implements(np.take)(_default_unary_wrapper(unyt_take, _preserve_cosmo_factor))
 
 # Now we wrap functions that unyt does not handle explicitly:
 
-implements(np.average)(
-    _propagate_cosmo_array_attributes_to_result(np.average._implementation)
-)
+
+@implements(np.average)
+def average(a, axis=None, weights=None, returned=False, *, keepdims=np._NoValue):  # noqa numpydoc ignore=GL08
+    # Average suffered from a bug
+    # (https://github.com/SWIFTSIM/swiftsimio/issues/285)
+    # Correct results depend on unyt>=3.1.0
+    # (https://github.com/yt-project/unyt/pull/611)
+    # There is also a fix in numpy>=3.4.1
+    # (https://github.com/numpy/numpy/pull/30522)
+    # that means we no longer need any special handling here, but to support older
+    # versions we need a patch.
+    helper_result = _prepare_array_func_args(
+        a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
+    )
+    if NUMPY_VERSION < Version("2.4.1"):
+        from unyt._array_functions import average as super_average
+
+    else:
+        super_average = np.average._implementation
+
+    res = super_average(
+        a, axis=axis, weights=weights, returned=returned, keepdims=keepdims
+    )
+    ret_cf_avg = _preserve_cosmo_factor(helper_result["cfs"][0])
+    if returned:
+        avg, wsum = res
+        ret_cf_wsum = _preserve_cosmo_factor(helper_result["kw_cfs"]["weights"])
+        return (
+            _return_helper(avg, helper_result, ret_cf_avg),
+            _return_helper(wsum, helper_result, ret_cf_wsum),
+        )
+    else:
+        return _return_helper(res, helper_result, ret_cf_avg)
+
+
 implements(np.max)(_propagate_cosmo_array_attributes_to_result(np.max._implementation))
 implements(np.min)(_propagate_cosmo_array_attributes_to_result(np.min._implementation))
 implements(np.mean)(
