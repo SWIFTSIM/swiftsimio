@@ -55,7 +55,7 @@ jobs:
       with:
         data-dir: ./test_data
         virtual-prefix: test_data
-        image: ghcr.io/jchelly/hdfstream-api:0.0.5
+        image: ghcr.io/jchelly/hdfstream-api:0.0.6
     - name: Test with pytest
       run: |
         pytest --hdfstream-server=http://localhost:8080/hdfstream
