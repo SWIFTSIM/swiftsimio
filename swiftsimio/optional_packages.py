@@ -6,6 +6,7 @@ This includes:
 + tqdm: progress bars
 + scipy.spatial: KDTrees
 + numba/cuda: visualisation
++ hdfstream: remote data access
 """
 
 from typing import Iterable, Callable, Any
@@ -164,3 +165,11 @@ if not CUDA_AVAILABLE:
 
     # For additional CUDA API access
     cuda = None
+
+# hdfstream
+try:
+    import hdfstream
+    HDFSTREAM_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    hdfstream = None
+    HDFSTREAM_AVAILABLE = False

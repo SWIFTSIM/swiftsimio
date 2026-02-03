@@ -9,6 +9,7 @@ import numpy as np
 from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
+from ._ordered_slices import OrderedSlices
 
 __all__ = [
     "jit",
@@ -17,14 +18,35 @@ __all__ = [
     "ranges_from_array",
     "read_ranges_from_file_unchunked",
     "index_dataset",
-    "concatenate_ranges",
     "get_chunk_ranges",
     "expand_ranges",
     "extract_ranges_from_chunks",
     "read_ranges_from_file_chunked",
     "read_ranges_from_file",
+    "read_ranges_from_hdfstream",
     "list_of_strings_to_arrays",
+    "to_native_byteorder_inplace",
 ]
+
+
+def to_native_byteorder_inplace(arr: np.ndarray) -> None:
+    """
+    Ensure that arr is native endian without making a copy.
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Array to convert to native endian.
+    """
+    if arr.dtype.isnative:
+        return
+    if arr.dtype.names is None:  # standard check for not a structured or recarray
+        arr.byteswap(inplace=True)
+    else:
+        for name in arr.dtype.names:
+            if not arr[name].dtype.isnative:
+                arr[name].byteswap(inplace=True)
+    arr.dtype = arr.dtype.newbyteorder("native")
 
 
 @jit(nopython=True)
@@ -106,7 +128,7 @@ def read_ranges_from_file_unchunked(
         Resultant shape of output.
 
     output_type : type, optional
-        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
 
     columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
@@ -142,15 +164,8 @@ def read_ranges_from_file_unchunked(
 
         already_read += size_of_range
 
-    if not output.dtype.isnative:
-        # The data type we have read in is the opposite endian-ness to the
-        # machine we're on. Convert it here, to save pain down the line.
-        output = output.byteswap(inplace=True).newbyteorder()
-
-        if not output.dtype.isnative:
-            raise RuntimeError(
-                "Unable to find a native type that is a match to read data."
-            )
+    # Ensure the result is a native endian type
+    to_native_byteorder_inplace(output)
 
     return output
 
@@ -180,41 +195,6 @@ def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
     ranges = ranges_from_array(mask_array)
 
     return read_ranges_from_file(handle, ranges, output_size, output_type)
-
-
-@jit(nopython=True, fastmath=True)
-def concatenate_ranges(ranges: np.ndarray) -> np.ndarray:
-    """
-    Merge consecutive ranges if there is no gap between them.
-
-    Parameters
-    ----------
-    ranges : np.ndarray
-        Array of ranges (see :func:`~swiftsimio.accelerated.ranges_from_array`).
-
-    Returns
-    -------
-    np.ndarray
-        Two dimensional array of ranges.
-
-    Examples
-    --------
-    .. code-block:: python
-
-        >>> concatenate_ranges([[1,5],[6,10],[12,15]])
-        np.ndarray([[1,10],[12,15]])
-    """
-    concatenated = [list(ranges[0])]
-
-    for i in range(1, len(ranges)):
-        lower = ranges[i][0]
-        upper = ranges[i][1]
-        if lower <= concatenated[-1][1] + 1:
-            concatenated[-1][1] = upper
-        else:
-            concatenated.append(list(ranges[i]))
-
-    return np.array(concatenated)
 
 
 @jit(nopython=True, fastmath=True)
@@ -388,7 +368,7 @@ def read_ranges_from_file_chunked(
         Resultant shape of output.
 
     output_type : type, optional
-        :mod:`numpy` type of output elements. If not supplied, we assume ``np.float64``.
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
 
     columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
@@ -437,20 +417,68 @@ def read_ranges_from_file_chunked(
 
         already_read += size_of_range
 
-    if not output.dtype.isnative:
-        # The data type we have read in is the opposite endian-ness to the
-        # machine we're on. Convert it here, to save pain down the line.
-        output = output.byteswap(inplace=True).newbyteorder()
-
-        if not output.dtype.isnative:
-            raise RuntimeError(
-                "Unable to find a native type that is a match to read data."
-            )
-
     if handle.chunks is not None:
-        return extract_ranges_from_chunks(output, chunk_ranges, ranges)
-    else:
-        return output
+        output = extract_ranges_from_chunks(output, chunk_ranges, ranges)
+
+    # Ensure the result is a native endian type
+    to_native_byteorder_inplace(output)
+
+    return output
+
+
+def read_ranges_from_hdfstream(
+    handle: Dataset,
+    ranges: np.ndarray,
+    output_shape: tuple,
+    output_type: type = np.float64,
+    columns: slice = np.s_[:],
+) -> np.array:
+    """
+    Request the specified ranges from the hdfstream server.
+
+    Takes a hdfstream remote dataset, and the set of ranges from
+    ranges_from_array, and sends a http request for those ranges.
+
+    Parameters
+    ----------
+    handle : Dataset
+        HDF5 dataset to slice data from.
+
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
+
+    output_shape : Tuple
+        Resultant shape of output.
+
+    output_type : type, optional
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
+
+    columns : slice, optional
+        Selector for columns if using a multi-dimensional array. If the array is only
+        a single dimension this is not used.
+
+    Returns
+    -------
+    np.ndarray
+        Result from reading only the relevant values from ``handle``.
+    """
+    # Get a sorted list of slices to request from the server
+    ordered_slices = OrderedSlices(ranges, handle.ndim, columns)
+
+    # Request the slice data as a single ndarray. Here we read into an existing
+    # buffer so that we should get an exception if the data type or shape is
+    # not what we expected.
+    output = np.empty(output_shape, dtype=output_type)
+    if len(ordered_slices.slices) > 0:
+        handle.request_slices(ordered_slices.slices, dest=output)
+
+    # Put the result into the same order as the input ranges array, if it isn't already
+    output = ordered_slices.reorder_result(output)
+
+    # Ensure the result is a native endian type
+    to_native_byteorder_inplace(output)
+
+    return output
 
 
 def read_ranges_from_file(
@@ -475,7 +503,7 @@ def read_ranges_from_file(
         Resultant shape of output.
 
     output_type : type, optional
-        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+        :class:`numpy.dtype` of output elements. If not supplied, we assume :py:attr:`numpy.float64`.
 
     columns : slice, optional
         Selector for columns if using a multi-dimensional array. If the array is only
@@ -506,8 +534,9 @@ def read_ranges_from_file(
         if handle.chunks is not None and average_range_size < cross_over_range_size
         else read_ranges_from_file_unchunked
     )
-
-    return read_ranges(handle, ranges, output_shape, output_type, columns)
+    return (
+        read_ranges_from_hdfstream if hasattr(handle, "request_slices") else read_ranges
+    )(handle, ranges, output_shape, output_type, columns)
 
 
 def list_of_strings_to_arrays(lines: list[str]) -> np.array:

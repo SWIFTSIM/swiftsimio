@@ -112,4 +112,6 @@ intersphinx_mapping = dict(
     swiftgalaxy=("https://swiftgalaxy.readthedocs.io/en/stable/", None),
     velociraptor=("https://velociraptor-python.readthedocs.io/en/latest/", None),
     astropy=("https://docs.astropy.org/en/stable/", None),
+    h5py=("https://docs.h5py.org/en/latest/", None),
+    hdfstream=("https://hdfstream-python.readthedocs.io/en/latest/", None),
 )

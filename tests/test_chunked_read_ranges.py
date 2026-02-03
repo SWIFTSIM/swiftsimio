@@ -2,22 +2,10 @@
 
 import numpy as np
 from swiftsimio.accelerated import (
-    concatenate_ranges,
     get_chunk_ranges,
     extract_ranges_from_chunks,
     expand_ranges,
 )
-
-
-def test_concatenate():
-    """Test joining consecutive ranges together."""
-    ranges = np.array([[1, 10], [11, 15], [17, 20], [20, 25]])
-    correct = np.array([[1, 15], [17, 25]])
-
-    concatenated = concatenate_ranges(ranges)
-
-    assert np.array_equal(concatenated, correct)
-    return
 
 
 def test_get_chunk_ranges():
