@@ -10,7 +10,6 @@ from functools import reduce
 
 from swiftsimio import metadata
 from swiftsimio.objects import cosmo_array
-from swiftsimio.metadata.unit.unit_fields import a_exponents
 
 
 def _ptype_str_to_int(ptype_str: str) -> int:
@@ -40,6 +39,9 @@ class __SWIFTWriterParticleDataset(object):
 
     Parameters
     ----------
+    writer : ~swiftsimio.snapshot_writer.SWIFTSnapshotWriter
+        A reference to the writer containing this particle dataset writer.
+
     unit_system : unyt.UnitSystem or str
         Either be a string (e.g. "cgs"), or a UnitSystem as defined by unyt
         specifying the units to be used. Users may wish to consider the
@@ -50,7 +52,13 @@ class __SWIFTWriterParticleDataset(object):
         SWIFT, with 0 corresponding to gas, etc. as usual.
     """
 
-    def __init__(self, unit_system: unyt.UnitSystem | str, particle_type: int) -> None:
+    def __init__(
+        self,
+        writer: "SWIFTSnapshotWriter",
+        unit_system: unyt.UnitSystem | str,
+        particle_type: int,
+    ) -> None:
+        self.writer = writer
         self.unit_system = unit_system
         self.particle_type = particle_type
 
@@ -151,10 +159,9 @@ class __SWIFTWriterParticleDataset(object):
         dimension : int
             Number of box dimensions.
         """
-        try:
+        if boxsize.ndim > 0:
+            assert (np.diff(boxsize) == 0).all(), "Box side lengths must all be equal."
             boxsize = boxsize[0]
-        except IndexError:
-            boxsize = boxsize
 
         n_part = self.coordinates.shape[0]
         mips = boxsize / (n_part ** (1.0 / dimension))
@@ -230,19 +237,24 @@ class __SWIFTWriterParticleDataset(object):
         dict
             Dictionary containg the attributes applying to the dataset.
         """
+        # annoyingly unyt calls "current" "current_mks", but not a big deal
+        from unyt.dimensions import mass, length, temperature, time, current_mks
+
         attributes_dict = {}
 
         for name, output_handle in getattr(
             metadata.required_fields, self.particle_name
         ).items():
             field = getattr(self, name)
+            if not isinstance(field, cosmo_array):
+                raise ValueError(
+                    f"Provide {name} data to swiftsimio.Writer as"
+                    " swiftsimio.cosmo_array's (i.e. including both unit and cosmology"
+                    " information)."
+                )
 
             # Find the exponents for each of the dimensions
             dim_exponents = get_dimensions(field.units.dimensions)
-
-            # Find the scale factor associated quantities
-            a_exp = a_exponents.get(name, 0)
-            a_factor = scale_factor**a_exp
 
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
@@ -250,16 +262,14 @@ class __SWIFTWriterParticleDataset(object):
                 ],
                 "Conversion factor to physical CGS "
                 "(including cosmological corrections)": [
-                    field.unit_quantity.in_cgs() * a_factor
+                    field.unit_quantity.in_cgs() * field.cosmo_factor.a_factor
                 ],
-                # Assign the exponents in the proper order
-                # (see unyt.dimensions.base_dimensions)
-                "U_I exponent": [dim_exponents["(current)"]],
-                "U_L exponent": [dim_exponents["(length)"]],
-                "U_M exponent": [dim_exponents["(mass)"]],
-                "U_T exponent": [dim_exponents["(temperature)"]],
-                "U_t exponent": [dim_exponents["(time)"]],
-                "a-scale exponent": [a_exp],
+                "U_I exponent": [dim_exponents[current_mks]],
+                "U_L exponent": [dim_exponents[length]],
+                "U_M exponent": [dim_exponents[mass]],
+                "U_T exponent": [dim_exponents[temperature]],
+                "U_t exponent": [dim_exponents[time]],
+                "a-scale exponent": [float(field.cosmo_factor.expr.exp)],
                 "h-scale exponent": [0.0],
             }
 
@@ -277,50 +287,32 @@ def get_dimensions(dimension: unyt.dimensions) -> dict:
 
     Returns
     -------
-    np.ndarray
-        Array of exponents corresponding to each base dimension.
+    dict
+        Dictionary of exponents corresponding to each base dimension.
 
     Examples
     --------
     .. code-block:: python
 
         >>> get_dimensions(unyt.dimensions.velocity)
-        {
-            "(mass)": 0,
-            "(length)": 1,
-            "(time)": -1,
-            "(temperature)": 0,
-            "(current)": 0,
-        }
+        {(mass): 0.0, (length): 1.0, (time): -1.0, (temperature): 0.0, (angle): 0.0,
+         (current_mks): 0.0, 1: 0.0, (luminous_intensity): 0.0, (logarithmic): 0.0}
     """
-    # Get the names of all the dimensions
-    dimensions = [str(x) for x in unyt.dimensions.base_dimensions[:5]]
-    # Annoyingly it's current_mks instead of current in unyt, so change that
-    dimensions[4] = "(current)"
-    n_dims = len(dimensions)
+    # create the return dict defaulting to exponent of 0
+    exp_dict = {dimension: 0.0 for dimension in unyt.dimensions.base_dimensions}
 
-    # create the return array
-    exp_array = {}
+    # extract the exponent for each of the dimensions
+    exp_dict.update(
+        (k, float(v))
+        for k, v in (d.as_base_exp() for d in dimension.as_ordered_factors())
+    )
 
-    # extract the base and exponent for each of the units
-    dim_array = [x.as_base_exp() for x in dimension.as_ordered_factors()]
-
-    # Find out which dimensions and exponents are present in the base units
-    for i in range(n_dims):
-        present = False
-        for dim in dim_array:
-            if dimensions[i] in str(dim[0]):
-                present = True
-                exp_array[str(dim[0])] = float(dim[1])
-        if not present:
-            exp_array[dimensions[i]] = 0.0
-
-    return exp_array
+    return exp_dict
 
 
 def generate_getter(
     name: str,
-) -> Callable[[__SWIFTWriterParticleDataset], unyt.unyt_array]:
+) -> Callable[[__SWIFTWriterParticleDataset], cosmo_array]:
     """
     Generate a function that gets the unyt array for name.
 
@@ -335,7 +327,7 @@ def generate_getter(
         Getter function that returns unyt array for ``name``.
     """
 
-    def getter(self: __SWIFTWriterParticleDataset) -> unyt.unyt_array:
+    def getter(self: __SWIFTWriterParticleDataset) -> cosmo_array:
         """
         Get the value of the dataset from the private name attribute.
 
@@ -346,7 +338,7 @@ def generate_getter(
 
         Returns
         -------
-        unyt_array
+        cosmo_array
             The value of the named data field.
         """
         return getattr(self, f"_{name}")
@@ -356,7 +348,7 @@ def generate_getter(
 
 def generate_setter(
     name: str, dimensions: unyt.dimensions, unit_system: unyt.UnitSystem | str
-) -> Callable[[__SWIFTWriterParticleDataset, unyt.unyt_array], None]:
+) -> Callable[[__SWIFTWriterParticleDataset, cosmo_array], None]:
     """
     Generate a function that sets self._name to the value that is passed to it.
 
@@ -377,7 +369,7 @@ def generate_setter(
         Function to set ``self._name``.
     """
 
-    def setter(self: __SWIFTWriterParticleDataset, value: unyt.unyt_array) -> None:
+    def setter(self: __SWIFTWriterParticleDataset, value: cosmo_array) -> None:
         """
         Set the named dataset to a value (private name attribute).
 
@@ -386,11 +378,11 @@ def generate_setter(
         self : __SWIFTWriterParticleDataset
             The dataset the attribute is attached to.
 
-        value : unyt_array
+        value : cosmo_array
             The value to set the attribute to.
         """
         if dimensions != 1:
-            if isinstance(value, unyt.unyt_array):
+            if isinstance(value, cosmo_array):
                 if value.units.dimensions == dimensions:
                     value.convert_to_base(unit_system)
 
@@ -400,9 +392,19 @@ def generate_setter(
                         f"Convert to {name}", value.units.dimensions, dimensions
                     )
             else:
-                raise TypeError("You must provide quantities as unyt arrays.")
+                raise TypeError("Provide quantities as swiftsimio.cosmo_array's.")
         else:
-            setattr(self, f"_{name}", unyt.unyt_array(value, None))
+            setattr(
+                self,
+                f"_{name}",
+                cosmo_array(
+                    value,
+                    unyt.dimensionless,
+                    comoving=True,
+                    scale_factor=self.writer.scale_factor,
+                    scale_exponent=0.0,
+                ),
+            )
 
         return
 
@@ -443,6 +445,7 @@ def generate_deleter(name: str) -> Callable[[__SWIFTWriterParticleDataset], None
 
 
 def generate_dataset(
+    writer: "SWIFTSnapshotWriter",
     unit_system: unyt.UnitSystem | str,
     particle_type: int,
     unit_fields_generate_units: Callable[
@@ -464,6 +467,9 @@ def generate_dataset(
 
     Parameters
     ----------
+    writer : ~swiftsimio.snapshot_writer.SWIFTSnapshotWriter
+        A reference to the writer that will contain the generated particle dataset writer.
+
     unit_system : unyt.UnitSystem or str
         Unit system of the dataset.
 
@@ -500,7 +506,7 @@ def generate_dataset(
         f"{particle_nice_name}WriterDataset", this_dataset_bases, this_dataset_dict
     )
 
-    empty_dataset = ThisDataset(unit_system, particle_type)
+    empty_dataset = ThisDataset(writer, unit_system, particle_type)
 
     return empty_dataset
 
@@ -587,7 +593,7 @@ class SWIFTSnapshotWriter(object):
                 self,
                 name,
                 generate_dataset(
-                    self.unit_system, number, self.unit_fields_generate_units
+                    self, self.unit_system, number, self.unit_fields_generate_units
                 ),
             )
 
@@ -610,8 +616,12 @@ class SWIFTSnapshotWriter(object):
         already_used = 1
 
         for number, name in zip(numbers_of_particles, names_to_write):
-            getattr(self, name).particle_ids = np.arange(
-                already_used, number + already_used
+            getattr(self, name).particle_ids = cosmo_array(
+                np.arange(already_used, number + already_used),
+                unyt.dimensionless,
+                comoving=True,
+                scale_factor=self.scale_factor,
+                scale_exponent=0.0,
             )
             already_used += number
 

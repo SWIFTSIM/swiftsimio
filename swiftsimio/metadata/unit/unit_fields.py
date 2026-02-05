@@ -9,9 +9,6 @@ we may need to generate this information.
 from unyt import g, cm, s, statA, K, Unit
 from typing import Callable
 
-# scale factor exponents for writing snapshot-like files:
-a_exponents = {"coordinates": 1, "internal_energies": -2}
-
 
 def generate_units(
     mass: Unit, length: Unit, time: Unit, current: Unit, temperature: Unit
