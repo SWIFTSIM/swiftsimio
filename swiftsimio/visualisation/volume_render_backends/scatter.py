@@ -96,7 +96,7 @@ def scatter(
     float_res_64 = np.float64(res)
 
     # If the kernel width is smaller than this, we drop to just PIC method
-    drop_to_single_cell = pixel_width * 0.5
+    drop_to_single_cell = pixel_width * np.sqrt(3.0) / 2.0
 
     # Pre-calculate this constant for use with the above
     inverse_cell_volume = float_res * float_res * float_res
@@ -317,6 +317,7 @@ def scatter_limited_z(
     float_res_z_64 = np.float64(res_z)
 
     # If the kernel width is smaller than this, we drop to just PIC method
+    # TODO: Check that this actually works!
     drop_to_single_cell = pixel_width * 0.5
     drop_to_single_cell_z = pixel_width_z * 0.5
 
