@@ -6,7 +6,7 @@ import pytest
 from collections.abc import Generator
 import numpy as np
 import unyt
-from swiftsimio import Writer
+from swiftsimio import Writer, cosmo_array
 from swiftsimio.units import cosmo_units
 
 
@@ -171,28 +171,57 @@ def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
     """
     test_filename = "test_write_output_units.hdf5"
 
+    a = 1
     # Box is 100 Mpc
-    boxsize = 100 * unyt.Mpc
+    boxsize = cosmo_array(
+        [100, 100, 100],
+        unyt.Mpc,
+        comoving=True,
+        scale_factor=a,
+        scale_exponent=1,
+    )
 
     # Generate object. cosmo_units corresponds to default Gadget-oid units
     # of 10^10 Msun, Mpc, and km/s
-    x = Writer(cosmo_units, boxsize)
+    x = Writer(cosmo_units, boxsize, scale_factor=a)
 
     # 32^3 particles.
     n_p = 32**3
 
     # Randomly spaced coordinates from 0, 100 Mpc in each direction
-    x.gas.coordinates = np.random.rand(n_p, 3) * (100 * unyt.Mpc)
+    x.gas.coordinates = cosmo_array(
+        np.random.rand(n_p, 3) * 100,
+        unyt.Mpc,
+        comoving=True,
+        scale_factor=x.scale_factor,
+        scale_exponent=1,
+    )
 
     # Random velocities from 0 to 1 km/s
-    x.gas.velocities = np.random.rand(n_p, 3) * (unyt.km / unyt.s)
+    x.gas.velocities = cosmo_array(
+        np.random.rand(n_p, 3),
+        unyt.km / unyt.s,
+        comoving=True,
+        scale_factor=x.scale_factor,
+        scale_exponent=1,
+    )
 
     # Generate uniform masses as 10^6 solar masses for each particle
-    x.gas.masses = np.ones(n_p, dtype=float) * (1e6 * unyt.msun)
+    x.gas.masses = cosmo_array(
+        np.ones(n_p, dtype=float) * 1e6,
+        unyt.msun,
+        comoving=True,
+        scale_factor=x.scale_factor,
+        scale_exponent=0,
+    )
 
     # Generate internal energy corresponding to 10^4 K
-    x.gas.internal_energy = (
-        np.ones(n_p, dtype=float) * (1e4 * unyt.kb * unyt.K) / (1e6 * unyt.msun)
+    x.gas.internal_energy = cosmo_array(
+        np.ones(n_p, dtype=float) * 1e4 / 1e6,
+        unyt.kb * unyt.K / unyt.solMass,
+        comoving=True,
+        scale_factor=x.scale_factor,
+        scale_exponent=-2,
     )
 
     # Generate initial guess for smoothing lengths based on MIPS

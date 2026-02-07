@@ -1,6 +1,6 @@
 """Test for extra particle types."""
 
-from swiftsimio import load, metadata, Writer, cosmo_array
+from swiftsimio import load, Writer, cosmo_array
 import swiftsimio.metadata.particle as swp
 import swiftsimio.metadata.writer.required_fields as swmw
 import swiftsimio.metadata.unit.unit_fields as swuf
@@ -148,8 +148,6 @@ def test_read():
     swp.particle_name_text["PartType7"] = "Extratype"
 
     swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw._shared}
-
-    metadata.particle_fields.extratype = {**metadata.particle_fields.gas}
 
     data = load("extra_test.hdf5")
 
