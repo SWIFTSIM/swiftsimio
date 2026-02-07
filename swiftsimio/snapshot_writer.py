@@ -223,14 +223,9 @@ class __SWIFTWriterParticleDataset(object):
 
         return
 
-    def get_attributes(self, scale_factor: float) -> dict:
+    def get_attributes(self) -> dict:
         """
         Return a dictionary containg the attributes to attach to the dataset.
-
-        Parameters
-        ----------
-        scale_factor : float
-            The cosmological scale factor of the dataset.
 
         Returns
         -------
@@ -255,7 +250,7 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the exponents for each of the dimensions
             dim_exponents = get_dimensions(field.units.dimensions)
-
+            print(name, field.cosmo_factor)
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
                     field.unit_quantity.in_cgs()
@@ -269,7 +264,9 @@ class __SWIFTWriterParticleDataset(object):
                 "U_M exponent": [dim_exponents[mass]],
                 "U_T exponent": [dim_exponents[temperature]],
                 "U_t exponent": [dim_exponents[time]],
-                "a-scale exponent": [float(field.cosmo_factor.expr.exp)],
+                "a-scale exponent": [
+                    float(getattr(field.cosmo_factor.expr, "exp", 1.0))
+                ],
                 "h-scale exponent": [0.0],
             }
 
@@ -769,7 +766,7 @@ class SWIFTSnapshotWriter(object):
 
             for name in names_to_write:
                 getattr(self, name).write_particle_group(handle, compress=self.compress)
-                attrs = getattr(self, name).get_attributes(self.scale_factor)
+                attrs = getattr(self, name).get_attributes()
                 getattr(self, name).write_particle_group_metadata(handle, attrs)
 
         return

@@ -1,6 +1,6 @@
 """Test for extra particle types."""
 
-from swiftsimio import load, metadata, Writer
+from swiftsimio import load, metadata, Writer, cosmo_array
 import swiftsimio.metadata.particle as swp
 import swiftsimio.metadata.writer.required_fields as swmw
 import swiftsimio.metadata.unit.unit_fields as swuf
@@ -19,8 +19,6 @@ def generate_units(
     Generate units differently for testing.
 
     This function is used to override the inbuilt swiftsimio generate_units function from
-    metadata.unit.unit_fields. This allows the specification of a new particle type and
-       metadata.unit.unit_fields. This allows the specification of a new particle type and
     metadata.unit.unit_fields. This allows the specification of a new particle type and
     the values and types associated with that type.
 
@@ -91,19 +89,45 @@ def test_write():
 
     swmw.extratype = {"smoothing_length": "SmoothingLength", **swmw._shared}
 
-    boxsize = 10 * unyt.cm
+    a = 0.5
+    boxsize = cosmo_array(
+        [10, 10, 10], unyt.cm, comoving=False, scale_factor=a, scale_exponent=1
+    )
 
-    x = Writer(unit_system, boxsize, unit_fields_generate_units=generate_units)
+    x = Writer(
+        unit_system, boxsize, unit_fields_generate_units=generate_units, scale_factor=a
+    )
 
-    x.extratype.coordinates = np.zeros((10, 3)) * unyt.cm
-    for i in range(0, 10):
-        x.extratype.coordinates[i][0] = float(i)
+    x.extratype.coordinates = cosmo_array(
+        np.array([np.arange(10), np.zeros(10), np.zeros(10)]).astype(float).T,
+        unyt.cm,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=1,
+    )
+    x.extratype.velocities = cosmo_array(
+        np.zeros((10, 3), dtype=float),
+        unyt.cm / unyt.s,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=0,
+    )
 
-    x.extratype.velocities = np.zeros((10, 3)) * unyt.cm / unyt.s
+    x.extratype.masses = cosmo_array(
+        np.ones(10, dtype=float),
+        unyt.g,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=0,
+    )
 
-    x.extratype.masses = np.ones(10, dtype=float) * unyt.g
-
-    x.extratype.smoothing_length = np.ones(10, dtype=float) * (5.0 * unyt.cm)
+    x.extratype.smoothing_length = cosmo_array(
+        np.ones(10, dtype=float) * 5.0,
+        unyt.cm,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=1,
+    )
 
     x.write("extra_test.hdf5")
 
