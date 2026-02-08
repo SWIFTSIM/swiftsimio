@@ -191,9 +191,10 @@ class __SWIFTWriterParticleDataset(object):
         else:
             compression = None
 
-        for name, output_handle in getattr(
+        for name, required_field_info in getattr(
             metadata.required_fields, self.particle_name
         ).items():
+            output_handle = required_field_info["handle"]
             particle_group.create_dataset(
                 output_handle, data=getattr(self, name), compression=compression
             )
@@ -214,9 +215,10 @@ class __SWIFTWriterParticleDataset(object):
         dset_attributes : dict
             Dictionary containg metadata to attach to group.
         """
-        for name, output_handle in getattr(
+        for name, required_field_info in getattr(
             metadata.required_fields, self.particle_name
         ).items():
+            output_handle = required_field_info["handle"]
             obj = file_handle[f"/{self.particle_type}/{output_handle}"]
             for attr_name, attr_value in dset_attributes[output_handle].items():
                 obj.attrs.create(attr_name, attr_value)
@@ -237,9 +239,10 @@ class __SWIFTWriterParticleDataset(object):
 
         attributes_dict = {}
 
-        for name, output_handle in getattr(
+        for name, required_field_info in getattr(
             metadata.required_fields, self.particle_name
         ).items():
+            output_handle = required_field_info["handle"]
             field = getattr(self, name)
             if not isinstance(field, cosmo_array):
                 raise ValueError(
@@ -444,9 +447,6 @@ def generate_dataset(
     writer: "SWIFTSnapshotWriter",
     unit_system: unyt.UnitSystem | str,
     particle_type: int,
-    unit_fields_generate_units: Callable[
-        ..., dict
-    ] = metadata.unit_fields.generate_units,
 ) -> __SWIFTWriterParticleDataset:
     """
     Generate a SWIFTWriterParticleDataset _class_ for the given particle type.
@@ -473,10 +473,6 @@ def generate_dataset(
         The particle type of the dataset. Numbering convention is the same as
         SWIFT, with 0 corresponding to gas, etc. as usual.
 
-    unit_fields_generate_units : Callable, optional
-        Collection of properties in metadata file for which to create setters
-        and getters.
-
     Returns
     -------
     SWIFTWriterParticleDataset
@@ -488,13 +484,13 @@ def generate_dataset(
     this_dataset_bases = (__SWIFTWriterParticleDataset, object)
     this_dataset_dict = {}
 
-    # Get the unit dimensions
-    dimensions = metadata.unit_fields.generate_dimensions(unit_fields_generate_units)
-
-    for name in getattr(metadata.required_fields, particle_name).keys():
+    for name, required_field_info in getattr(
+        metadata.required_fields, particle_name
+    ).items():
+        dimensions = required_field_info["dimensions"]
         this_dataset_dict[name] = property(
             generate_getter(name),
-            generate_setter(name, dimensions[particle_name][name], unit_system),
+            generate_setter(name, dimensions, unit_system),
             generate_deleter(name),
         )
 
@@ -535,10 +531,6 @@ class SWIFTSnapshotWriter(object):
     extra_header : dict, optional
         Dictionary containing extra things to write to the header.
 
-    unit_fields_generate_units : Callable, optional
-        Collection of properties in metadata file for which to create setters
-        and getters.
-
     scale_factor : np.float32
         Scale factor associated with dataset. Defaults to 1.
     """
@@ -550,12 +542,8 @@ class SWIFTSnapshotWriter(object):
         dimension: int = 3,
         compress: bool = True,
         extra_header: dict | None = None,
-        unit_fields_generate_units: Callable[
-            ..., dict
-        ] = metadata.unit_fields.generate_units,
         scale_factor: np.float32 = 1.0,
     ) -> None:
-        self.unit_fields_generate_units = unit_fields_generate_units
         if isinstance(unit_system, str):
             self.unit_system = unyt.unit_systems.unit_system_registry[unit_system]
         else:
@@ -588,9 +576,7 @@ class SWIFTSnapshotWriter(object):
             setattr(
                 self,
                 name,
-                generate_dataset(
-                    self, self.unit_system, number, self.unit_fields_generate_units
-                ),
+                generate_dataset(self, self.unit_system, number),
             )
 
         return

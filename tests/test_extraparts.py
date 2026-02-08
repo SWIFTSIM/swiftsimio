@@ -4,7 +4,6 @@ from swiftsimio import load, Writer, cosmo_array
 import unyt
 import numpy as np
 import os
-from .helper import extra_type_generate_units
 
 
 def test_write(extra_part_type):
@@ -25,7 +24,6 @@ def test_write(extra_part_type):
     x = Writer(
         unit_system,
         boxsize,
-        unit_fields_generate_units=extra_type_generate_units,
         scale_factor=a,
     )
 

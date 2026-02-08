@@ -7,7 +7,6 @@ import unyt as u
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array
 from swiftsimio.masks import SWIFTMask
-import swiftsimio.metadata.unit.unit_fields as swuf
 
 
 def _mask_without_warning(fname: str, **kwargs: dict) -> SWIFTMask:
@@ -169,61 +168,3 @@ def create_n_particle_dataset(
     outfile.close()
 
     return
-
-
-def extra_type_generate_units(
-    mass: u.Unit, length: u.Unit, time: u.Unit, current: u.Unit, temperature: u.Unit
-) -> dict[str, dict[str, u.Unit]]:
-    """
-    Generate units differently for testing.
-
-    This function is used to override the inbuilt swiftsimio generate_units function from
-    metadata.unit.unit_fields. This allows the specification of a new particle type and
-    the values and types associated with that type.
-
-    Parameters
-    ----------
-    mass : Unit
-        The mass unit.
-
-    length : Unit
-        The length unit.
-
-    time : Unit
-        The time unit.
-
-    current : Unit
-        The current unit.
-
-    temperature : Unit
-        The temperature unit.
-
-    Returns
-    -------
-    dict[str, Unit]
-        A dictionary mapping field names to units.
-    """
-    dict_out = swuf.generate_units(mass, length, time, current, temperature)
-
-    extratype = {
-        "coordinates": length,
-        "masses": mass,
-        "particle_ids": None,
-        "velocities": length / time,
-        "potential": length * length / (time * time),
-        "density": mass / (length**3),
-        "entropy": mass * length**2 / (time**2 * temperature),
-        "internal_energy": (length / time) ** 2,
-        "smoothing_length": length,
-        "pressure": mass / (length * time**2),
-        "diffusion": None,
-        "sfr": mass / time,
-        "temperature": temperature,
-        "viscosity": None,
-        "specific_sfr": 1 / time,
-        "material_id": None,
-        "radiated_energy": mass * (length / time) ** 2,
-    }
-
-    dict_out["extratype"] = extratype
-    return dict_out

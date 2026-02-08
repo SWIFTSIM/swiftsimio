@@ -10,7 +10,6 @@ from swiftsimio import Writer, cosmo_array
 from swiftsimio.units import cosmo_units
 import swiftsimio.metadata.particle as particle_metadata
 import swiftsimio.metadata.writer.required_fields as writer_required_fields
-from .helper import extra_type_generate_units
 
 
 webstorage_location = (
@@ -250,7 +249,10 @@ def _setup_extra_part_type():
     particle_metadata.particle_name_class["PartType7"] = "Extratype"
     particle_metadata.particle_name_text["PartType7"] = "Extratype"
     writer_required_fields.extratype = {
-        "smoothing_length": "SmoothingLength",
+        "smoothing_length": {
+            "handle": "SmoothingLength",
+            "dimensions": unyt.dimensions.length,
+        },
         **writer_required_fields._shared,
     }
 
@@ -294,7 +296,6 @@ def write_extra_part_type():
     x = Writer(
         unit_system,
         boxsize,
-        unit_fields_generate_units=extra_type_generate_units,
         scale_factor=a,
     )
 
