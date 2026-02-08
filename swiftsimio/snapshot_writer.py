@@ -250,7 +250,6 @@ class __SWIFTWriterParticleDataset(object):
 
             # Find the exponents for each of the dimensions
             dim_exponents = get_dimensions(field.units.dimensions)
-            print(name, field.cosmo_factor)
             attributes_dict[output_handle] = {
                 "Conversion factor to CGS (not including cosmological corrections)": [
                     field.unit_quantity.in_cgs()

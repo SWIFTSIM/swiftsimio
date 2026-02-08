@@ -8,6 +8,9 @@ import numpy as np
 import unyt
 from swiftsimio import Writer, cosmo_array
 from swiftsimio.units import cosmo_units
+import swiftsimio.metadata.particle as particle_metadata
+import swiftsimio.metadata.writer.required_fields as writer_required_fields
+from .helper import extra_type_generate_units
 
 
 webstorage_location = (
@@ -235,3 +238,97 @@ def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
 
     # The file is automatically cleaned up after the test.
     os.remove(test_filename)
+
+
+def _setup_extra_part_type():
+    """
+    Set up metadata for an extra particle type.
+
+    Ideally this tinkering with global variables should be refactored out.
+    """
+    particle_metadata.particle_name_underscores["PartType7"] = "extratype"
+    particle_metadata.particle_name_class["PartType7"] = "Extratype"
+    particle_metadata.particle_name_text["PartType7"] = "Extratype"
+    writer_required_fields.extratype = {
+        "smoothing_length": "SmoothingLength",
+        **writer_required_fields._shared,
+    }
+
+
+def _teardown_extra_part_type():
+    """
+    Tear down metadata for an extra particle type.
+
+    Ideally this tinkering with global variables should be refactored out.
+    """
+    particle_metadata.particle_name_underscores.pop("PartType7")
+    particle_metadata.particle_name_class.pop("PartType7")
+    particle_metadata.particle_name_text.pop("PartType7")
+    del writer_required_fields.extratype
+
+
+@pytest.fixture(scope="function")
+def extra_part_type():
+    """Set up and tear down metadata for an extra particle type."""
+    _setup_extra_part_type()
+    yield
+    _teardown_extra_part_type()
+
+
+@pytest.fixture(scope="function")
+def write_extra_part_type():
+    """
+    Write a dataset with extra particle type so that we can test reading it in.
+
+    Make sure we reliably clean up global variables and written file.
+    """
+    _setup_extra_part_type()
+    unit_system = unyt.UnitSystem(
+        name="default", length_unit=unyt.cm, mass_unit=unyt.g, time_unit=unyt.s
+    )
+    a = 0.5
+    boxsize = cosmo_array(
+        [10, 10, 10], unyt.cm, comoving=False, scale_factor=a, scale_exponent=1
+    )
+
+    x = Writer(
+        unit_system,
+        boxsize,
+        unit_fields_generate_units=extra_type_generate_units,
+        scale_factor=a,
+    )
+
+    x.extratype.coordinates = cosmo_array(
+        np.array([np.arange(10), np.zeros(10), np.zeros(10)]).astype(float).T,
+        unyt.cm,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=1,
+    )
+    x.extratype.velocities = cosmo_array(
+        np.zeros((10, 3), dtype=float),
+        unyt.cm / unyt.s,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=0,
+    )
+
+    x.extratype.masses = cosmo_array(
+        np.ones(10, dtype=float),
+        unyt.g,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=0,
+    )
+
+    x.extratype.smoothing_length = cosmo_array(
+        np.ones(10, dtype=float) * 5.0,
+        unyt.cm,
+        comoving=False,
+        scale_factor=x.scale_factor,
+        scale_exponent=1,
+    )
+    x.write("extra_test.hdf5")
+    yield
+    os.remove("extra_test.hdf5")
+    _teardown_extra_part_type()
