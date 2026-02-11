@@ -29,7 +29,7 @@ def _requires(filename: str) -> str:
 
     Returns
     -------
-    str
+    out : str
         The location of the desired file.
     """
     if filename == "EagleDistributed.hdf5":
@@ -57,6 +57,82 @@ def _requires(filename: str) -> str:
 
     else:
         return file_location
+
+
+def _minimal_writer(a: float = 1.0, n_p: int = 32**3, lbox: float = 100):
+    """
+    Create a :class:`~swiftsimio.snapshot_writer.Writer` with required gas fields.
+
+    Parameters
+    ----------
+    a : float, optional
+        The scale factor.
+
+    n_p : int, optional
+        The number of particles.
+
+    lbox : float, optional
+        The box side length in Mpc.
+
+    Returns
+    -------
+    out : ~swiftsimio.snapshot_writer.Writer
+        The writer with required gas fields initialized.
+    """
+    # Box is 100 Mpc
+    boxsize = cosmo_array(
+        [lbox, lbox, lbox],
+        unyt.Mpc,
+        comoving=True,
+        scale_factor=a,
+        scale_exponent=1,
+    )
+
+    # Generate object. cosmo_units corresponds to default Gadget-oid units
+    # of 10^10 Msun, Mpc, and km/s
+    w = Writer(unit_system=cosmo_units, boxsize=boxsize, scale_factor=a)
+
+    # Randomly spaced coordinates from 0, 100 Mpc in each direction
+    w.gas.coordinates = cosmo_array(
+        np.random.rand(n_p, 3) * 100,
+        unyt.Mpc,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=1,
+    )
+
+    # Random velocities from 0 to 1 km/s
+    w.gas.velocities = cosmo_array(
+        np.random.rand(n_p, 3),
+        unyt.km / unyt.s,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=1,
+    )
+
+    # Generate uniform masses as 10^6 solar masses for each particle
+    w.gas.masses = cosmo_array(
+        np.ones(n_p, dtype=float) * 1e6,
+        unyt.msun,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=0,
+    )
+
+    # Generate internal energy corresponding to 10^4 K
+    w.gas.internal_energy = cosmo_array(
+        np.ones(n_p, dtype=float) * 1e4 / 1e6,
+        unyt.kb * unyt.K / unyt.solMass,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=-2,
+    )
+
+    # Generate initial guess for smoothing lengths based on MIPS
+    w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+
+    # IDs will be auto-generated on file write
+    return w
 
 
 @pytest.fixture(
@@ -162,9 +238,22 @@ def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, Non
 
 
 @pytest.fixture(scope="function")
+def simple_writer() -> Generator[Writer, None, None]:
+    """
+    Provide a :class:`~swiftsimio.snapshot_writer.Writer` with required gas fields.
+
+    Yields
+    ------
+    out : Generator[Writer, None, None]
+        The Writer object.
+    """
+    yield _minimal_writer()
+
+
+@pytest.fixture(scope="function")
 def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
     """
-    Fixture provides a simple IC-like snapshot for testing.
+    Provide a simple IC-like snapshot for testing.
 
     Yields
     ------
@@ -172,70 +261,12 @@ def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
         The Writer object and the name of the file it wrote.
     """
     test_filename = "test_write_output_units.hdf5"
+    w = _minimal_writer()
 
-    a = 1
-    # Box is 100 Mpc
-    boxsize = cosmo_array(
-        [100, 100, 100],
-        unyt.Mpc,
-        comoving=True,
-        scale_factor=a,
-        scale_exponent=1,
-    )
+    w.write(test_filename)
 
-    # Generate object. cosmo_units corresponds to default Gadget-oid units
-    # of 10^10 Msun, Mpc, and km/s
-    x = Writer(cosmo_units, boxsize, scale_factor=a)
+    yield w, test_filename
 
-    # 32^3 particles.
-    n_p = 32**3
-
-    # Randomly spaced coordinates from 0, 100 Mpc in each direction
-    x.gas.coordinates = cosmo_array(
-        np.random.rand(n_p, 3) * 100,
-        unyt.Mpc,
-        comoving=True,
-        scale_factor=x.scale_factor,
-        scale_exponent=1,
-    )
-
-    # Random velocities from 0 to 1 km/s
-    x.gas.velocities = cosmo_array(
-        np.random.rand(n_p, 3),
-        unyt.km / unyt.s,
-        comoving=True,
-        scale_factor=x.scale_factor,
-        scale_exponent=1,
-    )
-
-    # Generate uniform masses as 10^6 solar masses for each particle
-    x.gas.masses = cosmo_array(
-        np.ones(n_p, dtype=float) * 1e6,
-        unyt.msun,
-        comoving=True,
-        scale_factor=x.scale_factor,
-        scale_exponent=0,
-    )
-
-    # Generate internal energy corresponding to 10^4 K
-    x.gas.internal_energy = cosmo_array(
-        np.ones(n_p, dtype=float) * 1e4 / 1e6,
-        unyt.kb * unyt.K / unyt.solMass,
-        comoving=True,
-        scale_factor=x.scale_factor,
-        scale_exponent=-2,
-    )
-
-    # Generate initial guess for smoothing lengths based on MIPS
-    x.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
-
-    # If IDs are not present, this automatically generates
-    x.write(test_filename)
-
-    # Yield the test data
-    yield x, test_filename
-
-    # The file is automatically cleaned up after the test.
     os.remove(test_filename)
 
 
@@ -294,8 +325,8 @@ def write_extra_part_type():
     )
 
     x = Writer(
-        unit_system,
-        boxsize,
+        unit_system=unit_system,
+        boxsize=boxsize,
         scale_factor=a,
     )
 

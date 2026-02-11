@@ -9,6 +9,7 @@ from sympy import Symbol
 from functools import reduce
 
 from swiftsimio import metadata
+from swiftsimio.units import cosmo_units
 from swiftsimio.objects import cosmo_array
 
 
@@ -227,7 +228,7 @@ class __SWIFTWriterParticleDataset(object):
 
     def get_attributes(self) -> dict:
         """
-        Return a dictionary containg the attributes to attach to the dataset.
+        Return a dictionary containing the attributes to attach to the dataset.
 
         Returns
         -------
@@ -384,14 +385,14 @@ def generate_setter(
             if isinstance(value, cosmo_array):
                 if value.units.dimensions == dimensions:
                     value.convert_to_base(unit_system)
-
+                    value.convert_to_comoving()
                     setattr(self, f"_{name}", value)
                 else:
                     raise unyt.exceptions.InvalidUnitEquivalence(
                         f"Convert to {name}", value.units.dimensions, dimensions
                     )
             else:
-                raise TypeError("Provide quantities as swiftsimio.cosmo_array's.")
+                raise TypeError(f"Provide {name} as swiftsimio.cosmo_array.")
         else:
             setattr(
                 self,
@@ -537,7 +538,8 @@ class SWIFTSnapshotWriter(object):
 
     def __init__(
         self,
-        unit_system: unyt.UnitSystem | str,
+        *,
+        unit_system: unyt.UnitSystem | str = cosmo_units,
         boxsize: cosmo_array,
         dimension: int = 3,
         compress: bool = True,
