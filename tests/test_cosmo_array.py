@@ -1151,6 +1151,21 @@ class TestCosmoArrayCopy:
         assert cgs_arr.cosmo_factor == arr.cosmo_factor
         assert cgs_arr.comoving == arr.comoving
 
+    def test_copy_method(self):
+        """Check that the copy method preserves attributes."""
+        units = u.Mpc
+        arr = cosmo_array(
+            u.unyt_array(np.ones(5), units=units),
+            scale_factor=1.0,
+            scale_exponent=1,
+            comoving=False,
+        )
+        copy_arr = arr.copy()
+        assert np.allclose(arr.to_value(units), copy_arr.to_value(units))
+        assert arr.units == copy_arr.units
+        assert arr.cosmo_factor == copy_arr.cosmo_factor
+        assert arr.comoving == copy_arr.comoving
+
 
 class TestMultiplicationByUnyt:
     """Tests for multiplying cosmo_array by a unyt unit."""
