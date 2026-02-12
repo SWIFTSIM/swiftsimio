@@ -1102,6 +1102,21 @@ class TestCosmoQuantity:
         assert multiplied.cosmo_factor == cosmo_factor(a**2, 0.5)
         assert multiplied.to_value(u.m**2) == 4
 
+    def test_squeeze_to_quantity(self):
+        """Test that squeezing to a scalar returns a cosmo_quantity."""
+        ca = cosmo_array(
+            [1],
+            u.m,
+            comoving=True,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=True,
+        )
+        assert ca.squeeze().ndim == 0
+        assert isinstance(ca.squeeze(), cosmo_quantity)
+        assert np.squeeze(ca).ndim == 0
+        assert isinstance(np.squeeze(ca), cosmo_quantity)
+
 
 class TestCosmoArrayCopy:
     """Tests of explicit (deep)copying of cosmo_array."""
