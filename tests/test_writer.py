@@ -39,7 +39,7 @@ def test_write_non_required_field(simple_writer):
     Expectation is that it is silently ignored and not written out. Written file should
     still be readable.
 
-    May be desirable to change this behaviour in the future.
+    May be desirable to change this behaviour in the future, perhaps using TypedDict.
     """
     testfile = "write_non_required_field.hdf5"
     simple_writer.gas.metallicity = cosmo_array(
@@ -399,7 +399,7 @@ class TestGeneratedParticleIDs:
         If user provides IDs for some types and not others we don't bother working out
         what IDs are available to assign to particle that don't have IDs, we just
         overwrite everything. However, if we overwrite any user-provided IDs, we should
-        warn them.
+        warn.
         """
         testfile = "overwrite_particle_ids.hdf5"
         two_type_writer.gas.particle_ids = np.arange(

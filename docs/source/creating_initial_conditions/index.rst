@@ -79,7 +79,7 @@ Example
    # Generate uniform masses as 10^6 solar masses for each particle
    w.gas.masses = cosmo_array(
        np.ones(n_p, dtype=float) * 1e6,
-       u.msun,
+       u.solMass,
        comoving=True,
        scale_factor=w.scale_factor,
        scale_exponent=0,

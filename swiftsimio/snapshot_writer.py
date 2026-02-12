@@ -1,4 +1,4 @@
-"""Contains functions and objects for creating SWIFT datasets."""
+"""Provide utilities to create SWIFT files usable as initial conditions."""
 
 import unyt
 import h5py
@@ -16,7 +16,7 @@ from swiftsimio.objects import cosmo_array
 
 def _ptype_str_to_int(ptype_str: str) -> int:
     """
-    Convert a string like `"PartType0"` to an integer (in this example, `0`).
+    Convert a string like ``"PartType0"`` to an integer (in this example, ``0``).
 
     Parameters
     ----------
@@ -35,9 +35,9 @@ class __SWIFTWriterParticleDataset(object):
     """
     A particle dataset for _writing_ with.
 
-    This is explicitly different to the one used for reading, as it requires a very
-    different feature set. Perhaps one day they will be merged, but for now this keeps the
-    code used to manage both simple.
+    This is explicitly different to the one used for reading
+    (:class:`~swiftsimio.reader.__SWIFTGroupDataset`), as it requires a very different
+    feature set.
 
     Parameters
     ----------
@@ -46,13 +46,13 @@ class __SWIFTWriterParticleDataset(object):
 
     unit_system : unyt.UnitSystem or str
         Either be a string (e.g. "cgs"), or a UnitSystem as defined by unyt
-        specifying the units to be used. Users may wish to consider the
-        cosmological unit system provided as
+        specifying the units to be used. Users may wish to use the cosmological unit
+        system provided as
         ``from swiftsimio.metadata.writer.unit_systems import cosmo_units``.
 
     particle_type : int
-        The particle type of the dataset. Numbering convention is the same as
-        SWIFT, with 0 corresponding to gas, etc. as usual.
+        The particle type of the dataset. Numbering convention is the same as SWIFT, with
+        ``0`` corresponding to gas, etc., as usual.
     """
 
     def __init__(
@@ -77,8 +77,8 @@ class __SWIFTWriterParticleDataset(object):
         """
         Generate the empty properties accessed by setters and getters.
 
-        Initially all of the _{name} values are set to None. Note that we
-        only generate required properties.
+        Initially all of the ``_{name}`` values are set to ``None``. Note that we only
+        generate required properties.
         """
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             setattr(self, f"_{name}", None)
@@ -92,7 +92,7 @@ class __SWIFTWriterParticleDataset(object):
         Returns
         -------
         bool
-            True if all datasets are empty.
+            ``True`` if all datasets are empty.
         """
         for name in getattr(metadata.required_fields, self.particle_name).keys():
             if getattr(self, f"_{name}") is not None:
@@ -106,13 +106,13 @@ class __SWIFTWriterParticleDataset(object):
 
         Checks the following:
 
-        + That all required fields (apart from particle_ids) are not None,
-        + That all required fields have the same length
+        + that all required fields (apart from ``particle_ids``) are not ``None``,
+        + that all required fields have the same length.
 
         If those are true,
 
-        + self.n_part is set with the total number of particles of this type
-        + self.requires_particle_ids_before_write is set to a boolean.
+        + ``self.n_part`` is set with the total number of particles of this type
+        + ``self.requires_particle_ids_before_write`` is set to a boolean.
 
         Returns
         -------
@@ -149,10 +149,9 @@ class __SWIFTWriterParticleDataset(object):
 
     def generate_smoothing_lengths(self) -> None:
         """
-        Automatically generate smoothing lengths as 2 * the mean interparticle spacing.
+        Generate smoothing lengths as 2 times the mean interparticle spacing.
 
-        This only works for a uniform boxsize (i.e. one that has the same length in all
-        dimensions).
+        This only works for a boxsize that has the same length in all dimensions.
         """
         if "smoothing_lengths" not in getattr(
             metadata.required_fields, self.particle_name
@@ -216,7 +215,7 @@ class __SWIFTWriterParticleDataset(object):
         Parameters
         ----------
         file_handle : h5py.File
-            HDF5 output file being written.
+            HDF5 output file to write to.
 
         dset_attributes : dict
             Dictionary containg metadata to attach to group.
@@ -283,7 +282,7 @@ class __SWIFTWriterParticleDataset(object):
 
 def get_dimensions(dimension: unyt.dimensions) -> dict:
     """
-    Return exponents corresponding to base dimensions for given unyt dimensions object.
+    Return exponents corresponding to base dimensions for given :mod:`unyt.dimensions`.
 
     Parameters
     ----------
@@ -319,7 +318,7 @@ def generate_getter(
     name: str,
 ) -> Callable[[__SWIFTWriterParticleDataset], cosmo_array]:
     """
-    Generate a function that gets the unyt array for name.
+    Generate a getter for the :class:`~swiftsimio.objects.cosmo_array` for ``name``.
 
     Parameters
     ----------
@@ -329,7 +328,8 @@ def generate_getter(
     Returns
     -------
     Callable
-        Getter function that returns unyt array for ``name``.
+        Getter function that returns :class:`~swiftsimio.objects.cosmo_array` for
+        ``name``.
     """
 
     def getter(self: __SWIFTWriterParticleDataset) -> cosmo_array:
@@ -355,7 +355,7 @@ def generate_setter(
     name: str, dimensions: unyt.dimensions, unit_system: unyt.UnitSystem | str
 ) -> Callable[[__SWIFTWriterParticleDataset, cosmo_array], None]:
     """
-    Generate a function that sets self._name to the value that is passed to it.
+    Generate a function that sets ``self._<name>`` to the value that is passed to it.
 
     Parameters
     ----------
@@ -376,12 +376,19 @@ def generate_setter(
 
     def setter(self: __SWIFTWriterParticleDataset, value: cosmo_array) -> None:
         """
-        Set the named dataset to a value (private name attribute).
+        Set the named dataset (private attribute) to a value.
+
+        Makes consistency checks on the input:
+
+         + the given units have the expected dimensions for this field
+         + that values are unique and >=1 for ``particle_ids``
+         + that the scale factor attached to :class:`~swiftsimio.objects.cosmo_array`
+           inputs matches the one for the top-level output metadata.
 
         Parameters
         ----------
         self : __SWIFTWriterParticleDataset
-            The dataset the attribute is attached to.
+            The dataset that the attribute is attached to.
 
         value : cosmo_array
             The value to set the attribute to.
@@ -431,7 +438,7 @@ def generate_setter(
 
 def generate_deleter(name: str) -> Callable[[__SWIFTWriterParticleDataset], None]:
     """
-    Generate a function that destroys self._name (sets it back to None).
+    Generate a function that destroys ``self._<name>`` (sets it back to ``None``).
 
     Parameters
     ----------
@@ -441,12 +448,12 @@ def generate_deleter(name: str) -> Callable[[__SWIFTWriterParticleDataset], None
     Returns
     -------
     Callable
-        Function to delete ``self._name``.
+        Function to delete ``self._<name>``.
     """
 
     def deleter(self: __SWIFTWriterParticleDataset) -> None:
         """
-        Delete the named dataset (private name attribute).
+        Delete the named (private attribute) dataset.
 
         Parameters
         ----------
@@ -468,17 +475,16 @@ def generate_dataset(
     particle_type: int,
 ) -> __SWIFTWriterParticleDataset:
     """
-    Generate a SWIFTWriterParticleDataset _class_ for the given particle type.
+    Generate a :class:`~swiftsimio.snapshot_writer.SWIFTWriterParticleDataset`.
 
-    We _must_ do the following _outside_ of the class itself, as one
-    can assign properties to a _class_ but not _within_ a class
-    dynamically.
+    We _must_ do the following _outside_ of the class itself, as one can assign properties
+    to a _class_ but not _within_ a class dynamically.
 
-    Here we loop through all of the possible properties in the metadata file.
-    We then use the builtin property() function and some generators to
-    create setters and getters for those properties. This will allow them
-    to be accessed from outside by using SWIFTWriterParticleDataset.name, where
-    the name is, for example, coordinates.
+    Here we loop through all of the possible properties in the metadata file. We then use
+    the builtin property() function and some generators to create setters and getters for
+    those properties. This will allow them to be accessed from outside by using
+    ``SWIFTWriterParticleDataset(...).<name>``, where the name is, for example,
+    ``coordinates``.
 
     Parameters
     ----------
@@ -490,7 +496,7 @@ def generate_dataset(
 
     particle_type : int
         The particle type of the dataset. Numbering convention is the same as
-        SWIFT, with 0 corresponding to gas, etc. as usual.
+        SWIFT, with ``0`` corresponding to gas, etc. as usual.
 
     Returns
     -------
@@ -526,12 +532,36 @@ class SWIFTSnapshotWriter(object):
     """
     The SWIFT dataset writer.
 
-    This is used to store all particle arrays and do some extra processing before writing
-    a HDF5 file containing:
+    This is used to store all particle arrays and do some extra consistency checks and
+    processing before writing a HDF5 file containing:
 
     + Fully consistent unit system
     + All required arrays for SWIFT to start
-    + Required metadata (all automatic, apart from those required by __init__)
+    + Required metadata (all automatic, apart from those required by ``__init__``)
+
+    The written output can be read back in using :mod:`swiftsimio`, or used as initial
+    conditions for a SWIFT simulation.
+
+    Any of the usual datasets (``gas``, ``dark_matter``, ``stars``, ``black_holes``,
+    ``sinks``, ``neutrinos``, ``boundary``) can be populated with data. If a dataset is
+    populated, it must have all ``required_fields`` filled in. The required fields can be
+    viewed, for example, with ``swiftsimio.metadata.writer.required_fields.gas.keys()``.
+    The only exception is ``particle_ids``, that will be generated automatically if
+    missing. Smoothing length estimates for uniform-density gas in a periodic box can
+    also be auto-generated, but this has to be done explicitly (see example below).
+
+    To fill in a required dataset, provide the data with a
+    :class:`~swiftsimio.objects.cosmo_array`. For example:
+
+    .. code-block:: python
+
+       w.gas.masses = cosmo_array(
+           np.ones(n_p, dtype=float) * 1e6,
+           u.solMass,
+           comoving=True,
+           scale_factor=w.scale_factor,
+           scale_exponent=0,
+       )
 
     Parameters
     ----------
@@ -542,16 +572,89 @@ class SWIFTSnapshotWriter(object):
         Size of simulation box and associated units.
 
     dimension : int, optional
-        Dimensions of simulation.
+        Dimensions (length of coordinate vector) of simulation.
 
     compress : bool, optional
-        Flag to turn on compression.
+        Flag to turn on gzip compression.
 
     extra_header : dict, optional
-        Dictionary containing extra things to write to the header.
+        Dictionary containing extra fields to write to the HDF5 ``Header`` group.
 
     scale_factor : np.float32
-        Scale factor associated with dataset. Defaults to 1.
+        Scale factor associated with dataset.
+
+    Examples
+    --------
+    An example showing populating all required fields for the ``gas`` dataset:
+
+    .. code-block:: python
+
+       import numpy as np
+       import unyt as u
+       from swiftsimio import Writer, cosmo_array
+       from swiftsimio.metadata.writer.unit_systems import cosmo_unit_system
+
+       # number of gas particles
+       n_p = 1000
+       # scale factor of 1.0
+       a = 1.0
+       # Box is 100 Mpc
+       lbox = 100
+       boxsize = cosmo_array(
+            [lbox, lbox, lbox],
+            u.Mpc,
+            comoving=True,
+            scale_factor=a,
+            scale_exponent=1,
+       )
+
+       # Create the Writer object. cosmo_unit_system corresponds to default Gadget-like
+       # units of 10^10 Msun, Mpc, and km/s
+       w = Writer(unit_system=cosmo_unit_system, boxsize=boxsize, scale_factor=a)
+
+       # Randomly spaced coordinates from 0 to lbox Mpc in each direction
+       w.gas.coordinates = cosmo_array(
+           np.random.rand(n_p, 3) * lbox,
+           u.Mpc,
+           comoving=True,
+           scale_factor=w.scale_factor,
+           scale_exponent=1,
+       )
+
+       # Random velocities from 0 to 1 km/s
+       w.gas.velocities = cosmo_array(
+           np.random.rand(n_p, 3),
+           u.km / u.s,
+           comoving=True,
+           scale_factor=w.scale_factor,
+           scale_exponent=1,
+       )
+
+       # Generate uniform masses as 10^6 solar masses for each particle
+       w.gas.masses = cosmo_array(
+           np.ones(n_p, dtype=float) * 1e6,
+           u.solMass,
+           comoving=True,
+           scale_factor=w.scale_factor,
+           scale_exponent=0,
+       )
+
+       # Generate internal energy corresponding to 10^4 K
+       w.gas.internal_energy = cosmo_array(
+           np.ones(n_p, dtype=float) * 1e4 / 1e6,
+           u.kb * u.K / u.solMass,
+           comoving=True,
+           scale_factor=w.scale_factor,
+           scale_exponent=-2,
+       )
+
+       # Generate initial guess for smoothing lengths based on mean inter-particle spacing
+       w.gas.generate_smoothing_lengths()
+
+       # w.gas.particle_ids can optionally be set, otherwise they are auto-generated
+
+       # write the initial conditions out to a file
+       w.write("ics.hdf5")
     """
 
     def __init__(
@@ -603,12 +706,12 @@ class SWIFTSnapshotWriter(object):
 
     def _generate_ids(self, names_to_write: list) -> None:
         """
-        (Re-)generate all particle IDs for groups with names in names_to_write.
+        (Re-)generate all particle IDs for groups with names in ``names_to_write``.
 
         Parameters
         ----------
         names_to_write : list
-            List of groups to regenerate ids for.
+            List of groups to (re-)generate ids for.
         """
         # Start particle ID's at 1. When running with hydro + DM, partID = 0
         # is a no-no because the ID's are used as offsets in arrays. The code
@@ -694,7 +797,9 @@ class SWIFTSnapshotWriter(object):
         """
         Write the unit information to file.
 
-        Note that we do not have support for unit current yet.
+        .. note::
+
+           We do not have support for units of current yet.
 
         Parameters
         ----------
