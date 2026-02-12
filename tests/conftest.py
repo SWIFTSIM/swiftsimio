@@ -29,7 +29,7 @@ def _requires(filename: str) -> str:
 
     Returns
     -------
-    out : str
+    str
         The location of the desired file.
     """
     if filename == "EagleDistributed.hdf5":
@@ -76,7 +76,7 @@ def _minimal_writer(a: float = 1.0, n_p: int = 32**3, lbox: float = 100):
 
     Returns
     -------
-    out : ~swiftsimio.snapshot_writer.Writer
+    ~swiftsimio.snapshot_writer.Writer
         The writer with required gas fields initialized.
     """
     # Box is 100 Mpc
@@ -154,7 +154,7 @@ def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, 
 
     Yields
     ------
-    out : Generator[str, None, None]
+    Generator[str, None, None]
         The file name, after downloading if required.
     """
     yield _requires(request.param)
@@ -167,7 +167,7 @@ def cosmological_volume_only_single() -> Generator[str, None, None]:
 
     Yields
     ------
-    out : Generator[str, None, None]
+    Generator[str, None, None]
         The file name, after downloading if required.
     """
     yield _requires("EagleSingle.hdf5")
@@ -180,7 +180,7 @@ def cosmological_volume_only_distributed() -> Generator[str, None, None]:
 
     Yields
     ------
-    out : Generator[str, None, None]
+    Generator[str, None, None]
         The file name, after downloading if required.
     """
     yield _requires("EagleDistributed.hdf5")
@@ -193,7 +193,7 @@ def cosmological_volume_dithered() -> Generator[str, None, None]:
 
     Yields
     ------
-    out : Generator[str, None, None]
+    Generator[str, None, None]
         The file name, after downloading if required.
     """
     yield _requires("LegacyCosmologicalVolumeDithered.hdf5")
@@ -206,7 +206,7 @@ def soap_example() -> Generator[str, None, None]:
 
     Yields
     ------
-    out : Generator[str, None, None]
+    Generator[str, None, None]
         The file name, after downloading if required.
     """
     yield _requires("SoapExample.hdf5")
@@ -231,7 +231,7 @@ def snapshot_or_soap(request: pytest.FixtureRequest) -> Generator[str, None, Non
 
     Yields
     ------
-    out : Generator[str, None, None]
+    Generator[str, None, None]
         The file name, after downloading if required.
     """
     yield _requires(request.param)
@@ -244,7 +244,7 @@ def simple_writer() -> Generator[Writer, None, None]:
 
     Yields
     ------
-    out : Generator[Writer, None, None]
+    Generator[Writer, None, None]
         The Writer object.
     """
     yield _minimal_writer()
@@ -257,7 +257,7 @@ def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
 
     Yields
     ------
-    out : Generator[tuple[Writer, str], None, None]
+    Generator[tuple[Writer, str], None, None]
         The Writer object and the name of the file it wrote.
     """
     test_filename = "test_write_output_units.hdf5"
