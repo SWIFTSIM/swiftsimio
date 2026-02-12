@@ -132,29 +132,130 @@ class TestSetterInputs:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
-    def test_setter_invalid_units_input(self):
-        """..."""
-        raise NotImplementedError
+    def test_setter_invalid_dimensions_input(self):
+        """Make sure setter refuses input with invalid units."""
+        a = 0.5
+        w = Writer(
+            boxsize=cosmo_array(
+                [100, 100, 100], u.Mpc, comoving=True, scale_factor=a, scale_exponent=1
+            ),
+            scale_factor=a,
+        )
+        testfile = "setter_invalid_dimensions_input.hdf5"
+        try:
+            with pytest.raises(
+                u.exceptions.InvalidUnitEquivalence, match="The unit equivalence"
+            ):
+                w.gas.masses = cosmo_array(
+                    np.arange(100),
+                    u.Mpc,
+                    comoving=True,
+                    scale_factor=a,
+                    scale_exponent=1.0,
+                )
+        finally:
+            # expect not to write a file but clean up if the unexpected happens
+            if os.path.exists(testfile):
+                os.remove(testfile)
 
     def test_setter_invalid_scale_factor_input(self):
-        """..."""
-        raise NotImplementedError
-
-    def test_setter_invalid_dimensions_input(self):
-        """..."""
-        raise NotImplementedError
+        """Make sure setter refuses input with mismatched scale factor."""
+        a = 0.5
+        w = Writer(
+            boxsize=cosmo_array(
+                [100, 100, 100], u.Mpc, comoving=True, scale_factor=a, scale_exponent=1
+            ),
+            scale_factor=a,
+        )
+        testfile = "setter_invalid_scale_factor_input.hdf5"
+        a_input = a + 0.1
+        assert a_input != a
+        try:
+            with pytest.raises(
+                AssertionError,
+                match="The scale factor of masses does not match the scale factor of the "
+                "Writer.",
+            ):
+                w.gas.masses = cosmo_array(
+                    np.arange(100),
+                    u.solMass,
+                    comoving=True,
+                    scale_factor=a_input,
+                    scale_exponent=1.0,
+                )
+        finally:
+            # expect not to write a file but clean up if the unexpected happens
+            if os.path.exists(testfile):
+                os.remove(testfile)
 
     def test_setter_unyt_array_input(self):
-        """..."""
-        raise NotImplementedError
+        """Make sure setter refuses unyt_array (not cosmo_array) input."""
+        a = 0.5
+        w = Writer(
+            boxsize=cosmo_array(
+                [100, 100, 100], u.Mpc, comoving=True, scale_factor=a, scale_exponent=1
+            ),
+            scale_factor=a,
+        )
+        testfile = "setter_unyt_array_input.hdf5"
+        try:
+            with pytest.raises(
+                TypeError, match="Provide masses as swiftsimio.cosmo_array."
+            ):
+                w.gas.masses = np.arange(100) * u.solMass
+        finally:
+            if os.path.exists(testfile):
+                os.remove(testfile)
 
     def test_setter_ndarray_input(self):
-        """..."""
-        raise NotImplementedError
+        """Make sure setter refuses numpy array (not cosmo_array) input."""
+        a = 0.5
+        w = Writer(
+            boxsize=cosmo_array(
+                [100, 100, 100], u.Mpc, comoving=True, scale_factor=a, scale_exponent=1
+            ),
+            scale_factor=a,
+        )
+        testfile = "setter_ndarray_input.hdf5"
+        try:
+            with pytest.raises(
+                TypeError, match="Provide masses as swiftsimio.cosmo_array."
+            ):
+                w.gas.masses = np.arange(100)
+        finally:
+            if os.path.exists(testfile):
+                os.remove(testfile)
 
-    def test_setter_dimensionless_input(self):
-        """..."""
-        raise NotImplementedError
+    @pytest.mark.parametrize(
+        "input_data",
+        (
+            np.arange(100, dtype=int),
+            np.arange(100, dtype=int) * u.dimensionless,
+            cosmo_array(
+                np.arange(100, dtype=int),
+                u.dimensionless,
+                comoving=True,
+                scale_factor=1.0,
+                scale_exponent=0,
+            ),
+        ),
+    )
+    def test_setter_dimensionless_input(self, simple_writer, input_data):
+        """Check that fields with expected dimensionless input are accepted."""
+        if hasattr(input_data, "cosmo_factor"):
+            assert input_data.cosmo_factor.scale_factor == simple_writer.scale_factor
+        testfile = "setter_dimensionless_input.hdf5"
+        assert simple_writer.gas._particle_ids is None
+        try:
+            simple_writer.gas.particle_ids = input_data
+            assert isinstance(simple_writer.gas.particle_ids, cosmo_array)
+            assert (
+                simple_writer.gas.particle_ids.cosmo_factor.scale_factor
+                == simple_writer.scale_factor
+            )
+        finally:
+            if os.path.exists(testfile):
+                os.remove(testfile)
 
 
 def test_explicit_particle_ids():

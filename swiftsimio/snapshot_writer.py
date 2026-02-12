@@ -381,6 +381,11 @@ def generate_setter(
         value : cosmo_array
             The value to set the attribute to.
         """
+        if hasattr(value, "cosmo_factor"):
+            assert value.cosmo_factor.scale_factor == self.writer.scale_factor, (
+                f"The scale factor of {name} does not match the scale factor of the "
+                "Writer."
+            )
         if dimensions != 1:
             if isinstance(value, cosmo_array):
                 if value.units.dimensions == dimensions:
