@@ -28,7 +28,6 @@ import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
 from swiftsimio.objects import cosmo_array, cosmo_quantity
 import swiftsimio.visualisation as visualisation
-import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
 
@@ -50,7 +49,6 @@ __all__ = [
     "cosmo_array",
     "cosmo_quantity",
     "visualisation",
-    "units",
     "subset_writer",
     "statistics",
     "name",

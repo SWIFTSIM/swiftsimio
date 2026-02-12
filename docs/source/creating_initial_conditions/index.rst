@@ -38,7 +38,7 @@ Example
    import numpy as np
    import unyt as u
    from swiftsimio import Writer, cosmo_array
-   from swiftsimio.units import cosmo_units
+   from swiftsimio.metadata.writer.unit_systems import cosmo_unit_system
 
    # number of gas particles
    n_p = 1000
@@ -54,9 +54,9 @@ Example
         scale_exponent=1,
    )
    
-   # Create the Writer object. cosmo_units corresponds to default Gadget-oid units
+   # Create the Writer object. cosmo_unit_system corresponds to default Gadget-like units
    # of 10^10 Msun, Mpc, and km/s
-   w = Writer(unit_system=cosmo_units, boxsize=boxsize, scale_factor=a)
+   w = Writer(unit_system=cosmo_unit_system, boxsize=boxsize, scale_factor=a)
 
    # Randomly spaced coordinates from 0 to lbox Mpc in each direction
    w.gas.coordinates = cosmo_array(

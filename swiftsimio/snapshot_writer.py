@@ -10,7 +10,7 @@ from sympy import Symbol
 from functools import reduce
 
 from swiftsimio import metadata
-from swiftsimio.units import cosmo_units
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 from swiftsimio.objects import cosmo_array
 
 
@@ -47,7 +47,8 @@ class __SWIFTWriterParticleDataset(object):
     unit_system : unyt.UnitSystem or str
         Either be a string (e.g. "cgs"), or a UnitSystem as defined by unyt
         specifying the units to be used. Users may wish to consider the
-        cosmological unit system provided in swiftsimio.units.cosmo_units.
+        cosmological unit system provided as
+        ``from swiftsimio.metadata.writer.unit_systems import cosmo_units``.
 
     particle_type : int
         The particle type of the dataset. Numbering convention is the same as

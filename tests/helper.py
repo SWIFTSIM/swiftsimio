@@ -6,7 +6,6 @@ import h5py
 import unyt as u
 from swiftsimio.subset_writer import find_links, write_metadata
 from swiftsimio import mask, cosmo_array, Writer
-from swiftsimio.units import cosmo_units
 from swiftsimio.masks import SWIFTMask
 
 
@@ -202,7 +201,7 @@ def create_minimal_writer(a: float = 1.0, n_p: int = 32**3, lbox: float = 100):
 
     # Generate object. cosmo_units corresponds to default Gadget-oid units
     # of 10^10 Msun, Mpc, and km/s
-    w = Writer(unit_system=cosmo_units, boxsize=boxsize, scale_factor=a)
+    w = Writer(boxsize=boxsize, scale_factor=a)
 
     # Randomly spaced coordinates from 0, lbox Mpc in each direction
     w.gas.coordinates = cosmo_array(
