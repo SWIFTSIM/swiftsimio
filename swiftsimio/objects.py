@@ -1372,6 +1372,7 @@ class cosmo_array(unyt_array):
     transpose = _propagate_cosmo_array_attributes_to_result(unyt_array.transpose)
     view = _propagate_cosmo_array_attributes_to_result(unyt_array.view)
     __copy__ = _propagate_cosmo_array_attributes_to_result(unyt_array.__copy__)
+    copy = _propagate_cosmo_array_attributes_to_result(unyt_array.copy)
     __deepcopy__ = _propagate_cosmo_array_attributes_to_result(unyt_array.__deepcopy__)
     in_cgs = _propagate_cosmo_array_attributes_to_result(unyt_array.in_cgs)
     take = _propagate_cosmo_array_attributes_to_result(
