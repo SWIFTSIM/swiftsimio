@@ -9,7 +9,7 @@ from pathlib import Path
 import h5py
 
 from .reader import SWIFTDataset
-from .snapshot_writer import SWIFTSnapshotWriter
+from .snapshot_writer import SWIFTSnapshotWriter as Writer
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
 from .__version__ import __version__
@@ -189,6 +189,3 @@ def load_statistics(filename: str | Path) -> SWIFTStatisticsFile:
         SWIFT statistics file path.
     """
     return SWIFTStatisticsFile(filename=filename)
-
-
-Writer = SWIFTSnapshotWriter
