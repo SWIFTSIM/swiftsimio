@@ -3,6 +3,7 @@
 import unyt
 import h5py
 import numpy as np
+from warnings import warn
 
 from typing import Callable
 from sympy import Symbol
@@ -145,31 +146,34 @@ class __SWIFTWriterParticleDataset(object):
 
         return True
 
-    def generate_smoothing_lengths(self, boxsize: cosmo_array, dimension: int) -> None:
+    def generate_smoothing_lengths(self) -> None:
         """
         Automatically generate smoothing lengths as 2 * the mean interparticle spacing.
 
         This only works for a uniform boxsize (i.e. one that has the same length in all
-        dimensions). If boxsize is a list, we just use the 0th member.
-
-        Parameters
-        ----------
-        boxsize : cosmo_array or cosmo_quantity
-            Size of SWIFT computational box.
-
-        dimension : int
-            Number of box dimensions.
+        dimensions).
         """
-        if boxsize.ndim > 0:
-            assert (np.diff(boxsize) == 0).all(), "Box side lengths must all be equal."
-            boxsize = boxsize[0]
+        if "smoothing_lengths" not in getattr(
+            metadata.required_fields, self.particle_name
+        ):
+            raise RuntimeError(
+                "Cannot generate smoothing lengths for particle types that don't require "
+                "them."
+            )
+
+        if not (np.diff(self.writer.boxsize) == 0).all():
+            raise ValueError(
+                "To generate smoothing lengths box side lengths must all be equal."
+            )
+        dimension = self.writer.boxsize.ndim
+        boxsize = self.writer.boxsize[0]
 
         n_part = self.coordinates.shape[0]
         mips = boxsize / (n_part ** (1.0 / dimension))
 
         smoothing_lengths = mips * np.ones(n_part, dtype=float)
 
-        self.smoothing_length = smoothing_lengths
+        self.smoothing_lengths = smoothing_lengths
 
         return
 
@@ -399,6 +403,14 @@ def generate_setter(
             else:
                 raise TypeError(f"Provide {name} as swiftsimio.cosmo_array.")
         else:
+            if name == "particle_ids":
+                if any(value <= 0):
+                    raise ValueError(f"{self.particle_name}.particle_ids must be >= 1.")
+                if np.unique(value).size != value.size:
+                    raise ValueError(
+                        f"{self.particle_name}.particle_ids must not have repeated IDs."
+                    )
+
             setattr(
                 self,
                 f"_{name}",
@@ -597,22 +609,27 @@ class SWIFTSnapshotWriter(object):
         names_to_write : list
             List of groups to regenerate ids for.
         """
-        numbers_of_particles = [getattr(self, name).n_part for name in names_to_write]
         # Start particle ID's at 1. When running with hydro + DM, partID = 0
         # is a no-no because the ID's are used as offsets in arrays. The code
         # will most likely crash at some point, and "part_verify_links()" will
         # complain about it if SWIFT is run with debugging checks on.
         already_used = 1
 
-        for number, name in zip(numbers_of_particles, names_to_write):
+        for name in names_to_write:
+            if getattr(self, name)._particle_ids is not None:
+                warn(
+                    f"Overwriting {name}.particle_ids, to prevent this provide particle "
+                    "IDs for all particle types, or none.",
+                    RuntimeWarning,
+                )
             getattr(self, name).particle_ids = cosmo_array(
-                np.arange(already_used, number + already_used),
+                np.arange(already_used, getattr(self, name).n_part + already_used),
                 unyt.dimensionless,
                 comoving=True,
                 scale_factor=self.scale_factor,
                 scale_exponent=0.0,
             )
-            already_used += number
+            already_used += getattr(self, name).n_part
 
         return
 
@@ -655,6 +672,7 @@ class SWIFTSnapshotWriter(object):
             "NumPart_Total_HighWord": [0] * 6,
             "Flag_Entropy_ICs": 0,
             "Dimension": np.array([self.dimension]),
+            "Scale-factor": [self.scale_factor],
             # LEGACY but required for Gadget readers
             "NumFilesPerSnapshot": 1,
             "NumPart_ThisFile": number_of_particles,
@@ -749,8 +767,15 @@ class SWIFTSnapshotWriter(object):
 
         if generate_ids:
             self._generate_ids(names_to_write)
+        else:
+            all_ids = np.concatenate(
+                [getattr(self, name).particle_ids for name in names_to_write]
+            )
+            if np.unique(all_ids).size != all_ids.size:
+                raise ValueError(
+                    "Particle IDs must be unique across all particle types."
+                )
 
-        # Now we do the hard part
         with h5py.File(filename, "w") as handle:
             self._write_metadata(handle, names_to_write)
 

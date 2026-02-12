@@ -1,9 +1,10 @@
-"""Basic integration test."""
+"""Test the :class:`~swiftsimio.snapshot_writer.Writer`."""
 
 import os
 import pytest
 import numpy as np
 from swiftsimio import load, cosmo_array, Writer
+from .helper import create_minimal_writer
 import unyt as u
 
 
@@ -21,12 +22,24 @@ def test_load(simple_snapshot_data):
     dat.gas.coordinates
 
 
+def test_scale_factor_written(simple_snapshot_data):
+    """Check that the scale factor gets written in the output."""
+    testfile = "scale_factor_written.hdf5"
+    w = create_minimal_writer(a=0.5)
+    w.write(testfile)
+    dat = load(testfile)
+    assert w.scale_factor != 1.0  # make sure it's not just a default value
+    assert dat.metadata.a == w.scale_factor
+
+
 def test_write_non_required_field(simple_writer):
     """
     Try to write a non-required field with the writer.
 
     Expectation is that it is silently ignored and not written out. Written file should
     still be readable.
+
+    May be desirable to change this behaviour in the future.
     """
     testfile = "write_non_required_field.hdf5"
     simple_writer.gas.metallicity = cosmo_array(
@@ -62,7 +75,7 @@ def test_write_missing_required(simple_writer):
         ):
             simple_writer.write(testfile)
     finally:
-        # we don't expect to write the file but cleanup in case the unexpected happens
+        # expect not to write a file but clean up if the unexpected happens
         if os.path.exists(testfile):
             os.remove(testfile)
 
@@ -147,7 +160,7 @@ class TestSetterInputs:
                 u.exceptions.InvalidUnitEquivalence, match="The unit equivalence"
             ):
                 w.gas.masses = cosmo_array(
-                    np.arange(100),
+                    np.ones(100),
                     u.Mpc,
                     comoving=True,
                     scale_factor=a,
@@ -177,7 +190,7 @@ class TestSetterInputs:
                 "Writer.",
             ):
                 w.gas.masses = cosmo_array(
-                    np.arange(100),
+                    np.ones(100),
                     u.solMass,
                     comoving=True,
                     scale_factor=a_input,
@@ -202,7 +215,7 @@ class TestSetterInputs:
             with pytest.raises(
                 TypeError, match="Provide masses as swiftsimio.cosmo_array."
             ):
-                w.gas.masses = np.arange(100) * u.solMass
+                w.gas.masses = np.ones(100) * u.solMass
         finally:
             if os.path.exists(testfile):
                 os.remove(testfile)
@@ -221,18 +234,18 @@ class TestSetterInputs:
             with pytest.raises(
                 TypeError, match="Provide masses as swiftsimio.cosmo_array."
             ):
-                w.gas.masses = np.arange(100)
+                w.gas.masses = np.ones(100)
         finally:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
     @pytest.mark.parametrize(
-        "input_data",
+        "input_data_generator",
         (
-            np.arange(100, dtype=int),
-            np.arange(100, dtype=int) * u.dimensionless,
-            cosmo_array(
-                np.arange(100, dtype=int),
+            lambda n_p: np.arange(1, n_p + 1, dtype=int),
+            lambda n_p: np.arange(1, n_p + 1, dtype=int) * u.dimensionless,
+            lambda n_p: cosmo_array(
+                np.arange(1, n_p + 1, dtype=int),
                 u.dimensionless,
                 comoving=True,
                 scale_factor=1.0,
@@ -240,8 +253,10 @@ class TestSetterInputs:
             ),
         ),
     )
-    def test_setter_dimensionless_input(self, simple_writer, input_data):
+    def test_setter_dimensionless_input(self, simple_writer, input_data_generator):
         """Check that fields with expected dimensionless input are accepted."""
+        n_p = simple_writer.gas.masses.size
+        input_data = input_data_generator(n_p)
         if hasattr(input_data, "cosmo_factor"):
             assert input_data.cosmo_factor.scale_factor == simple_writer.scale_factor
         testfile = "setter_dimensionless_input.hdf5"
@@ -253,26 +268,196 @@ class TestSetterInputs:
                 simple_writer.gas.particle_ids.cosmo_factor.scale_factor
                 == simple_writer.scale_factor
             )
+            simple_writer.write(testfile)
         finally:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
 
-def test_explicit_particle_ids():
-    """..."""
-    raise NotImplementedError
+@pytest.mark.parametrize(
+    "input_data_generator",
+    (
+        lambda n_p: np.arange(n_p, dtype=int) + 1000,
+        lambda n_p: (np.arange(n_p, dtype=int) + 1000) * u.dimensionless,
+        lambda n_p: cosmo_array(
+            np.arange(n_p, dtype=int) + 1000,
+            u.dimensionless,
+            comoving=True,
+            scale_factor=1.0,
+            scale_exponent=0,
+        ),
+    ),
+)
+def test_explicit_particle_ids(input_data_generator, simple_writer):
+    """
+    Check that particle IDs can be set directly (i.e. not auto-generated).
+
+    The IDs used in this test are offset by 1000 to make sure we didn't use auto-generated
+    IDs instead of the ones explicitly provided.
+    """
+    testfile = "explicit_particle_ids.hdf5"
+    assert simple_writer.gas._particle_ids is None
+    n_p = simple_writer.gas.masses.size
+    input_data = input_data_generator(n_p)
+    try:
+        simple_writer.gas.particle_ids = input_data
+        assert isinstance(simple_writer.gas.particle_ids, cosmo_array)
+        assert (
+            simple_writer.gas.particle_ids.cosmo_factor.scale_factor
+            == simple_writer.scale_factor
+        )
+        simple_writer.write(testfile)
+        dat = load(testfile)
+        assert (
+            dat.gas.particle_ids.to_comoving_value(u.dimensionless).astype(int)
+            == input_data.view(np.ndarray)
+        ).all()
+    finally:
+        if os.path.exists(testfile):
+            os.remove(testfile)
 
 
-def test_generated_particle_ids():
-    """..."""
-    raise NotImplementedError
+def test_duplicate_ids_invalid(simple_writer):
+    """Check that duplicate particle IDs are rejected."""
+    assert simple_writer.gas._particle_ids is None
+    with pytest.raises(
+        ValueError, match="gas.particle_ids must not have repeated IDs."
+    ):
+        simple_writer.gas.particle_ids = np.ones(simple_writer.gas.masses.size)
 
 
-def test_explicit_smoothing_lengths():
-    """..."""
-    raise NotImplementedError
+def test_duplicate_ids_across_types_invalid(two_type_writer):
+    """Check that duplicate particle IDs in different particle types are rejected."""
+    testfile = "duplicate_ids_across_types_invalid.hdf5"
+    assert two_type_writer.gas._particle_ids is None
+    assert two_type_writer.dark_matter._particle_ids is None
+    two_type_writer.gas.particle_ids = np.arange(1, two_type_writer.gas.masses.size + 1)
+    two_type_writer.dark_matter.particle_ids = np.arange(
+        1, two_type_writer.dark_matter.masses.size + 1
+    )
+    try:
+        with pytest.raises(
+            ValueError, match="Particle IDs must be unique across all particle types."
+        ):
+            two_type_writer.write(testfile)
+    finally:
+        # expect not to write a file but clean up if the unexpected happens
+        if os.path.exists(testfile):
+            os.remove(testfile)
 
 
-def test_generated_smoothing_lengths():
-    """..."""
-    raise NotImplementedError
+@pytest.mark.parametrize("invalid_id", (0, -1))
+def test_invalid_ids(invalid_id, simple_writer):
+    """Check that a particle ID with a 0 or negative value is rejected."""
+    invalid_ids = np.arange(1, simple_writer.gas.masses.size + 1)  # valid for now
+    invalid_ids[0] = invalid_id  # now invalid
+    assert np.unique(invalid_ids).size == invalid_ids.size
+    with pytest.raises(ValueError, match="gas.particle_ids must be >= 1."):
+        simple_writer.gas.particle_ids = invalid_ids
+
+
+class TestGeneratedParticleIDs:
+    """Test automatically generated particle IDs."""
+
+    def test_generated_particle_ids(self, simple_writer):
+        """Check that particle ID generation produces sensible IDs."""
+        testfile = "generated_particle_ids.hdf5"
+        assert simple_writer.gas._particle_ids is None
+        assert simple_writer.gas.check_consistent()
+        assert simple_writer.gas.requires_particle_ids_before_write
+        try:
+            simple_writer.write(testfile)
+            dat = load(testfile)
+            assert dat.gas.particle_ids.size == simple_writer.gas.masses.size
+            assert np.unique(dat.gas.particle_ids).size == dat.gas.particle_ids.size
+        finally:
+            if os.path.exists(testfile):
+                os.remove(testfile)
+
+    def test_generated_particle_ids_multiple_types(self, two_type_writer):
+        """Check that all IDs are unique for multiple types."""
+        testfile = "generated_particle_ids_multiple_types.hdf5"
+        assert two_type_writer.gas._particle_ids is None
+        assert two_type_writer.dark_matter._particle_ids is None
+        try:
+            two_type_writer.write(testfile)
+            dat = load(testfile)
+            assert (
+                np.unique(
+                    np.concatenate((dat.gas.particle_ids, dat.dark_matter.particle_ids))
+                ).size
+                == dat.gas.masses.size + dat.dark_matter.masses.size
+            )
+        finally:
+            if os.path.exists(testfile):
+                os.remove(testfile)
+
+    def test_overwrite_particle_ids(self, two_type_writer):
+        """
+        Check that we overwrite particle_ids when they are not present for all types.
+
+        If user provides IDs for some types and not others we don't bother working out
+        what IDs are available to assign to particle that don't have IDs, we just
+        overwrite everything. However, if we overwrite any user-provided IDs, we should
+        warn them.
+        """
+        testfile = "overwrite_particle_ids.hdf5"
+        two_type_writer.gas.particle_ids = np.arange(
+            1, two_type_writer.gas.masses.size + 1
+        )
+        assert two_type_writer.dark_matter._particle_ids is None
+        try:
+            with pytest.warns(RuntimeWarning, match="Overwriting gas.particle_ids"):
+                two_type_writer.write(testfile)
+        finally:
+            if os.path.exists(testfile):
+                os.remove(testfile)
+
+
+def test_explicit_smoothing_lengths(simple_writer):
+    """Check that smoothing lengths can be explicitly passed in."""
+    testfile = "explicit_smoothing_lengths.hdf5"
+    simple_writer.gas._smoothing_lengths = None  # ensure they are blank
+    simple_writer.gas.smoothing_lengths = cosmo_array(
+        np.ones(simple_writer.gas.masses.size),
+        u.kpc,
+        comoving=True,
+        scale_factor=simple_writer.scale_factor,
+        scale_exponent=1,
+    )
+    try:
+        simple_writer.write(testfile)
+        dat = load(testfile)
+        assert np.allclose(
+            dat.gas.smoothing_lengths, simple_writer.gas.smoothing_lengths
+        )
+    finally:
+        if os.path.exists(testfile):
+            os.remove(testfile)
+
+
+def test_generated_smoothing_lengths(two_type_writer):
+    """
+    Check that we can automatically generate smoothing lengths.
+
+    This should only work for types where smoothing lengths are a required field.
+    """
+    testfile = "generated_smoothing_lengths.hdf5"
+    two_type_writer.gas._smoothing_lengths = None  # ensure they are blank
+    two_type_writer.gas.generate_smoothing_lengths()
+    assert two_type_writer.gas._smoothing_lengths is not None
+    with pytest.raises(
+        RuntimeError,
+        match="Cannot generate smoothing lengths for particle types that don't require "
+        "them.",
+    ):
+        two_type_writer.dark_matter.generate_smoothing_lengths()
+    try:
+        two_type_writer.write(testfile)
+        dat = load(testfile)
+        assert np.allclose(
+            dat.gas.smoothing_lengths, two_type_writer.gas.smoothing_lengths
+        )
+    finally:
+        if os.path.exists(testfile):
+            os.remove(testfile)

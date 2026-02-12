@@ -10,7 +10,7 @@ _shared = {
 }
 
 gas = {
-    "smoothing_length": {"handle": "SmoothingLength", "dimensions": dim.length},
+    "smoothing_lengths": {"handle": "SmoothingLengths", "dimensions": dim.length},
     "internal_energy": {
         "handle": "InternalEnergy",
         "dimensions": dim.length**2 / dim.time**2,
@@ -26,7 +26,7 @@ sinks = {**_shared}
 
 stars = {
     **_shared,
-    "smoothing_length": {"handle": "SmoothingLength", "dimensions": dim.length},
+    "smoothing_lengths": {"handle": "SmoothingLengths", "dimensions": dim.length},
 }
 
 black_holes = {**_shared}

@@ -17,7 +17,7 @@ def test_reading_ic_units(simple_snapshot_data):
         "velocities",
         "masses",
         "internal_energy",
-        "smoothing_length",
+        "smoothing_lengths",
     ]:
         assert isinstance(getattr(data.gas, field), cosmo_array)
         assert np.allclose(

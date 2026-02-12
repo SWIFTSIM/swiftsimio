@@ -7,9 +7,9 @@ from collections.abc import Generator
 import numpy as np
 import unyt
 from swiftsimio import Writer, cosmo_array
-from swiftsimio.units import cosmo_units
 import swiftsimio.metadata.particle as particle_metadata
 import swiftsimio.metadata.writer.required_fields as writer_required_fields
+from .helper import create_minimal_writer, create_two_type_writer
 
 
 webstorage_location = (
@@ -57,82 +57,6 @@ def _requires(filename: str) -> str:
 
     else:
         return file_location
-
-
-def _minimal_writer(a: float = 1.0, n_p: int = 32**3, lbox: float = 100):
-    """
-    Create a :class:`~swiftsimio.snapshot_writer.Writer` with required gas fields.
-
-    Parameters
-    ----------
-    a : float, optional
-        The scale factor.
-
-    n_p : int, optional
-        The number of particles.
-
-    lbox : float, optional
-        The box side length in Mpc.
-
-    Returns
-    -------
-    ~swiftsimio.snapshot_writer.Writer
-        The writer with required gas fields initialized.
-    """
-    # Box is 100 Mpc
-    boxsize = cosmo_array(
-        [lbox, lbox, lbox],
-        unyt.Mpc,
-        comoving=True,
-        scale_factor=a,
-        scale_exponent=1,
-    )
-
-    # Generate object. cosmo_units corresponds to default Gadget-oid units
-    # of 10^10 Msun, Mpc, and km/s
-    w = Writer(unit_system=cosmo_units, boxsize=boxsize, scale_factor=a)
-
-    # Randomly spaced coordinates from 0, 100 Mpc in each direction
-    w.gas.coordinates = cosmo_array(
-        np.random.rand(n_p, 3) * 100,
-        unyt.Mpc,
-        comoving=True,
-        scale_factor=w.scale_factor,
-        scale_exponent=1,
-    )
-
-    # Random velocities from 0 to 1 km/s
-    w.gas.velocities = cosmo_array(
-        np.random.rand(n_p, 3),
-        unyt.km / unyt.s,
-        comoving=True,
-        scale_factor=w.scale_factor,
-        scale_exponent=1,
-    )
-
-    # Generate uniform masses as 10^6 solar masses for each particle
-    w.gas.masses = cosmo_array(
-        np.ones(n_p, dtype=float) * 1e6,
-        unyt.msun,
-        comoving=True,
-        scale_factor=w.scale_factor,
-        scale_exponent=0,
-    )
-
-    # Generate internal energy corresponding to 10^4 K
-    w.gas.internal_energy = cosmo_array(
-        np.ones(n_p, dtype=float) * 1e4 / 1e6,
-        unyt.kb * unyt.K / unyt.solMass,
-        comoving=True,
-        scale_factor=w.scale_factor,
-        scale_exponent=-2,
-    )
-
-    # Generate initial guess for smoothing lengths based on MIPS
-    w.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
-
-    # IDs will be auto-generated on file write
-    return w
 
 
 @pytest.fixture(
@@ -247,7 +171,20 @@ def simple_writer() -> Generator[Writer, None, None]:
     Generator[Writer, None, None]
         The Writer object.
     """
-    yield _minimal_writer()
+    yield create_minimal_writer()
+
+
+@pytest.fixture(scope="function")
+def two_type_writer() -> Generator[Writer, None, None]:
+    """
+    Provide a :class:`~swiftsimio.snapshot_writer.Writer` with required gas & DM fields.
+
+    Yields
+    ------
+    Generator[Writer, None, None]
+        The Writer object.
+    """
+    yield create_two_type_writer()
 
 
 @pytest.fixture(scope="function")
@@ -261,7 +198,7 @@ def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
         The Writer object and the name of the file it wrote.
     """
     test_filename = "test_write_output_units.hdf5"
-    w = _minimal_writer()
+    w = create_minimal_writer()
 
     w.write(test_filename)
 
@@ -280,8 +217,8 @@ def _setup_extra_part_type():
     particle_metadata.particle_name_class["PartType7"] = "Extratype"
     particle_metadata.particle_name_text["PartType7"] = "Extratype"
     writer_required_fields.extratype = {
-        "smoothing_length": {
-            "handle": "SmoothingLength",
+        "smoothing_lengths": {
+            "handle": "SmoothingLengths",
             "dimensions": unyt.dimensions.length,
         },
         **writer_required_fields._shared,
@@ -353,7 +290,7 @@ def write_extra_part_type():
         scale_exponent=0,
     )
 
-    x.extratype.smoothing_length = cosmo_array(
+    x.extratype.smoothing_lengths = cosmo_array(
         np.ones(10, dtype=float) * 5.0,
         unyt.cm,
         comoving=False,

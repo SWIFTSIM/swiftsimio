@@ -22,8 +22,8 @@ def test_write(extra_part_type):
     )
 
     x = Writer(
-        unit_system,
-        boxsize,
+        unit_system=unit_system,
+        boxsize=boxsize,
         scale_factor=a,
     )
 
@@ -50,15 +50,19 @@ def test_write(extra_part_type):
         scale_exponent=0,
     )
 
-    x.extratype.smoothing_length = cosmo_array(
+    x.extratype.smoothing_lengths = cosmo_array(
         np.ones(10, dtype=float) * 5.0,
         unyt.cm,
         comoving=False,
         scale_factor=x.scale_factor,
         scale_exponent=1,
     )
-    x.write("extra_test.hdf5")
-    os.remove("extra_test.hdf5")
+    testfile = "extra_test.hdf5"
+    try:
+        x.write(testfile)
+    finally:
+        if os.path.exists(testfile):
+            os.remove(testfile)
 
 
 def test_read(write_extra_part_type):
@@ -69,4 +73,6 @@ def test_read(write_extra_part_type):
     """
     data = load("extra_test.hdf5")
     for i in range(0, 10):
-        assert data.extratype.coordinates.value[i][0] == float(i)
+        assert data.extratype.coordinates.to_physical_value(
+            data.extratype.coordinates.units
+        )[i][0] == float(i)
