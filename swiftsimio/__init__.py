@@ -33,7 +33,7 @@ import swiftsimio.statistics as statistics
 
 __all__ = [
     "SWIFTDataset",
-    "SWIFTSnapshotWriter",
+    "Writer",
     "SWIFTMask",
     "SWIFTStatisticsFile",
     "SWIFTUnits",
@@ -56,7 +56,6 @@ __all__ = [
     "mask",
     "load",
     "load_statistics",
-    "Writer",
 ]
 
 name = "swiftsimio"
