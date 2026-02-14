@@ -240,7 +240,7 @@ class SWIFTMask(HandleProvider):
         cell_handle = self.handle["Cells"]
         count_handle = cell_handle["Counts"]
         metadata_handle = cell_handle["Meta-data"]
-        centers_handle = cell_handle["Centres"]
+        centers_values = cell_handle["Centres"][...]
         if (
             "MinPositions" in cell_handle.keys()
             and "MaxPositions" in cell_handle.keys()
@@ -273,17 +273,19 @@ class SWIFTMask(HandleProvider):
             for group, group_name in zip(
                 self.metadata.present_groups, self.metadata.present_group_names
             ):
+                minpos_values = minpos_handle[group][:]
+                maxpos_values = maxpos_handle[group][:]
                 self.minpositions[group_name] = np.where(
-                    centers_handle[:] - 0.5 * metadata_handle.attrs["size"]
-                    < minpos_handle[group][:],
-                    centers_handle[:] - 0.5 * metadata_handle.attrs["size"],
-                    minpos_handle[group][:],
+                    centers_values - 0.5 * metadata_handle.attrs["size"]
+                    < minpos_values,
+                    centers_values - 0.5 * metadata_handle.attrs["size"],
+                    minpos_values,
                 )
                 self.maxpositions[group_name] = np.where(
-                    centers_handle[:] + 0.5 * metadata_handle.attrs["size"]
-                    > maxpos_handle[group][:],
-                    centers_handle[:] + 0.5 * metadata_handle.attrs["size"],
-                    maxpos_handle[group][:],
+                    centers_values + 0.5 * metadata_handle.attrs["size"]
+                    > maxpos_values,
+                    centers_values + 0.5 * metadata_handle.attrs["size"],
+                    maxpos_values,
                 )
         else:
             # be conservative: pad (default by 0.1 cell) in case particles drifed
@@ -305,10 +307,10 @@ class SWIFTMask(HandleProvider):
                 )
             # +/- 0.5 here is the cell size itself:
             self.minpositions["shared"] = (
-                centers_handle[:] - (pad_cells + 0.5) * metadata_handle.attrs["size"]
+                centers_values - (pad_cells + 0.5) * metadata_handle.attrs["size"]
             )
             self.maxpositions["shared"] = (
-                centers_handle + (pad_cells + 0.5) * metadata_handle.attrs["size"]
+                centers_values + (pad_cells + 0.5) * metadata_handle.attrs["size"]
             )
         # Only want to compute this once (even if it is fast, we do not
         # have a reliable stable sort in the case where cells do not
@@ -331,7 +333,7 @@ class SWIFTMask(HandleProvider):
 
         # Also need to sort centers in the same way
         self.centers = cosmo_array(
-            centers_handle[:][self.cell_sort],
+            centers_values[self.cell_sort],
             units=self.units.length,
             comoving=True,
             scale_factor=self.metadata.scale_factor,
@@ -450,16 +452,24 @@ class SWIFTMask(HandleProvider):
         cosmology_factor = cosmologies_dict[quantity]
 
         # Load in the relevant data.
+        with self.metadata.open_file() as h5file:
+            if isinstance(h5file, (h5py.File, h5py.Group)):
+                # When reading from a local HDF5 file this is faster than
+                # just using the boolean indexing because h5py has slow
+                # indexing routines.
+                data = np.take(h5file[handle], np.where(current_mask)[0], axis=0)
+            else:
+                # Otherwise, assume we can just index the dataset. This
+                # generates a single http request for remote datasets.
+                data = h5file[handle][current_mask, ...]
 
-        with h5py.File(self.metadata.filename, "r") as h5file:
-            # Surprisingly this is faster than just using the boolean
-            # indexing because h5py has slow indexing routines.
-            data = cosmo_array(
-                np.take(h5file[handle], np.where(current_mask)[0], axis=0),
-                units=unit,
-                comoving=not physical,
-                cosmo_factor=cosmology_factor,
-            )
+        # Wrap result in a cosmo array
+        data = cosmo_array(
+            data,
+            units=unit,
+            comoving=not physical,
+            cosmo_factor=cosmology_factor,
+        )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
 
