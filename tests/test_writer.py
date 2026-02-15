@@ -184,11 +184,7 @@ class TestSetterInputs:
         a_input = a + 0.1
         assert a_input != a
         try:
-            with pytest.raises(
-                AssertionError,
-                match="The scale factor of masses does not match the scale factor of the "
-                "Writer.",
-            ):
+            with pytest.raises(AssertionError, match="The scale factor of masses"):
                 w.gas.masses = cosmo_array(
                     np.ones(100),
                     u.solMass,
