@@ -8,7 +8,7 @@ The :mod:`~swiftsimio.visualisation` sub-module provides visualisation tools.
 from pathlib import Path
 
 from .reader import SWIFTDataset
-from .snapshot_writer import SWIFTSnapshotWriter
+from .snapshot_writer import SWIFTSnapshotWriter as Writer
 from .masks import SWIFTMask
 from .statistics import SWIFTStatisticsFile
 from ._file_utils import open_path_or_handle
@@ -28,13 +28,12 @@ import swiftsimio.accelerated as accelerated
 import swiftsimio.objects as objects
 from swiftsimio.objects import cosmo_array, cosmo_quantity
 import swiftsimio.visualisation as visualisation
-import swiftsimio.units as units
 import swiftsimio.subset_writer as subset_writer
 import swiftsimio.statistics as statistics
 
 __all__ = [
     "SWIFTDataset",
-    "SWIFTSnapshotWriter",
+    "Writer",
     "SWIFTMask",
     "SWIFTStatisticsFile",
     "SWIFTUnits",
@@ -50,7 +49,6 @@ __all__ = [
     "cosmo_array",
     "cosmo_quantity",
     "visualisation",
-    "units",
     "subset_writer",
     "statistics",
     "name",
@@ -58,7 +56,6 @@ __all__ = [
     "mask",
     "load",
     "load_statistics",
-    "Writer",
 ]
 
 name = "swiftsimio"
@@ -186,6 +183,3 @@ def load_statistics(filename: str | Path) -> SWIFTStatisticsFile:
         SWIFT statistics file path.
     """
     return SWIFTStatisticsFile(filename=filename)
-
-
-Writer = SWIFTSnapshotWriter

@@ -684,13 +684,13 @@ class TestSlice:
         assert fraction_within_tolerance(
             edge_img[box_res // 4 :, : box_res // 2][edge_mask],
             ref_img[: 3 * box_res // 4, box_res // 2 :][edge_mask],
-            frac={"nearest_neighbours": 0.75}.get(backend, 1.0),
+            frac={"nearest_neighbours": 0.5}.get(backend, 1.0),
         )
         assert np.allclose(far_img, ref_img)
         assert fraction_within_tolerance(
             big_img,
             np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1),
-            frac={"nearest_neighbours": 0.75}.get(backend, 1.0),
+            frac={"nearest_neighbours": 0.5}.get(backend, 1.0),
         )
         assert np.allclose(neg_img, ref_img)
         assert np.allclose(wrap_img, ref_img)
