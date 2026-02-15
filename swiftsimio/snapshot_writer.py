@@ -165,7 +165,7 @@ class __SWIFTWriterParticleDataset(object):
             raise ValueError(
                 "To generate smoothing lengths box side lengths must all be equal."
             )
-        dimension = self.writer.boxsize.ndim
+        dimension = self.writer.dimension
         boxsize = self.writer.boxsize[0]
 
         n_part = self.coordinates.shape[0]
@@ -395,8 +395,8 @@ def generate_setter(
         """
         if hasattr(value, "cosmo_factor"):
             assert value.cosmo_factor.scale_factor == self.writer.scale_factor, (
-                f"The scale factor of {name} does not match the scale factor of the "
-                "Writer."
+                f"The scale factor of {name} ({value.cosmo_factor.scale_factor}) does not"
+                f" match the scale factor of the Writer ({self.writer.scale_factor})."
             )
         if dimensions != 1:
             if isinstance(value, cosmo_array):
@@ -672,15 +672,12 @@ class SWIFTSnapshotWriter(object):
         else:
             self.unit_system = unit_system
 
-        # Validate the boxsize and convert to our units.
-        try:
-            for x in boxsize:
-                x.convert_to_base(self.unit_system)
-            self.boxsize = boxsize
-        except TypeError:
-            # This is just a single number (i.e. uniform in all dimensions)
-            boxsize.convert_to_base(self.unit_system)
-            self.boxsize = boxsize
+        assert len(boxsize) == dimension, (
+            f"boxsize {boxsize} does not have length equal to number of dimensions "
+            f"({dimension})"
+        )
+        self.boxsize = np.copy(boxsize, subok=True)
+        self.boxsize.convert_to_base(self.unit_system)
 
         self.dimension = dimension
         self.compress = compress
