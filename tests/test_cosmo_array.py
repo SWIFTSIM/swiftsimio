@@ -1102,6 +1102,21 @@ class TestCosmoQuantity:
         assert multiplied.cosmo_factor == cosmo_factor(a**2, 0.5)
         assert multiplied.to_value(u.m**2) == 4
 
+    def test_squeeze_to_quantity(self):
+        """Test that squeezing to a scalar returns a cosmo_quantity."""
+        ca = cosmo_array(
+            [1],
+            u.m,
+            comoving=True,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=True,
+        )
+        assert ca.squeeze().ndim == 0
+        assert isinstance(ca.squeeze(), cosmo_quantity)
+        assert np.squeeze(ca).ndim == 0
+        assert isinstance(np.squeeze(ca), cosmo_quantity)
+
 
 class TestCosmoArrayCopy:
     """Tests of explicit (deep)copying of cosmo_array."""
@@ -1150,6 +1165,21 @@ class TestCosmoArrayCopy:
         assert cgs_arr.units == u.cm
         assert cgs_arr.cosmo_factor == arr.cosmo_factor
         assert cgs_arr.comoving == arr.comoving
+
+    def test_copy_method(self):
+        """Check that the copy method preserves attributes."""
+        units = u.Mpc
+        arr = cosmo_array(
+            u.unyt_array(np.ones(5), units=units),
+            scale_factor=1.0,
+            scale_exponent=1,
+            comoving=False,
+        )
+        copy_arr = arr.copy()
+        assert np.allclose(arr.to_value(units), copy_arr.to_value(units))
+        assert arr.units == copy_arr.units
+        assert arr.cosmo_factor == copy_arr.cosmo_factor
+        assert arr.comoving == copy_arr.comoving
 
 
 class TestMultiplicationByUnyt:
