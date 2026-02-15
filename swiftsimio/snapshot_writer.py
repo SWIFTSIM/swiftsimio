@@ -672,10 +672,16 @@ class SWIFTSnapshotWriter(object):
         else:
             self.unit_system = unit_system
 
-        assert len(boxsize) == dimension, (
-            f"boxsize {boxsize} does not have length equal to number of dimensions "
-            f"({dimension})."
-        )
+        try:
+            if len(boxsize) != dimension:
+                raise ValueError(
+                    f"boxsize must have length equal to number of dimensions, {boxsize=},"
+                    f" {dimension=}."
+                )
+        except TypeError:  # len() of unsized object
+            raise ValueError(
+                "boxsize must be a cosmo_array of length equal to spatial dimensions."
+            )
         self.boxsize = np.copy(boxsize, subok=True)
         self.boxsize.convert_to_base(self.unit_system)
 

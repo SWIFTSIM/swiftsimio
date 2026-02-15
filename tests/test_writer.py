@@ -3,7 +3,7 @@
 import os
 import pytest
 import numpy as np
-from swiftsimio import load, cosmo_array, Writer
+from swiftsimio import load, cosmo_array, cosmo_quantity, Writer
 from .helper import create_minimal_writer
 import unyt as u
 
@@ -461,3 +461,23 @@ def test_generated_smoothing_lengths(two_type_writer):
     finally:
         if os.path.exists(testfile):
             os.remove(testfile)
+
+
+@pytest.mark.parametrize(
+    "boxsize",
+    [
+        cosmo_array(
+            [100, 100, 100], u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1
+        ),
+        cosmo_quantity(100, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1),
+    ],
+)
+def test_mismatched_boxsize_dimension(boxsize):
+    """Check that we refuse a boxsize that differs in length from dimension."""
+    a = boxsize.cosmo_factor.scale_factor
+    with pytest.raises(ValueError, match="boxsize must"):
+        Writer(
+            boxsize=boxsize,
+            dimension=2,
+            scale_factor=a,
+        )
