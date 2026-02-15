@@ -67,8 +67,11 @@ docs = [
     "recommonmark",
     "sphinx_design",
 ]
+hdfstream = [
+    "hdfstream >= 0.0.23",
+]
 all = [
-    "swiftsimio[dev,docs]"
+    "swiftsimio[dev,docs,hdfstream]"
 ]
 
 [tool.ruff]
