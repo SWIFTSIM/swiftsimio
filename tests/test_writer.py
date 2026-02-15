@@ -440,7 +440,11 @@ def test_generated_smoothing_lengths(two_type_writer):
     """
     testfile = "generated_smoothing_lengths.hdf5"
     two_type_writer.gas._smoothing_lengths = None  # ensure they are blank
+    n_gas = two_type_writer.gas.coordinates.shape[0]
+    assert (np.diff(two_type_writer.boxsize) == 0).all()
+    gas_mips = two_type_writer.boxsize[0] / n_gas ** (1 / two_type_writer.dimension)
     two_type_writer.gas.generate_smoothing_lengths()
+    assert np.allclose(two_type_writer.gas.smoothing_lengths, 2 * gas_mips)
     assert two_type_writer.gas._smoothing_lengths is not None
     with pytest.raises(
         RuntimeError,

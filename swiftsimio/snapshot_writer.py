@@ -166,12 +166,12 @@ class __SWIFTWriterParticleDataset(object):
                 "To generate smoothing lengths box side lengths must all be equal."
             )
         dimension = self.writer.dimension
-        boxsize = self.writer.boxsize[0]
+        boxlength = self.writer.boxsize[0]
 
         n_part = self.coordinates.shape[0]
-        mips = boxsize / (n_part ** (1.0 / dimension))
+        mips = boxlength / (n_part ** (1.0 / dimension))
 
-        smoothing_lengths = mips * np.ones(n_part, dtype=float)
+        smoothing_lengths = 2 * mips * np.ones(n_part, dtype=float)
 
         self.smoothing_lengths = smoothing_lengths
 
@@ -674,7 +674,7 @@ class SWIFTSnapshotWriter(object):
 
         assert len(boxsize) == dimension, (
             f"boxsize {boxsize} does not have length equal to number of dimensions "
-            f"({dimension})"
+            f"({dimension})."
         )
         self.boxsize = np.copy(boxsize, subok=True)
         self.boxsize.convert_to_base(self.unit_system)
