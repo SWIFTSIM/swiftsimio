@@ -169,6 +169,7 @@ if not CUDA_AVAILABLE:
 # hdfstream
 try:
     import hdfstream
+
     HDFSTREAM_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
     hdfstream = None

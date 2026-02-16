@@ -7,94 +7,113 @@ different set of internal units (specified in your parameter file) that does
 not necessarily need to be the same set of units that initial conditions are
 specified in. Nevertheless, it is important to ensure that units in the
 initial conditions are all *consistent* with each other. To facilitate this,
-we use :mod:`unyt` arrays. The below example generates randomly placed gas
-particles with uniform densities.
+we use :class:`~swiftsimio.objects.cosmo_array` data. The below example
+generates randomly placed gas particles with uniform densities.
 
 The functionality to create initial conditions is available through
-the :mod:`swiftsimio.writer` sub-module, and the top-level
-:obj:`swiftsimio.Writer` object.
+the :mod:`swiftsimio.snapshot_writer` sub-module, and the top-level
+:class:`~swiftsimio.Writer` class.
 
-Note that the properties that :mod:`swiftsimio` requires in the initial
-conditions are the only ones that are actually read by SWIFT; other fields
-will be left un-read and as such should not be included in initial conditions
-files.
+.. warning::
 
-A current known issue is that due to inconsistencies with the initial
-conditions and simulation snapshots, :mod:`swiftsimio` is not actually able
-to read the inititial conditions that it produces. We are aiming to fix this
-in an upcoming release.
+   The properties that :mod:`swiftsimio` requires in the initial
+   conditions are the only ones that are actually read by SWIFT; other fields
+   will be left un-read and as such cannot be included in initial conditions
+   files using the :class:`~swiftsimio.Writer`. Any additional
+   attributes set will be silently ignored.
 
+.. warning::
+
+   You need to be careful that your choice of unit system does
+   *not* allow values over 2^31, i.e. you need to ensure that your
+   provided values (with units) when *written* to the file are safe to 
+   be interpreted as (single-precision) floats. The only exception to
+   this is coordinates which are stored in double precision.
 
 Example
 ^^^^^^^
 
 .. code-block:: python
 
-   from swiftsimio import Writer
-   from swiftsimio.units import cosmo_units
-
-   import unyt
    import numpy as np
+   import unyt as u
+   from swiftsimio import Writer, cosmo_array
+   from swiftsimio.metadata.writer.unit_systems import cosmo_unit_system
 
+   # number of gas particles
+   n_p = 1000
+   # scale factor of 1.0
+   a = 1.0
    # Box is 100 Mpc
-   boxsize = 100 * unyt.Mpc
-
-   # Generate object. cosmo_units corresponds to default Gadget-oid units
+   lbox = 100
+   boxsize = cosmo_array(
+        [lbox, lbox, lbox],
+        u.Mpc,
+        comoving=True,
+        scale_factor=a,
+        scale_exponent=1,
+   )
+   
+   # Create the Writer object. cosmo_unit_system corresponds to default Gadget-like units
    # of 10^10 Msun, Mpc, and km/s
-   x = Writer(cosmo_units, boxsize)
+   w = Writer(unit_system=cosmo_unit_system, boxsize=boxsize, scale_factor=a)
 
-   # 32^3 particles.
-   n_p = 32**3
-
-   # Randomly spaced coordinates from 0, 100 Mpc in each direction
-   x.gas.coordinates = np.random.rand(n_p, 3) * (100 * unyt.Mpc)
-
-   # Random velocities from 0 to 1 km/s
-   x.gas.velocities = np.random.rand(n_p, 3) * (unyt.km / unyt.s)
-
-   # Generate uniform masses as 10^6 solar masses for each particle
-   x.gas.masses = np.ones(n_p, dtype=float) * (1e6 * unyt.msun)
-
-   # Generate internal energy corresponding to 10^4 K
-   x.gas.internal_energy = (
-       np.ones(n_p, dtype=float) * (1e4 * unyt.kb * unyt.K) / (1e6 * unyt.msun)
+   # Randomly spaced coordinates from 0 to lbox Mpc in each direction
+   w.gas.coordinates = cosmo_array(
+       np.random.rand(n_p, 3) * lbox,
+       u.Mpc,
+       comoving=True,
+       scale_factor=w.scale_factor,
+       scale_exponent=1,
    )
 
-   # Generate initial guess for smoothing lengths based on MIPS
-   x.gas.generate_smoothing_lengths(boxsize=boxsize, dimension=3)
+   # Random velocities from 0 to 1 km/s
+   w.gas.velocities = cosmo_array(
+       np.random.rand(n_p, 3),
+       u.km / u.s,
+       comoving=True,
+       scale_factor=w.scale_factor,
+       scale_exponent=1,
+   )
 
-   # If IDs are not present, this automatically generates
-   x.write("test.hdf5")
+   # Generate uniform masses as 10^6 solar masses for each particle
+   w.gas.masses = cosmo_array(
+       np.ones(n_p, dtype=float) * 1e6,
+       u.solMass,
+       comoving=True,
+       scale_factor=w.scale_factor,
+       scale_exponent=0,
+   )
 
-Then, running ``h5glance`` on the resulting ``test.hdf5`` produces:
+   # Generate internal energy corresponding to 10^4 K
+   w.gas.internal_energy = cosmo_array(
+       np.ones(n_p, dtype=float) * 1e4 / 1e6,
+       u.kb * u.K / u.solMass,
+       comoving=True,
+       scale_factor=w.scale_factor,
+       scale_exponent=-2,
+   )
+
+   # Generate initial guess for smoothing lengths based on mean inter-particle spacing
+   w.gas.generate_smoothing_lengths()
+
+   # w.gas.particle_ids can optionally be set, otherwise they are auto-generated
+
+   # write the initial conditions out to a file
+   w.write("ics.hdf5")
+
+Then, running ``h5glance`` (``pip install h5glance``) on the resulting ``ics.hdf5``
+produces:
 
 .. code-block:: bash
 
-   test.hdf5
-   ├Header
-   │ └5 attributes:
-   │   ├BoxSize: 100.0
-   │   ├Dimension: array [int64: 1]
-   │   ├Flag_Entropy_ICs: 0
-   │   ├NumPart_Total: array [int64: 6]
-   │   └NumPart_Total_HighWord: array [int64: 6]
+   ics.hdf5
+   ├Header (9 attributes)
    ├PartType0
-   │ ├Coordinates  [float64: 32768 × 3]
-   │ ├InternalEnergy       [float64: 32768]
-   │ ├Masses       [float64: 32768]
-   │ ├ParticleIDs  [float64: 32768]
-   │ ├SmoothingLength      [float64: 32768]
-   │ └Velocities   [float64: 32768 × 3]
-   └Units
-   └5 attributes:
-       ├Unit current in cgs (U_I): array [float64: 1]
-       ├Unit length in cgs (U_L): array [float64: 1]
-       ├Unit mass in cgs (U_M): array [float64: 1]
-       ├Unit temperature in cgs (U_T): array [float64: 1]
-       └Unit time in cgs (U_t): array [float64: 1]
-
-**Note** you do need to be careful that your choice of unit system does
-*not* allow values over 2^31, i.e. you need to ensure that your
-provided values (with units) when *written* to the file are safe to 
-be interpreted as (single-precision) floats. The only exception to
-this is coordinates which are stored in double precision.
+   │ ├Coordinates	[float64: 1000 × 3] (9 attributes)
+   │ ├InternalEnergy	[float64: 1000] (9 attributes)
+   │ ├Masses	[float64: 1000] (9 attributes)
+   │ ├ParticleIDs	[int64: 1000] (9 attributes)
+   │ ├SmoothingLengths	[float64: 1000] (9 attributes)
+   │ └Velocities	[float64: 1000 × 3] (9 attributes)
+   └Units (5 attributes)

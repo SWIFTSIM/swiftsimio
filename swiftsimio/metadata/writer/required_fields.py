@@ -1,15 +1,20 @@
 """A list of required fields for writing a SWIFT dataset, for each particle type."""
 
+import unyt.dimensions as dim
+
 _shared = {
-    "coordinates": "Coordinates",
-    "particle_ids": "ParticleIDs",
-    "velocities": "Velocities",
-    "masses": "Masses",
+    "coordinates": {"handle": "Coordinates", "dimensions": dim.length},
+    "particle_ids": {"handle": "ParticleIDs", "dimensions": dim.dimensionless},
+    "velocities": {"handle": "Velocities", "dimensions": dim.velocity},
+    "masses": {"handle": "Masses", "dimensions": dim.mass},
 }
 
 gas = {
-    "smoothing_length": "SmoothingLength",
-    "internal_energy": "InternalEnergy",
+    "smoothing_lengths": {"handle": "SmoothingLengths", "dimensions": dim.length},
+    "internal_energy": {
+        "handle": "InternalEnergy",
+        "dimensions": dim.length**2 / dim.time**2,
+    },
     **_shared,
 }
 
@@ -19,7 +24,10 @@ boundary = {**_shared}
 
 sinks = {**_shared}
 
-stars = {**_shared, "smoothing_length": "SmoothingLength"}
+stars = {
+    **_shared,
+    "smoothing_lengths": {"handle": "SmoothingLengths", "dimensions": dim.length},
+}
 
 black_holes = {**_shared}
 

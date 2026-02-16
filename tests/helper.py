@@ -5,7 +5,7 @@ import numpy as np
 import h5py
 import unyt as u
 from swiftsimio.subset_writer import find_links, write_metadata
-from swiftsimio import mask, cosmo_array
+from swiftsimio import mask, cosmo_array, Writer
 from swiftsimio.masks import SWIFTMask
 from swiftsimio._file_utils import open_path_or_handle
 
@@ -167,3 +167,132 @@ def create_n_particle_dataset(
             ] = num_parts
 
     return
+
+
+def create_minimal_writer(a: float = 1.0, n_p: int = 32**3, lbox: float = 100):
+    """
+    Create a :class:`~swiftsimio.snapshot_writer.Writer` with required gas fields.
+
+    Parameters
+    ----------
+    a : float, optional
+        The scale factor.
+
+    n_p : int, optional
+        The number of particles.
+
+    lbox : float, optional
+        The box side length in Mpc.
+
+    Returns
+    -------
+    ~swiftsimio.snapshot_writer.Writer
+        The writer with required gas fields initialized.
+    """
+    # Box is 100 Mpc
+    boxsize = cosmo_array(
+        [lbox, lbox, lbox],
+        u.Mpc,
+        comoving=True,
+        scale_factor=a,
+        scale_exponent=1,
+    )
+
+    # Generate object. cosmo_units corresponds to default Gadget-oid units
+    # of 10^10 Msun, Mpc, and km/s
+    w = Writer(boxsize=boxsize, scale_factor=a)
+
+    # Randomly spaced coordinates from 0, lbox Mpc in each direction
+    w.gas.coordinates = cosmo_array(
+        np.random.rand(n_p, 3) * lbox,
+        u.Mpc,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=1,
+    )
+
+    # Random velocities from 0 to 1 km/s
+    w.gas.velocities = cosmo_array(
+        np.random.rand(n_p, 3),
+        u.km / u.s,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=1,
+    )
+
+    # Generate uniform masses as 10^6 solar masses for each particle
+    w.gas.masses = cosmo_array(
+        np.ones(n_p, dtype=float) * 1e6,
+        u.solMass,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=0,
+    )
+
+    # Generate internal energy corresponding to 10^4 K
+    w.gas.internal_energy = cosmo_array(
+        np.ones(n_p, dtype=float) * 1e4 / 1e6,
+        u.kb * u.K / u.solMass,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=-2,
+    )
+
+    # Generate initial guess for smoothing lengths based on MIPS
+    w.gas.generate_smoothing_lengths()
+
+    # IDs will be auto-generated on file write
+    return w
+
+
+def create_two_type_writer(a: float = 1.0, n_p: int = 32**3, lbox: float = 100):
+    """
+    Create a :class:`~swiftsimio.snapshot_writer.Writer` with required gas & DM fields.
+
+    Parameters
+    ----------
+    a : float, optional
+        The scale factor.
+
+    n_p : int, optional
+        The number of particles.
+
+    lbox : float, optional
+        The box side length in Mpc.
+
+    Returns
+    -------
+    ~swiftsimio.snapshot_writer.Writer
+        The writer with required gas and dark_matter fields initialized.
+    """
+    w = create_minimal_writer(a=a, n_p=n_p, lbox=lbox)
+
+    # Randomly spaced coordinates from 0, lbox Mpc in each direction
+    w.dark_matter.coordinates = cosmo_array(
+        np.random.rand(n_p, 3) * lbox,
+        u.Mpc,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=1,
+    )
+
+    # Random velocities from 0 to 1 km/s
+    w.dark_matter.velocities = cosmo_array(
+        np.random.rand(n_p, 3),
+        u.km / u.s,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=1,
+    )
+
+    # Generate uniform masses as 10^6 solar masses for each particle
+    w.dark_matter.masses = cosmo_array(
+        np.ones(n_p, dtype=float) * 1e6,
+        u.solMass,
+        comoving=True,
+        scale_factor=w.scale_factor,
+        scale_exponent=0,
+    )
+
+    # IDs will be auto-generated on file write
+    return w
