@@ -88,6 +88,6 @@ analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter this bein
        u.Mpc,
        comoving=False,
        scale_factor=0.5,
-       cosmo_factor=1,
+       scale_exponent=1,
    )
    
