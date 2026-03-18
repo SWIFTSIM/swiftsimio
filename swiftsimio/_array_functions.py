@@ -885,7 +885,7 @@ def _prepare_array_func_args(
     Returns
     -------
     dict
-        A dictionary containing the input `args`` and ``kwargs`` coerced to a common
+        A dictionary containing the input ``args`` and ``kwargs`` coerced to a common
         state, and lists of their ``cosmo_factor`` attributes, and ``comoving`` and
         ``compression`` values that can be used in return values for wrapped functions,
         when relevant.
@@ -929,10 +929,10 @@ def _prepare_array_func_args(
         ret_cm = False
     else:
         # mix of comoving and physical inputs
-        # better to modify inplace (convert_to_comoving)?
         if _default_cm:
-            for arg in args:
-                if not arg.valid_transform:
+            for arg, cm in zip(args, cms):
+                # None is not the same as False here:
+                if getattr(arg, "valid_transform", None) is False:
                     _default_cm = False
                     break
         if _default_cm:
