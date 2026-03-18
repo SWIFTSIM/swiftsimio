@@ -997,6 +997,29 @@ class TestNumpyFunctions:
         assert avg.cosmo_factor == x.cosmo_factor
         assert wsum.cosmo_factor == w.cosmo_factor
 
+    def test_mixed_comoving_and_non_cosmo_array(self):
+        """
+        Make sure that we don't try to convert non-cosmo_array arguments.
+
+        When a function gets a mix of comoving and non-comoving inputs, conversion is
+        triggered to make them all consistent. However, non-cosmo_array arguments like
+        boolean arrays should not be converted!
+        """
+        # regression test for https://github.com/SWIFTSIM/swiftsimio/issues/299
+        arr1 = cosmo_array(
+            np.arange(3), u.m, comoving=True, scale_factor=1, scale_exponent=0
+        )
+        arr2 = cosmo_array(
+            np.arange(3, 6), u.m, comoving=False, scale_factor=1, scale_exponent=0
+        )
+        sel = np.array([0, 0, 1], dtype=bool)
+        # the main thing for regression test is that calling `np.where` below should not
+        # crash with:
+        # AttributeError: 'numpy.ndarray' object has no attribute 'valid_transform'
+        assert (
+            np.where(sel, arr1, arr2) == cosmo_array([arr2[0], arr2[1], arr1[2]])
+        ).all()
+
 
 class TestCosmoQuantity:
     """
