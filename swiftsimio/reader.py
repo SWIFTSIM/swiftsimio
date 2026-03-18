@@ -657,9 +657,9 @@ class SWIFTDataset(HandleProvider):
 
     It contains:
 
-    + ``SWIFTUnits``,
-    + ``SWIFTMetadata``,
-    + ``SWIFTGroupDataset``s
+    + a ``SWIFTUnits``,
+    + a ``SWIFTMetadata``,
+    + several ``SWIFTGroupDataset``
 
     This object, in essence, completely represents a SWIFT snapshot. You can access
     the different particles as follows:
