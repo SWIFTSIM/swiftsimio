@@ -1,6 +1,6 @@
 """Backend tools for image slices with nearest neighbour interpolation."""
 
-from numpy import float64, float32, ndarray, linspace, array, stack, meshgrid
+from numpy import float64, float32, ndarray, arange, array, stack, meshgrid
 
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 
@@ -144,8 +144,8 @@ def slice_scatter(
         [
             arr.ravel()
             for arr in meshgrid(
-                linspace(0, xres / res, xres) + 0.5 / res,
-                linspace(0, yres / res, yres) + 0.5 / res,
+                (arange(xres) + 0.5) / res,
+                (arange(yres) + 0.5) / res,
                 array([z_slice]),
                 indexing="ij",
             )
