@@ -1,12 +1,17 @@
 """Backend tools for image slices with nearest neighbour interpolation."""
 
-from numpy import float64, float32, ndarray, linspace, array, stack, meshgrid
+import numpy as np
 
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 
 
 def build_tree(
-    x: float64, y: float64, z: float64, box_x: float, box_y: float, box_z: float
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    box_x: float,
+    box_y: float,
+    box_z: float,
 ) -> KDTree:
     """
     Build the tree used for the nearest-neighbour calculations.
@@ -54,19 +59,19 @@ def build_tree(
             y %= box_y
         if box_z != 0:
             z %= box_z
-        data = stack((x, y, z), axis=1)
+        data = np.stack((x, y, z), axis=1)
         return KDTree(data, boxsize=[box_x, box_y, box_z])
     else:
-        data = stack((x, y, z), axis=1)
+        data = np.stack((x, y, z), axis=1)
         return KDTree(data)
 
 
 def slice_scatter(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    h: np.float32,
     z_slice: float,
     xres: int,
     yres: int,
@@ -74,7 +79,7 @@ def slice_scatter(
     box_y: float = 0.0,
     box_z: float = 0.0,
     workers: int = 1,
-) -> ndarray:
+) -> np.ndarray:
     """
     Create a 2D image slice through a volume.
 
@@ -140,13 +145,13 @@ def slice_scatter(
         Create scatter plot of a slice of data in parallel.
     """
     res = max(xres, yres)
-    pixel_coordinates = stack(
+    pixel_coordinates = np.stack(
         [
             arr.ravel()
-            for arr in meshgrid(
-                linspace(0, xres / res, xres) + 0.5 / res,
-                linspace(0, yres / res, yres) + 0.5 / res,
-                array([z_slice]),
+            for arr in np.meshgrid(
+                (np.arange(xres) + 0.5) / res,
+                (np.arange(yres) + 0.5) / res,
+                np.array([z_slice]),
                 indexing="ij",
             )
         ],
@@ -161,18 +166,18 @@ def slice_scatter(
 
 
 def slice_scatter_parallel(
-    x: float64,
-    y: float64,
-    z: float64,
-    m: float32,
-    h: float32,
+    x: np.float64,
+    y: np.float64,
+    z: np.float64,
+    m: np.float32,
+    h: np.float32,
     z_slice: float,
     xres: int,
     yres: int,
     box_x: float = 0.0,
     box_y: float = 0.0,
     box_z: float = 0.0,
-) -> ndarray:
+) -> np.ndarray:
     """
     Parallel implementation of slice_scatter.
 
