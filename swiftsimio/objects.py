@@ -183,7 +183,7 @@ class InvalidScaleFactor(Exception):
     """
     Raised when a scale factor is invalid.
 
-    For example, when adding two :class:`~swiftsimio.objects.cosmo_factor`s
+    For example, when adding two :class:`~swiftsimio.objects.cosmo_factor` objects
     with inconsistent scale factors.
 
     Parameters

@@ -242,20 +242,34 @@ densities of particles and only load particles within that density window.
 
    # Now, just for fun, we also constrain the density between
    # 0.4 g/cm^3 and 0.8. This reads in the relevant data in the region,
-   # and tests it element-by-element. Note that using masks of this type
-   # is significantly slower than using the spatial-only masking.
+   # and tests it element-by-element.
    density_units = mask.units.mass / mask.units.length**3
    mask.constrain_mask("gas", "density", 0.4 * density_units, 0.8 * density_units)
 
    # Now we can grab the actual data object. This includes the mask as a parameter.
    data = sw.load("cosmo_volume_example.hdf5", mask=mask)
 
+.. warning::
+
+   While evaluating a full mask (like the density mask in the example above) is
+   implemented efficiently, subsequently reading data from the masked dataset can be
+   extremely slow. This is because it often involves reading many individual rows from the
+   particle data arrays in the hdf5 files, and the code is not optimized for this (this
+   could be optimized in the future). If you encounter slow reads with a full mask,
+   consider:
+   
+    - using a spatial-only mask instead, then discarding unwanted particles afterwards;
+    - using the mask feature on the visualisation functions, if the mask is wanted for
+      visualisation (for example
+      :func:`~swiftsimio.visualisation.projection.project_gas`);
+    - using :mod:`swiftgalaxy`'s :doc:`masking features <swiftgalaxy:masking/index>`,
+      possibly :ref:`without using a halo catalogue <standalone>`.
 
 When the attributes of this data object are accessed, *only* the ones that
 belong to the masked region (in both density and spatial) are read. I.e. if I
 ask for the temperature of particles, it will recieve an array containing
-temperatures of particles that lie in the region [0.2, 0.7] and have a
-density between 0.4 and 0.8 g/cm^3.
+temperatures of particles that lie in the region :math:`[0.2, 0.7]` and have a
+density between :math:`0.4` and :math:`0.8 \mathrm{g}/\mathrm{cm}^3`.
 
 Row Masking
 -----------
