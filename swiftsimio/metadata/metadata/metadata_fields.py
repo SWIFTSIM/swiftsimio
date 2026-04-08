@@ -1,7 +1,7 @@
 """Define information needed to unpack metadata fields in SWIFT snapshots."""
 
 from unyt import Unit
-from ..objects import cosmo_factor
+from swiftsimio.objects import cosmo_factor
 
 metadata_fields_to_read = {
     "Code": "code",

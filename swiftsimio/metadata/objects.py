@@ -14,7 +14,7 @@ from unyt.array import _iterable
 
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
-from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor
+from swiftsimio.objects import cosmo_array, cosmo_quantity
 from swiftsimio._handle_provider import HandleProvider
 from abc import ABC, abstractmethod
 
@@ -582,8 +582,8 @@ class SWIFTGroupMetadata(HandleProvider):
     Provide the metadata for one hdf5 Group.
 
     This, for instance, could be ``PartType0``, or ``gas``. This will load in
-    the names of all datasets, their units, possible named fields,
-    and their cosmology, and present them for use in the actual i/o routines.
+    the names of all datasets, possible named fields, and present them for use in the
+    actual i/o routines.
 
     Parameters
     ----------
@@ -656,16 +656,11 @@ class SWIFTGroupMetadata(HandleProvider):
         """
         Load the required metadata.
 
-        This includes loading the field names, units and descriptions, as well as the
-        cosmology metadata and any custom named columns.
+        This includes loading the field names and any custom named columns. Field-level
+        data such as units and descriptions of individual datasets are not loaded here
+        but instead lazy-loaded along with the data.
         """
         self.load_field_names()
-        self.load_field_units()
-        self.load_field_descriptions()
-        self.load_field_compressions()
-        self.load_cosmology()
-        self.load_physical()
-        self.load_valid_transforms()
         self.load_named_columns()
 
         return
@@ -680,234 +675,6 @@ class SWIFTGroupMetadata(HandleProvider):
             if f"{self.group}/{item}" not in self.metadata.present_groups:
                 self.field_paths.append(f"{self.group}/{item}")
                 self.field_names.append(_convert_snake_to_camel(item))
-
-        return
-
-    def load_field_units(self) -> None:
-        """Load in the units from each dataset."""
-        unit_dict = {
-            "I": self.units.current,
-            "L": self.units.length,
-            "M": self.units.mass,
-            "T": self.units.temperature,
-            "t": self.units.time,
-        }
-
-        def get_units(unit_attribute: h5py.AttributeManager) -> unyt.Unit | None:
-            """
-            Get the units from the HDF5 attributes.
-
-            Parameters
-            ----------
-            unit_attribute : h5py.AttributeManager
-                The attribute containing unit metadata.
-
-            Returns
-            -------
-            unyt.Unit or None
-                The loaded units.
-            """
-            units = 1.0
-
-            for exponent, unit in unit_dict.items():
-                # We store the 'unit exponent' in the SWIFT metadata. This corresponds
-                # to the power we need to raise each unit to, to return the correct units
-                try:
-                    # Check if the exponent is 0 manually because of float precision
-                    unit_exponent = unit_attribute[f"U_{exponent} exponent"][0]
-                    if unit_exponent != 0.0:
-                        units *= unit**unit_exponent
-                except KeyError:
-                    # Can't load that data!
-                    # We should probably warn the user here...
-                    pass
-
-            # Deal with case where we _really_ have a dimensionless quantity.
-            if not hasattr(units, "units"):
-                units = None
-
-            return units
-
-        self.field_units = [get_units(self.handle[x].attrs) for x in self.field_paths]
-
-        return
-
-    def load_field_descriptions(self) -> None:
-        """
-        Load in the text descriptions of the fields for each dataset.
-
-        For SOAP filetypes a description of the mask is included.
-        """
-
-        def get_desc(dataset: h5py.Dataset) -> str:
-            """
-            Get the description metadata.
-
-            Parameters
-            ----------
-            dataset : h5py.Dataset
-                The dataset for which to get the description.
-
-            Returns
-            -------
-            str
-                The description of the dataset.
-            """
-            try:
-                description = dataset.attrs["Description"].decode("utf-8")
-            except AttributeError:
-                # Description is saved as a string not bytes
-                description = dataset.attrs["Description"]
-            except KeyError:
-                # Can't load description!
-                description = "No description available"
-
-            is_masked = dataset.attrs.get("Masked", False)
-            if not is_masked:
-                return description + " Not masked."
-
-            mask_datasets = dataset.attrs["Mask Datasets"]
-            mask_threshold = dataset.attrs["Mask Threshold"]
-            if len(mask_datasets) == 1:
-                mask_str = (
-                    " Only computed for objects with "
-                    f"{mask_datasets[0]} >= {mask_threshold}."
-                )
-            else:
-                mask_str = (
-                    " Only computed for objects where "
-                    f"{' + '.join(mask_datasets)} >= {mask_threshold}."
-                )
-            return description + mask_str
-
-        self.field_descriptions = [get_desc(self.handle[x]) for x in self.field_paths]
-
-        return
-
-    def load_field_compressions(self) -> None:
-        """Load in the string describing the compression filters for each dataset."""
-
-        def get_comp(dataset: h5py.Dataset) -> str:
-            """
-            Load the compression metadata for a dataset.
-
-            Parameters
-            ----------
-            dataset : h5py.Dataset
-                The dataset to load the compression metadata for.
-
-            Returns
-            -------
-            str
-                The compression metadata.
-            """
-            try:
-                # SOAP catalogues can be compressed/uncompressed
-                is_compressed = dataset.attrs["Is Compressed"]
-            except KeyError:
-                is_compressed = True
-            try:
-                comp = dataset.attrs["Lossy compression filter"].decode("utf-8")
-            except AttributeError:
-                # Compression is saved as str not bytes
-                comp = dataset.attrs["Lossy compression filter"]
-            except KeyError:
-                # Can't load compression string!
-                comp = "No compression info available"
-
-            return comp if is_compressed else "Not compressed."
-
-        self.field_compressions = [get_comp(self.handle[x]) for x in self.field_paths]
-
-        return
-
-    def load_cosmology(self) -> None:
-        """Load in the field cosmologies."""
-        current_scale_factor = self.scale_factor
-
-        def get_cosmo(dataset: str) -> cosmo_factor:
-            """
-            Generate a cosmo factor from the metadata.
-
-            Parameters
-            ----------
-            dataset : str
-                The name of the dataset to read metadata for.
-
-            Returns
-            -------
-            cosmo_factor
-                A :class:`~swiftsimio.objects.cosmo_factor` setup from the metadata.
-            """
-            try:
-                cosmo_exponent = dataset.attrs["a-scale exponent"][0]
-            except KeyError:
-                # Can't load, 'graceful' fallback.
-                cosmo_exponent = 0.0
-
-            return cosmo_factor.create(current_scale_factor, cosmo_exponent)
-
-        self.field_cosmologies = [get_cosmo(self.handle[x]) for x in self.field_paths]
-
-        return
-
-    def load_physical(self) -> None:
-        """Load in whether the field is saved as comoving or physical."""
-
-        def get_physical(dataset: h5py.Dataset) -> bool:
-            """
-            Check if the metadata item is stored in physical units.
-
-            Parameters
-            ----------
-            dataset : h5py.Dataset
-                The dataset to be checked.
-
-            Returns
-            -------
-            bool
-                ``True`` if stored in physical units, else ``False``.
-            """
-            try:
-                physical = dataset.attrs["Value stored as physical"][0] == 1
-            except KeyError:
-                physical = False
-            return physical
-
-        self.field_physicals = [get_physical(self.handle[x]) for x in self.field_paths]
-
-        return
-
-    def load_valid_transforms(self) -> None:
-        """Load in whether the field can be converted to comoving."""
-
-        def get_valid_transform(dataset: h5py.Dataset) -> bool:
-            """
-            Retrieve the metadata giving whether comoving/physical conversion is allowed.
-
-            Parameters
-            ----------
-            dataset : str
-                The dataset to be checked.
-
-            Returns
-            -------
-            bool
-                ``True`` if conversion is allowed or metadata absent (old file), ``False``
-                otherwise.
-            """
-            try:
-                valid_transform = (
-                    dataset.attrs["Property can be converted to comoving"][0] == 1
-                )
-            except KeyError:
-                # For backward compatibility default to True
-                valid_transform = True
-            return valid_transform
-
-        self.field_valid_transforms = [
-            get_valid_transform(self.handle[x]) for x in self.field_paths
-        ]
 
         return
 

@@ -5,6 +5,11 @@ import h5py
 import numpy as np
 from pathlib import Path
 
+from swiftsimio.metadata.field.attr_reader import (
+    load_field_units as _load_field_units,
+    load_field_cosmo_factor as _load_field_cosmo_factor,
+    load_field_physical as _load_field_physical,
+)
 from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
@@ -423,36 +428,19 @@ class SWIFTMask(HandleProvider):
         current_mask = getattr(self, data_name)
 
         group_metadata = getattr(self.metadata, f"{group_name}_properties")
-        unit_dict = {
-            k: v for k, v in zip(group_metadata.field_names, group_metadata.field_units)
-        }
-
-        unit = unit_dict[quantity]
 
         handle_dict = {
             k: v for k, v in zip(group_metadata.field_names, group_metadata.field_paths)
         }
-
         handle = handle_dict[quantity]
-
-        physical_dict = {
-            k: v
-            for k, v in zip(group_metadata.field_names, group_metadata.field_physicals)
-        }
-
-        physical = physical_dict[quantity]
-
-        cosmologies_dict = {
-            k: v
-            for k, v in zip(
-                group_metadata.field_names, group_metadata.field_cosmologies
-            )
-        }
-
-        cosmology_factor = cosmologies_dict[quantity]
 
         # Load in the relevant data.
         with self.metadata.open_file() as h5file:
+            field_attributes = h5file[handle].attrs
+            unit = _load_field_units(field_attributes, self.metadata.units)
+            physical = _load_field_physical(field_attributes)
+            cf = _load_field_cosmo_factor(field_attributes, self.metadata)
+
             if isinstance(h5file, (h5py.File, h5py.Group)):
                 # When reading from a local HDF5 file this is faster than
                 # just using the boolean indexing because h5py has slow
@@ -468,7 +456,7 @@ class SWIFTMask(HandleProvider):
             data,
             units=unit,
             comoving=not physical,
-            cosmo_factor=cosmology_factor,
+            cosmo_factor=cf,
         )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
