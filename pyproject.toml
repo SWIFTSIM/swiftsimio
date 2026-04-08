@@ -11,6 +11,7 @@ packages = [
     "swiftsimio.metadata.unit",
     "swiftsimio.metadata.writer",
     "swiftsimio.metadata.soap",
+    "swiftsimio.metadata.field",
     "swiftsimio.visualisation",
     "swiftsimio.visualisation.projection_backends",
     "swiftsimio.visualisation.slice_backends",

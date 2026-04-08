@@ -14,17 +14,25 @@ These include:
 """
 
 from swiftsimio.accelerated import read_ranges_from_file
-from swiftsimio.objects import cosmo_array, cosmo_factor
+from swiftsimio.objects import cosmo_array
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.metadata.objects import (
     _metadata_discriminator,
     SWIFTUnits,
     SWIFTGroupMetadata,
 )
+from swiftsimio.metadata.field.attr_reader import (
+    load_field_units as _load_field_units,
+    load_field_description as _load_field_description,
+    load_field_compression as _load_field_compression,
+    load_field_cosmo_factor as _load_field_cosmo_factor,
+    load_field_physical as _load_field_physical,
+    load_field_valid_transform as _load_field_valid_transform,
+)
+
 from swiftsimio._handle_provider import HandleProvider
 
 import h5py
-import unyt
 import numpy as np
 
 from typing import Callable
@@ -32,18 +40,13 @@ from pathlib import Path
 
 
 def _generate_getter(
-    filename: str,
     name: str,
+    *,
+    filename: str,
     field: str,
-    unit: unyt.unyt_quantity,
-    mask: None | np.ndarray,
+    mask: np.ndarray | None,
     mask_size: int,
-    cosmo_factor: cosmo_factor,
-    description: str,
-    compression: str,
-    physical: bool,
-    valid_transform: bool,
-    columns: None | slice = None,
+    column_index: int | None = None,
 ) -> Callable[["__SWIFTGroupDataset"], cosmo_array]:
     """
     Generate a function that retrieves data from file if not already in memory.
@@ -58,47 +61,26 @@ def _generate_getter(
 
     Parameters
     ----------
+    name : str
+        Output name (snake_case) of the field.
+
     filename : str
         Filename of the HDF5 file that everything will be read from. Used to generate
         the HDF5 dataset.
-
-    name : str
-        Output name (snake_case) of the field.
 
     field : str
         Full path of field, including e.g. particle type. Examples include
         ``/PartType0/Velocities``.
 
-    unit : unyt.unyt_quantity
-        Output unit of the resultant ``cosmo_array``.
-
-    mask : None or np.ndarray
+    mask : np.ndarray, optional
         Mask to be used with ``accelerated.read_ranges_from_file``, i.e. an array of
         integers that describe ranges to be read from the file.
 
     mask_size : int
         Size of the mask if present.
 
-    cosmo_factor : cosmo_factor
-        Cosmology factor object corresponding to this array.
-
-    description : str
-        Description (read from HDF5 file) of the data.
-
-    compression : str
-        String describing the lossy compression filters that were applied to the
-        data (read from the HDF5 file).
-
-    physical : bool
-        Bool that describes whether the data in the file is stored in comoving
-        or physical units.
-
-    valid_transform : bool
-        Bool that describes whether converting this field from physical to comoving
-        units is a valid operation.
-
-    columns : np.lib.index_tricks.IndexEpression, optional
-        Index expression corresponding to which columns to read from the numpy array.
+    column_index : int, optional
+        Index specifying which columns to read from the numpy array.
         If not provided, we read all columns and return an n-dimensional array.
 
     Returns
@@ -121,10 +103,8 @@ def _generate_getter(
     # use of None as the default.
     # Here, we need to ensure that in the cases where we're using columns,
     # during a partial read, that we respect the single-column dataset nature.
-    use_columns = columns is not None
-
-    if not use_columns:
-        columns = np.s_[:]
+    use_columns = column_index is not None
+    columns = np.s_[:] if not use_columns else np.s_[column_index]
 
     def getter(self: __SWIFTGroupDataset) -> cosmo_array:
         """
@@ -147,6 +127,13 @@ def _generate_getter(
         else:
             with self.open_file() as handle:
                 try:
+                    attributes = handle[field].attrs
+                    unit = _load_field_units(attributes, self.metadata.units)
+                    cf = _load_field_cosmo_factor(attributes, self.metadata)
+                    description = _load_field_description(attributes)
+                    compression = _load_field_compression(attributes)
+                    physical = _load_field_physical(attributes)
+                    valid_transform = _load_field_valid_transform(attributes)
                     if mask is not None:
                         output_type = handle[field].dtype
                         output_shape = (
@@ -166,7 +153,7 @@ def _generate_getter(
                                     columns=columns,
                                 ),
                                 unit,
-                                cosmo_factor=cosmo_factor,
+                                cosmo_factor=cf,
                                 name=description,
                                 compression=compression,
                                 comoving=not physical,
@@ -186,8 +173,8 @@ def _generate_getter(
                                     else handle[field][:]
                                 ),
                                 unit,
-                                cosmo_factor=cosmo_factor,
-                                name=description,
+                                cosmo_factor=cf,
+                                name=f"{description} [Column {column_index}, {name}]",
                                 compression=compression,
                                 comoving=not physical,
                                 valid_transform=valid_transform,
@@ -371,6 +358,9 @@ class __SWIFTNamedColumnDataset(HandleProvider):
     field_path : str
         Path to field within hdf5 snapshot.
 
+    group_metadata : SWIFTGroupMetadata
+        The metadata for the group that this named column dataset belongs to.
+
     named_columns : list of str
         List of categories for the variable ``name``.
 
@@ -410,12 +400,15 @@ class __SWIFTNamedColumnDataset(HandleProvider):
     def __init__(
         self,
         field_path: str,
+        group_metadata: SWIFTGroupMetadata,
         named_columns: list[str],
         name: str,
         handle: h5py.File,
     ) -> None:
         super().__init__(handle.filename, handle=handle)
         self.field_path = field_path
+        self.group_metadata = group_metadata
+        self.metadata = group_metadata.metadata
         self.named_columns = named_columns
         self.name = name
 
@@ -529,34 +522,8 @@ def _generate_datasets(
     group_nice_name = group_metadata.metadata.get_nice_name(group)
 
     # Mask is an object that contains all masks for all possible datasets.
-    if mask is not None:
-        mask_array = getattr(mask, group_name)
-        mask_size = getattr(mask, f"{group_name}_size")
-    else:
-        mask_array = None
-        mask_size = -1
-
-    # Set up an iterator for us to loop over for all fields
-    field_paths = group_metadata.field_paths
-    field_names = group_metadata.field_names
-    # field_cosmologies = group_metadata.field_cosmologies
-    # field_units = group_metadata.field_units
-    # field_physicals = group_metadata.field_physicals
-    # field_valid_transforms = group_metadata.field_valid_transforms
-    # field_descriptions = group_metadata.field_descriptions
-    # field_compressions = group_metadata.field_compressions
-    # field_named_columns = group_metadata.named_columns
-
-    dataset_iterator = zip(
-        field_paths,
-        field_names,
-        # field_cosmologies,
-        # field_units,
-        # field_physicals,
-        # field_valid_transforms,
-        # field_descriptions,
-        # field_compressions,
-    )
+    mask_array = getattr(mask, group_name, None)
+    mask_size = getattr(mask, f"{group_name}_size", -1)
 
     # This 'nice' piece of code ensures that our datasets have different _types_
     # for different particle types. We initially fill a dict with the properties that
@@ -565,32 +532,18 @@ def _generate_datasets(
     this_dataset_bases = (__SWIFTGroupDataset, object)
     this_dataset_dict = {}
 
-    for (
-        field_path,
-        field_name,
-        # field_cosmology,
-        # field_unit,
-        # field_physical,
-        # field_valid_transform,
-        # field_description,
-        # field_compression,
-    ) in dataset_iterator:
-        named_columns = None  # field_named_columns[field_path]
-
+    for field_path, field_name in zip(
+        group_metadata.field_paths, group_metadata.field_names
+    ):
+        named_columns = group_metadata.named_columns[field_path]
         if named_columns is None:
             field_property = property(
                 _generate_getter(
-                    filename,
                     field_name,
-                    field_path,
-                    unit=None,  # field_unit,
+                    filename=filename,
+                    field=field_path,
                     mask=mask_array,
                     mask_size=mask_size,
-                    cosmo_factor=None,  # field_cosmology,
-                    description=None,  # field_description,
-                    compression=None,  # field_compression,
-                    physical=None,  # field_physical,
-                    valid_transform=None,  # field_valid_transform,
                 ),
                 _generate_setter(field_name),
                 _generate_deleter(field_name),
@@ -611,18 +564,12 @@ def _generate_datasets(
             for index, column in enumerate(named_columns):
                 this_named_column_dataset_dict[column] = property(
                     _generate_getter(
-                        filename,
                         column,
-                        field_path,
-                        unit=None,  # field_unit,
+                        filename=filename,
+                        field=field_path,
                         mask=mask_array,
                         mask_size=mask_size,
-                        cosmo_factor=None,  # field_cosmology,
-                        description=None,  # f"{field_description} [Column {index}, {column}]",
-                        compression=None,  # field_compression,
-                        physical=None,  # field_physical,
-                        valid_transform=None,  # field_valid_transform,
-                        columns=np.s_[index],
+                        column_index=index,
                     ),
                     _generate_setter(column),
                     _generate_deleter(column),
@@ -636,6 +583,7 @@ def _generate_datasets(
 
             field_property = ThisNamedColumnDataset(
                 handle=handle,
+                group_metadata=group_metadata,
                 field_path=field_path,
                 named_columns=named_columns,
                 name=field_name,
