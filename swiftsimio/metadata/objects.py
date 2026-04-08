@@ -660,13 +660,13 @@ class SWIFTGroupMetadata(HandleProvider):
         cosmology metadata and any custom named columns.
         """
         self.load_field_names()
-        self.load_field_units()
-        self.load_field_descriptions()
-        self.load_field_compressions()
-        self.load_cosmology()
-        self.load_physical()
-        self.load_valid_transforms()
-        self.load_named_columns()
+        # self.load_field_units()
+        # self.load_field_descriptions()
+        # self.load_field_compressions()
+        # self.load_cosmology()
+        # self.load_physical()
+        # self.load_valid_transforms()
+        # self.load_named_columns()
 
         return
 

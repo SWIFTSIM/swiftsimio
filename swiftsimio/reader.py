@@ -539,23 +539,23 @@ def _generate_datasets(
     # Set up an iterator for us to loop over for all fields
     field_paths = group_metadata.field_paths
     field_names = group_metadata.field_names
-    field_cosmologies = group_metadata.field_cosmologies
-    field_units = group_metadata.field_units
-    field_physicals = group_metadata.field_physicals
-    field_valid_transforms = group_metadata.field_valid_transforms
-    field_descriptions = group_metadata.field_descriptions
-    field_compressions = group_metadata.field_compressions
-    field_named_columns = group_metadata.named_columns
+    # field_cosmologies = group_metadata.field_cosmologies
+    # field_units = group_metadata.field_units
+    # field_physicals = group_metadata.field_physicals
+    # field_valid_transforms = group_metadata.field_valid_transforms
+    # field_descriptions = group_metadata.field_descriptions
+    # field_compressions = group_metadata.field_compressions
+    # field_named_columns = group_metadata.named_columns
 
     dataset_iterator = zip(
         field_paths,
         field_names,
-        field_cosmologies,
-        field_units,
-        field_physicals,
-        field_valid_transforms,
-        field_descriptions,
-        field_compressions,
+        # field_cosmologies,
+        # field_units,
+        # field_physicals,
+        # field_valid_transforms,
+        # field_descriptions,
+        # field_compressions,
     )
 
     # This 'nice' piece of code ensures that our datasets have different _types_
@@ -568,14 +568,14 @@ def _generate_datasets(
     for (
         field_path,
         field_name,
-        field_cosmology,
-        field_unit,
-        field_physical,
-        field_valid_transform,
-        field_description,
-        field_compression,
+        # field_cosmology,
+        # field_unit,
+        # field_physical,
+        # field_valid_transform,
+        # field_description,
+        # field_compression,
     ) in dataset_iterator:
-        named_columns = field_named_columns[field_path]
+        named_columns = None  # field_named_columns[field_path]
 
         if named_columns is None:
             field_property = property(
@@ -583,14 +583,14 @@ def _generate_datasets(
                     filename,
                     field_name,
                     field_path,
-                    unit=field_unit,
+                    unit=None,  # field_unit,
                     mask=mask_array,
                     mask_size=mask_size,
-                    cosmo_factor=field_cosmology,
-                    description=field_description,
-                    compression=field_compression,
-                    physical=field_physical,
-                    valid_transform=field_valid_transform,
+                    cosmo_factor=None,  # field_cosmology,
+                    description=None,  # field_description,
+                    compression=None,  # field_compression,
+                    physical=None,  # field_physical,
+                    valid_transform=None,  # field_valid_transform,
                 ),
                 _generate_setter(field_name),
                 _generate_deleter(field_name),
@@ -614,14 +614,14 @@ def _generate_datasets(
                         filename,
                         column,
                         field_path,
-                        unit=field_unit,
+                        unit=None,  # field_unit,
                         mask=mask_array,
                         mask_size=mask_size,
-                        cosmo_factor=field_cosmology,
-                        description=f"{field_description} [Column {index}, {column}]",
-                        compression=field_compression,
-                        physical=field_physical,
-                        valid_transform=field_valid_transform,
+                        cosmo_factor=None,  # field_cosmology,
+                        description=None,  # f"{field_description} [Column {index}, {column}]",
+                        compression=None,  # field_compression,
+                        physical=None,  # field_physical,
+                        valid_transform=None,  # field_valid_transform,
                         columns=np.s_[index],
                     ),
                     _generate_setter(column),
