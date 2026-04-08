@@ -207,13 +207,12 @@ def read_ranges_from_file_low_level(
     -------
     np.ndarray
         Result from reading only the relevant values from ``handle``.
-
     """
 
     # This will only work if slices do not overlap
-    order = np.argsort(ranges[:,0])
-    sorted_starts = ranges[order,0]
-    sorted_stops  = ranges[order,1]
+    order = np.argsort(ranges[:, 0])
+    sorted_starts = ranges[order, 0]
+    sorted_stops = ranges[order, 1]
     if np.any(sorted_stops[:-1] > sorted_starts[1:]):
         raise RuntimeError("slices must not overlap")
 
@@ -234,7 +233,7 @@ def read_ranges_from_file_low_level(
             if step != 1:
                 raise RuntimeError("Can only handle column slices with step=1")
             column_start = (start,)
-            column_count = (stop-start,)
+            column_count = (stop - start,)
         elif isinstance(columns, int):
             column_start = (columns,)
             column_count = (1,)
@@ -250,19 +249,23 @@ def read_ranges_from_file_low_level(
         count = stop - start
         if count > 0:
             # Select this slice
-            slice_start = (start,)+column_start
-            slice_count = (count,)+column_count
-            file_space_id.select_hyperslab(slice_start, slice_count, op=h5py.h5s.SELECT_OR)
+            slice_start = (start,) + column_start
+            slice_count = (count,) + column_count
+            file_space_id.select_hyperslab(
+                slice_start, slice_count, op=h5py.h5s.SELECT_OR
+            )
             nr_in_first_dim += count
 
     # Allocate the output array
-    result_shape = (nr_in_first_dim,)+column_count
+    result_shape = (nr_in_first_dim,) + column_count
     result = np.ndarray(result_shape, dtype=output_type)
 
     # Output array must have the expected number of elements
     nr_selected = file_space_id.get_select_npoints()
     if nr_selected != result.size:
-        raise RuntimeError("Output buffer is not the right size for the selected slices!")
+        raise RuntimeError(
+            "Output buffer is not the right size for the selected slices!"
+        )
 
     # If we selected any elements, read the data
     if nr_in_first_dim > 0:
@@ -275,22 +278,22 @@ def read_ranges_from_file_low_level(
     result = result.reshape(output_shape)
 
     # If the slices were not sorted by start index, we'll need to reorder the data
-    if np.any(ranges[1:,0] <= ranges[:-1,0]):
+    if np.any(ranges[1:, 0] <= ranges[:-1, 0]):
         # Compute the offset into the result array for each slice.
         # HDF5 reads the slices in order of starting index.
         ranges_read = np.empty_like(ranges)
         offset = 0
-        for i in np.argsort(ranges[:,0]):
-            n = ranges[i,1] - ranges[i,0]
-            ranges_read[i,0] = offset
-            ranges_read[i,1] = offset + n
+        for i in np.argsort(ranges[:, 0]):
+            n = ranges[i, 1] - ranges[i, 0]
+            ranges_read[i, 0] = offset
+            ranges_read[i, 1] = offset + n
             offset += n
         # Copy the slices to a new array in the input slice order
         result_sorted = np.empty_like(result)
         offset = 0
         for start, stop in ranges_read:
             n = stop - start
-            result_sorted[offset:offset+n,...] = result[start:stop,...]
+            result_sorted[offset : offset + n, ...] = result[start:stop, ...]
             offset += n
         result = result_sorted
 
@@ -660,7 +663,9 @@ def read_ranges_from_file(
         Reads data ranges for unchunked hdf5 file.
     """
     return (
-        read_ranges_from_hdfstream if hasattr(handle, "request_slices") else read_ranges_from_file_low_level
+        read_ranges_from_hdfstream
+        if hasattr(handle, "request_slices")
+        else read_ranges_from_file_low_level
     )(handle, ranges, output_shape, output_type, columns)
 
 
