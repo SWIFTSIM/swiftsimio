@@ -208,7 +208,6 @@ def read_ranges_from_file_low_level(
     np.ndarray
         Result from reading only the relevant values from ``handle``.
     """
-
     # This will only work if slices do not overlap
     order = np.argsort(ranges[:, 0])
     sorted_starts = ranges[order, 0]
@@ -221,7 +220,6 @@ def read_ranges_from_file_low_level(
 
     # Get file dataspace handle
     file_space_id = dataset_id.get_space()
-    file_shape = file_space_id.get_simple_extent_dims()
 
     # Determine range of elements to read in the second dimension (if any)
     if len(handle.shape) == 1:
