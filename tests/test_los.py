@@ -1,13 +1,11 @@
 """Tests for line-of-sight (LOS) files."""
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 import unyt
 
 from swiftsimio import SWIFTLineOfSightMetadata, load, mask
-from swiftsimio.objects import cosmo_quantity
+
 
 
 def test_los_can_load(los_example):
@@ -18,9 +16,7 @@ def test_los_can_load(los_example):
 
 
 def test_los_group_attributes_cosmo_types_units_and_metadata(los_example):
-    """
-    LOS group attributes should be cosmology-aware objects with correct metadata.
-    """
+    """LOS group attributes should be cosmology-aware objects with correct metadata."""
     los = load(los_example)
     group = los.los_0000
     a = float(los.metadata.scale_factor)
@@ -44,7 +40,7 @@ def test_los_group_attribute_cached_after_first_access(los_example):
     """LOS group attributes should be lazy-loaded once and then cached."""
     los = load(los_example)
     assert los.los_0000._xpos is None
-    first = los.los_0000.xpos
+    los.los_0000.xpos
     assert los.los_0000._xpos is not None
 
 
