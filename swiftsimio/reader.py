@@ -14,12 +14,13 @@ These include:
 """
 
 from swiftsimio.accelerated import read_ranges_from_file
-from swiftsimio.objects import cosmo_array
+from swiftsimio.objects import cosmo_array, cosmo_quantity
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.metadata.objects import (
     _metadata_discriminator,
     SWIFTUnits,
     SWIFTGroupMetadata,
+    SWIFTLineOfSightMetadata,
 )
 from swiftsimio.metadata.field.attr_reader import (
     load_field_units as _load_field_units,
@@ -224,6 +225,83 @@ def _generate_setter(name: str) -> Callable[["__SWIFTGroupDataset", cosmo_array]
     return setter
 
 
+def _generate_group_attr_getter(
+    name: str,
+    *,
+    group: str,
+    attr_name: str,
+) -> Callable[["__SWIFTGroupDataset"], cosmo_array | cosmo_quantity]:
+    """
+    Generate a getter for lazy-loading group-level HDF5 attributes.
+
+    Parameters
+    ----------
+    name : str
+        Public output name (snake_case) of the attribute.
+
+    group : str
+        Group path in the HDF5 file (e.g. ``LOS_0000``).
+
+    attr_name : str
+        HDF5 attribute name in the source file.
+
+    Returns
+    -------
+    Callable
+        A getter callable that lazy-loads ``group.attrs[attr_name]``.
+    """
+
+    def getter(
+        self: __SWIFTGroupDataset,
+    ) -> cosmo_array | cosmo_quantity:
+        """
+        Get the group-level attribute, reading from disk if it's not in memory.
+
+        Parameters
+        ----------
+        self : __SWIFTGroupDataset
+            The containing dataset class that this getter is assigned to.
+
+        Returns
+        -------
+        cosmo_array or cosmo_quantity
+            Group attribute with cosmology metadata attached.
+        """
+        current_value = getattr(self, f"_{name}")
+        if current_value is not None:
+            return current_value
+
+        with self.open_file() as handle:
+            value = handle[group].attrs[attr_name]
+
+        if isinstance(self.metadata, SWIFTLineOfSightMetadata):
+            unit_loader = self.metadata.get_group_attribute_units(name)
+            unit = unit_loader(self.metadata.units)
+            comoving = self.metadata.get_group_attribute_comoving(name)
+            cf = self.metadata.get_group_attribute_cosmo_factor(
+                name, self.metadata.scale_factor
+            )
+        else:
+            unit = None
+            comoving = False
+            cf = None
+
+        if np.ndim(value) == 0:
+            parsed = cosmo_quantity(value, unit, comoving=comoving, cosmo_factor=cf)
+        else:
+            # Scalar metadata are often represented as shape-(1,) arrays in HDF5.
+            value = value[0] if np.size(value) == 1 else value
+            if np.ndim(value) == 0:
+                parsed = cosmo_quantity(value, unit, comoving=comoving, cosmo_factor=cf)
+            else:
+                parsed = cosmo_array(value, unit, comoving=comoving, cosmo_factor=cf)
+
+        setattr(self, f"_{name}", parsed)
+        return parsed
+
+    return getter
+
+
 def _generate_deleter(name: str) -> Callable[["__SWIFTGroupDataset"], None]:
     """
     Generate a function that destroys self._name (sets it back to None).
@@ -320,6 +398,9 @@ class __SWIFTGroupDataset(HandleProvider):
                         " it was present when searching initially."
                     )
                 )
+
+        for group_attribute_name in self.group_metadata.group_attributes.keys():
+            setattr(self, f"_{group_attribute_name}", None)
 
         return
 
@@ -590,6 +671,20 @@ def _generate_datasets(
             )
 
         this_dataset_dict[field_name] = field_property
+
+    for (
+        group_attribute_name,
+        hdf5_attribute_name,
+    ) in group_metadata.group_attributes.items():
+        this_dataset_dict[group_attribute_name] = property(
+            _generate_group_attr_getter(
+                group_attribute_name,
+                group=group,
+                attr_name=hdf5_attribute_name,
+            ),
+            _generate_setter(group_attribute_name),
+            _generate_deleter(group_attribute_name),
+        )
 
     ThisDataset = type(
         f"{group_nice_name}Dataset", this_dataset_bases, this_dataset_dict

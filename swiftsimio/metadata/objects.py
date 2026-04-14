@@ -14,7 +14,7 @@ from unyt.array import _iterable
 
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
-from swiftsimio.objects import cosmo_array, cosmo_quantity
+from swiftsimio.objects import cosmo_array, cosmo_factor, cosmo_quantity
 from swiftsimio._handle_provider import HandleProvider
 from abc import ABC, abstractmethod
 
@@ -23,6 +23,7 @@ import warnings
 
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 
 def _convert_snake_to_camel(name: str) -> str:
@@ -80,6 +81,8 @@ class SWIFTMetadata(HandleProvider, ABC):
     # multiple types (e.g. Gas, Dark Matter, etc.). Allows you to use constrain_index
     # in masking as everyone uses the same _shared mask!
     homogeneous_arrays: bool = False
+    # Whether per-group HDF5 attributes should be exposed on group dataset objects.
+    expose_group_attributes: bool = False
 
     def __init__(
         self,
@@ -662,6 +665,10 @@ class SWIFTGroupMetadata(HandleProvider):
         """
         self.load_field_names()
         self.load_named_columns()
+        if self.metadata.expose_group_attributes:
+            self.load_group_attributes()
+        else:
+            self.group_attributes = {}
 
         return
 
@@ -729,6 +736,20 @@ class SWIFTGroupMetadata(HandleProvider):
                 named_columns[field] = None
 
         self.named_columns = named_columns
+
+        return
+
+    def load_group_attributes(self) -> None:
+        """
+        Load group-level attribute names.
+
+        Group attribute values are not read here; values are lazy-loaded alongside
+        datasets in the reader. We only discover attribute names and public aliases.
+        """
+        attributes = {}
+        for attribute_name in self.handle[self.group].attrs.keys():
+            attributes[_convert_snake_to_camel(attribute_name)] = attribute_name
+        self.group_attributes = attributes
 
         return
 
@@ -1345,6 +1366,7 @@ class SWIFTLineOfSightMetadata(SWIFTSnapshotMetadata):
     """
 
     masking_valid: bool = False
+    expose_group_attributes: bool = True
 
     @property
     def present_groups(self) -> list[str]:
@@ -1392,6 +1414,70 @@ class SWIFTLineOfSightMetadata(SWIFTSnapshotMetadata):
             The user-readable version of the name.
         """
         return group.replace("_", "")
+
+    @staticmethod
+    def get_group_attribute_units(name: str) -> Callable[["SWIFTUnits"], unyt.Unit]:
+        """
+        Get units for line-of-sight group attributes.
+
+        Parameters
+        ----------
+        name : str
+            Public attribute name as exposed in swiftsimio.
+
+        Returns
+        -------
+        Callable[[SWIFTUnits], unyt.Unit]
+            Callable that maps a ``SWIFTUnits`` object to the desired unit.
+        """
+        unit_map = {
+            "xpos": lambda units: units.length,
+            "ypos": lambda units: units.length,
+            "zpos": lambda units: units.length,
+        }
+        return unit_map.get(name, lambda units: unyt.dimensionless)
+
+    @staticmethod
+    def get_group_attribute_comoving(name: str) -> bool:
+        """
+        Get comoving-state metadata for line-of-sight group attributes.
+
+        Parameters
+        ----------
+        name : str
+            Public attribute name as exposed in swiftsimio.
+
+        Returns
+        -------
+        bool
+            ``True`` if the value is stored in comoving units, else ``False``.
+        """
+        comoving_attributes = {"xpos", "ypos", "zpos"}
+        return name in comoving_attributes
+
+    @staticmethod
+    def get_group_attribute_cosmo_factor(
+        name: str, scale_factor: float
+    ) -> cosmo_factor:
+        """
+        Get cosmological conversion metadata for LOS group attributes.
+
+        Parameters
+        ----------
+        name : str
+            Public attribute name as exposed in swiftsimio.
+
+        scale_factor : float
+            Scale factor of the snapshot.
+
+        Returns
+        -------
+        swiftsimio.objects.cosmo_factor
+            Cosmological conversion factor.
+        """
+        exponent_map = {"xpos": 1.0, "ypos": 1.0, "zpos": 1.0}
+        exponent = exponent_map.get(name, 0.0)
+        return cosmo_factor.create(scale_factor, exponent)
 
 
 class SWIFTFOFMetadata(SWIFTMetadata):
