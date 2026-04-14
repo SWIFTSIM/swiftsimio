@@ -20,7 +20,6 @@ from swiftsimio.metadata.objects import (
     _metadata_discriminator,
     SWIFTUnits,
     SWIFTGroupMetadata,
-    SWIFTLineOfSightMetadata,
 )
 from swiftsimio.metadata.field.attr_reader import (
     load_field_units as _load_field_units,
