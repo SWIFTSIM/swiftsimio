@@ -274,22 +274,16 @@ def _generate_group_attr_getter(
         with self.open_file() as handle:
             value = handle[group].attrs[attr_name]
 
-        if isinstance(self.metadata, SWIFTLineOfSightMetadata):
-            unit_loader = self.metadata.get_group_attribute_units(name)
-            unit = unit_loader(self.metadata.units)
-            comoving = self.metadata.get_group_attribute_comoving(name)
-            cf = self.metadata.get_group_attribute_cosmo_factor(
-                name, self.metadata.scale_factor
-            )
-        else:
-            unit = None
-            comoving = False
-            cf = None
+        unit_loader = self.metadata.get_group_attribute_units(name)
+        unit = unit_loader(self.metadata.units)
+        comoving = self.metadata.get_group_attribute_comoving(name)
+        cf = self.metadata.get_group_attribute_cosmo_factor(
+            name, self.metadata.scale_factor
+        )
 
         if np.ndim(value) == 0:
             parsed = cosmo_quantity(value, unit, comoving=comoving, cosmo_factor=cf)
         else:
-            # Scalar metadata are often represented as shape-(1,) arrays in HDF5.
             value = value[0] if np.size(value) == 1 else value
             if np.ndim(value) == 0:
                 parsed = cosmo_quantity(value, unit, comoving=comoving, cosmo_factor=cf)
