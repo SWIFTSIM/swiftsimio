@@ -4,8 +4,7 @@ import numpy as np
 import pytest
 import unyt
 
-from swiftsimio import SWIFTLineOfSightMetadata, load, mask
-
+from swiftsimio import SWIFTLineOfSightMetadata, load, mask, cosmo_quantity
 
 
 def test_los_can_load(los_example):
