@@ -833,6 +833,8 @@ def _metadata_discriminator(
 
     if file_type in ["FullVolume"]:
         return SWIFTSnapshotMetadata(filename, units, handle=handle)
+    elif file_type in ["LineOfSight"]:
+        return SWIFTLineOfSightMetadata(filename, units, handle=handle)
     elif file_type in ["SOAP"]:
         return SWIFTSOAPMetadata(filename, units, handle=handle)
     elif file_type in ["FOF"]:
@@ -1322,6 +1324,74 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
             The user-readable version of the name.
         """
         return metadata.particle_types.particle_name_class[group]
+
+
+class SWIFTLineOfSightMetadata(SWIFTSnapshotMetadata):
+    """
+    Provide a metadata interface for SWIFT line-of-sight files.
+
+    For more documentation see :class:`~swiftsimio.metadata.objects.SWIFTMetadata`.
+
+    Parameters
+    ----------
+    filename : Path
+        Filename to read metadata from.
+
+    units : SWIFTUnits
+        Units object to use.
+
+    handle : h5py.File, optional
+        File handle to read from.
+    """
+
+    masking_valid: bool = False
+
+    @property
+    def present_groups(self) -> list[str]:
+        """
+        Get the groups containing datasets that are present in the file.
+
+        Returns
+        -------
+        list[str]
+            List of LOS groups.
+        """
+        if self._handle:
+            keys = self.handle.keys()
+        else:
+            with h5py.File(self.filename, "r") as handle:
+                keys = list(handle.keys())
+
+        return sorted([group for group in keys if group.startswith("LOS_")])
+
+    @property
+    def present_group_names(self) -> list[str]:
+        """
+        Get the names of the groups that we want to expose.
+
+        Returns
+        -------
+        list[str]
+            List of names to expose as attributes.
+        """
+        return [group.lower() for group in self.present_groups]
+
+    @staticmethod
+    def get_nice_name(group: str) -> str:
+        """
+        Convert the group name to a user-readable name.
+
+        Parameters
+        ----------
+        group : str
+            The group name as used in the hdf5 file.
+
+        Returns
+        -------
+        str
+            The user-readable version of the name.
+        """
+        return group.replace("_", "")
 
 
 class SWIFTFOFMetadata(SWIFTMetadata):
