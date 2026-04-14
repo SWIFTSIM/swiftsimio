@@ -16,7 +16,7 @@ from swiftsimio.optional_packages import HDFSTREAM_AVAILABLE, hdfstream
 
 # URL to download the test data
 webstorage_location = (
-    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_11_2025/"
+    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2026/"
 )
 
 # Where to write the downloaded files
