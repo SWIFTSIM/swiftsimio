@@ -276,18 +276,11 @@ def _generate_group_attr_getter(
         unit_loader = self.metadata.get_group_attribute_units(name)
         unit = unit_loader(self.metadata.units)
         comoving = self.metadata.get_group_attribute_comoving(name)
-        cf = self.metadata.get_group_attribute_cosmo_factor(
-            name, self.metadata.scale_factor
-        )
+        cf = self.metadata.get_group_attribute_cosmo_factor(name)
 
-        if np.ndim(value) == 0:
-            parsed = cosmo_quantity(value, unit, comoving=comoving, cosmo_factor=cf)
-        else:
-            value = value[0] if np.size(value) == 1 else value
-            if np.ndim(value) == 0:
-                parsed = cosmo_quantity(value, unit, comoving=comoving, cosmo_factor=cf)
-            else:
-                parsed = cosmo_array(value, unit, comoving=comoving, cosmo_factor=cf)
+        parsed = cosmo_array(
+            np.atleast_1d(value), unit, comoving=comoving, cosmo_factor=cf
+        ).squeeze()
 
         setattr(self, f"_{name}", parsed)
         return parsed

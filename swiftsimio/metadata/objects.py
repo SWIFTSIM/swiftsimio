@@ -1455,10 +1455,7 @@ class SWIFTLineOfSightMetadata(SWIFTSnapshotMetadata):
         comoving_attributes = {"xpos", "ypos", "zpos"}
         return name in comoving_attributes
 
-    @staticmethod
-    def get_group_attribute_cosmo_factor(
-        name: str, scale_factor: float
-    ) -> cosmo_factor:
+    def get_group_attribute_cosmo_factor(self, name: str) -> cosmo_factor:
         """
         Get cosmological conversion metadata for LOS group attributes.
 
@@ -1477,7 +1474,7 @@ class SWIFTLineOfSightMetadata(SWIFTSnapshotMetadata):
         """
         exponent_map = {"xpos": 1.0, "ypos": 1.0, "zpos": 1.0}
         exponent = exponent_map.get(name, 0.0)
-        return cosmo_factor.create(scale_factor, exponent)
+        return cosmo_factor.create(self.scale_factor, exponent)
 
 
 class SWIFTFOFMetadata(SWIFTMetadata):
