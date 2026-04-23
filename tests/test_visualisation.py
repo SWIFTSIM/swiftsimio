@@ -1536,3 +1536,26 @@ class TestProjectionBackends:
         assert np.allclose(
             repeating_img, np.block([[ref_img, ref_img], [ref_img, ref_img]])
         )
+
+
+def test_input_region_unmutated(cosmological_volume_only_single_local):
+    """
+    Check that the image region input by the user is not mutated.
+
+    Regression test for https://github.com/SWIFTSIM/swiftsimio/issues/314
+    """
+    data = load(cosmological_volume_only_single_local)
+    assert data.metadata.scale_factor < 1  # success trivial otherwise
+    size = (data.metadata.boxsize[0] * 0.25).to_physical_value(unyt.Mpc)  # as a float
+    float_region = [0, size, 0, size]
+    # now make a cosmo_array in physical Mpc:
+    im_region = cosmo_array(
+        float_region,
+        unyt.Mpc,
+        comoving=False,
+        scale_factor=data.metadata.scale_factor,
+        scale_exponent=1,
+    )
+    assert np.allclose(im_region.to_physical_value(unyt.Mpc), float_region)
+    project_gas(data, 16, region=im_region, periodic=False)
+    assert np.allclose(im_region.to_physical_value(unyt.Mpc), float_region)

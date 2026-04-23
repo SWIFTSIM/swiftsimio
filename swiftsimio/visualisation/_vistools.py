@@ -63,17 +63,17 @@ def _get_region_info(
     dict
         A dictionary of kwargs for use with backend visualisation functions.
     """
-    boxsize = data.metadata.boxsize
-    if region is not None:
-        region = cosmo_array(region)
+    # do not use in-place conversion for region - changes user's input!
+    if region is not None and not (isinstance(region, cosmo_array)):
+        raise ValueError("Specify the region as a `cosmo_array`.")
     if data.coordinates.comoving:
-        boxsize.convert_to_comoving()
-        if region is not None:
-            region.convert_to_comoving()
+        boxsize = data.metadata.boxsize.to_comoving()
+        region = region.to_comoving() if region is not None else None
     elif data.coordinates.comoving is False:  # compare to False in case None
-        boxsize.convert_to_physical()
-        if region is not None:
-            region.convert_to_physical()
+        boxsize = data.metadata.boxsize.to_physical()
+        region = region.to_physical() if region is not None else None
+    else:
+        boxsize = data.metadata.boxsize
     box_x, box_y, box_z = boxsize
     if region is not None:
         x_min, x_max, y_min, y_max = region[:4]
@@ -230,7 +230,7 @@ def backend_restore_cosmo_and_units(
                     "lengths. Converting smoothing lengths to comoving."
                 )
             kwargs["h"].convert_to_comoving()
-            norm.convert_to_comoving()
+            converted_norm = norm.to_comoving()
         elif comoving is False:  # don't use else in case None
             if kwargs["x"].comoving or kwargs["y"].comoving:
                 warn(
@@ -245,14 +245,16 @@ def backend_restore_cosmo_and_units(
                     "lengths. Converting smoothing lengths to physical."
                 )
             kwargs["h"].convert_to_physical()
-            norm.convert_to_physical()
+            converted_norm = norm.to_physical()
+        else:
+            converted_norm = 1.0
         return (
             _copy_cosmo_array_attributes_if_present(
                 kwargs["m"],
                 backend_func(*args, **kwargs).view(cosmo_array),
                 copy_units=True,
             )
-            / norm
+            / converted_norm
         )
 
     return wrapper
