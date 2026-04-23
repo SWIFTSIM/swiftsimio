@@ -8,7 +8,13 @@ import numpy as np
 import unyt as u
 from copy import copy, deepcopy
 import pickle
-from swiftsimio.objects import cosmo_array, cosmo_quantity, cosmo_factor, a
+from swiftsimio.objects import (
+    cosmo_array,
+    cosmo_quantity,
+    cosmo_factor,
+    a,
+    InvalidConversionError,
+)
 from importlib.metadata import version
 from packaging.version import Version
 
@@ -1265,3 +1271,102 @@ class TestPickle:
                 os.remove("ca.pkl")
         for attr_name, attr_value in attrs.items():
             assert getattr(unpickled_ca, attr_name) == attr_value
+
+
+class TestPhysicalComovingConversion:
+    """Test converting between comoving and physical quantities."""
+
+    @pytest.mark.parametrize("starting_comoving", (True, False, None))
+    @pytest.mark.parametrize("target_comoving", (True, False, None))
+    @pytest.mark.parametrize("valid_transform", (True, False))
+    def test_to(self, starting_comoving, target_comoving, valid_transform):
+        """Test conversion through the ``to`` method."""
+        try:
+            arr = cosmo_array(
+                np.ones(5),
+                u.Mpc,
+                scale_factor=0.5,
+                scale_exponent=1,
+                comoving=starting_comoving,
+                valid_transform=valid_transform,
+            )
+        except InvalidConversionError:
+            # can't initialize an array like this
+            return
+        if (starting_comoving != target_comoving and not valid_transform) or (
+            starting_comoving is None and target_comoving is not None
+        ):
+            with pytest.raises(InvalidConversionError):
+                arr.to(u.kpc, comoving=target_comoving)
+            return
+        arr_copy = arr.to(u.kpc, comoving=target_comoving)
+        if starting_comoving == target_comoving or target_comoving is None:
+            # keep what was passed in
+            asserted = True
+            assert np.allclose(arr.value, arr_copy.value / 1000)
+        elif starting_comoving is True and target_comoving is False:
+            asserted = True
+            assert np.allclose(arr.value, arr_copy.value / 1000 * 2)
+        elif starting_comoving is False and target_comoving is True:
+            asserted = True
+            assert np.allclose(arr.value, arr_copy.value / 1000 / 2)
+        assert asserted
+
+    @pytest.mark.parametrize("valid_transform", (True, False))
+    @pytest.mark.parametrize("starting_comoving", (True, False, None))
+    def test_to_comoving(self, starting_comoving, valid_transform):
+        """Test that we can make a copy in comoving coordinates."""
+        try:
+            arr = cosmo_array(
+                np.ones(5),
+                u.Mpc,
+                scale_factor=0.5,
+                scale_exponent=1,
+                comoving=starting_comoving,
+                valid_transform=valid_transform,
+            )
+        except InvalidConversionError:
+            # can't initialize an array like this
+            return
+        if not valid_transform or starting_comoving is None:
+            with pytest.raises(InvalidConversionError):
+                arr.to_comoving()
+            return
+        arr_copy = arr.to_comoving()
+        if starting_comoving is True:
+            assert np.allclose(arr.value, arr_copy.value)
+        elif starting_comoving is False:
+            print(arr, arr_copy)
+            assert np.allclose(arr.value, arr_copy.value / 2)
+
+    @pytest.mark.parametrize("valid_transform", (True, False))
+    @pytest.mark.parametrize("starting_comoving", (True, False, None))
+    def test_to_physical(self, starting_comoving, valid_transform):
+        """Test that we can make a copy in physical coordinates."""
+        try:
+            arr = cosmo_array(
+                np.ones(5),
+                u.Mpc,
+                scale_factor=0.5,
+                scale_exponent=1,
+                comoving=starting_comoving,
+                valid_transform=valid_transform,
+            )
+        except InvalidConversionError:
+            # can't initialize an array like this
+            return
+        if not valid_transform and starting_comoving is not False:
+            with pytest.raises(InvalidConversionError):
+                arr.to_physical()
+            return
+        if valid_transform and starting_comoving is None:
+            # cosmo_array.__new__ will set arr.valid_transform = False in this case
+            with pytest.raises(InvalidConversionError):
+                arr.to_physical()
+            return
+        arr_copy = arr.to_physical()
+        if starting_comoving is False:
+            assert np.allclose(arr.value, arr_copy.value)
+        elif starting_comoving is True:
+            print(arr, arr_copy)
+            assert np.allclose(arr.value, arr_copy.value * 2)

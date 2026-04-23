@@ -64,14 +64,12 @@ def _get_region_info(
         A dictionary of kwargs for use with backend visualisation functions.
     """
     # do not use in-place conversion for region - changes user's input!
-    if region is not None and not (isinstance(region, cosmo_array)):
-        raise ValueError("Specify the region as a `cosmo_array`.")
     if data.coordinates.comoving:
         boxsize = data.metadata.boxsize.to_comoving()
-        region = region.to_comoving() if region is not None else None
+        region = getattr(region, "to_comoving", lambda: region)()
     elif data.coordinates.comoving is False:  # compare to False in case None
         boxsize = data.metadata.boxsize.to_physical()
-        region = region.to_physical() if region is not None else None
+        region = getattr(region, "to_physical", lambda: region)()
     else:
         boxsize = data.metadata.boxsize
     box_x, box_y, box_z = boxsize
@@ -170,7 +168,7 @@ def _get_rotated_and_wrapped_coordinates(
     else:
         coords = data.coordinates
     if periodic:
-        coords %= data.metadata.boxsize
+        coords %= data.metadata.boxsize.to(comoving=coords.comoving)
     return coords.T
 
 
