@@ -63,17 +63,15 @@ def _get_region_info(
     dict
         A dictionary of kwargs for use with backend visualisation functions.
     """
-    boxsize = data.metadata.boxsize
-    if region is not None:
-        region = cosmo_array(region)
+    # do not use in-place conversion for region - changes user's input!
     if data.coordinates.comoving:
-        boxsize.convert_to_comoving()
-        if region is not None:
-            region.convert_to_comoving()
+        boxsize = data.metadata.boxsize.to_comoving()
+        region = getattr(region, "to_comoving", lambda: region)()
     elif data.coordinates.comoving is False:  # compare to False in case None
-        boxsize.convert_to_physical()
-        if region is not None:
-            region.convert_to_physical()
+        boxsize = data.metadata.boxsize.to_physical()
+        region = getattr(region, "to_physical", lambda: region)()
+    else:
+        boxsize = data.metadata.boxsize
     box_x, box_y, box_z = boxsize
     if region is not None:
         x_min, x_max, y_min, y_max = region[:4]
@@ -170,7 +168,7 @@ def _get_rotated_and_wrapped_coordinates(
     else:
         coords = data.coordinates
     if periodic:
-        coords %= data.metadata.boxsize
+        coords %= data.metadata.boxsize.to(comoving=coords.comoving)
     return coords.T
 
 
@@ -230,7 +228,7 @@ def backend_restore_cosmo_and_units(
                     "lengths. Converting smoothing lengths to comoving."
                 )
             kwargs["h"].convert_to_comoving()
-            norm.convert_to_comoving()
+            converted_norm = norm.to_comoving()
         elif comoving is False:  # don't use else in case None
             if kwargs["x"].comoving or kwargs["y"].comoving:
                 warn(
@@ -245,14 +243,16 @@ def backend_restore_cosmo_and_units(
                     "lengths. Converting smoothing lengths to physical."
                 )
             kwargs["h"].convert_to_physical()
-            norm.convert_to_physical()
+            converted_norm = norm.to_physical()
+        else:
+            converted_norm = 1.0
         return (
             _copy_cosmo_array_attributes_if_present(
                 kwargs["m"],
                 backend_func(*args, **kwargs).view(cosmo_array),
                 copy_units=True,
             )
-            / norm
+            / converted_norm
         )
 
     return wrapper

@@ -141,7 +141,8 @@ def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
     Check that ``comoving`` and ``valid_transform`` attributes are compatible.
 
     Comoving arrays must be able to transform, while arrays that don't transform must
-    be physical. This function raises if this is not the case.
+    be physical. Arrays with ``comoving`` set to ``None`` must not be allowed to
+    transform. This function raises if this is not the case.
 
     Parameters
     ----------
@@ -150,16 +151,17 @@ def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
 
     Raises
     ------
-    AssertionError
+    InvalidConversionError
         When an invalid combination of ``comoving`` and ``valid_transform`` is found.
     """
-    if not obj.valid_transform:
-        assert not obj.comoving, (
-            "Cosmo arrays without a valid transform to comoving units must be physical"
+    if obj.comoving is None and obj.valid_transform:
+        raise InvalidConversionError(
+            "Cosmo arrays must have comoving!=None to have valid_transform==True"
         )
-    if obj.comoving:
-        assert obj.valid_transform, (
-            "Comoving cosmo_arrays must be able to be transformed to physical"
+    elif obj.valid_transform is False and obj.comoving is True:
+        raise InvalidConversionError(
+            "Cosmo arrays without a valid transform to comoving units must be physical,"
+            " and comoving cosmo_arrays must be able to be transformed to physcial."
         )
 
 
@@ -1134,7 +1136,7 @@ class cosmo_array(unyt_array):
 
         valid_transform : bool
             Flag to indicate whether this array can be converted to comoving. If
-            ``False``, then ``comoving`` must be ``False``.
+            ``False``, then ``comoving`` must be ``False`` (or ``None``).
 
         compression : str
             Description of the compression filters that were applied to that array in the
@@ -1163,6 +1165,14 @@ class cosmo_array(unyt_array):
 
         if isinstance(input_array, cosmo_array):
             obj = input_array.view(cls)
+            if comoving is None:
+                # we could be dealing with unyt creating an object for us so copy the
+                # value across to avoid defaulting to None
+                obj.comoving = input_array.comoving
+
+            # let's trust what the input_array tells us about valid_transform.
+            # copy explicitly in case unyt is creating an object for us.
+            obj.valid_transform = input_array.valid_transform
 
             # do cosmo_factor first since it can be used in comoving/physical conversion:
             cosmo_factor = (
@@ -1177,7 +1187,10 @@ class cosmo_array(unyt_array):
             )
             if cosmo_factor is not None:
                 obj.cosmo_factor = cosmo_factor
-            # else is already copied from input_array
+            else:
+                # we could be dealing with unyt creating an object for us so copy the
+                # value across to avoid defaulting to None
+                obj.cosmo_factor = input_array.cosmo_factor
 
             if comoving is True:
                 obj.convert_to_comoving()
@@ -1189,7 +1202,6 @@ class cosmo_array(unyt_array):
             # transformations raise:
             obj.valid_transform = valid_transform
             _verify_valid_transform_validity(obj)
-
             obj.compression = (
                 compression if compression is not None else obj.compression
             )
@@ -1201,16 +1213,17 @@ class cosmo_array(unyt_array):
 
             # ndarray with object dtype goes to next case to properly handle e.g.
             # ndarrays containing cosmo_quantities
-
             cosmo_factor = _parse_cosmo_factor_args(
                 cf=cosmo_factor,
                 scale_factor=scale_factor,
                 scale_exponent=scale_exponent,
             )
+            valid_transform = valid_transform if comoving is not None else False
 
         elif _iterable(input_array):
             # if _prepare_array_func_args finds cosmo_array input it will convert to:
             default_cm = comoving if comoving is not None else True
+            default_vt = comoving is not None
 
             # coerce any cosmo_array inputs to consistency:
             helper_result = _prepare_array_func_args(
@@ -1235,7 +1248,8 @@ class cosmo_array(unyt_array):
                 helper_result["compression"] if compression is None else compression
             )
             # valid_transform has a non-None default, so we have to decide to always
-            # respect it
+            # respect it, unless comoving is None
+            valid_transform = valid_transform if comoving is not None else default_vt
         else:
             # if the input isn't even iterable, this is an error
             raise ValueError(
@@ -1375,6 +1389,7 @@ class cosmo_array(unyt_array):
     copy = _propagate_cosmo_array_attributes_to_result(unyt_array.copy)
     __deepcopy__ = _propagate_cosmo_array_attributes_to_result(unyt_array.__deepcopy__)
     in_cgs = _propagate_cosmo_array_attributes_to_result(unyt_array.in_cgs)
+    in_base = _propagate_cosmo_array_attributes_to_result(unyt_array.in_base)
     take = _propagate_cosmo_array_attributes_to_result(
         _ensure_result_is_cosmo_array_or_quantity(unyt_array.take)
     )
@@ -1392,8 +1407,44 @@ class cosmo_array(unyt_array):
     ua = property(_propagate_cosmo_array_attributes_to_result(np.ones_like))
     unit_array = property(_propagate_cosmo_array_attributes_to_result(np.ones_like))
 
-    def convert_to_comoving(self) -> None:
-        """Convert the internal data in-place to be in comoving units."""
+    def convert_to_comoving(
+        self,
+        units: unyt.Unit | str | None = None,
+        *,
+        equivalence: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """
+        Convert the internal data in-place to be in comoving units.
+
+        Optionaly, an equivalence can be specified to convert to an equivalent quantity
+        which is not in the same dimensions.
+
+        Parameters
+        ----------
+        units : ~unyt.Unit or str, optional
+            The desired units for the converted array. If omitted the units are preserved.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            This array in the requested comoving units, transformed in place.
+
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
+        """
+        if units is not None:
+            self.convert_to_units(units, equivalence=equivalence, **kwargs)
         if self.comoving:
             return
         if not self.valid_transform or self.comoving is None:
@@ -1404,8 +1455,44 @@ class cosmo_array(unyt_array):
         values /= self.cosmo_factor.a_factor
         self.comoving = True
 
-    def convert_to_physical(self) -> None:
-        """Convert the internal data in-place to be in physical units."""
+    def convert_to_physical(
+        self,
+        units: unyt.Unit | str | None = None,
+        *,
+        equivalence: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> None:
+        """
+        Convert the internal data in-place to be in physical units.
+
+        Optionaly, an equivalence can be specified to convert to an equivalent quantity
+        which is not in the same dimensions.
+
+        Parameters
+        ----------
+        units : ~unyt.Unit or str, optional
+            The desired units for the converted array. If omitted the units are preserved.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            This array in the requested physical units, transformed in place.
+
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
+        """
+        if units is not None:
+            self.convert_to_units(units, equivalence=equivalence, **kwargs)
         if self.comoving is None:
             raise InvalidConversionError
         elif not self.comoving:
@@ -1417,67 +1504,323 @@ class cosmo_array(unyt_array):
             values *= self.cosmo_factor.a_factor
             self.comoving = False
 
-    def to_physical(self) -> "cosmo_array":
+    def to_physical(
+        self,
+        units: unyt.Unit | str | None = None,
+        *,
+        equivalence: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> "cosmo_array":
         """
         Create a copy of the data in physical units.
+
+        Parameters
+        ----------
+        units : ~unyt.Unit or str, optional
+            The desired units for the new array. If omitted the units are preserved.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
 
         Returns
         -------
         ~swiftsimio.objects.cosmo_array
-            Copy of this array in physical units.
+            Copy of this array in the requested physical units.
+
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
         """
-        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
+        if not self.valid_transform and self.comoving:
+            raise InvalidConversionError
+        copied_data = self.in_units(
+            self.units if units is None else units, equivalence=equivalence, **kwargs
+        )
         copied_data.convert_to_physical()
 
         return copied_data
 
-    def to_comoving(self) -> "cosmo_array":
+    def to_comoving(
+        self,
+        units: unyt.Unit | str | None = None,
+        *,
+        equivalence: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> "cosmo_array":
         """
         Create a copy of the data in comoving units.
+
+        Parameters
+        ----------
+        units : ~unyt.Unit or str, optional
+            The desired units for the new array. If omitted the units are preserved.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
 
         Returns
         -------
         ~swiftsimio.objects.cosmo_array
-            Copy of this array in comoving units.
+            Copy of this array in the requested comoving units.
+
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
         """
-        if not self.valid_transform:
+        if not self.valid_transform and self.comoving is not False:
             raise InvalidConversionError
-        copied_data = self.in_units(self.units, cosmo_factor=self.cosmo_factor)
+        copied_data = self.in_units(
+            self.units if units is None else units, equivalence=equivalence, **kwargs
+        )
         copied_data.convert_to_comoving()
 
         return copied_data
 
-    def to_physical_value(self, units: Unit) -> np.ndarray:
+    def to(
+        self,
+        units: unyt.Unit | str | None = None,
+        *,
+        equivalence: str | None = None,
+        comoving: bool | None = None,
+        **kwargs: dict[str, Any],
+    ) -> "cosmo_array":
         """
-        Return a copy of the array values in the specified physical units.
+        Create a copy of the data in specified comoving or physical units.
+
+        Optionally, an equivalence can be specified to convert to an equivalent quantity
+        which is not in the same dimensions.
+
+        .. note::
+
+            All additional keyword arguments are passed to the equivalency, which should
+            be used if that particular equivalency requires them.
 
         Parameters
         ----------
-        units : unyt.unit_object.Unit
-            Units to convert to.
+        units : ~unyt.Unit or str, optional
+            The desired units for the new array.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        comoving : bool, optional
+            If ``True``, the result is comoving, if ``False`` it is physical. By default
+            the ``comoving`` status of the array is preserved.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
 
         Returns
         -------
-        np.ndarray
-            Copy of the array values in the specified physical units.
-        """
-        return self.to_physical().to_value(units)
+        ~swiftsimio.objects.cosmo_array
+            Copy of this array in comoving or physical units.
 
-    def to_comoving_value(self, units: Unit) -> np.ndarray:
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
+        
+        Examples
+        --------
+        .. code-block:: python
+
+           >>> import unyt as u
+           >>> d = cosmo_quantity(
+           ...     1,
+           ...     u.Mpc,
+           ...     comoving=True,
+           ...     scale_factor=0.5,
+           ...     scale_exponent=1
+           ... )
+           >>> d.to(u.kpc, comoving=False)
+           cosmo_quantity(500., 'kpc', comoving='False', cosmo_factor='a at a=0.5', \
+           valid_transform='True')
         """
-        Return a copy of the array values in the specified comoving units.
+        if not self.valid_transform and (comoving != self.comoving):
+            raise InvalidConversionError
+        if units is None:
+            arr_copy = self.copy()
+        else:
+            arr_copy = _copy_cosmo_array_attributes_if_present(
+                self,
+                _ensure_result_is_cosmo_array_or_quantity(super().to)(
+                    units, equivalence=equivalence, **kwargs
+                ),
+            )
+        # do comoving conversion in-place since we already made a copy.
+        # if comoving is not None and self.comoving is None this will (and should) raise.
+        if comoving is True:
+            arr_copy.convert_to_comoving()
+        elif comoving is False:  # can't use else in case comoving is None
+            arr_copy.convert_to_physical()
+        else:  # comoving is None - keep whatever self had
+            pass  # attribute was already copied above
+        return arr_copy
+
+    def to_value(
+        self,
+        units: unyt.Unit | str | None = None,
+        *,
+        equivalence: str | None = None,
+        comoving: bool | None = None,
+        **kwargs: dict[str, Any],
+    ) -> np.ndarray:
+        """
+        Create a copy of the data in specified comoving or physical units.
+
+        The copy is then returned with the values as a bare :mod:`~numpy` array.
+
+        Optionally, an equivalence can be specified to convert to an equivalent quantity
+        which is not in the same dimensions.
+
+        .. note::
+
+            All additional keyword arguments are passed to the equivalency, which should
+            be used if that particular equivalency requires them.
 
         Parameters
         ----------
-        units : unyt.unit_object.Unit
-            Units to convert to.
+        units : ~unyt.Unit or str
+            The desired units for the new array.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        comoving : bool, optional
+            If ``True``, the result is comoving, if ``False`` it is physical. By default
+            the ``comoving`` status of the array is preserved.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            Copy of this array in comoving or physical units.
+
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
+
+        Examples
+        --------
+        .. code-block:: python
+
+           >>> import unyt as u
+           >>> d = cosmo_quantity(
+           ...     1,
+           ...     u.Mpc,
+           ...     comoving=True,
+           ...     scale_factor=0.5,
+           ...     scale_exponent=1
+           ... )
+           >>> d.to_value(u.kpc, comoving=False)
+           500.0
+        """
+        return np.array(
+            self.to(units, equivalence=equivalence, comoving=comoving, **kwargs)
+        )
+
+    def to_physical_value(
+        self,
+        units: Unit | str,
+        equivalence: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> np.ndarray:
+        """
+        Return a copy of the array values in the specified physical units.
+
+        Optionally, an equivalence can be specified to convert to an equivalent quantity
+        which is not in the same dimensions.
+
+        .. note::
+
+            All additional keyword arguments are passed to the equivalency, which should
+            be used if that particular equivalency requires them.
+
+        Parameters
+        ----------
+        units : ~unyt.Unit or str
+            The desired units for the new array.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            Copy of the array values in the specified physical units.
+
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
+        """
+        return self.to_value(units, equivalence=equivalence, comoving=False, **kwargs)
+
+    def to_comoving_value(
+        self,
+        units: Unit | str,
+        equivalence: str | None = None,
+        **kwargs: dict[str, Any],
+    ) -> np.ndarray:
+        """
+        Return a copy of the array values in the specified comoving units.
+
+        Optionally, an equivalence can be specified to convert to an equivalent quantity
+        which is not in the same dimensions.
+
+        .. note::
+
+            All additional keyword arguments are passed to the equivalency, which should
+            be used if that particular equivalency requires them.
+
+        Parameters
+        ----------
+        units : ~unyt.Unit or str
+            The desired units for the new array.
+
+        equivalence : str, optional
+            The equivalence to use. To see which equivalences are supported for this
+            quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
+
+        **kwargs : dict
+            Any additional keyword arguments are supplied to the equivalence.
 
         Returns
         -------
         np.ndarray
             Copy of the array values in the specified comoving units.
+
+        Raises
+        ------
+        UnitConversionError
+            If the provided ``units`` does not have the same dimensions as the array and
+            cannot be converted via a provided ``equivalence``.
         """
-        return self.to_comoving().to_value(units)
+        return self.to_value(units, equivalence=equivalence, comoving=True, **kwargs)
 
     def compatible_with_comoving(self) -> bool:
         """
@@ -1546,7 +1889,7 @@ class cosmo_array(unyt_array):
 
         valid_transform : bool
             Flag to indicate whether this array can be converted to comoving. If
-            ``False``, then ``comoving`` must be ``False``.
+            ``False``, then ``comoving`` must be ``False`` (or ``None``).
 
         Returns
         -------
@@ -1601,7 +1944,7 @@ class cosmo_array(unyt_array):
             hdf5 file.
         valid_transform : bool
             Flag to indicate whether this array can be converted to comoving. If
-            ``False``, then ``comoving`` must be ``False``.
+            ``False``, then ``comoving`` must be ``False`` (or ``None``).
 
         Returns
         -------
@@ -1633,14 +1976,15 @@ class cosmo_array(unyt_array):
 
     @classmethod
     def __unyt_ufunc_prepare__(
-        cls, ufunc: np.ufunc, method: str, *inputs: tuple, **kwargs: dict
+        cls, ufunc: np.ufunc, method: str, *inputs: tuple, **kwargs: dict[str, Any]
     ) -> tuple[np.ufunc, str, tuple, dict]:
         """
         Prepare arguments for a ufunc call.
 
         This function gives us the opportunity to pre-process arguments to a ufunc call
-        before handing control off to :mod:`unyt`. The arguments and kwargs are checked for
-        consistent ``cosmo_factor`` attributes and coerced to a common comoving/physical state.
+        before handing control off to :mod:`unyt`. The arguments and kwargs are checked
+        for consistent ``cosmo_factor`` attributes and coerced to a common
+        comoving/physical state.
 
         Parameters
         ----------
@@ -1680,7 +2024,7 @@ class cosmo_array(unyt_array):
         ufunc: np.ufunc,
         method: str,
         *inputs: tuple,
-        **kwargs: dict,
+        **kwargs: dict[str, Any],
     ) -> "tuple | cosmo_array":
         """
         Finalize results after a ufunc call.
@@ -1752,6 +2096,7 @@ class cosmo_array(unyt_array):
                 if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
                     r.comoving = helper_result["comoving"]
                     r.cosmo_factor = ret_cf
+                    r.valid_transform = helper_result["valid_transform"]
                     r.compression = helper_result["compression"]
         elif isinstance(result, unyt_array):  # also recognizes cosmo_quantity
             if not isinstance(result, cosmo_array):
@@ -1762,6 +2107,7 @@ class cosmo_array(unyt_array):
                 )
             result.comoving = helper_result["comoving"]
             result.cosmo_factor = ret_cf
+            result.valid_transform = helper_result["valid_transform"]
             result.compression = helper_result["compression"]
         if "out" in kwargs:
             out = kwargs.pop("out")
@@ -1776,6 +2122,7 @@ class cosmo_array(unyt_array):
                 if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
                     out.comoving = helper_result["comoving"]
                     out.cosmo_factor = ret_cf
+                    out.valid_transform = helper_result["valid_transform"]
                     out.compression = helper_result["compression"]
             else:
                 out = tuple(
@@ -1794,6 +2141,7 @@ class cosmo_array(unyt_array):
                     if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
                         o.comoving = helper_result["comoving"]
                         o.cosmo_factor = ret_cf
+                        o.valid_transform = helper_result["valid_transform"]
                         o.compression = helper_result["compression"]
         return result
 
@@ -1865,10 +2213,12 @@ class cosmo_array(unyt_array):
                 if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
                     r.comoving = helper_result["comoving"]
                     r.cosmo_factor = ret_cf
+                    r.valid_transform = helper_result["valid_transform"]
                     r.compression = helper_result["compression"]
         elif isinstance(result, cosmo_array):  # also recognizes cosmo_quantity
             result.comoving = helper_result["comoving"]
             result.cosmo_factor = ret_cf
+            result.valid_transform = helper_result["valid_transform"]
             result.compression = helper_result["compression"]
         if "out" in kwargs:
             out = kwargs.pop("out")
@@ -1877,12 +2227,14 @@ class cosmo_array(unyt_array):
                 if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
                     out.comoving = helper_result["comoving"]
                     out.cosmo_factor = ret_cf
+                    out.valid_transform = helper_result["valid_transform"]
                     out.compression = helper_result["compression"]
             else:
                 for o in out:
                     if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
                         o.comoving = helper_result["comoving"]
                         o.cosmo_factor = ret_cf
+                        o.valid_transform = helper_result["valid_transform"]
                         o.compression = helper_result["compression"]
 
         return result
@@ -2107,7 +2459,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
 
         valid_transform : bool
             Flag to indicate whether this array can be converted to comoving. If
-            ``False``, then ``comoving`` must be ``False``.
+            ``False``, then ``comoving`` must be ``False`` (or ``None``).
 
         compression : str
             Description of the compression filters that were applied to that array in the
@@ -2152,7 +2504,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         valid_transform = (
             getattr(input_scalar, "valid_transform", None)
             if valid_transform is None
-            else valid_transform
+            else (valid_transform if comoving is not None else False)
         )
         compression = (
             getattr(input_scalar, "compression", None)

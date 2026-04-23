@@ -36,16 +36,36 @@ the scale factor. The conversion factors can be accessed like this:
    print(rho_gas.cosmo_factor.expr)
 
 which will output ``132651.002785671`` and ``a**(-3.0)``. Converting an array to/from physical/comoving
-is done with the :meth:`~swiftsimio.objects.cosmo_array.to_physical`, :meth:`~swiftsimio.objects.cosmo_array.to_comoving`, :meth:`~swiftsimio.objects.cosmo_array.convert_to_physical` and :meth:`~swiftsimio.objects.cosmo_array.to_comoving` methods, for instance:
+is done with the :meth:`~swiftsimio.objects.cosmo_array.to_physical`, :meth:`~swiftsimio.objects.cosmo_array.to_comoving`, :meth:`~swiftsimio.objects.cosmo_array.convert_to_physical` and :meth:`~swiftsimio.objects.cosmo_array.to_comoving` methods. These can also convert units at the same time, for instance:
 
 .. code-block:: python
 
-   physical_rho_gas = rho_gas.to_physical()
+   import unyt as u
 
-   # Convert in-place
-   rho_gas.convert_to_physical()
+   # Create copies:
+   physical_rho_gas = rho_gas.to_physical()  # preserves current units
+   physical_rho_gas_cgs = rho_gas.to_physical(u.g / u.cm**3)
 
-If you instead want to get the raw array values in either physical or comoving units, the :meth:`~swiftsimio.objects.cosmo_array.to_physical_value` and :meth:`~swiftsimio.objects.cosmo_array.to_comoving_value` are provided, analogous to the :meth:`~unyt.unyt_array.unyt_array.to_value`.
+   # Convert in-place:
+   rho_gas.convert_to_physical()  # preserves current units
+   rho_gas.convert_to_physical(u.g / u.cm ** 2)
+
+Equivalently, the :meth:`~swiftsimio.objects.cosmo_array.to` can accept a comoving argument:
+
+.. code-block:: python
+
+   # Create copies:
+   physical_rho_gas = rho_gas.to(comoving=False)  # preserves current unit
+   physical_rho_gas_cgs = rho_gas.to(u.g / u.cm**3, comoving=False)
+
+If you instead want to get the raw array values in either physical or comoving units, the :meth:`~swiftsimio.objects.cosmo_array.to_physical_value` and :meth:`~swiftsimio.objects.cosmo_array.to_comoving_value` are provided, analogous to the :meth:`~unyt.unyt_array.unyt_array.to_value` (which also has a ``comoving`` argument available):
+
+.. code-block:: python
+
+   physical_rho_gas_cgs = rho_gas.to_physical_value(u.g / u.cm**3)
+   comoving_rho_gas_cgs = rho_gas.to_comoving_value(u.g / u.cm**3)
+   # Or:
+   physical_rho_gas_cgs = rho_gas.to_value(u.g / u.cm**3, comoving=False)
 
 The ``valid_transform`` is a boolean flag that is set to ``False`` for some arrays that don't make sense to convert to comoving.
 
