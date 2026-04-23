@@ -1667,7 +1667,7 @@ def _prepare_array_block_args(lst: list, recursing: bool = False) -> dict:
         ret_lst = lst
     return {
         "args": ret_lst,
-        "kwargs": dict(),
+        "kwargs": {},
         "comoving": ret_cm,
         "cosmo_factor": ret_cf,
         "valid_transform": ret_vt,
