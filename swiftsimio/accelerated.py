@@ -5,7 +5,7 @@ Numba does not use classes, unfortunately.
 """
 
 import numpy as np
-
+import h5py
 from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
@@ -168,6 +168,144 @@ def read_ranges_from_file_unchunked(
     to_native_byteorder_inplace(output)
 
     return output
+
+
+def read_ranges_from_file_low_level(
+    handle: Dataset,
+    ranges: np.ndarray,
+    output_shape: tuple,
+    output_type: type = np.float64,
+    columns: slice = np.s_[:],
+) -> np.array:
+    """
+    Read only a selection of index ranges from a dataset.
+
+    Takes a hdf5 dataset and the set of ranges from ranges_from_array,
+    selects all ranges with select_hyperslab(), then reads all of the
+    data with a single read() call. We do not distinguish between
+    chunked and un-chunked cases here.
+
+    Parameters
+    ----------
+    handle : Dataset
+        HDF5 dataset to slice data from.
+
+    ranges : np.ndarray
+        Array of ranges (see :func:`ranges_from_array`).
+
+    output_shape : tuple
+        Resultant shape of output.
+
+    output_type : type, optional
+        ``numpy`` type of output elements. If not supplied, we assume ``np.float64``.
+
+    columns : slice, optional
+        Selector for columns if using a multi-dimensional array. If the array is only
+        a single dimension this is not used.
+
+    Returns
+    -------
+    np.ndarray
+        Result from reading only the relevant values from ``handle``.
+    """
+    # This will only work if slices do not overlap
+    order = np.argsort(ranges[:, 0])
+    sorted_starts = ranges[order, 0]
+    sorted_stops = ranges[order, 1]
+    if np.any(sorted_stops[:-1] > sorted_starts[1:]):
+        raise RuntimeError("slices must not overlap")
+
+    # Get dataset handle
+    dataset_id = handle.id
+
+    # Get file dataspace handle
+    file_space_id = dataset_id.get_space()
+
+    # Determine range of elements to read in the second dimension (if any)
+    if len(handle.shape) == 1:
+        column_start = ()
+        column_count = ()
+    elif len(handle.shape) == 2:
+        if isinstance(columns, slice):
+            start, stop, step = columns.indices(handle.shape[1])
+            if step != 1:
+                raise RuntimeError("Can only handle column slices with step=1")
+            column_start = (start,)
+            column_count = (stop - start,)
+        elif isinstance(columns, int):
+            column_start = (columns,)
+            column_count = (1,)
+        else:
+            raise RuntimeError("columns parameter must be slice or integer")
+    else:
+        raise RuntimeError("Can only handle 1 or 2 dimensional datasets")
+
+    # Select the slices to read
+    nr_in_first_dim = 0
+    file_space_id.select_none()
+    for start, stop in ranges:
+        count = stop - start
+        if count > 0:
+            # Select this slice
+            slice_start = (start,) + column_start
+            slice_count = (count,) + column_count
+            file_space_id.select_hyperslab(
+                slice_start, slice_count, op=h5py.h5s.SELECT_OR
+            )
+            nr_in_first_dim += count
+
+    # Allocate the output array
+    result_shape = (nr_in_first_dim,) + column_count
+    result = np.ndarray(result_shape, dtype=output_type)
+
+    # Output array must have the expected number of elements
+    nr_selected = file_space_id.get_select_npoints()
+    if nr_selected != result.size:
+        raise RuntimeError(
+            "Output buffer is not the right size for the selected slices!"
+        )
+
+    # If we selected any elements, read the data
+    if nr_in_first_dim > 0:
+        mem_space_id = h5py.h5s.create_simple(result_shape)
+        dataset_id.read(mem_space_id, file_space_id, result)
+        mem_space_id.close()
+    file_space_id.close()
+
+    # Reshape: if columns was an integer we need to remove a dimension
+    result = result.reshape(output_shape)
+
+    # If the slices were not sorted by start index, we'll need to reorder the data
+    if np.any(ranges[1:, 0] <= ranges[:-1, 0]):
+        # Compute the offset into the result array for each slice.
+        # HDF5 reads the slices in order of starting index.
+        ranges_read = np.empty_like(ranges)
+        offset = 0
+        for i in np.argsort(ranges[:, 0]):
+            n = ranges[i, 1] - ranges[i, 0]
+            ranges_read[i, 0] = offset
+            ranges_read[i, 1] = offset + n
+            offset += n
+        # Copy the slices to a new array in the input slice order
+        result_sorted = np.empty_like(result)
+        offset = 0
+        for start, stop in ranges_read:
+            n = stop - start
+            result_sorted[offset : offset + n, ...] = result[start:stop, ...]
+            offset += n
+        result = result_sorted
+
+    if not result.dtype.isnative:
+        # The data type we have read in is the opposite endian-ness to the
+        # machine we're on. Convert it here, to save pain down the line.
+        result = result.byteswap(inplace=True).newbyteorder()
+
+        if not result.dtype.isnative:
+            raise RuntimeError(
+                "Unable to find a native type that is a match to read data."
+            )
+
+    return result
 
 
 def index_dataset(handle: Dataset, mask_array: np.array) -> np.array:
@@ -522,20 +660,10 @@ def read_ranges_from_file(
     read_ranges_from_file_unchunked
         Reads data ranges for unchunked hdf5 file.
     """
-    # It was found that the range size for which read_ranges_from_file_chunked was
-    # faster than unchunked was approximately 5e5. For ranges larger than this the
-    # overheads associated with read_ranges_from_file_chunked caused slightly worse
-    # performance than read_ranges_from_file_unchunked
-    cross_over_range_size = 5e5
-
-    average_range_size = np.diff(ranges).mean()
-    read_ranges = (
-        read_ranges_from_file_chunked
-        if handle.chunks is not None and average_range_size < cross_over_range_size
-        else read_ranges_from_file_unchunked
-    )
     return (
-        read_ranges_from_hdfstream if hasattr(handle, "request_slices") else read_ranges
+        read_ranges_from_hdfstream
+        if hasattr(handle, "request_slices")
+        else read_ranges_from_file_low_level
     )(handle, ranges, output_shape, output_type, columns)
 
 
