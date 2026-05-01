@@ -1,5 +1,7 @@
 """Tests of the subset writer feature."""
 
+import pytest
+import numpy as np
 from swiftsimio.subset_writer import write_subset
 from swiftsimio import load, SWIFTDataset
 from .helper import _mask_without_warning as mask
@@ -109,3 +111,19 @@ def test_subset_writer(snapshot_or_soap):
     os.remove(outfile)
 
     return
+
+
+@pytest.mark.parametrize("with_spatial", (True, False))
+def test_subset_writer_constrained_indices(soap_example, with_spatial):
+    """Test that a subset written with constrain_indices has valid metadata."""
+    if isinstance(soap_example, (Path, str)):
+        filename = str(soap_example)
+    else:
+        filename = soap_example.filename
+    m = mask(soap_example)
+    if with_spatial:
+        region = np.vstack([m.metadata.boxsize * 0, m.metadata.boxsize * 0.5]).T
+        m.constrain_spatial(region)
+    m.constrain_indices([1, 2, 3])
+    outfile = os.path.basename(filename).replace(".hdf5", "_subset.hdf5")
+    write_subset(outfile, m)
