@@ -32,3 +32,5 @@ stars = {
 black_holes = {**_shared}
 
 neutrinos = {**_shared}
+
+sidm = {**_shared}
