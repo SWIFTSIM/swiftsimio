@@ -344,3 +344,34 @@ def test_mask_pad_warning(cosmological_volume):
             UserWarning, match="Snapshot does not contain Cells/MinPositions"
         ):
             mask(cosmological_volume)
+
+
+@pytest.mark.parametrize("spatial_only", (True, False))
+def test_get_masked_counts_offsets_entire_box(snapshot_or_soap, spatial_only):
+    """Check get_masked_counts_offsets against known solution for entire box."""
+    m = mask(snapshot_or_soap, spatial_only=spatial_only)
+    region = np.vstack((0 * m.metadata.boxsize, m.metadata.boxsize)).T
+    m.constrain_spatial(region)
+    masked_counts, masked_offsets = m.get_masked_counts_offsets()
+    for k in m.counts.keys():
+        assert (m.counts[k] == masked_counts[k]).all()
+        assert (m.offsets[k] == masked_offsets[k]).all()
+
+
+def test_get_masked_counds_offsets_spatial_only_vs_not(snapshot_or_soap):
+    """Check that the two types of masking give consistent counts and offsets."""
+    m_spatial_only = mask(snapshot_or_soap, spatial_only=True)
+    m_non_spatial_only = mask(snapshot_or_soap, spatial_only=False)
+    boxsize = m_spatial_only.metadata.boxsize
+    region = np.vstack((0.4 * boxsize, 0.6 * boxsize)).T
+    m_spatial_only.constrain_spatial(region)
+    m_non_spatial_only.constrain_spatial(region)
+    spatial_only_counts, spatial_only_offsets = (
+        m_spatial_only.get_masked_counts_offsets()
+    )
+    non_spatial_only_counts, non_spatial_only_offsets = (
+        m_spatial_only.get_masked_counts_offsets()
+    )
+    for k in m_spatial_only.counts.keys():
+        assert (spatial_only_counts[k] == non_spatial_only_counts[k]).all()
+        assert (spatial_only_offsets[k] == non_spatial_only_offsets[k]).all()
