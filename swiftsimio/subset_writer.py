@@ -349,21 +349,36 @@ def connect_links(
         outfile[links_list[i]] = h5py.SoftLink(paths_list[i])
 
 
-def write_subset(output_file: str, mask: SWIFTMask) -> None:
+def write_subset(
+    output_file: str, mask: SWIFTMask, allow_unconstrained: bool = False
+) -> None:
     """
-    Write subset of snapshot according to specified mask to new snapshot file.
+    Write subset of data according to specified mask to new data file.
 
     Parameters
     ----------
     output_file : str
-        Path to input snapshot.
-
-    output_file : str
-        Path to output snapshot.
+        Path to output file for data subset.
 
     mask : SWIFTMask
         The mask used to define subset that is written to new snapshot.
+
+    allow_unconstrained : bool
+        Set to ``True`` to allow a mask with no constraints applied, this would normally
+        result in a full copy of the data to a new file.
+
+    Raises
+    ------
+    ValueError
+        If the ``mask`` has no constraints applied, unless ``allow_unconstrained`` is set
+        to ``True``.
     """
+    if not mask.constrained and not allow_unconstrained:
+        raise ValueError(
+            "Mask does not have any constraint applied, this will result in a full copy "
+            "(not subset) of the data and is probably unintentional. Apply a mask "
+            "constraint first, or override this error with `allow_unconstrained=True`."
+        )
     # Open the files
     with mask.metadata.open_file() as infile, h5py.File(output_file, "w") as outfile:
         # Write metadata and data subset

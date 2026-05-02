@@ -626,7 +626,7 @@ class SWIFTDataset(HandleProvider):
     filename : str
         Name of file containing snapshot.
 
-    mask : np.ndarray, optional
+    mask : ~swiftsimio.masks.SWIFTMask, optional
         Mask object containing dataset to selected particles.
 
     handle : h5py.File, optional
