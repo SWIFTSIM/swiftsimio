@@ -117,10 +117,11 @@ def test_subset_writer(snapshot_or_soap):
 @pytest.mark.parametrize("spatial_only", (True, False))
 def test_subset_writer_constrained_indices(soap_example, with_spatial, spatial_only):
     """Test that a subset written with constrain_indices has valid metadata."""
-    if isinstance(soap_example, (Path, str)):
-        filename = str(soap_example)
-    else:
-        filename = soap_example.filename
+    filename = (
+        str(soap_example)
+        if isinstance(soap_example, (Path, str))
+        else soap_example.filename
+    )
     m = mask(soap_example, spatial_only=spatial_only)
     region = np.vstack([m.metadata.boxsize * 0, m.metadata.boxsize * 0.5]).T
     if with_spatial:
@@ -133,3 +134,35 @@ def test_subset_writer_constrained_indices(soap_example, with_spatial, spatial_o
     sub_mask.constrain_spatial(region)
     sub_dat = load(outfile, mask=sub_mask)
     sub_dat.bound_subhalo.total_mass
+    # clean up
+    os.remove(outfile)
+
+
+def test_masking_subset(snapshot_or_soap):
+    """
+    Test that we can select a sub-region of a subset written to file.
+
+    We write out an octant of a snapshot or soap catalogue as a new file, then load a
+    sub-region of that octant from both the full file and the file with just the octant.
+    Finally we compare the contents of those two masked datasets to make sure that they
+    match.
+    """
+    filename = (
+        str(snapshot_or_soap)
+        if isinstance(snapshot_or_soap, (Path, str))
+        else snapshot_or_soap.filename
+    )
+    octant_mask = mask(snapshot_or_soap)
+    boxsize = octant_mask.metadata.boxsize
+    octant_region = np.vstack([boxsize * 0.5, boxsize]).T
+    octant_mask.constrain_spatial(octant_region)
+    outfile = os.path.basename(filename).replace(".hdf5", "_octant.hdf5")
+    write_subset(outfile, octant_mask)
+    small_region = np.vstack([boxsize * 0, boxsize * 0.001]).T
+    small_mask_full = mask(snapshot_or_soap)
+    small_mask_sub = mask(outfile)
+    small_mask_full.constrain_spatial(small_region)
+    small_mask_sub.constrain_spatial(small_region)
+    d_full = load(snapshot_or_soap, mask=small_mask_full)
+    d_sub = load(outfile, mask=small_mask_sub)
+    compare_data_contents(d_full, d_sub)
