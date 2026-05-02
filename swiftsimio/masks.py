@@ -43,8 +43,9 @@ def constraint(method: Callable) -> Callable:
         **kwargs: dict,
     ) -> None:  # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
-        self.constrained = True
-        return method(self, *args, **kwargs)
+        retval = method(self, *args, **kwargs)
+        self.constrained = True  # only set after function call
+        return retval
 
     return wrapped
 
@@ -814,31 +815,37 @@ class SWIFTMask(HandleProvider):
             The structure of the dictionaries is the same for the offsets, with the
             arrays now storing the offset of the first particle in the cell.
         """
-        if not self.spatial_only:
-            self.convert_masks_to_ranges()
         masked_counts = {}
         masked_offsets = {}
         for part_type in self.counts.keys():
             counts = self.counts[part_type]
             offsets = self.offsets[part_type]
-            # figure out what cell each range starts in (cell_ranges[:, 0]) and ends
-            # in (cell_ranges[:, 1])
-            # counts and offsets are sorted by offsets when loaded: searchsorted valid
-            cell_ranges = np.searchsorted(
-                offsets[1:],
-                getattr(self, f"_{part_type}"),
-                side="right",
-            )
-            # ----- is this double loop refactorable? -----
-            masked_counts[part_type] = np.zeros(counts.shape, dtype=np.int64)
-            for (start_cell, end_cell), mask_range in zip(
-                cell_ranges, getattr(self, f"_{part_type}")
-            ):
-                for cell in range(start_cell, end_cell + 1):
-                    masked_counts[part_type][cell] += min(
-                        mask_range[1], offsets[cell] + counts[cell]
-                    ) - max(mask_range[0], offsets[cell])
-            # ---------------------------------------------
+            if self.spatial_only:
+                # figure out what cell each range starts in (cell_ranges[:, 0]) and ends
+                # in (cell_ranges[:, 1])
+                # counts and offsets are sorted by offsets when loaded: searchsorted valid
+                cell_ranges = np.searchsorted(
+                    offsets[1:],
+                    getattr(self, f"_{part_type}"),
+                    side="right",
+                )
+                # ----- is this double loop refactorable? -----
+                masked_counts[part_type] = np.zeros(counts.shape, dtype=np.int64)
+                for (start_cell, end_cell), mask_range in zip(
+                    cell_ranges, getattr(self, f"_{part_type}")
+                ):
+                    for cell in range(start_cell, end_cell + 1):
+                        masked_counts[part_type][cell] += min(
+                            mask_range[1], offsets[cell] + counts[cell]
+                        ) - max(mask_range[0], offsets[cell])
+                # ---------------------------------------------
+            else:
+                masked_counts[part_type] = np.array(
+                    [
+                        getattr(self, f"_{part_type}")[slice(*cell_slice)].sum()
+                        for cell_slice in np.vstack((offsets, offsets + counts)).T
+                    ]
+                )
             masked_offsets[part_type] = np.r_[
                 0, np.cumsum(masked_counts[part_type])[:-1]
             ]
