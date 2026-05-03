@@ -380,6 +380,7 @@ def write_subset(
             "constraint first, or override this error with `allow_unconstrained=True`."
         )
     # Open the files
+    mask.convert_masks_to_ranges()
     with mask.metadata.open_file() as infile, h5py.File(output_file, "w") as outfile:
         # Write metadata and data subset
         list_of_links, list_of_link_paths = find_links(infile)

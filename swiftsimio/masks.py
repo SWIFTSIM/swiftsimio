@@ -728,6 +728,7 @@ class SWIFTMask(HandleProvider):
                 where_array = np.where(getattr(self, mask))[0]
                 setattr(self, f"{mask}_size", where_array.size)
                 setattr(self, mask, ranges_from_array(where_array))
+            self.spatial_only = True
 
         return
 
