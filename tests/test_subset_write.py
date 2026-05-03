@@ -158,7 +158,9 @@ def test_masking_subset(snapshot_or_soap):
     octant_mask.constrain_spatial(octant_region)
     outfile = os.path.basename(filename).replace(".hdf5", "_octant.hdf5")
     write_subset(outfile, octant_mask)
-    small_region = np.vstack([boxsize * 0, boxsize * 0.001]).T
+    # have to be a bit careful to pick a region with at least a subhalo in it for soap,
+    # otherwise it's a trivial comparison and the test fails:
+    small_region = np.vstack([boxsize * 0.8, boxsize * 0.8001]).T
     small_mask_full = mask(snapshot_or_soap)
     small_mask_sub = mask(outfile)
     small_mask_full.constrain_spatial(small_region)
@@ -166,3 +168,5 @@ def test_masking_subset(snapshot_or_soap):
     d_full = load(snapshot_or_soap, mask=small_mask_full)
     d_sub = load(outfile, mask=small_mask_sub)
     compare_data_contents(d_full, d_sub)
+    # clean up
+    os.remove(outfile)
