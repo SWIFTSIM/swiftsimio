@@ -1650,7 +1650,11 @@ class cosmo_array(unyt_array):
            cosmo_quantity(500., 'kpc', comoving='False', cosmo_factor='a at a=0.5', \
            valid_transform='True')
         """
-        if not self.valid_transform and (comoving != self.comoving):
+        if (
+            (comoving is not None)
+            and (not self.valid_transform)
+            and (comoving != self.comoving)
+        ):
             raise InvalidConversionError
         if units is None:
             arr_copy = self.copy()
