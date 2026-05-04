@@ -365,7 +365,7 @@ class SWIFTMask(HandleProvider):
             if self.cell_sort is None:
                 # Only compute once; not stable between particle
                 # types if some datasets do not have particles in a cell!
-                self.cell_sort = np.argsort(offsets)
+                self.cell_sort = np.argsort(offsets, stable=True)
 
             self.offsets[key] = offsets[self.cell_sort]
             self.counts[key] = counts[self.cell_sort]
