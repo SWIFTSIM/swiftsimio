@@ -22,7 +22,7 @@ packages = [
 
 [project]
 name = "swiftsimio"
-version="12.1.2"
+version="12.1.3"
 authors = [
     { name="Josh Borrow", email="josh@joshborrow.com" },
 ]
