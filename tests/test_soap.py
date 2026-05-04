@@ -99,9 +99,6 @@ def test_soap_multiple_row_mask_non_spatial(soap_example, spatial_only):
     with open_path_or_handle(soap_example) as f:
         all_values = f["SO/200_mean/TotalMass"][...]
 
-    # Expected ordering depends on whether we use spatial_only
+    # Expected ordering is that of the *sorted* indices
     values_read = data.spherical_overdensity_200_mean.total_mass.value
-    if spatial_only:
-        assert np.all(values_read == all_values[indices])
-    else:
-        assert np.all(values_read == all_values[sorted(indices)])
+    assert np.all(values_read == all_values[sorted(indices)])
