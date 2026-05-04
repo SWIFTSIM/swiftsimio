@@ -1293,9 +1293,11 @@ class TestPhysicalComovingConversion:
         except InvalidConversionError:
             # can't initialize an array like this
             return
-        if (starting_comoving != target_comoving and not valid_transform) or (
-            starting_comoving is None and target_comoving is not None
-        ):
+        if (
+            target_comoving is not None
+            and starting_comoving != target_comoving
+            and not valid_transform
+        ) or (starting_comoving is None and target_comoving is not None):
             with pytest.raises(InvalidConversionError):
                 arr.to(u.kpc, comoving=target_comoving)
             return

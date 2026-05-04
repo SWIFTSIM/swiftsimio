@@ -1,5 +1,5 @@
-Citing SWIFTGalaxy
-==================
+Citing swiftsimio
+=================
 
 .. include:: ../../../README.rst
    :start-after: CITING_START_LABEL
