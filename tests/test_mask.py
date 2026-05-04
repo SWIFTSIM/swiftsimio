@@ -358,7 +358,7 @@ def test_get_masked_counts_offsets_entire_box(snapshot_or_soap, spatial_only):
         assert (m.offsets[k] == masked_offsets[k]).all()
 
 
-def test_get_masked_counds_offsets_spatial_only_vs_not(snapshot_or_soap):
+def test_get_masked_counts_offsets_spatial_only_vs_not(snapshot_or_soap):
     """Check that the two types of masking give consistent counts and offsets."""
     m_spatial_only = mask(snapshot_or_soap, spatial_only=True)
     m_non_spatial_only = mask(snapshot_or_soap, spatial_only=False)
