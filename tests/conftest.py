@@ -16,7 +16,7 @@ from swiftsimio.optional_packages import HDFSTREAM_AVAILABLE, hdfstream
 
 # URL to download the test data
 webstorage_location = (
-    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_11_2025/"
+    "https://virgodb.cosma.dur.ac.uk/swift-webstorage/IOExamples/ssio_ci_04_2026/"
 )
 
 # Where to write the downloaded files
@@ -116,6 +116,7 @@ def preload_test_data():
         "LegacyCosmologicalVolumeDithered.hdf5",
         "SoapExample.hdf5",
         "ColibreSingle.hdf5",
+        "ColibreLOS.hdf5",
     ]
     for name in all_filenames:
         _requires(name)
@@ -323,6 +324,24 @@ def soap_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
         The file name, after downloading if required.
     """
     yield request.param("SoapExample.hdf5", request)
+
+
+@pytest.fixture(params=access_methods)
+def los_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
+    """
+    Fixture provides a sample line of sight file to test on.
+
+    Parameters
+    ----------
+    request : FixtureRequest
+        Parameter value(s) from the fixture.
+
+    Yields
+    ------
+    Generator[str, None, None]
+        The file name, after downloading if required.
+    """
+    yield request.param("ColibreLOS.hdf5", request)
 
 
 @pytest.fixture(
