@@ -142,7 +142,7 @@ class SWIFTMask(HandleProvider):
 
         self._unpack_cell_metadata()
 
-        self._cell_mask = self._generate_cell_mask(restrict=None)
+        self.cell_mask = self._generate_cell_mask(restrict=None)
         if not range_mask:
             empty_masks, sizes = self._generate_empty_masks(fill_value=True)
             for mask_key, mask_value in empty_masks.items():
@@ -654,8 +654,8 @@ class SWIFTMask(HandleProvider):
 
             for group_name in self.metadata.present_group_names:
                 if self.range_mask:
-                    counts = self.counts[count_name][self._cell_mask[count_name]]
-                    offsets = self.offsets[count_name][self._cell_mask[count_name]]
+                    counts = self.counts[count_name][self.cell_mask[count_name]]
+                    offsets = self.offsets[count_name][self.cell_mask[count_name]]
 
                     this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
 
@@ -664,10 +664,10 @@ class SWIFTMask(HandleProvider):
 
                 else:
                     counts = self.counts[count_name][
-                        np.logical_not(self._cell_mask[count_name])
+                        np.logical_not(self.cell_mask[count_name])
                     ]
                     offsets = self.offsets[count_name][
-                        np.logical_not(self._cell_mask[count_name])
+                        np.logical_not(self.cell_mask[count_name])
                     ]
 
                     # We must do the whole boolean mask business.
