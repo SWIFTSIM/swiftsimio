@@ -13,14 +13,14 @@ def test_soap_can_load(soap_example):
     return
 
 
-@pytest.mark.parametrize("spatial_only", [True, False])
-def test_soap_can_mask_spatial(soap_example, spatial_only):
+@pytest.mark.parametrize("range_mask", [True, False])
+def test_soap_can_mask_spatial(soap_example, range_mask):
     """
     Check we don't crash applying a mask to a SOAP file.
 
     Covers both the spatial only and non-spatial only cases.
     """
-    this_mask = mask(soap_example, spatial_only=spatial_only)
+    this_mask = mask(soap_example, range_mask=range_mask)
 
     bs = this_mask.metadata.boxsize
     this_mask.constrain_spatial([[0 * b, 0.5 * b] for b in bs])
@@ -32,7 +32,7 @@ def test_soap_can_mask_spatial(soap_example, spatial_only):
 
 def test_soap_can_mask_spatial_and_non_spatial_actually_use(soap_example):
     """Check that non-spatial masking is equivalent to loading all and masking by hand."""
-    this_mask = mask(soap_example, spatial_only=False)
+    this_mask = mask(soap_example, range_mask=False)
 
     lower = cosmo_quantity(
         1e5,
@@ -70,7 +70,7 @@ def test_soap_can_mask_spatial_and_non_spatial_actually_use(soap_example):
 
 def test_soap_single_row_mask(soap_example):
     """Check that we can mask down to a single row."""
-    this_mask = mask(soap_example, spatial_only=True)
+    this_mask = mask(soap_example, range_mask=True)
 
     this_mask.constrain_index(21)
 
@@ -79,14 +79,14 @@ def test_soap_single_row_mask(soap_example):
     assert len(data.spherical_overdensity_200_mean.total_mass) == 1
 
 
-@pytest.mark.parametrize("spatial_only", [True, False])
-def test_soap_multiple_row_mask_non_spatial(soap_example, spatial_only):
+@pytest.mark.parametrize("range_mask", [True, False])
+def test_soap_multiple_row_mask_non_spatial(soap_example, range_mask):
     """
     Check that we can mask multiple non-consecutive rows.
 
     Covers both spatial only and non-spatial only cases.
     """
-    this_mask = mask(soap_example, spatial_only=spatial_only)
+    this_mask = mask(soap_example, range_mask=range_mask)
 
     indices = [0, 1, 2, 3, 6, 23, 94, 57]
 

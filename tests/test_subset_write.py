@@ -114,15 +114,15 @@ def test_subset_writer(snapshot_or_soap):
 
 
 @pytest.mark.parametrize("with_spatial", (True, False))
-@pytest.mark.parametrize("spatial_only", (True, False))
-def test_subset_writer_constrained_indices(soap_example, with_spatial, spatial_only):
+@pytest.mark.parametrize("range_mask", (True, False))
+def test_subset_writer_constrained_indices(soap_example, with_spatial, range_mask):
     """Test that a subset written with constrain_indices has valid metadata."""
     filename = (
         str(soap_example)
         if isinstance(soap_example, (Path, str))
         else soap_example.filename
     )
-    m = mask(soap_example, spatial_only=spatial_only)
+    m = mask(soap_example, range_mask=range_mask)
     region = np.vstack([m.metadata.boxsize * 0, m.metadata.boxsize * 0.5]).T
     if with_spatial:
         m.constrain_spatial(region)
