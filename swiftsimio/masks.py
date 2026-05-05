@@ -133,7 +133,13 @@ class SWIFTMask(HandleProvider):
 
         self._cell_mask = self._generate_cell_mask(restrict=None)
         if not spatial_only:
-            self._generate_empty_masks()
+            empty_masks, sizes = self._generate_empty_masks(fill_value=True)
+            for mask_key, mask_value in empty_masks.items():
+                setattr(self, mask_key, mask_value)
+            for size_key, size_value in sizes.items():
+                setattr(self, size_key, size_value)
+        else:
+            self._update_spatial_masks()
 
         self._close_handle_if_manager()
 
@@ -243,25 +249,44 @@ class SWIFTMask(HandleProvider):
 
         return getattr(self, underlying_name)
 
-    def _generate_empty_masks(self) -> None:
-        """Generate empty (all ``False``) masks for all available particle types."""
+    def _generate_empty_masks(
+        self, fill_value: bool = True
+    ) -> dict[str, np.ndarray[bool]]:
+        """
+        Generate empty (all ``True``) masks for all available particle types.
+
+        Parameters
+        ----------
+        fill_value : bool
+            Value to fill the arrays with, either ``True`` or ``False``.
+
+        Returns
+        -------
+        dict
+            Contains the names of the masks as keys and the masks themselves as
+            corresponding values.
+
+        dict
+            Contains the sizes of the masks labelled with keys matching the masks names
+            suffixed with ``"_size"``.
+        """
         mapping = self._generate_mapping_dictionary()
 
+        mask_func = np.ones if fill_value else np.zeros
+        empty_masks = {}
+        sizes = {}
         if self.metadata.shared_cell_counts is not None:
             size = getattr(
                 self.metadata, f"n_{self.metadata.shared_cell_counts.lower()}"
             )
-            self._shared = np.ones(size, dtype=bool)
-            self._shared_size = size
-
+            empty_masks["_shared"] = mask_func(size, dtype=bool)
+            sizes["_shared_size"] = size
         else:
-            # Create empty masks for each and every particle type.
             for group_name, data_name in mapping.items():
                 size = getattr(self.metadata, f"n_{group_name}")
-                setattr(self, data_name, np.ones(size, dtype=bool))
-                setattr(self, f"{data_name}_size", size)
-
-        return
+                empty_masks[data_name] = mask_func(size, dtype=bool)
+                sizes[f"{data_name}_size"] = size
+        return empty_masks, sizes
 
     def _unpack_cell_metadata(self) -> None:
         """
@@ -605,48 +630,40 @@ class SWIFTMask(HandleProvider):
 
         return cell_mask
 
-    def _update_spatial_mask(
-        self, restrict: cosmo_array, data_name: str, cell_mask: dict
-    ) -> None:
+    def _update_spatial_masks(self) -> None:
         """
-        Update the particle mask using the cell mask.
+        Update the particle masks using the cell masks.
 
         We actually overwrite all non-used cells with False, rather than the
         inverse, as we assume initially that we want to write all particles in,
         and we want to respect other masks that may have been applied to the data.
-
-        Parameters
-        ----------
-        restrict : cosmo_array
-            Currently unused.
-
-        data_name : str
-            Underlying data to update (e.g. ``_gas``, ``_shared``).
-
-        cell_mask : dict
-            Cell mask used to update the particle mask.
         """
-        count_name = data_name[1:]  # Remove the underscore
+        for data_name in self._generate_update_list():
+            count_name = data_name[1:]  # Remove the underscore
 
-        for group_name in self.metadata.present_group_names:
-            if self.spatial_only:
-                counts = self.counts[count_name][cell_mask[count_name]]
-                offsets = self.offsets[count_name][cell_mask[count_name]]
+            for group_name in self.metadata.present_group_names:
+                if self.spatial_only:
+                    counts = self.counts[count_name][self._cell_mask[count_name]]
+                    offsets = self.offsets[count_name][self._cell_mask[count_name]]
 
-                this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
+                    this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
 
-                setattr(self, data_name, np.array(this_mask))
-                setattr(self, f"{data_name}_size", np.sum(counts))
+                    setattr(self, data_name, np.array(this_mask))
+                    setattr(self, f"{data_name}_size", np.sum(counts))
 
-            else:
-                counts = self.counts[count_name][~cell_mask[count_name]]
-                offsets = self.offsets[count_name][~cell_mask[count_name]]
+                else:
+                    counts = self.counts[count_name][
+                        np.logical_not(self._cell_mask[count_name])
+                    ]
+                    offsets = self.offsets[count_name][
+                        np.logical_not(self._cell_mask[count_name])
+                    ]
 
-                # We must do the whole boolean mask business.
-                this_mask = getattr(self, data_name)
+                    # We must do the whole boolean mask business.
+                    this_mask = getattr(self, data_name)
 
-                for count, offset in zip(counts, offsets):
-                    this_mask[offset : count + offset] = False
+                    for count, offset in zip(counts, offsets):
+                        this_mask[offset : count + offset] = False
 
         return
 
@@ -704,21 +721,21 @@ class SWIFTMask(HandleProvider):
             # we just make a new mask
             self.cell_mask = self._generate_cell_mask(restrict)
 
-        for mask in self._generate_update_list():
-            self._update_spatial_mask(restrict, mask, self.cell_mask)
+        self._update_spatial_masks()
 
         return
 
     def convert_masks_to_ranges(self) -> None:
         """
-        Convert the masks to range masks so that they take up less space.
+        Convert the masks to range masks.
 
-        This is non-reversible. It is also not required, but can help save space
-        on highly constrained machines before you start reading in the data.
+        These are more compact than boolean masks so they can help save space on highly
+        constrained machines.
 
-        If you don't know what you are doing please don't use this.
+        See Also
+        --------
+        convert_masks_to_bool
         """
-        # Spatial only already comes like this!
         if not self.spatial_only:
             # We must do the whole boolean mask stuff. To do that, we
             # First, convert each boolean mask into an integer mask
@@ -729,6 +746,28 @@ class SWIFTMask(HandleProvider):
                 setattr(self, f"{mask}_size", where_array.size)
                 setattr(self, mask, ranges_from_array(where_array))
             self.spatial_only = True
+
+        return
+
+    def convert_masks_to_bool(self) -> None:
+        """
+        Convert the masks to boolean masks.
+
+        These are sometimes easier to work with than range masks.
+
+        See Also
+        --------
+        convert_masks_to_ranges
+        """
+        if self.spatial_only:
+            empty_masks, sizes = self._generate_empty_masks(fill_value=False)
+            for mask_key, mask_value in empty_masks.items():
+                for r in getattr(self, mask_key):
+                    mask_value[slice(*r)] = True
+                setattr(self, mask_key, mask_value)
+            for size_key, size_value in sizes.items():
+                setattr(self, size_key, size_value)
+            self.spatial_only = False
 
         return
 

@@ -375,3 +375,34 @@ def test_get_masked_counts_offsets_spatial_only_vs_not(snapshot_or_soap):
     for k in m_spatial_only.counts.keys():
         assert (spatial_only_counts[k] == non_spatial_only_counts[k]).all()
         assert (spatial_only_offsets[k] == non_spatial_only_offsets[k]).all()
+
+
+def test_convert_to_ranges_roundtrip(snapshot_or_soap):
+    """Check that we can convert bool mask to ranges and back."""
+    m = mask(snapshot_or_soap, spatial_only=False)
+    original_m = {k: getattr(m, k) for k in m._generate_update_list()}
+    m.convert_masks_to_ranges()
+    for k in original_m:
+        assert getattr(m, k).shape != original_m[k].shape
+    m.convert_masks_to_bool()
+    for k in original_m:
+        assert (getattr(m, k) == original_m[k]).all()
+
+
+def test_convert_to_bool_roundtrip(snapshot_or_soap):
+    """Check that we can convert range mask to bool and back."""
+    m = mask(snapshot_or_soap, spatial_only=True)
+    original_m = {k: getattr(m, k) for k in m._generate_update_list()}
+    m.convert_masks_to_bool()
+    for k in original_m:
+        assert getattr(m, k).shape != original_m[k].shape
+    m.convert_masks_to_ranges()
+    for k in original_m:
+        # the original range had an entry per cell, but the converted range merges this
+        combined_range = original_m[k][0]
+        for partial_range in original_m[k][1:]:
+            if combined_range[-1] == partial_range[0]:
+                combined_range = np.array([combined_range[0], partial_range[1]])
+            else:
+                raise ValueError("Expected consecutive ranges.")
+        assert (getattr(m, k) == combined_range).all()
