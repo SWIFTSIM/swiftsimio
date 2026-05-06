@@ -790,7 +790,7 @@ class cosmo_factor(object):
         elif self.a_factor is None or b.a_factor is None:
             # we know they're not both None from previous case
             a_factor_match = False
-        elif np.isclose(self.a_factor, b.a_factor, rtol=1e-9):
+        elif np.isclose(self.a_factor, b.a_factor, rtol=1e-6):
             a_factor_match = True
         else:
             a_factor_match = False
