@@ -8,7 +8,7 @@ from swiftsimio.visualisation._vistools import (
     _get_projection_field,
     _get_region_info,
     _get_rotated_and_wrapped_coordinates,
-    backend_restore_cosmo_and_units,
+    backend_strip_and_restore_cosmo_and_units,
 )
 
 
@@ -133,5 +133,5 @@ def slice_gas(
     )
     norm = region_info["max_range"] ** 3
     backend_func = (backends_parallel if parallel else backends)[backend]
-    image = backend_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
+    image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
     return image

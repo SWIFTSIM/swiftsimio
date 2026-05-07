@@ -15,8 +15,39 @@ from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 from swiftsimio._handle_provider import HandleProvider
 
+from typing import Callable
+
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
+
+
+def constraint(method: Callable) -> Callable:
+    """
+    Decorata a function that constrains the mask.
+
+    Parameters
+    ----------
+    method : Callable
+        A method of the :class:`~swiftsimio.masks.SWIFTMask` class that applies a
+        constraint to the mask.
+
+    Returns
+    -------
+    Callable
+        The decorated method.
+    """
+
+    def wrapped(
+        self: "SWIFTMask",
+        *args: tuple,
+        **kwargs: dict,
+    ) -> None:  # noqa numpydoc ignore=GL08
+        # omit docstring so that sphinx picks up docstring of wrapped function
+        retval = method(self, *args, **kwargs)
+        self.constrained = method.__name__  # only set after function call
+        return retval
+
+    return wrapped
 
 
 class SWIFTMask(HandleProvider):
@@ -38,8 +69,8 @@ class SWIFTMask(HandleProvider):
     metadata : SWIFTMetadata
         Metadata specifying masking for reading of snapshots.
 
-    spatial_only : bool, optional
-        If True (the default), you can only constrain spatially.
+    range_mask : bool, optional
+        If ``True`` (the default), you can only constrain spatially.
         However, this is significantly faster and considerably
         more memory efficient (~ bytes per cell, rather than
         ~ bytes per particle).
@@ -59,25 +90,38 @@ class SWIFTMask(HandleProvider):
 
     handle : h5py.File, optional
         The file handle to read metadata from.
+
+    spatial_only : bool, optional
+        Deprecated, use ``range_mask`` instead.
     """
 
     group_mapping: dict | None = None
     group_size_mapping: dict | None = None
     filename: Path
+    constrained: str | None
 
     def __init__(
         self,
         filename: Path,
         metadata: SWIFTMetadata,
         *,
-        spatial_only: bool = True,
+        range_mask: bool = True,
         safe_padding: bool | float = _DEFAULT_SAFE_PADDING,
         handle: h5py.File | None = None,
+        spatial_only: bool | None = None,  # deprecated
     ) -> None:
+        if spatial_only is not None:
+            warnings.warn(
+                "`spatial_only` is deprecated, use `range_mask` (with the same value) "
+                "instead. Overriding `range_mask` value if provided.",
+                DeprecationWarning,
+            )
+            range_mask = spatial_only
         super().__init__(filename, handle=handle)
         self.metadata = metadata
         self.units = metadata.units
-        self.spatial_only = spatial_only
+        self.range_mask = range_mask
+        self.constrained = None
         if safe_padding is True:
             self.safe_padding = _DEFAULT_SAFE_PADDING
         elif safe_padding is False:
@@ -98,8 +142,15 @@ class SWIFTMask(HandleProvider):
 
         self._unpack_cell_metadata()
 
-        if not spatial_only:
-            self._generate_empty_masks()
+        self.cell_mask = self._generate_cell_mask(restrict=None)
+        if not range_mask:
+            empty_masks, sizes = self._generate_empty_masks(fill_value=True)
+            for mask_key, mask_value in empty_masks.items():
+                setattr(self, mask_key, mask_value)
+            for size_key, size_value in sizes.items():
+                setattr(self, size_key, size_value)
+        else:
+            self._update_spatial_masks()
 
         self._close_handle_if_manager()
 
@@ -209,25 +260,44 @@ class SWIFTMask(HandleProvider):
 
         return getattr(self, underlying_name)
 
-    def _generate_empty_masks(self) -> None:
-        """Generate empty (all ``False``) masks for all available particle types."""
+    def _generate_empty_masks(
+        self, fill_value: bool = True
+    ) -> dict[str, np.ndarray[bool]]:
+        """
+        Generate empty (all ``True``) masks for all available particle types.
+
+        Parameters
+        ----------
+        fill_value : bool
+            Value to fill the arrays with, either ``True`` or ``False``.
+
+        Returns
+        -------
+        dict
+            Contains the names of the masks as keys and the masks themselves as
+            corresponding values.
+
+        dict
+            Contains the sizes of the masks labelled with keys matching the masks names
+            suffixed with ``"_size"``.
+        """
         mapping = self._generate_mapping_dictionary()
 
+        mask_func = np.ones if fill_value else np.zeros
+        empty_masks = {}
+        sizes = {}
         if self.metadata.shared_cell_counts is not None:
             size = getattr(
                 self.metadata, f"n_{self.metadata.shared_cell_counts.lower()}"
             )
-            self._shared = np.ones(size, dtype=bool)
-            self._shared_size = size
-
+            empty_masks["_shared"] = mask_func(size, dtype=bool)
+            sizes["_shared_size"] = size
         else:
-            # Create empty masks for each and every particle type.
             for group_name, data_name in mapping.items():
                 size = getattr(self.metadata, f"n_{group_name}")
-                setattr(self, data_name, np.ones(size, dtype=bool))
-                setattr(self, f"{data_name}_size", size)
-
-        return
+                empty_masks[data_name] = mask_func(size, dtype=bool)
+                sizes[f"{data_name}_size"] = size
+        return empty_masks, sizes
 
     def _unpack_cell_metadata(self) -> None:
         """
@@ -331,7 +401,7 @@ class SWIFTMask(HandleProvider):
             if self.cell_sort is None:
                 # Only compute once; not stable between particle
                 # types if some datasets do not have particles in a cell!
-                self.cell_sort = np.argsort(offsets)
+                self.cell_sort = np.argsort(offsets, stable=True)
 
             self.offsets[key] = offsets[self.cell_sort]
             self.counts[key] = counts[self.cell_sort]
@@ -377,6 +447,7 @@ class SWIFTMask(HandleProvider):
 
         return
 
+    @constraint
     def constrain_mask(
         self,
         group_name: str,
@@ -416,19 +487,12 @@ class SWIFTMask(HandleProvider):
         constrain_spatial
             Method to generate spatially constrained cell mask.
         """
-        if self.spatial_only:
-            raise ValueError(
-                "You cannot constrain a mask if spatial_only=True. "
-                "Please re-initialise the SWIFTMask object with spatial_only=False"
-            )
+        self.convert_masks_to_bool()  # no-op if already bool
 
         mapping = self._generate_mapping_dictionary()
         data_name = mapping[group_name]
-
         current_mask = getattr(self, data_name)
-
         group_metadata = getattr(self.metadata, f"{group_name}_properties")
-
         handle_dict = {
             k: v for k, v in zip(group_metadata.field_names, group_metadata.field_paths)
         }
@@ -451,7 +515,7 @@ class SWIFTMask(HandleProvider):
                 # generates a single http request for remote datasets.
                 data = h5file[handle][current_mask, ...]
 
-        # Wrap result in a cosmo array
+        # Wrap result in a cosmo_array
         data = cosmo_array(
             data,
             units=unit,
@@ -460,14 +524,12 @@ class SWIFTMask(HandleProvider):
         )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
-
         current_mask[current_mask] = new_mask
-
         setattr(self, data_name, current_mask)
 
         return
 
-    def _generate_cell_mask(self, restrict: cosmo_array) -> np.array:
+    def _generate_cell_mask(self, restrict: cosmo_array | None = None) -> np.array:
         """
         Generate a spatially restricted mask for cells.
 
@@ -513,7 +575,8 @@ class SWIFTMask(HandleProvider):
                 group_name: np.ones(len(self.centers), dtype=bool)
                 for group_name in self.metadata.present_group_names
             }
-
+        if restrict is None:
+            return cell_mask
         for dimension in range(0, 3):
             lower = restrict[dimension][0]
             upper = restrict[dimension][1]
@@ -569,52 +632,50 @@ class SWIFTMask(HandleProvider):
 
         return cell_mask
 
-    def _update_spatial_mask(
-        self, restrict: cosmo_array, data_name: str, cell_mask: dict
-    ) -> None:
+    def _update_spatial_masks(self) -> None:
         """
-        Update the particle mask using the cell mask.
+        Update the particle masks using the cell masks.
 
         We actually overwrite all non-used cells with False, rather than the
-        inverse, as we assume initially that we want to write all particles in,
+        inverse, as we assume initially that we want to read all particles in,
         and we want to respect other masks that may have been applied to the data.
-
-        Parameters
-        ----------
-        restrict : cosmo_array
-            Currently unused.
-
-        data_name : str
-            Underlying data to update (e.g. ``_gas``, ``_shared``).
-
-        cell_mask : dict
-            Cell mask used to update the particle mask.
         """
-        count_name = data_name[1:]  # Remove the underscore
+        for data_name in self._generate_update_list():
+            count_name = data_name[1:]  # Remove the underscore
 
-        for group_name in self.metadata.present_group_names:
-            if self.spatial_only:
-                counts = self.counts[count_name][cell_mask[count_name]]
-                offsets = self.offsets[count_name][cell_mask[count_name]]
+            for group_name in self.metadata.present_group_names:  # DELETE LINE, UNUSED?
+                if self.range_mask:
+                    counts = self.counts[count_name][self.cell_mask[count_name]]
+                    offsets = self.offsets[count_name][self.cell_mask[count_name]]
 
-                this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
+                    this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
 
-                setattr(self, data_name, np.array(this_mask))
-                setattr(self, f"{data_name}_size", np.sum(counts))
+                    setattr(self, data_name, np.array(this_mask))
+                    setattr(self, f"{data_name}_size", np.sum(counts))
 
-            else:
-                counts = self.counts[count_name][~cell_mask[count_name]]
-                offsets = self.offsets[count_name][~cell_mask[count_name]]
+                else:
+                    counts = self.counts[count_name][
+                        np.logical_not(self.cell_mask[count_name])
+                    ]
+                    offsets = self.offsets[count_name][
+                        np.logical_not(self.cell_mask[count_name])
+                    ]
 
-                # We must do the whole boolean mask business.
-                this_mask = getattr(self, data_name)
+                    # We must do the whole boolean mask business.
+                    this_mask = getattr(self, data_name)
 
-                for count, offset in zip(counts, offsets):
-                    this_mask[offset : count + offset] = False
+                    for count, offset in zip(counts, offsets):
+                        this_mask[offset : count + offset] = False
 
         return
 
-    def constrain_spatial(self, restrict: cosmo_array, intersect: bool = False) -> None:
+    @constraint
+    def constrain_spatial(
+        self,
+        restrict: cosmo_array,
+        union: bool = False,
+        intersect: bool | None = None,  # deprecated
+    ) -> None:
         """
         Use the cell metadata to create a spatial mask.
 
@@ -640,43 +701,68 @@ class SWIFTMask(HandleProvider):
                     scale_exponent=1,
                 )
 
-        intersect : bool
-            If ``True``, intersect the spatial mask with any existing spatial mask to
-            select two (or more) regions with repeated calls to `constrain_spatial`.
+        union : bool, optional
+            If ``True``, combine the spatial mask with any existing spatial mask to
+            select two (or more) regions with repeated calls to ``constrain_spatial``.
             By default (``False``) any existing mask is overwritten.
+
+        intersect : bool, optional
+            Deprecated due to misleading name, use ``union`` instead.
 
         See Also
         --------
         constrain_mask
             Method to further refine mask.
         """
-        if hasattr(self, "cell_mask") and intersect:
-            # we already have a mask and are in intersect mode
+        if intersect is not None:
+            warnings.warn(
+                "`intersect` is deprecated because this term is misleading, use `union` "
+                "(with the same value) instead. Overriding `union` value if provided.",
+                DeprecationWarning,
+            )
+            union = intersect
+        if self.constrained == "constrain_spatial" and union:
+            # we are in union mode and already have a spatial constraint
             new_mask = self._generate_cell_mask(restrict)
-            for group_name in self.metadata.present_group_names:
+            for group_name in self._generate_update_list():
+                group_name = group_name[1:]  # remove leading underscore
                 self.cell_mask[group_name] = np.logical_or(
                     self.cell_mask[group_name], new_mask[group_name]
                 )
-        else:
-            # we just make a new mask
+        elif self.constrained is None:
+            # union or not union, doesn't matter, just make a new mask
             self.cell_mask = self._generate_cell_mask(restrict)
+        else:
+            # union or not union, doesn't matter
+            # we don't allow combining with current mask
+            msg = f"Can't `constrain_spatial` after `{self.constrained}`."
+            if self.constrained == "constrain_spatial":
+                msg += (
+                    " To combine multiple `constrain_spatial` calls use `union` kwarg."
+                )
+            elif union:
+                msg += (
+                    " `union` kwarg can only be used to combine with"
+                    " `constrain_spatial` constraints."
+                )
+            raise RuntimeError(msg)
 
-        for mask in self._generate_update_list():
-            self._update_spatial_mask(restrict, mask, self.cell_mask)
+        self._update_spatial_masks()
 
         return
 
     def convert_masks_to_ranges(self) -> None:
         """
-        Convert the masks to range masks so that they take up less space.
+        Convert the masks to range masks.
 
-        This is non-reversible. It is also not required, but can help save space
-        on highly constrained machines before you start reading in the data.
+        These are more compact than boolean masks so they can help save space on highly
+        constrained machines.
 
-        If you don't know what you are doing please don't use this.
+        See Also
+        --------
+        convert_masks_to_bool
         """
-        # Spatial only already comes like this!
-        if not self.spatial_only:
+        if not self.range_mask:
             # We must do the whole boolean mask stuff. To do that, we
             # First, convert each boolean mask into an integer mask
             # Use the accelerate.ranges_from_array function to convert
@@ -685,9 +771,33 @@ class SWIFTMask(HandleProvider):
                 where_array = np.where(getattr(self, mask))[0]
                 setattr(self, f"{mask}_size", where_array.size)
                 setattr(self, mask, ranges_from_array(where_array))
+            self.range_mask = True
 
         return
 
+    def convert_masks_to_bool(self) -> None:
+        """
+        Convert the masks to boolean masks.
+
+        These are sometimes easier to work with than range masks.
+
+        See Also
+        --------
+        convert_masks_to_ranges
+        """
+        if self.range_mask:
+            empty_masks, sizes = self._generate_empty_masks(fill_value=False)
+            for mask_key, mask_value in empty_masks.items():
+                for r in getattr(self, mask_key):
+                    mask_value[slice(*r)] = True
+                setattr(self, mask_key, mask_value)
+            for size_key, size_value in sizes.items():
+                setattr(self, size_key, size_value)
+            self.range_mask = False
+
+        return
+
+    @constraint
     def constrain_index(self, index: int) -> None:
         """
         Constrain the mask to a single row.
@@ -699,24 +809,14 @@ class SWIFTMask(HandleProvider):
         index : int
             The index of the row to select.
         """
-        if not self.metadata.homogeneous_arrays:
-            raise RuntimeError(
-                "Cannot constrain to a single row in a non-homogeneous array; you "
-                f"currently are using a {self.metadata.output_type} file"
-            )
-
-        if not self.spatial_only:
-            raise RuntimeError(
-                "Cannot constrain to a single row in a non-spatial mask; you currently "
-                "are using a non-spatial mask"
-            )
-
-        for mask in self._generate_update_list():
-            setattr(self, mask, np.array([[index, index + 1]]))
-            setattr(self, f"{mask}_size", 1)
-
+        # constraint decorator will set correctly, overwriting `constrain_indices`
+        if self.constrained is not None:
+            # could let constrain_indices check this, but want custom message
+            raise RuntimeError(f"Can't `constrain_index` after `{self.constrained}`.")
+        self.constrain_indices([index])
         return
 
+    @constraint
     def constrain_indices(self, indices: list[int]) -> None:
         """
         Constrain the mask to a list of rows.
@@ -726,26 +826,27 @@ class SWIFTMask(HandleProvider):
         indices : list[int]
             An list of the indices of the rows to mask.
         """
+        if self.constrained is not None:
+            raise RuntimeError(f"Can't `constrain_indices` after `{self.constrained}`.")
         if not self.metadata.homogeneous_arrays:
             raise RuntimeError(
-                "Cannot constrain to a single row in a non-homogeneous array; you "
+                "Cannot constrain to specific rows in a non-homogeneous array; you "
                 f"currently are using a {self.metadata.output_type} file"
             )
-
-        if self.spatial_only:
-            if len(indices) > 1000:
-                warnings.warn(
-                    "You are constraining a large number of indices with a spatial "
-                    "mask, potentially leading to lots of overlap. You should "
-                    "use a non-spatial mask (i.e. spatial_only=False)"
-                )
-
-            for mask in self._generate_update_list():
-                setattr(self, mask, np.array([[i, i + 1] for i in indices]))
-                setattr(self, f"{mask}_size", len(indices))
-
+        if not np.all(np.asarray(indices)[:-1] <= np.asarray(indices)[1:]):
+            # indices list is not sorted
+            warnings.warn(
+                "`constrain_indices` selects indices in order, sorting list of indices "
+                "before masking."
+            )
+            sorted_indices = np.sort(indices)
         else:
-            for mask in self._generate_update_list():
+            sorted_indices = np.asarray(indices)
+        for mask in self._generate_update_list():
+            if self.range_mask:
+                setattr(self, mask, ranges_from_array(sorted_indices))
+                setattr(self, f"{mask}_size", len(indices))
+            else:
                 comparison_array = np.zeros(getattr(self, mask).size, dtype=bool)
                 comparison_array[indices] = True
                 setattr(
@@ -763,7 +864,7 @@ class SWIFTMask(HandleProvider):
         Returns
         -------
         dict[str, np.array], dict[str, np.array]
-            Dictionaries containing the particle offets and counts for each particle
+            Dictionaries containing the particle counts and offsets for each particle
             type. For example, the particle counts dictionary would be of the form
 
             .. code-block:: python
@@ -777,23 +878,39 @@ class SWIFTMask(HandleProvider):
             The structure of the dictionaries is the same for the offsets, with the
             arrays now storing the offset of the first particle in the cell.
         """
-        if self.spatial_only:
-            masked_counts = {}
-            current_offsets = {}
-            if not hasattr(self, "cell_mask"):
-                raise RuntimeError(
-                    "Subset writing requires specifying a cell mask. Please use "
-                    "constrain_spatial with a suitable restrict array to generate one."
+        masked_counts = {}
+        masked_offsets = {}
+        for part_type in self.counts.keys():
+            counts = self.counts[part_type]
+            offsets = self.offsets[part_type]
+            if self.range_mask:
+                # figure out what cell each range starts in (cell_ranges[:, 0]) and ends
+                # in (cell_ranges[:, 1])
+                # counts and offsets are sorted by offsets when loaded: searchsorted valid
+                cell_ranges = np.searchsorted(
+                    offsets[1:],
+                    getattr(self, f"_{part_type}"),
+                    side="right",
                 )
-            for part_type, counts in self.counts.items():
-                masked_counts[part_type] = counts * self.cell_mask[part_type]
+                # ----- is this double loop refactorable? -----
+                masked_counts[part_type] = np.zeros(counts.shape, dtype=np.int64)
+                for (start_cell, end_cell), mask_range in zip(
+                    cell_ranges, getattr(self, f"_{part_type}")
+                ):
+                    for cell in range(start_cell, end_cell + 1):
+                        masked_counts[part_type][cell] += min(
+                            mask_range[1], offsets[cell] + counts[cell]
+                        ) - max(mask_range[0], offsets[cell])
+                # ---------------------------------------------
+            else:
+                masked_counts[part_type] = np.array(
+                    [
+                        getattr(self, f"_{part_type}")[slice(*cell_slice)].sum()
+                        for cell_slice in np.vstack((offsets, offsets + counts)).T
+                    ]
+                )
+            masked_offsets[part_type] = np.r_[
+                0, np.cumsum(masked_counts[part_type])[:-1]
+            ]
 
-                current_offsets[part_type] = np.zeros(counts.size, dtype=np.int64)
-                running_sum = 0
-                for i in range(len(counts)):
-                    current_offsets[part_type][i] = running_sum
-                    running_sum += masked_counts[part_type][i]
-
-            return masked_counts, current_offsets
-        else:
-            raise ("Only applies on spatial only masks")
+        return masked_counts, masked_offsets

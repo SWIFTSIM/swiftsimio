@@ -172,11 +172,11 @@ def _get_rotated_and_wrapped_coordinates(
     return coords.T
 
 
-def backend_restore_cosmo_and_units(
+def backend_strip_and_restore_cosmo_and_units(
     backend_func: Callable, norm: cosmo_quantity | float = 1.0
 ) -> Callable:
     """
-    Decorate a function to re-attach cosmology metadata to an array.
+    Decorate a function to strip then re-attach cosmology metadata to arguments.
 
     Parameters
     ----------
@@ -246,10 +246,16 @@ def backend_restore_cosmo_and_units(
             converted_norm = norm.to_physical()
         else:
             converted_norm = 1.0
+        stripped_kwargs = {
+            k: v.to_value(v.units, comoving=v.comoving)
+            if isinstance(v, cosmo_array)
+            else v
+            for k, v in kwargs.items()
+        }
         return (
             _copy_cosmo_array_attributes_if_present(
                 kwargs["m"],
-                backend_func(*args, **kwargs).view(cosmo_array),
+                backend_func(*args, **stripped_kwargs).view(cosmo_array),
                 copy_units=True,
             )
             / converted_norm

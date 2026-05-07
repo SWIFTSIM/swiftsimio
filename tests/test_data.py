@@ -221,13 +221,13 @@ def test_dithered_cell_metadata_is_valid(cosmological_volume_dithered):
             assert min > lower * 0.95
 
 
-@pytest.mark.parametrize("spatial_only", [True, False])
-def test_reading_select_region_metadata(cosmological_volume, spatial_only):
+@pytest.mark.parametrize("range_mask", [True, False])
+def test_reading_select_region_metadata(cosmological_volume, range_mask):
     """Test reading select regions of the volume."""
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
-    mask_region = mask(cosmological_volume, spatial_only=spatial_only)
+    mask_region = mask(cosmological_volume, range_mask=range_mask)
 
     restrict = cosmo_array(
         [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]
