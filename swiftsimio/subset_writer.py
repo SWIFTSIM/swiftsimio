@@ -238,6 +238,9 @@ def write_metadata(
     """
     Copy over all the metadata from snapshot to output file.
 
+    We modify the ``OutputType`` and ``NumPart_ThisFile`` attributes in ``Header`` for
+    snapshots, and ``OutputType`` and ``NumSubhalos_ThisFile`` for SOAP files.
+
     Parameters
     ----------
     infile : h5py.File
@@ -261,9 +264,40 @@ def write_metadata(
         if not any([substr for substr in skip_list if substr in field]):
             # HDF5<14 can segfault for these groups when infile.copy() is called
             # due to the arrays of strings stored in the attributes
+            output_type = infile[field].attrs.get("OutputType", "FullVolume")
+            if hasattr(output_type, "decode"):
+                output_type = output_type.decode()
             if field in ["Header", "Parameters"]:
                 header = outfile.create_group(field)
                 for k, v in infile[field].attrs.items():
+                    if k == "OutputType":
+                        v = {
+                            "FullVolume": "VolumeSubset",
+                            "SOAP": "SOAPSubset",
+                            "FOF": "FOFSubset",
+                            "VolumeSubset": "VolumeSubset",
+                            "SOAPSubset": "SOAPSubset",
+                            "FOFSubset": "FOFSubset",
+                        }[output_type]
+                    elif k == "NumPart_ThisFile" and output_type in [
+                        "FullVolume",
+                        "VolumeSubset",
+                    ]:
+                        v = [
+                            0
+                            if old_count == 0
+                            else get_dataset_mask(
+                                mask, f"PartType{ptype}", suffix="_size"
+                            )
+                            for ptype, old_count in enumerate(
+                                infile["Header"].attrs["NumPart_ThisFile"]
+                            )
+                        ]
+                    elif k == "NumSubhalos_ThisFile" and output_type in [
+                        "SOAP",
+                        "SOAPSubset",
+                    ]:
+                        v = [get_dataset_mask(mask, "_shared", suffix="_size")]
                     header.attrs[k] = v
             else:
                 infile.copy(field, outfile)

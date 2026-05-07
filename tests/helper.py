@@ -29,7 +29,10 @@ def _mask_without_warning(fname: str, **kwargs: dict) -> SWIFTMask:
     """
     with open_path_or_handle(fname) as f:
         has_cell_bbox = "MinPositions" in f["/Cells"].keys()
-        is_soap = f["/Header"].attrs.get("OutputType", "FullVolume") == "SOAP"
+        output_type = f["/Header"].attrs.get("OutputType", "FullVolume")
+        if hasattr(output_type, "decode"):
+            output_type = output_type.decode()
+        is_soap = "SOAP" in output_type
     if has_cell_bbox or is_soap:
         return mask(fname, **kwargs)
     else:

@@ -1,6 +1,7 @@
 """Tests of the subset writer feature."""
 
 import pytest
+import h5py
 import numpy as np
 from swiftsimio.subset_writer import write_subset
 from swiftsimio import load, SWIFTDataset
@@ -166,5 +167,109 @@ def test_masking_subset(snapshot_or_soap):
     d_full = load(snapshot_or_soap, mask=small_mask_full)
     d_sub = load(outfile, mask=small_mask_sub)
     compare_data_contents(d_full, d_sub)
+    # clean up
+    os.remove(outfile)
+
+
+def test_snap_subset_header(cosmological_volume_only_single_local):
+    """Check the header metadata fields on a snapshot subset."""
+    outfile = "header_test_snap_subset.hdf5"
+    m = mask(cosmological_volume_only_single_local)
+    region = np.vstack((m.metadata.boxsize * 0, m.metadata.boxsize * 0.1)).T
+    m.constrain_spatial(region)
+    write_subset(outfile, m)
+    dat = h5py.File(cosmological_volume_only_single_local, "r")
+    sub = h5py.File(outfile, "r")
+    assert len(dat["Header"].attrs) == 26
+    for k in dat["Header"].attrs.keys():
+        if k in (
+            "BoxSize",
+            "CanHaveTypes",
+            "Dimension",
+            "Flag_Entropy_ICs",
+            "InitialMassTable",
+            "MassTable",
+            "NumFilesPerSnapshot",
+            "NumPartTypes",
+            "NumPart_Total_HighWord",
+            "Scale-factor",
+            "Shift",
+            "ThisFile",
+            "Time",
+            "TimeBase_dloga",
+            "TimeBase_dt",
+            "Virtual",
+            "NumPart_Total",
+            "TotalNumberOfParticles",
+        ):
+            assert np.allclose(dat["Header"].attrs[k], sub["Header"].attrs[k])
+        elif k in (
+            "Code",
+            "Redshift",
+            "RunName",
+            "SelectOutput",
+            "SnapshotDate",
+            "System",
+        ):
+            assert dat["Header"].attrs[k] == sub["Header"].attrs[k]
+        elif k == "NumPart_ThisFile":
+            for ptype, present in enumerate(sub["Header"].attrs["CanHaveTypes"]):
+                if present:
+                    assert (
+                        sub["Header"].attrs[k][ptype]
+                        == sub[f"PartType{ptype}/ParticleIDs"].size
+                    )
+        elif k == "OutputType":
+            assert sub["Header"].attrs[k] == "VolumeSubset"
+        else:
+            raise ValueError(f"Unknown Header attribute {k} in test.")
+
+    # clean up
+    os.remove(outfile)
+
+
+def test_soap_subset_header(soap_only_local):
+    """Check the header metadata fields on a soap subset."""
+    outfile = "header_test_soap_subset.hdf5"
+    m = mask(soap_only_local)
+    region = np.vstack((m.metadata.boxsize * 0, m.metadata.boxsize * 0.3)).T
+    m.constrain_spatial(region)
+    write_subset(outfile, m)
+    dat = h5py.File(soap_only_local, "r")
+    sub = h5py.File(outfile, "r")
+    assert len(dat["Header"].attrs) == 18
+    for k in dat["Header"].attrs.keys():
+        print(k, dat["Header"].attrs[k], sub["Header"].attrs[k])
+        if k in (
+            "BoxSize",
+            "Dimension",
+            "NumFilesPerSnapshot",
+            "NumPartTypes",
+            "NumPart_ThisFile",
+            "NumPart_Total",
+            "NumPart_Total_Highword",
+            "NumSubhalos_Total",
+            "Redshift",
+            "Scale-factor",
+            "ThisFile",
+        ):
+            assert np.allclose(dat["Header"].attrs[k], sub["Header"].attrs[k])
+        elif k in ("SubhaloTypes",):
+            for t1, t2 in zip(dat["Header"].attrs[k], sub["Header"].attrs[k]):
+                assert t1 == t2
+        elif k in (
+            "Code",
+            "RunName",
+            "SnapshotDate",
+            "System",
+        ):
+            assert dat["Header"].attrs[k] == sub["Header"].attrs[k]
+        elif k == "NumSubhalos_ThisFile":
+            assert sub["Header"].attrs[k][0] == sub["BoundSubhalo/TotalMass"].size
+        elif k == "OutputType":
+            assert sub["Header"].attrs[k] == "SOAPSubset"
+        else:
+            raise ValueError(f"Unknown Header attribute {k} in test.")
+
     # clean up
     os.remove(outfile)

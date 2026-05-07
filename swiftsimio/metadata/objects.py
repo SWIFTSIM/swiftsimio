@@ -831,11 +831,11 @@ def _metadata_discriminator(
     if isinstance(file_type, bytes):
         file_type = file_type.decode("utf-8")
 
-    if file_type in ["FullVolume"]:
+    if file_type in ["FullVolume", "VolumeSubset"]:
         return SWIFTSnapshotMetadata(filename, units, handle=handle)
-    elif file_type in ["SOAP"]:
+    elif file_type in ["SOAP", "SOAPSubset"]:
         return SWIFTSOAPMetadata(filename, units, handle=handle)
-    elif file_type in ["FOF"]:
+    elif file_type in ["FOF", "FOFSubset"]:
         return SWIFTFOFMetadata(filename, units, handle=handle)
     else:
         raise ValueError(f"File type {file_type} not recognised.")

@@ -18,7 +18,7 @@ from swiftsimio._handle_provider import HandleProvider
 from typing import Callable
 
 _DEFAULT_SAFE_PADDING = 0.1
-_GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP"]
+_GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP", "FOFSubset", "SOAPSubset"]
 
 
 def constraint(method: Callable) -> Callable:
@@ -643,29 +643,28 @@ class SWIFTMask(HandleProvider):
         for data_name in self._generate_update_list():
             count_name = data_name[1:]  # Remove the underscore
 
-            for group_name in self.metadata.present_group_names:  # DELETE LINE, UNUSED?
-                if self.range_mask:
-                    counts = self.counts[count_name][self.cell_mask[count_name]]
-                    offsets = self.offsets[count_name][self.cell_mask[count_name]]
+            if self.range_mask:
+                counts = self.counts[count_name][self.cell_mask[count_name]]
+                offsets = self.offsets[count_name][self.cell_mask[count_name]]
 
-                    this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
+                this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
 
-                    setattr(self, data_name, np.array(this_mask))
-                    setattr(self, f"{data_name}_size", np.sum(counts))
+                setattr(self, data_name, np.array(this_mask))
+                setattr(self, f"{data_name}_size", np.sum(counts))
 
-                else:
-                    counts = self.counts[count_name][
-                        np.logical_not(self.cell_mask[count_name])
-                    ]
-                    offsets = self.offsets[count_name][
-                        np.logical_not(self.cell_mask[count_name])
-                    ]
+            else:
+                counts = self.counts[count_name][
+                    np.logical_not(self.cell_mask[count_name])
+                ]
+                offsets = self.offsets[count_name][
+                    np.logical_not(self.cell_mask[count_name])
+                ]
 
-                    # We must do the whole boolean mask business.
-                    this_mask = getattr(self, data_name)
+                # We must do the whole boolean mask business.
+                this_mask = getattr(self, data_name)
 
-                    for count, offset in zip(counts, offsets):
-                        this_mask[offset : count + offset] = False
+                for count, offset in zip(counts, offsets):
+                    this_mask[offset : count + offset] = False
 
         return
 
