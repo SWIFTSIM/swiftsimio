@@ -404,3 +404,147 @@ def test_convert_to_bool_roundtrip(snapshot_or_soap):
             else:
                 raise ValueError("Expected consecutive ranges.")
         assert (getattr(m, k) == combined_range).all()
+
+
+@pytest.mark.parametrize("range_mask", (True, False))
+def test_chaining_masks(snapshot_or_soap, range_mask):
+    """
+    Test that possible combinations of masks are allowed/disallowed correctly.
+
+    It should not matter whether the mask is initialized as ranged_mask=True or False,
+    any necessary conversions will happen internally.
+
+    Also checks that the SWIFTMask.constrained attribute is being set correctly.
+    """
+    m = mask(snapshot_or_soap, range_mask=range_mask)
+    region1 = np.vstack((m.metadata.boxsize * 0, m.metadata.boxsize * 0.5)).T
+    region2 = np.vstack((m.metadata.boxsize * 0.5, m.metadata.boxsize * 1.0)).T
+    if m.metadata.output_type == "SOAP":
+        constrain_mask_args = (
+            "bound_subhalo",
+            "total_mass",
+            cosmo_quantity(
+                1e11,
+                u.solMass,
+                comoving=True,
+                scale_factor=m.metadata.scale_factor,
+                scale_exponent=0,
+            ),
+            cosmo_quantity(
+                1e12,
+                u.solMass,
+                comoving=True,
+                scale_factor=m.metadata.scale_factor,
+                scale_exponent=0,
+            ),
+        )
+    else:
+        constrain_mask_args = (
+            "gas",
+            "temperatures",
+            cosmo_quantity(
+                1e4,
+                u.K,
+                comoving=True,
+                scale_factor=m.metadata.scale_factor,
+                scale_exponent=0,
+            ),
+            cosmo_quantity(
+                1e5,
+                u.K,
+                comoving=True,
+                scale_factor=m.metadata.scale_factor,
+                scale_exponent=0,
+            ),
+        )
+    # constrain_spatial then constrain_spatial without union: not allowed
+    m.constrain_spatial(region1)
+    assert m.constrained == "constrain_spatial"
+    with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
+        m.constrain_spatial(region2, union=False)
+    # constrain_spatial then constrain_spatial with union: allowed
+    m.constrain_spatial(region2, union=True)
+    assert m.constrained == "constrain_spatial"
+    # constrain_spatial then constrain_mask: allowed
+    m.constrain_mask(*constrain_mask_args)
+    assert m.constrained == "constrain_mask"
+    # reinitialize
+    m = mask(snapshot_or_soap, range_mask=range_mask)
+    # constrain_spatial then constrain_indices: not allowed
+    m.constrain_spatial(region1)
+    assert m.constrained == "constrain_spatial"
+    with pytest.raises(RuntimeError, match="Can't `constrain_indices` after"):
+        m.constrain_indices([0, 1])
+    # constrain_spatial then constrain_index: not allowed
+    with pytest.raises(RuntimeError, match="Can't `constrain_index` after"):
+        m.constrain_index(1)
+    # reinitialize
+    m = mask(snapshot_or_soap, range_mask=range_mask)
+    # constrain_mask then anything else: not allowed
+    m.constrain_mask(*constrain_mask_args)
+    assert m.constrained == "constrain_mask"
+    with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
+        m.constrain_spatial(region1, union=False)
+    with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
+        m.constrain_spatial(region1, union=True)
+    with pytest.raises(RuntimeError, match="Can't `constrain_index` after"):
+        m.constrain_index(1)
+    with pytest.raises(RuntimeError, match="Can't `constrain_indices` after"):
+        m.constrain_indices([0, 1])
+    # reinitialize
+    m = mask(snapshot_or_soap, range_mask=range_mask)
+    # constrain_index then constrain_spatial: not allowed
+    if m.metadata.output_type != "SOAP":
+        with pytest.raises(RuntimeError, match="Cannot constrain to specific rows"):
+            m.constrain_index(1)
+    else:
+        m.constrain_index(1)
+        assert m.constrained == "constrain_index"
+        with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
+            m.constrain_spatial(region1, union=False)
+        with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
+            m.constrain_spatial(region1, union=True)
+    # constrain_index then constrain_index: not allowed
+    if m.metadata.output_type != "SOAP":
+        with pytest.raises(RuntimeError, match="Cannot constrain to specific rows"):
+            m.constrain_index(1)
+    else:
+        with pytest.raises(RuntimeError, match="Can't `constrain_index` after"):
+            m.constrain_index(1)
+        # constrain_index then constrain_indices: not allowed
+        with pytest.raises(RuntimeError, match="Can't `constrain_indices` after"):
+            m.constrain_indices([0, 1])
+        # constrain_index then constrain_mask: allowed
+        m.constrain_mask(*constrain_mask_args)
+        assert m.constrained == "constrain_mask"
+    # reinitialize
+    m = mask(snapshot_or_soap, range_mask=range_mask)
+    # constrain_indices then constrain_spatial: not allowed
+    if m.metadata.output_type != "SOAP":
+        with pytest.raises(RuntimeError, match="Cannot constrain to specific rows"):
+            m.constrain_indices([0, 1])
+    else:
+        m.constrain_indices([0, 1])
+        assert m.constrained == "constrain_indices"
+        with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
+            m.constrain_spatial(region1, union=False)
+        with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
+            m.constrain_spatial(region1, union=True)
+        # constrain_indices then constrain_index: not allowed
+        with pytest.raises(RuntimeError, match="Can't `constrain_index` after"):
+            m.constrain_index(1)
+        # constrain_indices then constrain_indices: not allowed
+        with pytest.raises(RuntimeError, match="Can't `constrain_indices` after"):
+            m.constrain_indices([0, 1])
+        # constrain_indices then constrain_mask: allowed
+        m.constrain_mask(*constrain_mask_args)
+        assert m.constrained == "constrain_mask"
+
+
+def test_constrain_indices_warns_unsorted(soap_example):
+    """Check that constrain_indices warns when the input is not sorted."""
+    m = mask(soap_example)
+    with pytest.warns(
+        UserWarning, match="`constrain_indices` selects indices in order, sorting"
+    ):
+        m.constrain_indices([1, 0])

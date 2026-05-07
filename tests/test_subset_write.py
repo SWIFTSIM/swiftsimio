@@ -99,10 +99,11 @@ def test_subset_writer(snapshot_or_soap):
     sub_mask = mask(outfile)
     sub_load_region = [[0.375 * b, 0.625 * b] for b in sub_mask.metadata.boxsize]
     sub_mask.constrain_spatial(sub_load_region)
-    # Update the spatial region to match what we load from the subset.
-    full_mask.constrain_spatial(sub_load_region)
+    # Match what we load from the subset for the full snapshot.
+    full_mask_small = mask(snapshot_or_soap)
+    full_mask_small.constrain_spatial(sub_load_region)
 
-    snapshot = load(snapshot_or_soap, full_mask)
+    snapshot = load(snapshot_or_soap, full_mask_small)
     sub_snapshot = load(outfile, sub_mask)
 
     compare_data_contents(snapshot, sub_snapshot)
@@ -113,9 +114,8 @@ def test_subset_writer(snapshot_or_soap):
     return
 
 
-@pytest.mark.parametrize("with_spatial", (True, False))
 @pytest.mark.parametrize("range_mask", (True, False))
-def test_subset_writer_constrained_indices(soap_example, with_spatial, range_mask):
+def test_subset_writer_constrained_indices(soap_example, range_mask):
     """Test that a subset written with constrain_indices has valid metadata."""
     filename = (
         str(soap_example)
@@ -124,8 +124,6 @@ def test_subset_writer_constrained_indices(soap_example, with_spatial, range_mas
     )
     m = mask(soap_example, range_mask=range_mask)
     region = np.vstack([m.metadata.boxsize * 0, m.metadata.boxsize * 0.5]).T
-    if with_spatial:
-        m.constrain_spatial(region)
     m.constrain_indices([1, 2, 3])
     outfile = os.path.basename(filename).replace(".hdf5", "_subset.hdf5")
     write_subset(outfile, m)

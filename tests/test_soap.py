@@ -90,7 +90,10 @@ def test_soap_multiple_row_mask_non_spatial(soap_example, range_mask):
 
     indices = [0, 1, 2, 3, 6, 23, 94, 57]
 
-    this_mask.constrain_indices(indices)
+    with pytest.warns(
+        UserWarning, match="`constrain_indices` selects indices in order, sorting"
+    ):
+        this_mask.constrain_indices(indices)
 
     data = load(soap_example, mask=this_mask)
     assert len(data.spherical_overdensity_200_mean.total_mass) == len(indices)

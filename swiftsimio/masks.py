@@ -44,7 +44,7 @@ def constraint(method: Callable) -> Callable:
     ) -> None:  # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
         retval = method(self, *args, **kwargs)
-        self.constrained = True  # only set after function call
+        self.constrained = method.__name__  # only set after function call
         return retval
 
     return wrapped
@@ -98,7 +98,7 @@ class SWIFTMask(HandleProvider):
     group_mapping: dict | None = None
     group_size_mapping: dict | None = None
     filename: Path
-    constrained: bool
+    constrained: str | None
 
     def __init__(
         self,
@@ -121,7 +121,7 @@ class SWIFTMask(HandleProvider):
         self.metadata = metadata
         self.units = metadata.units
         self.range_mask = range_mask
-        self.constrained = False
+        self.constrained = None
         if safe_padding is True:
             self.safe_padding = _DEFAULT_SAFE_PADDING
         elif safe_padding is False:
@@ -487,19 +487,12 @@ class SWIFTMask(HandleProvider):
         constrain_spatial
             Method to generate spatially constrained cell mask.
         """
-        if self.range_mask:
-            raise ValueError(
-                "You cannot use `constrain_mask` if it was created with"
-                " range_mask=True. Use `mask(..., range_mask=False)`."
-            )
+        self.convert_masks_to_bool()  # no-op if already bool
 
         mapping = self._generate_mapping_dictionary()
         data_name = mapping[group_name]
-
         current_mask = getattr(self, data_name)
-
         group_metadata = getattr(self.metadata, f"{group_name}_properties")
-
         handle_dict = {
             k: v for k, v in zip(group_metadata.field_names, group_metadata.field_paths)
         }
@@ -522,7 +515,7 @@ class SWIFTMask(HandleProvider):
                 # generates a single http request for remote datasets.
                 data = h5file[handle][current_mask, ...]
 
-        # Wrap result in a cosmo array
+        # Wrap result in a cosmo_array
         data = cosmo_array(
             data,
             units=unit,
@@ -531,9 +524,7 @@ class SWIFTMask(HandleProvider):
         )
 
         new_mask = np.logical_and.reduce([data > lower, data <= upper])
-
         current_mask[current_mask] = new_mask
-
         setattr(self, data_name, current_mask)
 
         return
@@ -652,7 +643,7 @@ class SWIFTMask(HandleProvider):
         for data_name in self._generate_update_list():
             count_name = data_name[1:]  # Remove the underscore
 
-            for group_name in self.metadata.present_group_names:
+            for group_name in self.metadata.present_group_names:  # DELETE LINE, UNUSED?
                 if self.range_mask:
                     counts = self.counts[count_name][self.cell_mask[count_name]]
                     offsets = self.offsets[count_name][self.cell_mask[count_name]]
@@ -730,22 +721,31 @@ class SWIFTMask(HandleProvider):
                 DeprecationWarning,
             )
             union = intersect
-        if self.constrained and union:
-            # we already have a mask and are in union mode
+        if self.constrained == "constrain_spatial" and union:
+            # we are in union mode and already have a spatial constraint
             new_mask = self._generate_cell_mask(restrict)
-            for group_name in self.metadata.present_group_names:
+            for group_name in self._generate_update_list():
+                group_name = group_name[1:]  # remove leading underscore
                 self.cell_mask[group_name] = np.logical_or(
                     self.cell_mask[group_name], new_mask[group_name]
                 )
-        else:
-            if self.constrained:
-                warnings.warn(
-                    "Using `constrain_spatial` with an existing constraint overrides"
-                    " previous constraints, except for combining spatial masks"
-                    " with `constrain_spatial(..., union=True)`.",
-                )
-            # we just make a new mask
+        elif self.constrained is None:
+            # union or not union, doesn't matter, just make a new mask
             self.cell_mask = self._generate_cell_mask(restrict)
+        else:
+            # union or not union, doesn't matter
+            # we don't allow combining with current mask
+            msg = f"Can't `constrain_spatial` after `{self.constrained}`."
+            if self.constrained == "constrain_spatial":
+                msg += (
+                    " To combine multiple `constrain_spatial` calls use `union` kwarg."
+                )
+            elif union:
+                msg += (
+                    " `union` kwarg can only be used to combine with"
+                    " `constrain_spatial` constraints."
+                )
+            raise RuntimeError(msg)
 
         self._update_spatial_masks()
 
@@ -809,22 +809,11 @@ class SWIFTMask(HandleProvider):
         index : int
             The index of the row to select.
         """
-        if not self.metadata.homogeneous_arrays:
-            raise RuntimeError(
-                "Cannot constrain to a single row in a non-homogeneous array; you "
-                f"currently are using a {self.metadata.output_type} file"
-            )
-
-        if not self.range_mask:
-            raise RuntimeError(
-                "Cannot constrain to a single row in a non-spatial mask; you currently "
-                "are using a non-spatial mask"
-            )
-
-        for mask in self._generate_update_list():
-            setattr(self, mask, np.array([[index, index + 1]]))
-            setattr(self, f"{mask}_size", 1)
-
+        # constraint decorator will set correctly, overwriting `constrain_indices`
+        if self.constrained is not None:
+            # could let constrain_indices check this, but want custom message
+            raise RuntimeError(f"Can't `constrain_index` after `{self.constrained}`.")
+        self.constrain_indices([index])
         return
 
     @constraint
@@ -837,19 +826,27 @@ class SWIFTMask(HandleProvider):
         indices : list[int]
             An list of the indices of the rows to mask.
         """
+        if self.constrained is not None:
+            raise RuntimeError(f"Can't `constrain_indices` after `{self.constrained}`.")
         if not self.metadata.homogeneous_arrays:
             raise RuntimeError(
                 "Cannot constrain to specific rows in a non-homogeneous array; you "
                 f"currently are using a {self.metadata.output_type} file"
             )
-
-        if self.range_mask:
-            for mask in self._generate_update_list():
-                setattr(self, mask, ranges_from_array(np.sort(indices)))
-                setattr(self, f"{mask}_size", len(indices))
-
+        if not np.all(np.asarray(indices)[:-1] <= np.asarray(indices)[1:]):
+            # indices list is not sorted
+            warnings.warn(
+                "`constrain_indices` selects indices in order, sorting list of indices "
+                "before masking."
+            )
+            sorted_indices = np.sort(indices)
         else:
-            for mask in self._generate_update_list():
+            sorted_indices = np.asarray(indices)
+        for mask in self._generate_update_list():
+            if self.range_mask:
+                setattr(self, mask, ranges_from_array(sorted_indices))
+                setattr(self, f"{mask}_size", len(indices))
+            else:
                 comparison_array = np.zeros(getattr(self, mask).size, dtype=bool)
                 comparison_array[indices] = True
                 setattr(
