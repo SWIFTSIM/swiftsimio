@@ -889,7 +889,6 @@ class SWIFTMask(HandleProvider):
                     getattr(self, f"_{part_type}"),
                     side="right",
                 )
-                # ----- is this double loop refactorable? -----
                 masked_counts[part_type] = np.zeros(counts.shape, dtype=np.int64)
                 for (start_cell, end_cell), mask_range in zip(
                     cell_ranges, getattr(self, f"_{part_type}")
@@ -898,7 +897,6 @@ class SWIFTMask(HandleProvider):
                         masked_counts[part_type][cell] += min(
                             mask_range[1], offsets[cell] + counts[cell]
                         ) - max(mask_range[0], offsets[cell])
-                # ---------------------------------------------
             else:
                 masked_counts[part_type] = np.array(
                     [
