@@ -21,9 +21,9 @@ _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP", "FOFSubset", "SOAPSubset"]
 
 
-def constraint(method: Callable) -> Callable:
+def _constraint(method: Callable) -> Callable:
     """
-    Decorata a function that constrains the mask.
+    Decorate a function that constrains a :class:`~swiftsimio.masks.SWIFTMask`.
 
     Parameters
     ----------
@@ -57,9 +57,8 @@ class SWIFTMask(HandleProvider):
     This can have masks for any present particle field in it.
 
     Takes the SWIFT metadata and enables individual property-by-property masking
-    when reading from snapshots. Please note that when masking like this
-    order-in-file is not preserved, i.e. the 7th particle may not be the
-    7th particle in the file.
+    when reading from snapshots. When masking like this order-in-file is not preserved,
+    i.e. the 7th particle may not be the 7th particle in the file.
 
     Parameters
     ----------
@@ -67,7 +66,7 @@ class SWIFTMask(HandleProvider):
         File to read cell metadata from.
 
     metadata : SWIFTMetadata
-        Metadata specifying masking for reading of snapshots.
+        Metadata loaded from snapshot.
 
     range_mask : bool, optional
         If ``True`` (the default), you can only constrain spatially.
@@ -447,7 +446,7 @@ class SWIFTMask(HandleProvider):
 
         return
 
-    @constraint
+    @_constraint
     def constrain_mask(
         self,
         group_name: str,
@@ -668,7 +667,7 @@ class SWIFTMask(HandleProvider):
 
         return
 
-    @constraint
+    @_constraint
     def constrain_spatial(
         self,
         restrict: cosmo_array,
@@ -796,7 +795,7 @@ class SWIFTMask(HandleProvider):
 
         return
 
-    @constraint
+    @_constraint
     def constrain_index(self, index: int) -> None:
         """
         Constrain the mask to a single row.
@@ -815,7 +814,7 @@ class SWIFTMask(HandleProvider):
         self.constrain_indices([index])
         return
 
-    @constraint
+    @_constraint
     def constrain_indices(self, indices: list[int]) -> None:
         """
         Constrain the mask to a list of rows.
@@ -854,7 +853,7 @@ class SWIFTMask(HandleProvider):
 
         return
 
-    def get_masked_counts_offsets(
+    def _get_masked_counts_offsets(
         self,
     ) -> tuple[dict[str, np.array], dict[str, np.array]]:
         """
