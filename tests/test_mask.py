@@ -13,28 +13,29 @@ def test_reading_select_region_spatial(cosmological_volume):
     """
     Test reading select regions of the volume.
 
-    Compares the masks attained with range_mask=True and range_mask=False.
+    Compares the masks attained with range- and boolean-type masks.
     """
     full_data = load(cosmological_volume)
 
     # Mask off the lower bottom corner of the volume.
-    mask_region = mask(cosmological_volume, range_mask=True)
-    mask_region_nospatial = mask(cosmological_volume, range_mask=False)
+    mask_range = mask(cosmological_volume)
+    mask_bool = mask(cosmological_volume)
+    mask_bool.convert_masks_to_bool()
 
     restrict = cosmo_array(
         [np.zeros_like(full_data.metadata.boxsize), full_data.metadata.boxsize * 0.5]
     ).T
 
-    mask_region.constrain_spatial(restrict=restrict)
-    mask_region_nospatial.constrain_spatial(restrict=restrict)
+    mask_range.constrain_spatial(restrict=restrict)
+    mask_bool.constrain_spatial(restrict=restrict)
 
-    selected_data = load(cosmological_volume, mask=mask_region)
-    selected_data_nospatial = load(cosmological_volume, mask=mask_region_nospatial)
+    selected_data_range = load(cosmological_volume, mask=mask_range)
+    selected_data_bool = load(cosmological_volume, mask=mask_bool)
 
-    selected_coordinates = selected_data.gas.coordinates
-    selected_coordinates_nospatial = selected_data_nospatial.gas.coordinates
+    selected_coordinates_range = selected_data_range.gas.coordinates
+    selected_coordinates_bool = selected_data_bool.gas.coordinates
 
-    assert (selected_coordinates_nospatial == selected_coordinates).all()
+    assert (selected_coordinates_range == selected_coordinates_bool).all()
 
     return
 
@@ -42,7 +43,7 @@ def test_reading_select_region_spatial(cosmological_volume):
 def test_reading_select_region_half_box(cosmological_volume):
     """Test that particles lie in the selected spatial region (half a box length)."""
     # Mask off the lower bottom corner of the volume.
-    mask_region = mask(cosmological_volume, range_mask=True)
+    mask_region = mask(cosmological_volume)
 
     # the region can be padded by a cell if min & max particle positions are absent
     # in metadata
@@ -76,7 +77,7 @@ def test_region_mask_not_modified(cosmological_volume):
 
     Checks if https://github.com/SWIFTSIM/swiftsimio/issues/22 is broken.
     """
-    this_mask = mask(cosmological_volume, range_mask=True)
+    this_mask = mask(cosmological_volume)
     bs = this_mask.metadata.boxsize
 
     read = [[0 * b, 0.5 * b] for b in bs]
@@ -94,9 +95,9 @@ def test_region_mask_union(cosmological_volume):
     Tests that the union of two spatial mask regions includes the same cells as two
     separate masks of the same two regions.
     """
-    mask_1 = mask(cosmological_volume, range_mask=True)
-    mask_2 = mask(cosmological_volume, range_mask=True)
-    mask_union = mask(cosmological_volume, range_mask=True)
+    mask_1 = mask(cosmological_volume)
+    mask_2 = mask(cosmological_volume)
+    mask_union = mask(cosmological_volume)
     bs = mask_union.metadata.boxsize
     region_1 = [[0 * b, 0.1 * b] for b in bs]
     region_2 = [[0.6 * b, 0.7 * b] for b in bs]
@@ -120,8 +121,8 @@ def test_mask_periodic_wrapping(cosmological_volume):
     mask as one that runs off the lower edge (they are chosen to be equivalent
     under periodic wrapping).
     """
-    mask_region_upper = mask(cosmological_volume, range_mask=True)
-    mask_region_lower = mask(cosmological_volume, range_mask=True)
+    mask_region_upper = mask(cosmological_volume)
+    mask_region_lower = mask(cosmological_volume)
     restrict_upper = cosmo_array(
         [
             mask_region_upper.metadata.boxsize * 0.8,
@@ -155,9 +156,9 @@ def test_mask_padding(cosmological_volume):
     works correctly. See comments below for detailed cases.
     """
     # Mask off the lower bottom corner of the volume.
-    mask_pad_onecell = mask(cosmological_volume, range_mask=True, safe_padding=1.0)
-    mask_pad_tenthcell = mask(cosmological_volume, range_mask=True)  # default 0.1
-    mask_pad_off = mask(cosmological_volume, range_mask=True, safe_padding=False)
+    mask_pad_onecell = mask(cosmological_volume, safe_padding=1.0)
+    mask_pad_tenthcell = mask(cosmological_volume)  # default 0.1
+    mask_pad_off = mask(cosmological_volume, safe_padding=False)
     assert mask_pad_onecell.safe_padding == 1.0
     assert mask_pad_tenthcell.safe_padding == 0.1
     assert mask_pad_off.safe_padding == 0.0
@@ -197,8 +198,8 @@ def test_mask_pad_wrapping(cosmological_volume):
     opposite edge as padding in case particles have drifted out of their cell,
     unless the cell metadata with max positions is present.
     """
-    mask_region_upper = mask(cosmological_volume, range_mask=True)
-    mask_region_lower = mask(cosmological_volume, range_mask=True)
+    mask_region_upper = mask(cosmological_volume)
+    mask_region_lower = mask(cosmological_volume)
     restrict_lower = cosmo_array(
         [mask_region_lower.metadata.boxsize * 0.8, mask_region_lower.metadata.boxsize]
     ).T
@@ -243,7 +244,7 @@ def test_mask_pad_wrapping(cosmological_volume):
 
 def test_mask_entire_box(cosmological_volume):
     """Check that we get all cells when we select the whole box."""
-    mask_region = mask(cosmological_volume, range_mask=True)
+    mask_region = mask(cosmological_volume)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * 0.0, mask_region.metadata.boxsize]
     ).T
@@ -255,7 +256,7 @@ def test_mask_entire_box(cosmological_volume):
 
 def test_invalid_mask_interval(cosmological_volume):
     """Check that we get an error if the mask boundaries go out of bounds."""
-    mask_region = mask(cosmological_volume, range_mask=True)
+    mask_region = mask(cosmological_volume)
     restrict = cosmo_array(
         [mask_region.metadata.boxsize * -2, mask_region.metadata.boxsize * 2]
     ).T
@@ -271,8 +272,8 @@ def test_inverted_mask_boundaries(cosmological_volume):
     in the other direction. Check this by making an "inverted" selection and
     comparing to the "uninverted" selection through the boundary.
     """
-    mask_region = mask(cosmological_volume, range_mask=True)
-    mask_region_inverted = mask(cosmological_volume, range_mask=True)
+    mask_region = mask(cosmological_volume)
+    mask_region_inverted = mask(cosmological_volume)
     restrict = cosmo_array(
         [-mask_region.metadata.boxsize * 0.2, mask_region.metadata.boxsize * 0.2]
     ).T
@@ -293,7 +294,7 @@ def test_inverted_mask_boundaries(cosmological_volume):
 
 def test_empty_mask(cosmological_volume):
     """Test that a mask containing no particles doesn't cause any problems."""
-    empty_mask = mask(cosmological_volume, range_mask=False)
+    empty_mask = mask(cosmological_volume)
     # mask a region just to run faster:
     region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]
     empty_mask.constrain_spatial(region)
@@ -349,10 +350,12 @@ def test_mask_pad_warning(cosmological_volume):
 @pytest.mark.parametrize("range_mask", (True, False))
 def test_get_masked_counts_offsets_entire_box(snapshot_or_soap, range_mask):
     """Check get_masked_counts_offsets against known solution for entire box."""
-    m = mask(snapshot_or_soap, range_mask=range_mask)
+    m = mask(snapshot_or_soap)
+    if not range_mask:
+        m.convert_masks_to_bool()
     region = np.vstack((0 * m.metadata.boxsize, m.metadata.boxsize)).T
     m.constrain_spatial(region)
-    masked_counts, masked_offsets = m.get_masked_counts_offsets()
+    masked_counts, masked_offsets = m._get_masked_counts_offsets()
     for k in m.counts.keys():
         assert (m.counts[k] == masked_counts[k]).all()
         assert (m.offsets[k] == masked_offsets[k]).all()
@@ -360,25 +363,25 @@ def test_get_masked_counts_offsets_entire_box(snapshot_or_soap, range_mask):
 
 def test_get_masked_counts_offsets_range_mask_vs_not(snapshot_or_soap):
     """Check that the two types of masking give consistent counts and offsets."""
-    m_range_mask = mask(snapshot_or_soap, range_mask=True)
-    m_non_range_mask = mask(snapshot_or_soap, range_mask=False)
+    m_range_mask = mask(snapshot_or_soap)
+    m_bool_mask = mask(snapshot_or_soap)
+    m_bool_mask.convert_masks_to_bool()
     boxsize = m_range_mask.metadata.boxsize
     region = np.vstack((0.4 * boxsize, 0.6 * boxsize)).T
     m_range_mask.constrain_spatial(region)
-    m_non_range_mask.constrain_spatial(region)
-    range_mask_counts, range_mask_offsets = m_range_mask.get_masked_counts_offsets()
-    non_range_mask_counts, non_range_mask_offsets = (
-        m_range_mask.get_masked_counts_offsets()
-    )
+    m_bool_mask.constrain_spatial(region)
+    range_mask_counts, range_mask_offsets = m_range_mask._get_masked_counts_offsets()
+    bool_mask_counts, bool_mask_offsets = m_range_mask._get_masked_counts_offsets()
     for k in m_range_mask.counts.keys():
-        assert (range_mask_counts[k] == non_range_mask_counts[k]).all()
-        assert (range_mask_offsets[k] == non_range_mask_offsets[k]).all()
+        assert (range_mask_counts[k] == bool_mask_counts[k]).all()
+        assert (range_mask_offsets[k] == bool_mask_offsets[k]).all()
 
 
 def test_convert_to_ranges_roundtrip(snapshot_or_soap):
     """Check that we can convert bool mask to ranges and back."""
-    m = mask(snapshot_or_soap, range_mask=False)
-    original_m = {k: getattr(m, k) for k in m._generate_update_list()}
+    m = mask(snapshot_or_soap)
+    m.convert_masks_to_bool()
+    original_m = {k: getattr(m, k) for k in m.update_list}
     m.convert_masks_to_ranges()
     for k in original_m:
         assert getattr(m, k).shape != original_m[k].shape
@@ -389,8 +392,8 @@ def test_convert_to_ranges_roundtrip(snapshot_or_soap):
 
 def test_convert_to_bool_roundtrip(snapshot_or_soap):
     """Check that we can convert range mask to bool and back."""
-    m = mask(snapshot_or_soap, range_mask=True)
-    original_m = {k: getattr(m, k) for k in m._generate_update_list()}
+    m = mask(snapshot_or_soap)
+    original_m = {k: getattr(m, k) for k in m.update_list}
     m.convert_masks_to_bool()
     for k in original_m:
         assert getattr(m, k).shape != original_m[k].shape
@@ -416,7 +419,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
 
     Also checks that the SWIFTMask.constrained attribute is being set correctly.
     """
-    m = mask(snapshot_or_soap, range_mask=range_mask)
+    m = mask(snapshot_or_soap)
+    if not range_mask:
+        m.convert_masks_to_bool()
     region1 = np.vstack((m.metadata.boxsize * 0, m.metadata.boxsize * 0.5)).T
     region2 = np.vstack((m.metadata.boxsize * 0.5, m.metadata.boxsize * 1.0)).T
     if m.metadata.output_type == "SOAP":
@@ -469,7 +474,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
     m.constrain_mask(*constrain_mask_args)
     assert m.constrained == "constrain_mask"
     # reinitialize
-    m = mask(snapshot_or_soap, range_mask=range_mask)
+    m = mask(snapshot_or_soap)
+    if not range_mask:
+        m.convert_masks_to_bool()
     # constrain_spatial then constrain_indices: not allowed
     m.constrain_spatial(region1)
     assert m.constrained == "constrain_spatial"
@@ -479,7 +486,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
     with pytest.raises(RuntimeError, match="Can't `constrain_index` after"):
         m.constrain_index(1)
     # reinitialize
-    m = mask(snapshot_or_soap, range_mask=range_mask)
+    m = mask(snapshot_or_soap)
+    if not range_mask:
+        m.convert_masks_to_bool()
     # constrain_mask then anything else: not allowed
     m.constrain_mask(*constrain_mask_args)
     assert m.constrained == "constrain_mask"
@@ -492,7 +501,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
     with pytest.raises(RuntimeError, match="Can't `constrain_indices` after"):
         m.constrain_indices([0, 1])
     # reinitialize
-    m = mask(snapshot_or_soap, range_mask=range_mask)
+    m = mask(snapshot_or_soap)
+    if not range_mask:
+        m.convert_masks_to_bool()
     # constrain_index then constrain_spatial: not allowed
     if m.metadata.output_type != "SOAP":
         with pytest.raises(RuntimeError, match="Cannot constrain to specific rows"):
@@ -518,7 +529,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
         m.constrain_mask(*constrain_mask_args)
         assert m.constrained == "constrain_mask"
     # reinitialize
-    m = mask(snapshot_or_soap, range_mask=range_mask)
+    m = mask(snapshot_or_soap)
+    if not range_mask:
+        m.convert_masks_to_bool()
     # constrain_indices then constrain_spatial: not allowed
     if m.metadata.output_type != "SOAP":
         with pytest.raises(RuntimeError, match="Cannot constrain to specific rows"):

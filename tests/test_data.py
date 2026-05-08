@@ -227,7 +227,9 @@ def test_reading_select_region_metadata(cosmological_volume, range_mask):
     full_data = load(cosmological_volume)
 
     # Mask off the centre of the volume.
-    mask_region = mask(cosmological_volume, range_mask=range_mask)
+    mask_region = mask(cosmological_volume)
+    if not range_mask:
+        mask_region.convert_masks_to_bool()
 
     restrict = cosmo_array(
         [full_data.metadata.boxsize * 0.2, full_data.metadata.boxsize * 0.8]

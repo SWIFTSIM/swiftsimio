@@ -18,9 +18,11 @@ def test_soap_can_mask_spatial(soap_example, range_mask):
     """
     Check we don't crash applying a mask to a SOAP file.
 
-    Covers both the spatial only and non-spatial only cases.
+    Covers both the range and bool mask only cases.
     """
-    this_mask = mask(soap_example, range_mask=range_mask)
+    this_mask = mask(soap_example)
+    if not range_mask:
+        this_mask.convert_masks_to_bool()
 
     bs = this_mask.metadata.boxsize
     this_mask.constrain_spatial([[0 * b, 0.5 * b] for b in bs])
@@ -30,9 +32,10 @@ def test_soap_can_mask_spatial(soap_example, range_mask):
     data.spherical_overdensity_200_mean.total_mass[0]
 
 
-def test_soap_can_mask_spatial_and_non_spatial_actually_use(soap_example):
-    """Check that non-spatial masking is equivalent to loading all and masking by hand."""
-    this_mask = mask(soap_example, range_mask=False)
+def test_soap_can_mask_range_and_bool_actually_use(soap_example):
+    """Check that bool masking is equivalent to loading all and masking by hand."""
+    this_mask = mask(soap_example)
+    this_mask.convert_masks_to_bool()
 
     lower = cosmo_quantity(
         1e5,
@@ -70,7 +73,7 @@ def test_soap_can_mask_spatial_and_non_spatial_actually_use(soap_example):
 
 def test_soap_single_row_mask(soap_example):
     """Check that we can mask down to a single row."""
-    this_mask = mask(soap_example, range_mask=True)
+    this_mask = mask(soap_example)
 
     this_mask.constrain_index(21)
 
@@ -86,7 +89,9 @@ def test_soap_multiple_row_mask_non_spatial(soap_example, range_mask):
 
     Covers both spatial only and non-spatial only cases.
     """
-    this_mask = mask(soap_example, range_mask=range_mask)
+    this_mask = mask(soap_example)
+    if not range_mask:
+        this_mask.convert_masks_to_bool()
 
     indices = [0, 1, 2, 3, 6, 23, 94, 57]
 

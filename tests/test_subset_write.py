@@ -123,7 +123,9 @@ def test_subset_writer_constrained_indices(soap_example, range_mask):
         if isinstance(soap_example, (Path, str))
         else soap_example.filename
     )
-    m = mask(soap_example, range_mask=range_mask)
+    m = mask(soap_example)
+    if not range_mask:
+        m.convert_masks_to_bool()
     region = np.vstack([m.metadata.boxsize * 0, m.metadata.boxsize * 0.5]).T
     m.constrain_indices([1, 2, 3])
     outfile = os.path.basename(filename).replace(".hdf5", "_subset.hdf5")

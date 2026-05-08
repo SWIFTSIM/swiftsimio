@@ -52,9 +52,10 @@ def _constraint(method: Callable) -> Callable:
 
 class SWIFTMask(HandleProvider):
     """
-    Main masking object.
+    Main masking object. This can have masks for any present particle type in it.
 
-    This can have masks for any present particle field in it.
+    For catalogues (e.g. SOAP) where all arrays are the same size there can be a "shared"
+    mask that is stored once and used for all of them.
 
     Takes the SWIFT metadata and enables individual property-by-property masking
     when reading from snapshots. When masking like this order-in-file is not preserved,
@@ -67,12 +68,6 @@ class SWIFTMask(HandleProvider):
 
     metadata : SWIFTMetadata
         Metadata loaded from snapshot.
-
-    range_mask : bool, optional
-        If ``True`` (the default), you can only constrain spatially.
-        However, this is significantly faster and considerably
-        more memory efficient (~ bytes per cell, rather than
-        ~ bytes per particle).
 
     safe_padding : bool or float, optional
         If snapshot does not specify bounding box of cell particles (``MinPositions``,
@@ -91,11 +86,9 @@ class SWIFTMask(HandleProvider):
         The file handle to read metadata from.
 
     spatial_only : bool, optional
-        Deprecated, use ``range_mask`` instead.
+        Deprecated, any necessary conversions handled automatically.
     """
 
-    group_mapping: dict | None = None
-    group_size_mapping: dict | None = None
     filename: Path
     constrained: str | None
 
@@ -104,22 +97,23 @@ class SWIFTMask(HandleProvider):
         filename: Path,
         metadata: SWIFTMetadata,
         *,
-        range_mask: bool = True,
         safe_padding: bool | float = _DEFAULT_SAFE_PADDING,
         handle: h5py.File | None = None,
         spatial_only: bool | None = None,  # deprecated
     ) -> None:
         if spatial_only is not None:
             warnings.warn(
-                "`spatial_only` is deprecated, use `range_mask` (with the same value) "
-                "instead. Overriding `range_mask` value if provided.",
+                "`spatial_only` is deprecated, any necessary conversions are now handled"
+                " automatically.",
                 DeprecationWarning,
             )
-            range_mask = spatial_only
         super().__init__(filename, handle=handle)
         self.metadata = metadata
         self.units = metadata.units
-        self.range_mask = range_mask
+        self._group_mapping: dict | None = None
+        self._group_size_mapping: dict | None = None
+        self._update_list: list | None = None
+        self.range_mask = True
         self.constrained = None
         if safe_padding is True:
             self.safe_padding = _DEFAULT_SAFE_PADDING
@@ -142,76 +136,72 @@ class SWIFTMask(HandleProvider):
         self._unpack_cell_metadata()
 
         self.cell_mask = self._generate_cell_mask(restrict=None)
-        if not range_mask:
-            empty_masks, sizes = self._generate_empty_masks(fill_value=True)
-            for mask_key, mask_value in empty_masks.items():
-                setattr(self, mask_key, mask_value)
-            for size_key, size_value in sizes.items():
-                setattr(self, size_key, size_value)
-        else:
-            self._update_spatial_masks()
+        self._update_range_masks()
 
         self._close_handle_if_manager()
 
-    def _generate_mapping_dictionary(self) -> dict[str, str]:
+    @property
+    def group_mapping(self) -> dict[str, str]:
         """
         Create mapping between "group names" and their underlying cell metadata names.
 
-        Allows for pointers to be used instead of re-creating masks.
+        Allows for aliases to be used instead of re-creating masks.
 
         Returns
         -------
         dict[str, str]:
             The dictionary of corresponding names.
         """
-        if self.group_mapping is not None:
-            return self.group_mapping
+        if self._group_mapping is not None:
+            return self._group_mapping
 
         if self.metadata.shared_cell_counts is None:
             # Each and every particle type has its own cell counts, offsets,
             # and hence masks.
-            self.group_mapping = {
+            self._group_mapping = {
                 group: f"_{group}" for group in self.metadata.present_group_names
             }
         else:
             # We actually only have _one_ mask!
-            self.group_mapping = {
+            self._group_mapping = {
                 group: "_shared" for group in self.metadata.present_group_names
             }
 
         return self.group_mapping
 
-    def _generate_size_mapping_dictionary(self) -> dict[str, str]:
+    @property
+    def group_size_mapping(self) -> dict[str, str]:
         """
         Create mapping between "group names" and their underlying cell metadata names.
 
-        Allows for pointers to be used instead of re-creating masks.
+        Allows for aliases to be used instead of re-creating masks.
 
         Returns
         -------
         dict[str, str]:
             The dictionary of corresponding names.
         """
-        if self.group_size_mapping is not None:
-            return self.group_size_mapping
+        if self._group_size_mapping is not None:
+            return self._group_size_mapping
 
         if self.metadata.shared_cell_counts is None:
             # Each and every particle type has its own cell counts, offsets,
             # and hence masks.
-            self.group_size_mapping = {
+            self._group_size_mapping = {
                 f"{group}_size": f"_{group}_size"
                 for group in self.metadata.present_group_names
             }
         else:
             # We actually only have _one_ mask!
-            self.group_size_mapping = {
+            self._group_size_mapping = {
                 f"{group}_size": "_shared_size"
                 for group in self.metadata.present_group_names
             }
 
         return self.group_size_mapping
 
-    def _generate_update_list(self) -> list[str]:
+    @property
+    def update_list(self) -> list[str]:
         """
         Get list of internal mask variables that need updating when changing spatial mask.
 
@@ -220,15 +210,20 @@ class SWIFTMask(HandleProvider):
         list[str]
             List of the variable names that need updating.
         """
-        if self.metadata.shared_cell_counts is None:
-            # Each and every particle type has its own cell counts, offsets,
-            # and hence masks.
-            return [f"_{group}" for group in self.metadata.present_group_names]
-        else:
-            # We actually only have _one_ mask!
-            return ["_shared"]
+        if self._update_list is not None:
+            return self._update_list
 
-    def __getattr__(self, name: str) -> np.array:
+        self._update_list = (
+            # Each and every particle type has its own cell counts, offsets,
+            # and hence masks:
+            [f"_{group}" for group in self.metadata.present_group_names]
+            if self.metadata.shared_cell_counts is None
+            # Or there is only one shared mask:
+            else ["_shared"]
+        )
+        return self._update_list
+
+    def __getattr__(self, name: str) -> np.ndarray:
         """
         Overload the ``__getattr__`` method to allow for direct access to the masks.
 
@@ -248,8 +243,8 @@ class SWIFTMask(HandleProvider):
             If the requested particle type is not found.
         """
         mappings = {
-            **self._generate_mapping_dictionary(),
-            **self._generate_size_mapping_dictionary(),
+            **self.group_mapping,
+            **self.group_size_mapping,
         }
 
         underlying_name = mappings.get(name, None)
@@ -261,7 +256,7 @@ class SWIFTMask(HandleProvider):
 
     def _generate_empty_masks(
         self, fill_value: bool = True
-    ) -> dict[str, np.ndarray[bool]]:
+    ) -> tuple[dict[str, np.ndarray], dict[str, int]]:
         """
         Generate empty (all ``True``) masks for all available particle types.
 
@@ -280,8 +275,6 @@ class SWIFTMask(HandleProvider):
             Contains the sizes of the masks labelled with keys matching the masks names
             suffixed with ``"_size"``.
         """
-        mapping = self._generate_mapping_dictionary()
-
         mask_func = np.ones if fill_value else np.zeros
         empty_masks = {}
         sizes = {}
@@ -292,7 +285,7 @@ class SWIFTMask(HandleProvider):
             empty_masks["_shared"] = mask_func(size, dtype=bool)
             sizes["_shared_size"] = size
         else:
-            for group_name, data_name in mapping.items():
+            for group_name, data_name in self.group_mapping.items():
                 size = getattr(self.metadata, f"n_{group_name}")
                 empty_masks[data_name] = mask_func(size, dtype=bool)
                 sizes[f"{data_name}_size"] = size
@@ -465,15 +458,16 @@ class SWIFTMask(HandleProvider):
 
             lower < group_name.quantity <= upper
 
-        The quantities must have units attached.
+        The quantities must be :class:`~swiftsimio.objects.cosmo_quantity`, i.e. must
+        have units and cosmology information attached.
 
         Parameters
         ----------
         group_name : str
-            Particle type.
+            Particle type (e.g. ``"gas"``).
 
         quantity : str
-            Quantity being constrained.
+            Quantity being constrained (e.g. ``"temperatures"``).
 
         lower : ~swiftsimio.objects.cosmo_quantity
             Constraint lower bound.
@@ -488,8 +482,7 @@ class SWIFTMask(HandleProvider):
         """
         self.convert_masks_to_bool()  # no-op if already bool
 
-        mapping = self._generate_mapping_dictionary()
-        data_name = mapping[group_name]
+        data_name = self.group_mapping[group_name]
         current_mask = getattr(self, data_name)
         group_metadata = getattr(self.metadata, f"{group_name}_properties")
         handle_dict = {
@@ -498,6 +491,7 @@ class SWIFTMask(HandleProvider):
         handle = handle_dict[quantity]
 
         # Load in the relevant data.
+        h5file: h5py.File
         with self.metadata.open_file() as h5file:
             field_attributes = h5file[handle].attrs
             unit = _load_field_units(field_attributes, self.metadata.units)
@@ -528,7 +522,9 @@ class SWIFTMask(HandleProvider):
 
         return
 
-    def _generate_cell_mask(self, restrict: cosmo_array | None = None) -> np.array:
+    def _generate_cell_mask(
+        self, restrict: cosmo_array | None = None
+    ) -> dict[str, np.ndarray]:
         """
         Generate a spatially restricted mask for cells.
 
@@ -631,15 +627,15 @@ class SWIFTMask(HandleProvider):
 
         return cell_mask
 
-    def _update_spatial_masks(self) -> None:
+    def _update_range_masks(self) -> None:
         """
         Update the particle masks using the cell masks.
 
-        We actually overwrite all non-used cells with False, rather than the
+        We actually overwrite all non-used cells with ``False``, rather than the
         inverse, as we assume initially that we want to read all particles in,
         and we want to respect other masks that may have been applied to the data.
         """
-        for data_name in self._generate_update_list():
+        for data_name in self.update_list:
             count_name = data_name[1:]  # Remove the underscore
 
             if self.range_mask:
@@ -675,7 +671,7 @@ class SWIFTMask(HandleProvider):
         intersect: bool | None = None,  # deprecated
     ) -> None:
         """
-        Use the cell metadata to create a spatial mask.
+        Use the cell metadata to select particles within a cuboid region.
 
         This mask is necessarily approximate and is coarse-grained to the cell size.
 
@@ -702,7 +698,6 @@ class SWIFTMask(HandleProvider):
         union : bool, optional
             If ``True``, combine the spatial mask with any existing spatial mask to
             select two (or more) regions with repeated calls to ``constrain_spatial``.
-            By default (``False``) any existing mask is overwritten.
 
         intersect : bool, optional
             Deprecated due to misleading name, use ``union`` instead.
@@ -710,7 +705,7 @@ class SWIFTMask(HandleProvider):
         See Also
         --------
         constrain_mask
-            Method to further refine mask.
+            Method to further refine mask, selecting particles by their properties.
         """
         if intersect is not None:
             warnings.warn(
@@ -722,7 +717,7 @@ class SWIFTMask(HandleProvider):
         if self.constrained == "constrain_spatial" and union:
             # we are in union mode and already have a spatial constraint
             new_mask = self._generate_cell_mask(restrict)
-            for group_name in self._generate_update_list():
+            for group_name in self.update_list:
                 group_name = group_name[1:]  # remove leading underscore
                 self.cell_mask[group_name] = np.logical_or(
                     self.cell_mask[group_name], new_mask[group_name]
@@ -745,7 +740,7 @@ class SWIFTMask(HandleProvider):
                 )
             raise RuntimeError(msg)
 
-        self._update_spatial_masks()
+        self._update_range_masks()
 
         return
 
@@ -765,7 +760,7 @@ class SWIFTMask(HandleProvider):
             # First, convert each boolean mask into an integer mask
             # Use the accelerate.ranges_from_array function to convert
             # This into a set of ranges.
-            for mask in self._generate_update_list():
+            for mask in self.update_list:
                 where_array = np.where(getattr(self, mask))[0]
                 setattr(self, f"{mask}_size", where_array.size)
                 setattr(self, mask, ranges_from_array(where_array))
@@ -777,7 +772,8 @@ class SWIFTMask(HandleProvider):
         """
         Convert the masks to boolean masks.
 
-        These are sometimes easier to work with than range masks.
+        These are sometimes easier to work with than range masks but usually use more
+        memory.
 
         See Also
         --------
@@ -800,7 +796,8 @@ class SWIFTMask(HandleProvider):
         """
         Constrain the mask to a single row.
 
-        Intended for use with SOAP catalogues, mask to read only a single row.
+        Only works for files where all arrays have the same length. Intended for use with
+        SOAP catalogues, mask to read only a single row.
 
         Parameters
         ----------
@@ -818,6 +815,8 @@ class SWIFTMask(HandleProvider):
     def constrain_indices(self, indices: list[int]) -> None:
         """
         Constrain the mask to a list of rows.
+
+        Only works for files where all arrays have the same length.
 
         Parameters
         ----------
@@ -840,7 +839,7 @@ class SWIFTMask(HandleProvider):
             sorted_indices = np.sort(indices)
         else:
             sorted_indices = np.asarray(indices)
-        for mask in self._generate_update_list():
+        for mask in self.update_list:
             if self.range_mask:
                 setattr(self, mask, ranges_from_array(sorted_indices))
                 setattr(self, f"{mask}_size", len(indices))
@@ -855,7 +854,7 @@ class SWIFTMask(HandleProvider):
 
     def _get_masked_counts_offsets(
         self,
-    ) -> tuple[dict[str, np.array], dict[str, np.array]]:
+    ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
         """
         Return the particle counts and offsets in cells selected by the mask.
 

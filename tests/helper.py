@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 import h5py
 import unyt as u
-from swiftsimio.subset_writer import find_links, write_metadata
+from swiftsimio.subset_writer import _find_links, _write_metadata
 from swiftsimio import mask, cosmo_array, Writer
 from swiftsimio.masks import SWIFTMask
 from swiftsimio._file_utils import open_path_or_handle
@@ -94,8 +94,8 @@ def create_n_particle_dataset(
         open_path_or_handle(filename) as infile,
         h5py.File(output_name, "w") as outfile,
     ):
-        list_of_links, _ = find_links(infile)
-        write_metadata(infile, outfile, list_of_links, data_mask)
+        list_of_links, _ = _find_links(infile)
+        _write_metadata(infile, outfile, list_of_links, data_mask)
 
         # Write copied particles
         particle_coords = cosmo_array(
