@@ -135,6 +135,7 @@ def mask(
             metadata=metadata,
             safe_padding=safe_padding,
             handle=handle,
+            spatial_only=spatial_only,
         )
     return mask
 

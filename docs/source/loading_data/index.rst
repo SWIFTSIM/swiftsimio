@@ -356,7 +356,7 @@ place of the filename.
    # The full metadata object is available from within the mask
    boxsize = mask.metadata.boxsize
    # load_region is a 3x2 list [[left, right], [bottom, top], [front, back]]
-   load_region = [[0.0 * b, 0.5 * b] for b in boxsize]
+   load_region = np.vstack((0.0 * boxsize, 0.5 * boxsize)).T
 
    # Constrain the mask
    mask.constrain_spatial(load_region)
