@@ -29,14 +29,14 @@ of the region of interest. This is because it works as follows:
 2. Find the overlap between the specified region and these cells.
 3. Load all cells within that overlap.
 
-As you can see, the edges of regions may load in extra information as we
-always load the whole top-level cell.
+As you can see, some extra particles around the edges of regions may be
+loaded as we always load the whole top-level cell.
 
 Example
 ^^^^^^^
 
 In this example we will use the :obj:`swiftsimio.masks.SWIFTMask` object
-to load the the octant of the box closes to the origin.
+to load the the octant of the box closest to the origin.
 
 .. code-block:: python
 
@@ -47,8 +47,8 @@ to load the the octant of the box closes to the origin.
    mask = sw.mask(filename)
    # The full metadata object is available from within the mask
    boxsize = mask.metadata.boxsize
-   # load_region is a 3x2 list [[left, right], [bottom, top], [front, back]]
-   load_region = np.vstack((0.0 * boxsize, 0.5 * boxsize)).T
+   # load_region is a 3x2 list [[left, right], [front, back], [bottom, top]]
+   load_region = [[0.0 * b, 0.5 * b] for b in boxsize]
 
    # Constrain the mask
    mask.constrain_spatial(load_region)
@@ -75,12 +75,29 @@ touching):
 
 .. code-block:: python
 
-   additional_region = np.vstack((0.5 * boxsize, 1.0 * boxsize)).T
-   mask.constrain_spatial(additional_region, union=True)
+   two_octant_mask = sw.mask(filename)
+   first_region = [[0.0 * b, 0.5 * b] for b in boxsize]
+   additional_region = [[0.5 * b, 1.0 * b] for b in boxsize]
+   two_octant_mask.constrain_spatial(first_region)
+   two_octant_mask.constrain_spatial(additional_region, union=True)
+   two_octant_dataset = sw.load(filename, mask=two_octant_mask)
 
-In the first call to :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` the
-``union`` argument can be set to ``True`` or left ``False`` (the default): since
-no mask yet exists both give the same result.
+Rows of the ``load_region`` can also be replaced with ``None`` to indicate that no
+constraint should be imposed along that axis. For example, to select a 1 Mpc thick
+"slab" perpendicular to the z-axis:
+
+.. code-block:: python
+
+   import unyt as u
+   slab_mask = sw.mask(filename)
+   scale_factor = slab_mask.metadata.scale_factor
+   slab_region = [
+       cosmo_array([1, 2], u.Mpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
+       None,
+       None,
+   ]
+   slab_mask.constrain_spatial(slab_region)
+   slab_dataset = sw.load(filename, slab_mask)
 
 Periodic boundaries
 ^^^^^^^^^^^^^^^^^^^
@@ -93,42 +110,37 @@ lying at the upper edge of the box:
 .. code-block:: python
 
    mask = sw.mask(filename)
+   boxsize = mask.metadata.boxsize
    mask.constrain_spatial(
-       np.array(
-           [
-	       [0.0, 1.0],
-	       [0.0, 1.0],
-	       [0.0, 0.1],
-	   ]
-       ) * mask.metadata.boxsize[:, np.newaxis]
+       [
+           None,
+           None,
+           [0.0 * boxsize[2], 0.1 * boxsize[2]],
+       ]
    )
    mask.constrain_spatial(
-       np.array(
-           [
-	       [0.0, 1.0],
-	       [0.0, 1.0],
-	       [0.9, 1.0],
-	   ]
-       ) * mask.metadata.boxsize[:, np.newaxis],
+       [
+           None,
+           None,
+           [0.9 * boxsize[2], 1.0 * boxsize[2]],
+       ]
        union=True,
    )
 
 This is a bit inconvenient though since the region is actually contiguous if we
-account for the periodic boundary. :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` allows us
-to select a region straddling the periodic boundary, for example this is an
-equivalent selection:
+account for the periodic boundary.
+:meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` allows us to select a region
+straddling the periodic boundary, for example this is an equivalent selection:
 
 .. code-block:: python
 
    mask = sw.mask(filename)
    mask.constrain_spatial(
-       np.array(
-           [
-	       [0.0, 1.0],
-	       [0.0, 1.0],
-	       [-0.1, 0.1],
-	   ]
-       ) * mask.metadata.boxsize[:, np.newaxis]
+       [
+           None,
+           None,
+           [-0.1 * boxsize[2], 0.1 * boxsize[2]],
+       ]
    )
 
 Note that masking never result in periodic copies of particles, nor does it shift
@@ -140,9 +152,7 @@ of every particle and is equivalent to providing no spatial mask:
 .. code-block:: python
 
    mask = sw.mask(filename)
-   mask.constrain_spatial(
-       np.vstack((-0.1 * mask.metadata.boxsize, 1.1 * mask.metadata.boxsize)).T
-   )
+   mask.constrain_spatial([[-0.1 * b, 1.1 * b] for b in mask.metadata.boxsize])
 
 Remember to wrap the coordinates yourself if relevant! Alternatively, the
 `swiftgalaxy`_ package offers support for coordinate transformations including
@@ -158,13 +168,11 @@ bound is reached:
 
    mask = sw.mask(filename)
    mask.constrain_spatial(
-       np.array(
-           [
-	       [0.0, 1.0],
-	       [0.0, 1.0],
-	       [0.9, 0.1],
-           ]
-       ) * mask.metadata.boxsize[:, np.newaxis]
+       [
+           None,
+           None,
+           [0.9 * boxsize[2], 0.1 * boxsize[2]],
+       ]
    )
 
 The coordinates defining the region must always be in the interval
@@ -215,11 +223,11 @@ the region can be extended or switched off with the ``safe_padding`` parameter:
    mask = sw.mask(filename)
    lbox = mask.metadata.boxsize
    mask.constrain_spatial(
-       [[0.4 * lbox, 0.6 * lbox] for lbox in mask.metadata.boxsize],
+       [[0.4 * b, 0.6 * b] for b in mask.metadata.boxsize],
        safe_padding=False,  # padding switched off
    )
    mask.constrain_spatial(
-       [[0.4 * lbox, 0.6 * lbox] for lbox in mask.metadata.boxsize],
+       [[0.4 * b, 0.6 * b] for b in mask.metadata.boxsize],
        safe_padding=1.0,  # pad more, by 1.0 instead of 0.1 cell lengths
    )
 
@@ -337,15 +345,13 @@ as follows
     import unyt                                                             
     
     mask = sw.mask("eagle_snapshot.hdf5")
-    boxsize = mask.metadata.boxsize
     scale_factor = mask.metadata.scale_factor
     mask.constrain_spatial(
-        np.vstack(
-	    (
-                cosmo_array([[100, 200]], u.kpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
-		np.array([[0.0, 0.1], [0.0, 0.1]]) * boxsize[1:, np.newaxis].to(u.kpc)
-	    )
-	)
+        [
+            cosmo_array([100, 200], u.kpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
+	    None,
+	    None,
+	]
     )
     sw.subset_writer.write_subset("test_subset.hdf5", mask)
 
