@@ -51,7 +51,7 @@ def test_soap_can_mask_range_and_bool_actually_use(soap_example):
         scale_factor=this_mask.metadata.scale_factor,
         scale_exponent=0,
     )
-    this_mask.constrain_mask(
+    this_mask.constrain_property(
         "spherical_overdensity_200_mean", "total_mass", lower, upper
     )
 
