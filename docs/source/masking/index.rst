@@ -47,7 +47,7 @@ to load the the octant of the box closest to the origin.
    mask = sw.mask(filename)
    # The full metadata object is available from within the mask
    boxsize = mask.metadata.boxsize
-   # load_region is a 3x2 list [[left, right], [front, back], [bottom, top]]
+   # load_region is a 3x2 list [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
    load_region = [[0.0 * b, 0.5 * b] for b in boxsize]
 
    # Constrain the mask
