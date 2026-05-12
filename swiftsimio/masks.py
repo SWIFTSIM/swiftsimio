@@ -15,7 +15,7 @@ from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 from swiftsimio._handle_provider import HandleProvider
 
-from typing import Callable
+from typing import Callable, Iterable
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP", "FOFSubset", "SOAPSubset"]
@@ -439,8 +439,41 @@ class SWIFTMask(HandleProvider):
 
         return
 
-    @_constraint
     def constrain_mask(
+        self,
+        group_name: str,
+        quantity: str,
+        lower: cosmo_quantity,
+        upper: cosmo_quantity,
+    ) -> None:
+        """
+        Use :meth:`~swiftsimio.masks.SWIFTMask.constrain_property` instead.
+
+        This name is deprecated and will be removed in the future.
+
+        Parameters
+        ----------
+        group_name : str
+            Particle type (e.g. ``"gas"``).
+
+        quantity : str
+            Quantity being constrained (e.g. ``"temperatures"``).
+
+        lower : ~swiftsimio.objects.cosmo_quantity
+            Constraint lower bound.
+
+        upper : ~swiftsimio.objects.cosmo_quantity
+            Constraint upper bound.
+        """
+        warnings.warn(
+            "`constrain_mask` is deprecated, use `constrain_property` with the same "
+            "arguments instead.",
+            DeprecationWarning,
+        )
+        self.constrain_property(group_name, quantity, lower, upper)
+
+    @_constraint
+    def constrain_property(
         self,
         group_name: str,
         quantity: str,
@@ -663,10 +696,52 @@ class SWIFTMask(HandleProvider):
 
         return
 
+    def _sanitize_region(self, region: Iterable) -> cosmo_array:
+        """
+        Coerce user-provided region to (3, 2) :class:`~swiftsimio.objects.cosmo_array`.
+
+        The input region should have length 3 (otherwise error). The rows should have
+        length 2, but may be ``None``. We check these conditions, then package everything
+        up into a :class:`~swiftsimio.objects.cosmo_array`.
+
+        We have to be careful: :class:`~swiftsimio.objects.cosmo_array` will check the
+        input for compatibility of units, cosmo_factors, etc. and convert them to be
+        consistent if needed, but only up to a depth of 1, i.e. in this:
+        ``cosmo_array([[cosmo_quantity(...), cosmo_quantity(...)], None, None])`` the
+        cosmo-ness of the :class:`~swiftsimio.objects.cosmo_quantity` elements would be
+        ignored because they are nested two-deep in a list.
+
+        Parameters
+        ----------
+        region : list
+            The user-provided region.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            The region as a (3, 2) :class:`~swiftsimio.objects.cosmo_array`, with ``None``
+            rows replaced by the full extent of the box.
+        """
+        if len(region) != 3:
+            raise ValueError("`restrict` must have length == 3.")
+        for ax_region in region:
+            if ax_region is not None and len(ax_region) != 2:
+                raise ValueError(
+                    "Rows of `restrict` must have length == 2 (or be ``None``)."
+                )
+        return cosmo_array(
+            [
+                cosmo_array(ax_region)
+                if ax_region is not None
+                else np.array([0, 1]) * b
+                for ax_region, b in zip(region, self.metadata.boxsize)
+            ]
+        )
+
     @_constraint
     def constrain_spatial(
         self,
-        restrict: cosmo_array,
+        restrict: Iterable,
         union: bool = False,
         intersect: bool | None = None,  # deprecated
     ) -> None:
@@ -678,8 +753,9 @@ class SWIFTMask(HandleProvider):
         Parameters
         ----------
         restrict : list
-            Restrict is a (3,2) cosmo_array giving the lower and upper bounds for each
-            axis, e.g.
+            Restrict is a shape (3, 2) iterable giving the lower and upper bounds for each
+            axis. The bounds need to be given as :class:`~swiftsimio.objects.cosmo_array`
+            or :class:`~swiftsimio.objects.cosmo_quantity`. For example:
 
             .. code-block:: python
 
@@ -694,6 +770,31 @@ class SWIFTMask(HandleProvider):
                     scale_factor=1.0,
                     scale_exponent=1,
                 )
+
+            If no constraint is desired along an axis, ``None`` can be given instead. For
+            example, to select a "slab" in the x-y plane:
+
+            .. code-block:: python
+
+                zmin = cosmo_quantity(
+                    5.0,
+                    u.Mpc,
+                    comoving=True,
+                    scale_factor=1.0,
+                    scale_exponent=1
+                )
+                zmax = cosmo_quantity(
+                    6.0,
+                    u.Mpc,
+                    comoving=True,
+                    scale_factor=1.0,
+                    scale_exponent=1
+                )
+                restrict = [
+                    None,
+                    None,
+                    [zmin, zmax],
+                ]
 
         union : bool, optional
             If ``True``, combine the spatial mask with any existing spatial mask to
@@ -714,9 +815,10 @@ class SWIFTMask(HandleProvider):
                 DeprecationWarning,
             )
             union = intersect
+        sanitized_region = self._sanitize_region(restrict)
         if self.constrained == "constrain_spatial" and union:
             # we are in union mode and already have a spatial constraint
-            new_mask = self._generate_cell_mask(restrict)
+            new_mask = self._generate_cell_mask(sanitized_region)
             for group_name in self.update_list:
                 group_name = group_name[1:]  # remove leading underscore
                 self.cell_mask[group_name] = np.logical_or(
@@ -724,7 +826,7 @@ class SWIFTMask(HandleProvider):
                 )
         elif self.constrained is None:
             # union or not union, doesn't matter, just make a new mask
-            self.cell_mask = self._generate_cell_mask(restrict)
+            self.cell_mask = self._generate_cell_mask(sanitized_region)
         else:
             # union or not union, doesn't matter
             # we don't allow combining with current mask

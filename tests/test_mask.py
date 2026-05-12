@@ -299,7 +299,7 @@ def test_empty_mask(cosmological_volume):
     region = [[0 * b, 0.1 * b] for b in empty_mask.metadata.boxsize]
     empty_mask.constrain_spatial(region)
     # pick some values that we'll never find:
-    empty_mask.constrain_mask(
+    empty_mask.constrain_property(
         "gas",
         "pressures",
         cosmo_quantity(
@@ -425,7 +425,7 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
     region1 = np.vstack((m.metadata.boxsize * 0, m.metadata.boxsize * 0.5)).T
     region2 = np.vstack((m.metadata.boxsize * 0.5, m.metadata.boxsize * 1.0)).T
     if m.metadata.output_type == "SOAP":
-        constrain_mask_args = (
+        constrain_property_args = (
             "bound_subhalo",
             "total_mass",
             cosmo_quantity(
@@ -444,7 +444,7 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
             ),
         )
     else:
-        constrain_mask_args = (
+        constrain_property_args = (
             "gas",
             "temperatures",
             cosmo_quantity(
@@ -470,9 +470,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
     # constrain_spatial then constrain_spatial with union: allowed
     m.constrain_spatial(region2, union=True)
     assert m.constrained == "constrain_spatial"
-    # constrain_spatial then constrain_mask: allowed
-    m.constrain_mask(*constrain_mask_args)
-    assert m.constrained == "constrain_mask"
+    # constrain_spatial then constrain_property: allowed
+    m.constrain_property(*constrain_property_args)
+    assert m.constrained == "constrain_property"
     # reinitialize
     m = mask(snapshot_or_soap)
     if not range_mask:
@@ -489,9 +489,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
     m = mask(snapshot_or_soap)
     if not range_mask:
         m.convert_masks_to_bool()
-    # constrain_mask then anything else: not allowed
-    m.constrain_mask(*constrain_mask_args)
-    assert m.constrained == "constrain_mask"
+    # constrain_property then anything else: not allowed
+    m.constrain_property(*constrain_property_args)
+    assert m.constrained == "constrain_property"
     with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
         m.constrain_spatial(region1, union=False)
     with pytest.raises(RuntimeError, match="Can't `constrain_spatial` after"):
@@ -525,9 +525,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
         # constrain_index then constrain_indices: not allowed
         with pytest.raises(RuntimeError, match="Can't `constrain_indices` after"):
             m.constrain_indices([0, 1])
-        # constrain_index then constrain_mask: allowed
-        m.constrain_mask(*constrain_mask_args)
-        assert m.constrained == "constrain_mask"
+        # constrain_index then constrain_property: allowed
+        m.constrain_property(*constrain_property_args)
+        assert m.constrained == "constrain_property"
     # reinitialize
     m = mask(snapshot_or_soap)
     if not range_mask:
@@ -549,9 +549,9 @@ def test_chaining_masks(snapshot_or_soap, range_mask):
         # constrain_indices then constrain_indices: not allowed
         with pytest.raises(RuntimeError, match="Can't `constrain_indices` after"):
             m.constrain_indices([0, 1])
-        # constrain_indices then constrain_mask: allowed
-        m.constrain_mask(*constrain_mask_args)
-        assert m.constrained == "constrain_mask"
+        # constrain_indices then constrain_property: allowed
+        m.constrain_property(*constrain_property_args)
+        assert m.constrained == "constrain_property"
 
 
 def test_constrain_indices_warns_unsorted(soap_example):
@@ -561,3 +561,132 @@ def test_constrain_indices_warns_unsorted(soap_example):
         UserWarning, match="`constrain_indices` selects indices in order, sorting"
     ):
         m.constrain_indices([1, 0])
+
+
+class TestSanitizeRegion:
+    """Test the ``_sanitize_region`` method for spatial regions."""
+
+    def test_wrong_shape_regions(self, cosmological_volume_only_single_local):
+        """Check that we reject a region with length != 3."""
+        m = mask(cosmological_volume_only_single_local)
+        scale_factor = m.metadata.scale_factor
+        with pytest.raises(ValueError, match="`restrict` must have length == 3."):
+            m._sanitize_region([None, None])
+        with pytest.raises(
+            ValueError, match="Rows of `restrict` must have length == 2"
+        ):
+            m._sanitize_region(
+                [
+                    [
+                        cosmo_quantity(
+                            0,
+                            u.Mpc,
+                            comoving=True,
+                            scale_factor=scale_factor,
+                            scale_exponent=1,
+                        )
+                    ],
+                    None,
+                    None,
+                ]
+            )
+
+    def test_incompatible_region_elements(self, cosmological_volume_only_single_local):
+        """Check that incompatible attributes (e.g. units) in region are rejected."""
+        m = mask(cosmological_volume_only_single_local)
+        scale_factor = m.metadata.scale_factor
+        with pytest.raises(
+            u.exceptions.IterableUnitCoercionError,
+            match="Received an input or operand that cannot be converted",
+        ):
+            m._sanitize_region(
+                [
+                    [
+                        cosmo_quantity(
+                            0,
+                            u.Mpc,
+                            comoving=True,
+                            scale_factor=scale_factor,
+                            scale_exponent=1,
+                        ),
+                        cosmo_quantity(
+                            10,
+                            u.K,
+                            comoving=True,
+                            scale_factor=scale_factor,
+                            scale_exponent=1,
+                        ),
+                    ],
+                    None,
+                    None,
+                ]
+            )
+        with pytest.raises(
+            ValueError,
+            match="Arguments have cosmo_factors that differ",
+        ):
+            m._sanitize_region(
+                [
+                    [
+                        cosmo_quantity(
+                            0,
+                            u.Mpc,
+                            comoving=True,
+                            scale_factor=scale_factor,
+                            scale_exponent=1,
+                        ),
+                        cosmo_quantity(
+                            10,
+                            u.Mpc,
+                            comoving=True,
+                            scale_factor=scale_factor - 0.1,
+                            scale_exponent=0,
+                        ),
+                    ],
+                    None,
+                    None,
+                ]
+            )
+
+    def test_region_unit_conversion(self, cosmological_volume_only_single_local):
+        """
+        Check that convertible units in region are converted to a common unit.
+
+        Also checks physical/comoving conversion.
+        """
+        m = mask(cosmological_volume_only_single_local)
+        scale_factor = m.metadata.scale_factor
+        sanitized_region = m._sanitize_region(
+            [
+                [
+                    cosmo_quantity(
+                        1,
+                        u.Mpc,
+                        comoving=False,
+                        scale_factor=scale_factor,
+                        scale_exponent=1,
+                    ),
+                    cosmo_quantity(
+                        2000,
+                        u.kpc,
+                        comoving=True,
+                        scale_factor=scale_factor,
+                        scale_exponent=1,
+                    ),
+                ],
+                None,
+                None,
+            ]
+        )
+        assert np.allclose(
+            sanitized_region[0].to_comoving_value(u.Mpc),
+            np.array([1 / scale_factor, 2]),
+        )
+
+    def test_region_none_becomes_boxsize(self, cosmological_volume_only_single_local):
+        """Check that ``None`` entries in the region are replaced by the box size."""
+        m = mask(cosmological_volume_only_single_local)
+        sanitized_region = m._sanitize_region([None, None, None])
+        assert np.allclose(
+            sanitized_region, np.vstack((0 * m.metadata.boxsize, m.metadata.boxsize)).T
+        )
