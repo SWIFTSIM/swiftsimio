@@ -15,7 +15,7 @@ from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 from swiftsimio._handle_provider import HandleProvider
 
-from typing import Callable, Iterable
+from typing import Callable, Sequence
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP", "FOFSubset", "SOAPSubset"]
@@ -696,7 +696,7 @@ class SWIFTMask(HandleProvider):
 
         return
 
-    def _sanitize_region(self, region: Iterable) -> cosmo_array:
+    def _sanitize_region(self, region: Sequence) -> cosmo_array:
         """
         Coerce user-provided region to (3, 2) :class:`~swiftsimio.objects.cosmo_array`.
 
@@ -741,7 +741,7 @@ class SWIFTMask(HandleProvider):
     @_constraint
     def constrain_spatial(
         self,
-        restrict: Iterable,
+        restrict: Sequence,
         union: bool = False,
         intersect: bool | None = None,  # deprecated
     ) -> None:
