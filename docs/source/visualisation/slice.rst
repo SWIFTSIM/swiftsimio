@@ -137,17 +137,18 @@ and should therefore not be used together with a rotation.
 Rotations
 ---------
 
-Rotations of the box prior to slicing are provided in a similar fashion to the 
-:mod:`swiftsimio.visualisation.projection` sub-module, by using the 
+Rotations of the box prior to slicing are provided in a similar fashion to the
+:mod:`swiftsimio.visualisation.projection` sub-module, by using the
 :mod:`swiftsimio.visualisation.rotation` sub-module. To rotate the perspective
 prior to slicing a ``rotation_center`` argument in
 :func:`~swiftsimio.visualisation.slice.slice_gas` needs
-to be provided, specifying the point around which the rotation takes place. 
+to be provided, specifying the point around which the rotation takes place.
 The angle of rotation is specified with a matrix, supplied by ``rotation_matrix``
-in :func:`~swiftsimio.visualisation.slice.slice_gas`. The rotation matrix may be computed with 
-:func:`~swiftsimio.visualisation.rotation.rotation_matrix_from_vector`. This will result in the perspective being 
-rotated to be along the provided vector. This approach to rotations applied to 
-the above example is shown below.
+in :func:`~swiftsimio.visualisation.slice.slice_gas`. The rotation matrix may
+be computed with
+:func:`~swiftsimio.visualisation.rotation.rotation_matrix_from_vector`. This will
+result in the perspective being rotated to be along the provided vector. This
+approach to rotations applied to the above example is shown below.
 
 .. code-block:: python
 
@@ -164,7 +165,7 @@ the above example is shown below.
    center = 0.5 * data.metadata.boxsize
    rotate_vec = [0.5,0.5,1]
    matrix = rotation_matrix_from_vector(rotate_vec, axis='z')
-   
+
    # Map in msun / mpc^3
    # If a rotation center is provided, z_slice is taken relative to this
    # center, resulting in a slice perpendicular to the rotated z axis
@@ -178,10 +179,10 @@ the above example is shown below.
        parallel=True,
        periodic=False,  # disable periodic boundaries when using rotations
    )
-   
+
    # Map in msun * K / mpc^3
    mass_weighted_temp_map = slice_gas(
-       data, 
+       data,
        z_slice=0. * data.metadata.boxsize[2],
        resolution=1024,
        project="mass_weighted_temps",
@@ -254,7 +255,7 @@ to re-scale this back to your original dimensions to get it in the correct units
 and do not forget that it now represents the smoothed quantity per volume.
 
 If the optional arguments ``box_x``, ``box_y`` and ``box_z`` are provided, they
-should contain the simulation box size in the same re-scaled coordinates as 
+should contain the simulation box size in the same re-scaled coordinates as
 ``x``, ``y`` and ``z``. The slicing function will then correctly apply
 periodic boundary wrapping. If ``box_x``, ``box_y`` and ``box_z`` are not
 provided or set to 0, no periodic boundaries are applied.

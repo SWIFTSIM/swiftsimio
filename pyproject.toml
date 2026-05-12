@@ -61,6 +61,7 @@ dev = [
     "matplotlib",
     "scipy",
     "wily",
+    "sphinx-lint",
 ]
 docs = [
     "sphinx",

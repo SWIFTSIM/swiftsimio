@@ -97,9 +97,9 @@ allows you to do this easily:
    import unyt as u
    from swiftsimio.visualisation.power_spectrum import folded_depositions_to_power_spectrum
    from swiftsimio.objects import cosmo_array
-   
+
    folded_depositions = {}
-   
+
    for folding in [x * 2 for x in range(5)]:
        folded_depositions[folding] = render_to_deposit(
            data.gas,
@@ -108,7 +108,7 @@ allows you to do this easily:
            parallel=True,
            folding=folding,
        )
-   
+
    bins, centers, power_spectrum, foldings = folded_depositions_to_power_spectrum(
        depositions=folded_depositions,
        boxsize=data.metadata.boxsize,
@@ -126,7 +126,7 @@ allows you to do this easily:
        cutoff_above_wavenumber_fraction=0.75,
        shot_noise_norm=len(gas_mass_deposit),
    )
-   
+
 The 'used' foldings of the power spectrum are shown in the
 ``foldings`` return vaule, which is an array containing the folding
 that was used for each given bin. This is useful for debugging and
@@ -148,6 +148,6 @@ There are a few crucial parameters to this function:
    that contribute to the power spectrum. This is used to normalise
    the power spectrum to the shot noise level. This is very
    important in this case because of the use of NGP deposition.
-   
+
 Foldings are stitched using a simple method where the 'better sampled'
 foldings are used preferentially, up to the cutoff value.

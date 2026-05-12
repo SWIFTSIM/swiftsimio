@@ -204,7 +204,7 @@ region.
 Older SWIFT snapshots lack the metadata to know exactly how far particles have
 drifted out of their cells. In ``v10.2.0`` or newer, if :mod:`swiftsimio` does not
 find this metadata, it will pad the region (by 0.1 times the cell length by default),
-and issue a `UserWarning` indicating this.
+and issue a ``UserWarning`` indicating this.
 
 .. warning::
 
@@ -239,7 +239,7 @@ The below example shows the use of the masking tools to constrain loading only
 particles within a chosen density window.
 
 .. code-block:: python
-   
+
    import swiftsimio as sw
 
    # This creates and sets up the masking object.
@@ -249,10 +249,10 @@ particles within a chosen density window.
    mask.constrain_spatial(
        np.array(
            [
-	       [0.2, 0.7],
-	       [0.0, 1.0],
-	       [0.0, 1.0],
-	   ]
+               [0.2, 0.7],
+               [0.0, 1.0],
+               [0.0, 1.0],
+           ]
        ) * mask.metadata.boxsize[:, np.newaxis]
    )
 
@@ -265,17 +265,17 @@ particles within a chosen density window.
        "density",
        cosmo_quantity(
            0.4,
-	   u.g / u.cm ** 3,
-	   comoving=True,
-	   scale_factor=mask.metadata.scale_factor,
-	   scale_exponent=-3
+           u.g / u.cm ** 3,
+           comoving=True,
+           scale_factor=mask.metadata.scale_factor,
+           scale_exponent=-3
        ),
        cosmo_quantity(
            0.8,
-	   u.g / u.cm ** 3,
-	   comoving=True,
-	   scale_factor=mask.metadata.scale_factor,
-	   scale_exponent=-3
+           u.g / u.cm ** 3,
+           comoving=True,
+           scale_factor=mask.metadata.scale_factor,
+           scale_exponent=-3
        ),
    )
 
@@ -290,7 +290,7 @@ particles within a chosen density window.
    particle data arrays in the hdf5 files, and the code is not optimized for this (this
    could be optimized in the future). If you encounter slow reads with a full mask,
    consider:
-   
+
     - using a spatial-only mask instead, then discarding unwanted particles afterwards;
     - using the mask feature on the visualisation functions, if the mask is wanted for
       visualisation (for example
@@ -316,7 +316,7 @@ return ``swiftsimio`` data objects containing arrays with only those
 rows.
 
 .. code-block:: python
-    
+
     import swiftsimio as sw
 
     mask = sw.mask(filename)
@@ -333,7 +333,7 @@ single chunk.
 Writing subset of snapshot
 --------------------------
 In some cases it may be useful to write a subset of an existing snapshot to its
-own hdf5 file. This could be used, for example, to extract a galaxy halo that 
+own hdf5 file. This could be used, for example, to extract a galaxy halo that
 is of interest from a snapshot so that the file is easier to work with and transport.
 
 To do this the ``write_subset`` function is provided. It can be used, for example,
@@ -341,25 +341,25 @@ as follows
 
 .. code-block:: python
 
-    import swiftsimio as sw                                                 
-    import unyt                                                             
-    
+    import swiftsimio as sw
+    import unyt
+
     mask = sw.mask("eagle_snapshot.hdf5")
     scale_factor = mask.metadata.scale_factor
     mask.constrain_spatial(
         [
             cosmo_array([100, 200], u.kpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
-	    None,
-	    None,
-	]
+            None,
+            None,
+        ]
     )
     sw.subset_writer.write_subset("test_subset.hdf5", mask)
 
-This will write a snapshot which contains the particles from the specified snapshot 
-whose :math:`x`-coordinate is within the range [100, 200] kpc. This function uses the 
-cell mask which encompases the specified spatial domain to successively read portions 
-of datasets from the input file and writes them to a new snapshot. 
+This will write a snapshot which contains the particles from the specified snapshot
+whose :math:`x`-coordinate is within the range [100, 200] kpc. This function uses the
+cell mask which encompases the specified spatial domain to successively read portions
+of datasets from the input file and writes them to a new snapshot.
 
-Due to the coarse grained nature of the cell mask, particles from outside this range 
-may also be included if they are within the same top level cells as particles that 
+Due to the coarse grained nature of the cell mask, particles from outside this range
+may also be included if they are within the same top level cells as particles that
 fall within the given range.

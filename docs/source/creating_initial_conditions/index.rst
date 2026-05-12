@@ -26,7 +26,7 @@ the :mod:`swiftsimio.snapshot_writer` sub-module, and the top-level
 
    You need to be careful that your choice of unit system does
    *not* allow values over 2^31, i.e. you need to ensure that your
-   provided values (with units) when *written* to the file are safe to 
+   provided values (with units) when *written* to the file are safe to
    be interpreted as (single-precision) floats. The only exception to
    this is coordinates which are stored in double precision.
 
@@ -53,7 +53,7 @@ Example
         scale_factor=a,
         scale_exponent=1,
    )
-   
+
    # Create the Writer object. cosmo_unit_system corresponds to default Gadget-like units
    # of 10^10 Msun, Mpc, and km/s
    w = Writer(unit_system=cosmo_unit_system, boxsize=boxsize, scale_factor=a)
@@ -110,10 +110,10 @@ produces:
    ics.hdf5
    ├Header (9 attributes)
    ├PartType0
-   │ ├Coordinates	[float64: 1000 × 3] (9 attributes)
-   │ ├InternalEnergy	[float64: 1000] (9 attributes)
-   │ ├Masses	[float64: 1000] (9 attributes)
-   │ ├ParticleIDs	[int64: 1000] (9 attributes)
-   │ ├SmoothingLengths	[float64: 1000] (9 attributes)
-   │ └Velocities	[float64: 1000 × 3] (9 attributes)
+   │ ├Coordinates       [float64: 1000 × 3] (9 attributes)
+   │ ├InternalEnergy    [float64: 1000] (9 attributes)
+   │ ├Masses            [float64: 1000] (9 attributes)
+   │ ├ParticleIDs       [int64: 1000] (9 attributes)
+   │ ├SmoothingLengths  [float64: 1000] (9 attributes)
+   │ └Velocities        [float64: 1000 × 3] (9 attributes)
    └Units (5 attributes)

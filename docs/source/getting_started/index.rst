@@ -27,10 +27,11 @@ Development environment
 To set up the code for development, first clone the latest master from GitHub:
 
 .. code-block::
-   
+
    git clone https://github.com/SWIFTSIM/swiftsimio.git
 
-and install with ``pip`` using the ``-e`` ("editable") flag, and specifying optional dependencies for development and building the documentation:
+and install with ``pip`` using the ``-e`` ("editable") flag, and specifying optional
+dependencies for development and building the documentation:
 
 .. code-block::
 

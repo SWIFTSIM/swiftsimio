@@ -15,7 +15,7 @@ The overarching workflow for this integration is as follows:
   module.
 + Get two objects, corresponding to the bound and unbound particles,
   for a halo.
-+ Use the `to_swiftsimio_dataset` to load the region around the halo
++ Use the ``to_swiftsimio_dataset`` to load the region around the halo
   with our ahead-of-time masking technique.
 + Use the region around the halo directly, or use the mask provided
   for each particle type to only consider bound particles.
@@ -76,9 +76,9 @@ The code for making this image is as follows:
     from swiftsimio.visualisation import project_gas_pixel_grid
     import matplotlib.pyplot as plt
     from matplotlib.colors import LogNorm
-    
+
     grid = project_gas_pixel_grid(data=data, resolution=1024)
-    
+
     fig, ax = plt.subplots(figsize=(4, 4), dpi=1024 // 4)
     fig.subplots_adjust(0, 0, 1, 1)
     ax.axis("off")

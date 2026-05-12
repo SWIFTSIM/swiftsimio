@@ -54,8 +54,8 @@ Example
 This basic demonstration creates a mass surface density map.
 
 To create, for example, a projected temperature map, we need to remove the
-surface density dependence (i.e. :func:`~swiftsimio.visualisation.projection.project_gas` returns a surface
-temperature in units of K / kpc^2 and we just want K) by dividing out by
+surface density dependence (i.e. :func:`~swiftsimio.visualisation.projection.project_gas`
+returns a surface temperature in units of K / kpc^2 and we just want K) by dividing out by
 this:
 
 .. code-block:: python
@@ -187,9 +187,10 @@ Rotations
 Sometimes you will need to visualise a galaxy from a different perspective.
 The :mod:`swiftsimio.visualisation.rotation` sub-module provides routines to
 generate rotation matrices corresponding to vectors, which can then be
-provided to the ``rotation_matrix`` argument of :func:`~swiftsimio.visualisation.projection.project_gas` (and
-:func:`~swiftsimio.visualisation.projection.project_gas_pixel_grid`). You will also need to supply the
-``rotation_center`` argument, as the rotation takes place around this given
+provided to the ``rotation_matrix`` argument of
+:func:`~swiftsimio.visualisation.projection.project_gas` (and
+:func:`~swiftsimio.visualisation.projection.project_gas_pixel_grid`). You will also need
+to supply the ``rotation_center`` argument, as the rotation takes place around this given
 point. The example code below loads a snapshot, and a halo catalogue, and
 creates an edge-on and face-on projection using the integration in
 ``velociraptor``. More information on possible integrations with this library
@@ -201,37 +202,39 @@ is shown in the ``velociraptor`` section.
    from velociraptor import load as load_catalogue
    from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
    from swiftsimio.visualisation.projection import project_gas
-   
+
    import unyt
    import numpy as np
-   
+
    # Radius around which to load data, we will visualise half of this
    size = 1000 * unyt.kpc
-   
+
    snapshot_filename = "cosmo_volume_example.hdf5"
    catalogue_filename = "cosmo_volume_example.properties"
-   
+
    catalogue = load_catalogue(catalogue_filename)
-   
+
    # Which halo should we visualise?
    halo = 0
-   
+
    x = catalogue.positions.xcmbp[halo]
    y = catalogue.positions.ycmbp[halo]
    z = catalogue.positions.zcmbp[halo]
-   
+
    lx = catalogue.angular_momentum.lx[halo]
    ly = catalogue.angular_momentum.ly[halo]
    lz = catalogue.angular_momentum.lz[halo]
-   
+
    # The angular momentum vector will point perpendicular to the galaxy disk.
    # If your simulation contains stars, use lx_star
    angular_momentum_vector = cosmo_array([lx, ly, lz])
    angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
-   
+
    face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
-   edge_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector, axis="y")
-   
+   edge_on_rotation_matrix = rotation_matrix_from_vector(
+       angular_momentum_vector, axis="y"
+   )
+
    data_mask = mask(snapshot_filename)
    region = cosmo_array(
        [
@@ -244,7 +247,7 @@ is shown in the ``velociraptor`` section.
        scale_factor=data_mask.metadata.a,
        scale_exponent=1,
    )
-   
+
    visualise_region = cosmo_array(
        [
            x - 0.5 * size,
@@ -256,12 +259,12 @@ is shown in the ``velociraptor`` section.
        scale_factor=data_mask.metadata.a,
        scale_exponent=1,
    )
-   
+
    data_mask.constrain_spatial(region)
    data = load(snapshot_filename, mask=data_mask)
-   
+
    # Use project_gas_pixel_grid to generate projected images
-   
+
    common_arguments = dict(
        data=data,
        resolution=512,
@@ -269,9 +272,9 @@ is shown in the ``velociraptor`` section.
        region=visualise_region,
        periodic=False,  # disable periodic boundaries when using rotations
    )
-   
+
    un_rotated = project_gas(**common_arguments)
-   
+
    rotation_center = cosmo_array(
        [x, y, z], comoving=True, scale_factor=data_mask.metadata.a, scale_exponent=1
    )
@@ -280,13 +283,13 @@ is shown in the ``velociraptor`` section.
        rotation_center=rotation_center,
        rotation_matrix=face_on_rotation_matrix,
    )
-   
+
    edge_on = project_gas(
        **common_arguments,
        rotation_center=rotation_center,
        rotation_matrix=edge_on_rotation_matrix,
    )
-   
+
 Using this with the provided example data will just show blobs due to its low resolution
 nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
 galaxies, but that data is too large to provide as an example in this tutorial.
@@ -358,11 +361,13 @@ represents the smoothed version of the data.
 
 This API is available through
 :obj:`swiftsimio.visualisation.projection_backends.backends` and
-:obj:`swiftsimio.visualisation.projection_backends.backends_parallel` for parallel implementations. The parallel versions use significantly more memory as they allocate
+:obj:`swiftsimio.visualisation.projection_backends.backends_parallel` for parallel
+implementations. The parallel versions use significantly more memory as they allocate
 a thread-local image array for each thread, summing them in the end. Here we
 will only describe the ``fast`` variant, but they behave in the exact same way.
 
-The default backend used by :mod:`swiftsimio` is ``fast``. To use the others (e.g. ``histogram``, ``subsampled``, ``gpu``, etc.), you can select them
+The default backend used by :mod:`swiftsimio` is ``fast``. To use the others (e.g.
+``histogram``, ``subsampled``, ``gpu``, etc.), you can select them
 manually from the module, or by using the ``backends`` and ``backends_parallel``
 dictionaries in :mod:`swiftsimio.visualisation.projection_backends`.
 
