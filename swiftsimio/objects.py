@@ -17,6 +17,7 @@ from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
 from typing import Iterable, Callable, Any
 from collections.abc import Collection
+from functools import singledispatchmethod
 
 import sympy
 import numpy as np
@@ -180,6 +181,17 @@ class InvalidConversionError(Exception):
     ) -> None:
         self.message = message
 
+    def __str__(self) -> str:
+        """
+        Print error message for invalid conversion.
+
+        Returns
+        -------
+        str
+            The error message.
+        """
+        return f"{self.__class__}: {self.message}"
+
 
 class InvalidScaleFactor(Exception):
     """
@@ -197,19 +209,19 @@ class InvalidScaleFactor(Exception):
         Arbitrary arguments.
     """
 
-    def __init__(self, message: str = None, *args: tuple[Any]) -> None:
+    def __init__(self, message: str | None = None, *args: tuple[Any]) -> None:
         self.message = message
 
     def __str__(self) -> str:
         """
-        Print warning message for invalid scale factor.
+        Print error message for invalid scale factor.
 
         Returns
         -------
         str
             The error message.
         """
-        return f"InvalidScaleFactor: {self.message}"
+        return f"{self.__class__}: {self.message}"
 
 
 class InvalidSnapshot(Exception):
@@ -227,12 +239,49 @@ class InvalidSnapshot(Exception):
         Arbitrary arguments.
     """
 
-    def __init__(self, message: str = None, *args: tuple[Any]) -> None:
+    def __init__(self, message: str | None = None, *args: tuple[Any]) -> None:
         self.message = message
 
     def __str__(self) -> str:
-        """Print warning message of invalid snapshot."""
-        return f"InvalidSnapshot: {self.message}"
+        """
+        Print error message for invalid snapshot.
+
+        Returns
+        -------
+        str
+            The error message.
+        """
+        return f"{self.__class__}: {self.message}"
+
+
+class InvalidCosmoUnit(Exception):
+    """
+    Generated when a :class:`~swiftsimio.objects._AHelper` encounters an incompatibility.
+
+    For example, trying to multiply with a bare scalar.
+
+    Parameters
+    ----------
+    message : str, optional
+        Message to print in case of incompatible input.
+
+    *args : tuple[Any]
+        Arbitrary arguments.
+    """
+
+    def __init__(self, message: str | None = None, *args: tuple[Any]) -> None:
+        self.message = message
+
+    def __str__(self) -> str:
+        """
+        Print error message for incompatible input.
+
+        Returns
+        -------
+        str
+            The error message.
+        """
+        return f"{self.__class__}: {self.message}"
 
 
 class cosmo_factor(object):
@@ -2537,3 +2586,238 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
     __round__ = _propagate_cosmo_array_attributes_to_result(
         _ensure_result_is_cosmo_array_or_quantity(unyt_quantity.__round__)
     )
+
+
+class _AHelper(object):
+    """
+    Offer an easy way to initialize cosmo scalars and arrays.
+
+    Using the full :class:`~swiftsimio.objects.cosmo_array` or
+    :class:`~swiftsimio.objects.cosmo_quantity` constructors can be tedious. This
+    helper offers a way to write things like ``10 * u.Mpc * a.comoving**1`` or
+    ``np.array([1, 2]) * u.g / u.cm**3 * a.physical**-3``. It is initialized with the
+    rest of the mask/dataset metadata and then stored as ``metadata.a`` so that it
+    can be easily retrieved. It also allows defining "cosmo units" such as
+    ``cMpc = u.Mpc * a.comoving``.
+
+    In most cases this class should return new instances of itself with modified
+    attributes: we should not be modifying the state of the helper assigned to
+    ``metadata.a``!
+
+    There is an important design choice around data copying.
+    :class:`~unyt.array.unyt_array` does copy data on construction:
+
+    .. code-block:: python
+
+        >>> import unyt as u
+        >>> x = np.array([1, 2])
+        >>> y = x * u.kpc
+        >>> x[0] = 999  # notice units are not checked/enforced...
+        >>> x
+        array([999, 2])
+        >>> y
+        unyt_array([1, 2], 'kpc')
+
+    But :class:`~swiftsimio.objects.cosmo_array` does not copy data, instead using a view:
+    
+    .. code-block:: python
+
+        >>> from swiftsimio import cosmo_array
+        >>> x = np.array([1, 2]) * u.kpc
+        >>> y = x * a.comoving
+        >>> x[0] = 999
+        >>> x
+        unyt_array([999, 2], 'kpc')
+        >>> y
+        cosmo_array([999, 2], 'kpc', comoving='True', cosmo_factor='a at a=1', \
+        valid_transform='True')
+
+    This helper therefore uses views to stay consistent with the
+    :class:`~swiftsimio.objects.cosmo_array` behaviour.
+
+    Parameters
+    ----------
+    scale_factor : float
+        The scale factor used to create/modify :class:`~swiftsimio.objects.cosmo_factor`
+        objects as needed.
+
+    units : ~unyt.Unit, optional
+        The units to attach to objects.
+
+    exponent : int, optional
+        The exponent that the scale factor scales with, default of ``1``.
+
+    comoving : bool, optional
+        Whether to create comoving or physical objects.
+    """
+
+    scale_factor: float
+    scale_exponent: int | float
+    units: unyt.Unit
+    comoving: bool | None
+
+    def __init__(
+        self,
+        scale_factor: float,
+        scale_exponent: int | float = 1,
+        units: unyt.Unit | None = None,
+        comoving: bool | None = None,
+    ) -> None:
+        self.scale_factor = scale_factor
+        self.scale_exponent = scale_exponent
+        self.units = units
+        self._comoving = comoving
+
+    @property
+    def _comoving_str(self) -> str:
+        """
+        Get the comoving status as a string for use in messages.
+
+        Returns
+        -------
+        str
+            The state, either ``"comoving"``, ``"physical"`` or ``"None"``.
+        """
+        if self.comoving:
+            return "comoving"
+        elif self.comoving is False:
+            return "physical"
+        else:
+            return "None"
+
+    @singledispatchmethod
+    def __mul__(self, other) -> None:  # noqa: ANN001
+        """
+        Default implementation for invalid multiplications.
+
+        Raises
+        ------
+        NotImplementedError
+            When something that we cannot multiply with is encountered.
+        """
+        # keep message generic, we might get here through __truediv__ also
+        raise NotImplementedError(
+            f"Cannot combine `a.{self._comoving_str}` with {other} of type {type(other)}"
+        )
+
+    @__mul__.register
+    def _(self, other: unyt.Unit) -> "_AHelper":
+        return _AHelper(
+            scale_factor=self.scale_factor,
+            scale_exponent=self.scale_exponent,
+            units=other.units if self.units is None else other.units * self.units,
+            comoving=self._comoving,
+        )
+
+    @__mul__.register
+    def _(self, other: unyt.unyt_array) -> cosmo_array:
+        return (
+            cosmo_quantity if isinstance(other, unyt.unyt_quantity) else cosmo_array
+        )(
+            other.ndview,
+            units=other.units * self.units if self.units is not None else other.units,
+            comoving=self._comoving,
+            cosmo_factor=cosmo_factor.create(self.scale_factor, self.scale_exponent),
+        )
+
+    @__mul__.register
+    def _(self, other: cosmo_array) -> cosmo_array:
+        if self._comoving:
+            other.convert_to_comoving()  # no-op if already comoving
+        else:  # self._comoving is False, None case is guarded
+            other.convert_to_physical()  # no-op if already physical
+        return other.__class__(
+            other.ndview,
+            units=other.units * self.units if self.units is not None else other.units,
+            comoving=self._comoving,
+            cosmo_factor=other.cosmo_factor
+            * cosmo_factor.create(self.scale_factor, self.scale_exponent),
+        )
+
+    @singledispatchmethod
+    def __rmul__(
+        self, other: unyt.Unit | unyt.unyt_array | cosmo_array
+    ) -> "_AHelper | cosmo_array":
+        """
+        Multiply with argument on the right.
+
+        Just pass the operation to :meth:`~swiftsimio.objects._AHelper.__mul__` to
+        handle.
+
+        Returns
+        -------
+        ~swiftsimio.objects._AHelper or ~swiftsimio.objects.cosmo_aray
+            The result of applying the helper to the other operand.
+
+        Raises
+        ------
+        NotImplementedError
+            When something that we cannot multiply with is encountered.
+        """
+        return self.__mul__(other)
+
+    # @__rmul__.register
+    # def _(self, other: unyt.Unit) -> "_AHelper":
+    #     raise RuntimeError("HOORAY")
+
+    # @__rmul__.register
+    # def _(self, other: unyt.unyt_array) -> cosmo_array:
+    #     raise RuntimeError("HOORAY")
+
+    # @__rmul__.register
+    # def _(self, other: cosmo_array) -> cosmo_array:
+    #     raise RuntimeError("HOORAY")
+
+    def __truediv__(
+        self, other: unyt.Unit | unyt.unyt_array | cosmo_array
+    ) -> "_AHelper | cosmo_array":
+        return (
+            _AHelper(
+                scale_factor=self.scale_factor,
+                scale_exponent=self.scale_exponent,
+                units=self.units,
+                comoving=self._comoving,
+            )
+            * other**-1
+        )
+
+    def __rtruediv__(
+        self, other: unyt.Unit | unyt.unyt_array | cosmo_array
+    ) -> "_AHelper | cosmo_array":
+        return other * _AHelper(
+            scale_factor=self.scale_factor,
+            scale_exponent=-self.scale_exponent,
+            units=self.units,
+            comoving=self._comoving,
+        )
+
+    def __pow__(self, exponent: int | float) -> "_AHelper":
+        return _AHelper(
+            scale_factor=self.scale_factor,
+            scale_exponent=self.scale_exponent * exponent,
+            units=None if self.units is None else self.units**exponent,
+            comoving=self._comoving,
+        )
+
+    @property
+    def comoving(self) -> "_AHelper":
+        return _AHelper(
+            scale_factor=self.scale_factor,
+            scale_exponent=self.scale_exponent,
+            units=self.units,
+            comoving=True,
+        )
+
+    @property
+    def physical(self) -> "_AHelper":
+        return _AHelper(
+            scale_factor=self.scale_factor,
+            scale_exponent=self.scale_exponent,
+            units=self.units,
+            comoving=False,
+        )
+
+    def ensure_comoving_or_physical(self) -> None:
+        # want this to be a decorator...
+        if self._comoving is None:
+            raise InvalidCosmoUnit("...")
