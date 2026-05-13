@@ -4,18 +4,16 @@ import pytest
 import numpy as np
 import unyt as u
 from swiftsimio import mask, cosmo_array, cosmo_quantity
-from swiftsimio.objects import _AHelper
+from swiftsimio.objects import _AHelper, InvalidCosmoUnit
 
 
 @pytest.mark.parametrize("scale_exponent", (-1, 0, 1, 2, None))
-@pytest.mark.parametrize("data", (10, np.array([1, 2]), [1, 2], (1, 2)))
+@pytest.mark.parametrize("data", (10.0, np.array([1.0, 2.0]), [1.0, 2.0], (1.0, 2.0)))
 @pytest.mark.parametrize(
     "order",
     (
         "data_units_a",
         "data_a_units",
-        "a_data_units",
-        "units_data_a",
         "units_a_data",
         "a_units_data",
     ),
@@ -34,11 +32,7 @@ def test_multiply_unyt_with_ahelper(scale_exponent, data, order, com_or_phys):
     a = getattr(_AHelper(scale_factor=scale_factor), com_or_phys)
     if scale_exponent is not None:
         a = a**scale_exponent
-    operands = {
-        "a": a,
-        "units": u.Mpc,
-        "data": data,
-    }
+    operands = {"a": a, "units": u.Mpc, "data": data}
     first, second, third = [operands[i] for i in order.split("_")]
     cosmo = first * second * third
     if np.isscalar(data):
@@ -49,19 +43,73 @@ def test_multiply_unyt_with_ahelper(scale_exponent, data, order, com_or_phys):
     if com_or_phys == "comoving":
         assert cosmo.comoving
     else:
-        assert (
-            cosmo.comoving is False
-        )  # don't assert not cosmo.comoving in case is None
+        assert cosmo.comoving is False  # avoid `not cosmo.comoving` in case is None
     assert cosmo.units == u.Mpc
-    assert cosmo.cosmo_factor.a_factor == scale_factor**scale_exponent
+    assert scale_factor != 1  # else trivial
+    if scale_exponent is not None:
+        assert cosmo.cosmo_factor.a_factor == scale_factor**scale_exponent
+    else:
+        assert cosmo.cosmo_factor.a_factor == scale_factor
 
 
-def test_multiply_cosmo_with_ahelper():
+@pytest.mark.parametrize("scale_exponent", (-1, 0, 1, 2, None))
+@pytest.mark.parametrize("data", (10.0, np.array([1.0, 2.0]), [1.0, 2.0], (1.0, 2.0)))
+@pytest.mark.parametrize(
+    "order",
+    ("data_a", "a_data"),
+)
+@pytest.mark.parametrize("com_or_phys", ("comoving", "physical"))
+@pytest.mark.parametrize("in_com_or_phys", (True, False))
+def test_multiply_cosmo_with_ahelper(
+    scale_exponent, data, order, com_or_phys, in_com_or_phys
+):
     """Test that multiplying an already-cosmo object modifies the `cosmo_factor`."""
-    raise NotImplementedError
+    scale_factor = 0.5
+    a = getattr(_AHelper(scale_factor=scale_factor), com_or_phys)
+    if scale_exponent is not None:
+        a = a**scale_exponent
+    cosmo_in = (cosmo_quantity if np.isscalar(data) else cosmo_array)(
+        data,
+        u.Mpc,
+        comoving=in_com_or_phys,
+        scale_factor=scale_factor,
+        scale_exponent=1,
+    )
+    operands = {"a": a, "data": cosmo_in}
+    first, second = [operands[i] for i in order.split("_")]
+    cosmo = first * second
+    if np.isscalar(data):
+        assert isinstance(cosmo, cosmo_quantity)
+    else:
+        # careful, cosmo_quantity is a subclass and therefore counts as a cosmo_array
+        assert isinstance(cosmo, cosmo_array) and not isinstance(cosmo, cosmo_quantity)
+    if com_or_phys == "comoving":
+        assert cosmo.comoving
+    else:
+        assert cosmo.comoving is False  # avoid `not cosmo.comoving` in case is None
+    assert cosmo.units == u.Mpc
+    assert scale_factor != 1  # else trivial
+    expected_exponent = scale_exponent + 1 if scale_exponent is not None else 2
+    assert cosmo.cosmo_factor.a_factor == scale_factor**expected_exponent
+    if com_or_phys == "comoving":
+        # scale_factor**(scale_exponent) from the helper, plus another scale_factor**1
+        # from cosmo_in if it was comoving, all needed to convert to physical
+        conversion_exponent = (
+            scale_exponent if scale_exponent is not None else 1
+        ) + int(in_com_or_phys)
+        assert np.allclose(
+            cosmo.to_physical_value(u.Mpc), data * scale_factor**conversion_exponent
+        )
+    else:  # "physical"
+        # just scale_factor**1 coming from converting cosmo_in to physical if it was
+        # comoving, else scale_factor**0
+        conversion_exponent = int(in_com_or_phys)
+        assert np.allclose(
+            cosmo.to_physical_value(u.Mpc), data * scale_factor**conversion_exponent
+        )
 
 
-@pytest.mark.parametrize("data", 10, np.array([1, 2]))
+@pytest.mark.parametrize("data", 10.0, np.array([1.0, 2.0]))
 @pytest.mark.parametrize("com_or_phys", ("comoving", "physical"))
 @pytest.mark.parametrize("scale_exponent", (1, None))
 def test_assign_comoving_or_physical_units_to_name(data, com_or_phys, scale_exponent):
@@ -71,10 +119,10 @@ def test_assign_comoving_or_physical_units_to_name(data, com_or_phys, scale_expo
     This is a documented feature so should make sure that it works.
     """
     scale_factor = 0.5
-    # this is either a "cMpc" or "pMpc" depending on case, label "xMpc" here:
     a = getattr(_AHelper(scale_factor=scale_factor), com_or_phys)
     if scale_exponent is not None:
         a = a**scale_exponent
+    # this is either a "cMpc" or "pMpc" depending on case, label "xMpc" here:
     xMpc = u.Mpc * a
     cosmo = data * xMpc
     if np.isscalar(data):
@@ -105,9 +153,9 @@ def test_helper_available_from_metadata(cosmological_volume_only_single_local):
     a = mask.metadata.a
     scale_factor = mask.metadata.scale_factor
     region = [
-        [1 * u.Mpc * a.comoving, 2 * u.Mpc * a.comoving],
-        [1 * u.Mpc * a.physical, 2 * u.Mpc * a.physical],
-        [1 * u.Mpc * a.comoving**1, 2 * u.Mpc * a.comoving**1],
+        [1.0 * u.Mpc * a.comoving, 2.0 * u.Mpc * a.comoving],
+        [1.0 * u.Mpc * a.physical, 2.0 * u.Mpc * a.physical],
+        [1.0 * u.Mpc * a.comoving**1, 2.0 * u.Mpc * a.comoving**1],
     ]
     manual_region = [
         [
@@ -143,10 +191,28 @@ def test_helper_available_from_metadata(cosmological_volume_only_single_local):
     m.constrain_spatial(region)
 
 
-def test_incorrect_usage():
-    """Should also test expected failure modes..."""
-    # `10 * a.comoving` should error, for example.
-    # That `10 * a.comoving * u.Mpc` works and `10 * u.Mpc * a.comoving` also works
-    # will rely on triggering `__multiply__` or `__rmultiply__` accordingly. Units but
-    # no data yet is allowed to enable `cMpc = ...`, but we should not be able to end up
-    # with data but no units.
+@pytest.mark.parametrize("data", (10, np.array([0, 1])))
+@pytest.mark.parametrize("scale_exponent", (-1, 0, 1, 2, None))
+@pytest.mark.parametrize("com_or_phys", ("comoving", "physical"))
+def test_invalid_usage(data, scale_exponent, com_or_phys):
+    """
+    Test expected failure modes.
+
+    Because multiplications are left-to-right associative we need to be able to resolve
+    each pair-wise multiplication, and we have no mechanism to handle e.g.
+    ``scalar * a_helper``. This means that the units and helper must be adjacent in the
+    order of operations (though we can tolerate swapping them places), so
+    ``units * data * a_helper`` and ``a_helper * data * units`` are also invalid.
+    """
+    scale_factor = 0.5
+    a = getattr(_AHelper(scale_factor=scale_factor), com_or_phys)
+    if scale_exponent is not None:
+        a = a**scale_exponent
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        a * data * u.Mpc
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        u.Mpc * data * a
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        data * a
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        a * data
