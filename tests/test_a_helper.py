@@ -98,21 +98,26 @@ def test_multiply_cosmo_with_ahelper(
             scale_exponent if scale_exponent is not None else 1
         ) + int(in_com_or_phys)
         assert np.allclose(
-            cosmo.to_physical_value(u.Mpc), data * scale_factor**conversion_exponent
+            cosmo.to_physical_value(u.Mpc),
+            np.asarray(data) * scale_factor**conversion_exponent,
         )
     else:  # "physical"
         # just scale_factor**1 coming from converting cosmo_in to physical if it was
         # comoving, else scale_factor**0
         conversion_exponent = int(in_com_or_phys)
         assert np.allclose(
-            cosmo.to_physical_value(u.Mpc), data * scale_factor**conversion_exponent
+            cosmo.to_physical_value(u.Mpc),
+            np.asarray(data) * scale_factor**conversion_exponent,
         )
 
 
-@pytest.mark.parametrize("data", 10.0, np.array([1.0, 2.0]))
+@pytest.mark.parametrize("data", (10.0, np.array([1.0, 2.0])))
 @pytest.mark.parametrize("com_or_phys", ("comoving", "physical"))
 @pytest.mark.parametrize("scale_exponent", (1, None))
-def test_assign_comoving_or_physical_units_to_name(data, com_or_phys, scale_exponent):
+@pytest.mark.parametrize("order", ("a_unit", "unit_a"))
+def test_assign_comoving_or_physical_units_to_name(
+    data, com_or_phys, scale_exponent, order
+):
     """
     Test that we can make e.g. cMpc or pMpc units and then apply them to data.
 
@@ -123,7 +128,9 @@ def test_assign_comoving_or_physical_units_to_name(data, com_or_phys, scale_expo
     if scale_exponent is not None:
         a = a**scale_exponent
     # this is either a "cMpc" or "pMpc" depending on case, label "xMpc" here:
-    xMpc = u.Mpc * a
+    operands = {"a": a, "unit": u.Mpc}
+    first, second = [operands[i] for i in order.split("_")]
+    xMpc = first * second
     cosmo = data * xMpc
     if np.isscalar(data):
         assert isinstance(cosmo, cosmo_quantity)
@@ -216,3 +223,21 @@ def test_invalid_usage(data, scale_exponent, com_or_phys):
         data * a
     with pytest.raises(InvalidCosmoUnit, match="..."):
         a * data
+
+
+def test_comoving_or_physical_missing():
+    """Test that failing to specify ``a.comoving`` or ``a.physical`` is an error."""
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        # didn't specify comoving/physical, should error on use:
+        scale_factor = 0.5
+        a = _AHelper(scale_factor=scale_factor)
+        with pytest.raises(InvalidCosmoUnit, match="..."):
+            10 * u.Mpc * a
+        with pytest.raises(InvalidCosmoUnit, match="..."):
+            cosmo_quantity(
+                10, u.Mpc, comoving=True, scale_factor=0.5, scale_exponent=1
+            ) * a
+
+
+# also division, multiply-and-assign, divide-and-assign?
+# disallow (a**2).comoving? no reason it shouldn't work but just seems confusing
