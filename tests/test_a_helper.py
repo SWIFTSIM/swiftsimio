@@ -15,7 +15,9 @@ from swiftsimio.objects import _AHelper, InvalidCosmoUnit
         "data_units_a",
         "data_a_units",
         "units_a_data",
+        "units_data_a",
         "a_units_data",
+        "a_data_units",
     ),
 )
 @pytest.mark.parametrize("com_or_phys", ("comoving", "physical"))
@@ -157,7 +159,7 @@ def test_helper_available_from_metadata(cosmological_volume_only_single_local):
     the region defined with the helper is accepted by ``constrain_spatial``.
     """
     m = mask(cosmological_volume_only_single_local)
-    a = mask.metadata.a
+    a = m.metadata.a
     scale_factor = mask.metadata.scale_factor
     region = [
         [1.0 * u.Mpc * a.comoving, 2.0 * u.Mpc * a.comoving],
@@ -196,33 +198,6 @@ def test_helper_available_from_metadata(cosmological_volume_only_single_local):
             assert element == manual_element
     # be a bit paranoid and make sure that constraining mask works:
     m.constrain_spatial(region)
-
-
-@pytest.mark.parametrize("data", (10, np.array([0, 1])))
-@pytest.mark.parametrize("scale_exponent", (-1, 0, 1, 2, None))
-@pytest.mark.parametrize("com_or_phys", ("comoving", "physical"))
-def test_invalid_usage(data, scale_exponent, com_or_phys):
-    """
-    Test expected failure modes.
-
-    Because multiplications are left-to-right associative we need to be able to resolve
-    each pair-wise multiplication, and we have no mechanism to handle e.g.
-    ``scalar * a_helper``. This means that the units and helper must be adjacent in the
-    order of operations (though we can tolerate swapping them places), so
-    ``units * data * a_helper`` and ``a_helper * data * units`` are also invalid.
-    """
-    scale_factor = 0.5
-    a = getattr(_AHelper(scale_factor=scale_factor), com_or_phys)
-    if scale_exponent is not None:
-        a = a**scale_exponent
-    with pytest.raises(InvalidCosmoUnit, match="..."):
-        a * data * u.Mpc
-    with pytest.raises(InvalidCosmoUnit, match="..."):
-        u.Mpc * data * a
-    with pytest.raises(InvalidCosmoUnit, match="..."):
-        data * a
-    with pytest.raises(InvalidCosmoUnit, match="..."):
-        a * data
 
 
 def test_comoving_or_physical_missing():
