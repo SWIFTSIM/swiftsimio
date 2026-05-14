@@ -15,7 +15,7 @@ import unyt
 from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
-from typing import Iterable, Callable, Any
+from typing import Iterable, Callable, Any, Self
 from collections.abc import Collection
 from functools import singledispatchmethod
 
@@ -2701,7 +2701,7 @@ class _AHelper(object):
         )
 
     @__mul__.register
-    def _(self, other: unyt.Unit) -> "_AHelper":
+    def _(self, other: unyt.Unit) -> Self:
         return _AHelper(
             scale_factor=self.scale_factor,
             scale_exponent=self.scale_exponent,
@@ -2737,7 +2737,7 @@ class _AHelper(object):
     @singledispatchmethod
     def __rmul__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
-    ) -> "_AHelper | cosmo_array":
+    ) -> Self | cosmo_array:
         """
         Multiply with argument on the right.
 
@@ -2757,7 +2757,7 @@ class _AHelper(object):
         return self.__mul__(other)
 
     # @__rmul__.register
-    # def _(self, other: unyt.Unit) -> "_AHelper":
+    # def _(self, other: unyt.Unit) -> Self:
     #     raise RuntimeError("HOORAY")
 
     # @__rmul__.register
@@ -2770,7 +2770,7 @@ class _AHelper(object):
 
     def __truediv__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
-    ) -> "_AHelper | cosmo_array":
+    ) -> Self | cosmo_array:
         return (
             _AHelper(
                 scale_factor=self.scale_factor,
@@ -2783,7 +2783,7 @@ class _AHelper(object):
 
     def __rtruediv__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
-    ) -> "_AHelper | cosmo_array":
+    ) -> Self | cosmo_array:
         return other * _AHelper(
             scale_factor=self.scale_factor,
             scale_exponent=-self.scale_exponent,
@@ -2791,7 +2791,7 @@ class _AHelper(object):
             comoving=self._comoving,
         )
 
-    def __pow__(self, exponent: int | float) -> "_AHelper":
+    def __pow__(self, exponent: int | float) -> Self:
         return _AHelper(
             scale_factor=self.scale_factor,
             scale_exponent=self.scale_exponent * exponent,
@@ -2800,7 +2800,7 @@ class _AHelper(object):
         )
 
     @property
-    def comoving(self) -> "_AHelper":
+    def comoving(self) -> Self:
         return _AHelper(
             scale_factor=self.scale_factor,
             scale_exponent=self.scale_exponent,
@@ -2809,7 +2809,7 @@ class _AHelper(object):
         )
 
     @property
-    def physical(self) -> "_AHelper":
+    def physical(self) -> Self:
         return _AHelper(
             scale_factor=self.scale_factor,
             scale_exponent=self.scale_exponent,
