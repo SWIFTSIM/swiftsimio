@@ -12,7 +12,6 @@ helpers, wrappers and implementations that enable most :mod:`numpy` and
 """
 
 import unyt
-from unyt.array import _ufunc_prepare_and_finalize
 from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
@@ -2256,7 +2255,8 @@ class cosmo_array(unyt_array):
             The result of the ufunc call, with the appropriate type and cosmo attributes
             attached.
         """
-        # wonder if we could cache helper_result during __unyt_ufunc_prepare__ to use here?
+        # wonder if we could cache helper_result during __unyt_ufunc_prepare__ to use
+        # here?
         helper_result = _prepare_array_func_args(*inputs, **kwargs)
         cfs = helper_result["cfs"]
         # make sure we evaluate the cosmo_factor_ufunc_registry function:
@@ -2411,13 +2411,27 @@ class cosmo_array(unyt_array):
         if isinstance(result, tuple):
             for r in result:
                 if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
-                    r.comoving = helper_result["comoving"]
-                    r.cosmo_factor = ret_cf
+                    r.comoving = (
+                        helper_result["comoving"] if r.comoving is None else r.comoving
+                    )
+                    r.cosmo_factor = (
+                        ret_cf
+                        if r.cosmo_factor == cosmo_factor(None, None)
+                        else ret_cf * r.cosmo_factor
+                    )
                     r.valid_transform = helper_result["valid_transform"]
                     r.compression = helper_result["compression"]
         elif isinstance(result, cosmo_array):  # also recognizes cosmo_quantity
-            result.comoving = helper_result["comoving"]
-            result.cosmo_factor = ret_cf
+            result.comoving = (
+                helper_result["comoving"]
+                if result.comoving is None
+                else result.comoving
+            )
+            result.cosmo_factor = (
+                ret_cf
+                if result.cosmo_factor == cosmo_factor(None, None)
+                else ret_cf * result.cosmo_factor
+            )
             result.valid_transform = helper_result["valid_transform"]
             result.compression = helper_result["compression"]
         if "out" in kwargs:
@@ -2425,15 +2439,31 @@ class cosmo_array(unyt_array):
             if ufunc not in multiple_output_operators:
                 out = out[0]
                 if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
-                    out.comoving = helper_result["comoving"]
-                    out.cosmo_factor = ret_cf
+                    out.comoving = (
+                        helper_result["comoving"]
+                        if result.comoving is None
+                        else result.comoving
+                    )
+                    out.cosmo_factor = (
+                        ret_cf
+                        if result.cosmo_factor == cosmo_factor(None, None)
+                        else ret_cf * result.cosmo_factor
+                    )
                     out.valid_transform = helper_result["valid_transform"]
                     out.compression = helper_result["compression"]
             else:
-                for o in out:
+                for o, r in zip(out, result):
                     if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
-                        o.comoving = helper_result["comoving"]
-                        o.cosmo_factor = ret_cf
+                        o.comoving = (
+                            helper_result["comoving"]
+                            if r.comoving is None
+                            else r.comoving
+                        )
+                        o.cosmo_factor = (
+                            ret_cf
+                            if r.cosmo_factor == cosmo_factor(None, None)
+                            else ret_cf * r.cosmo_factor
+                        )
                         o.valid_transform = helper_result["valid_transform"]
                         o.compression = helper_result["compression"]
 
@@ -2925,15 +2955,31 @@ class _AHelper(object):
         for inp in inputs:
             if isinstance(inp, _AHelper):
                 a_helper_input = inp
-        ret = (cosmo_array if result.ndim else cosmo_quantity)(
-            result,
-            comoving=a_helper_input._comoving,
-            scale_factor=a_helper_input.scale_factor,
-            scale_exponent=a_helper_input.scale_exponent,
-        )
-        return ret
+        if isinstance(result, cosmo_array):
+            if result.comoving is None:
+                result.comoving = a_helper_input._comoving
+            else:
+                result.convert_to(result.units, comoving=a_helper_input._comoving)
+            result.units = result.units * a_helper_input.units
+            if result.cosmo_factor == cosmo_factor(None, None):
+                result.cosmo_factor = cosmo_factor.create(
+                    a_helper_input.scale_factor, a_helper_input.scale_exponent
+                )
+            else:
+                result.cosmo_factor = result.cosmo_factor * cosmo_factor.create(
+                    a_helper_input.scale_factor, a_helper_input.scale_exponent
+                )
+            # raise RuntimeError
+            return result
+        else:
+            return (cosmo_array if result.ndim else cosmo_quantity)(
+                result,
+                comoving=a_helper_input._comoving,
+                scale_factor=a_helper_input.scale_factor,
+                scale_exponent=a_helper_input.scale_exponent,
+            )
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> cosmo_array:
         """
         Handle :mod:`numpy` ufunc calls on :class:`~swiftsimio.objects.cosmo_array` input.
 
@@ -3038,7 +3084,7 @@ class _AHelper(object):
     def _(self, other: cosmo_array) -> cosmo_array:
         if self._comoving:
             other.convert_to_comoving()  # no-op if already comoving
-        else:  # self._comoving is False, None case is guarded
+        elif self._comoving is False:
             other.convert_to_physical()  # no-op if already physical
         return other.__class__(
             other.ndview,

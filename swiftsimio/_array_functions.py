@@ -897,7 +897,12 @@ def _prepare_array_func_args(
     ValueError
         If the input arrays cannot be coerced to a consistent state of ``comoving``.
     """
-    cms = [(hasattr(arg, "comoving"), getattr(arg, "comoving", None)) for arg in args]
+    # test isinstance(arg, cosmo_array) instead of hasattr(arg, "comoving"):
+    # _AHelper.comoving -> _AHelper can cause problems
+    cms = [
+        (isinstance(arg, objects.cosmo_array), getattr(arg, "comoving", None))
+        for arg in args
+    ]
     cfs = [getattr(arg, "cosmo_factor", None) for arg in args]
     vts = [getattr(arg, "valid_transform", True) for arg in args]
     comps = [

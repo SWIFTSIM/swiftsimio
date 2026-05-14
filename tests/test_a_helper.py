@@ -146,7 +146,9 @@ def test_assign_comoving_or_physical_units_to_name(
             cosmo.comoving is False
         )  # don't assert not cosmo.comoving in case is None
     assert cosmo.units == u.Mpc
-    assert cosmo.cosmo_factor.a_factor == scale_factor**scale_exponent
+    assert cosmo.cosmo_factor.a_factor == scale_factor ** (
+        scale_exponent if scale_exponent is not None else 1
+    )
 
 
 def test_helper_available_from_metadata(cosmological_volume_only_single_local):
