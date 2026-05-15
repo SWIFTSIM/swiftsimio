@@ -1,6 +1,7 @@
 """Test the helper to convert unyt quantities into cosmo quantities."""
 
 import pytest
+from copy import deepcopy
 import numpy as np
 import unyt as u
 from swiftsimio import mask, cosmo_array, cosmo_quantity
@@ -56,10 +57,7 @@ def test_multiply_unyt_with_ahelper(scale_exponent, data, order, com_or_phys):
 
 @pytest.mark.parametrize("scale_exponent", (-1, 0, 1, 2, None))
 @pytest.mark.parametrize("data", (10.0, np.array([1.0, 2.0]), [1.0, 2.0], (1.0, 2.0)))
-@pytest.mark.parametrize(
-    "order",
-    ("data_a", "a_data"),
-)
+@pytest.mark.parametrize("order", ("data_a", "a_data"))
 @pytest.mark.parametrize("com_or_phys", ("comoving", "physical"))
 @pytest.mark.parametrize("in_com_or_phys", (True, False))
 def test_multiply_cosmo_with_ahelper(
@@ -71,13 +69,13 @@ def test_multiply_cosmo_with_ahelper(
     if scale_exponent is not None:
         a = a**scale_exponent
     cosmo_in = (cosmo_quantity if np.isscalar(data) else cosmo_array)(
-        data,
+        deepcopy(data),  # beware modification in-place
         u.Mpc,
         comoving=in_com_or_phys,
         scale_factor=scale_factor,
         scale_exponent=1,
     )
-    operands = {"a": a, "data": cosmo_in}
+    operands = {"data": cosmo_in, "a": a}
     first, second = [operands[i] for i in order.split("_")]
     cosmo = first * second
     if np.isscalar(data):
@@ -91,7 +89,7 @@ def test_multiply_cosmo_with_ahelper(
         assert cosmo.comoving is False  # avoid `not cosmo.comoving` in case is None
     assert cosmo.units == u.Mpc
     assert scale_factor != 1  # else trivial
-    expected_exponent = scale_exponent + 1 if scale_exponent is not None else 2
+    expected_exponent = (scale_exponent if scale_exponent is not None else 1) + 1
     assert cosmo.cosmo_factor.a_factor == scale_factor**expected_exponent
     if com_or_phys == "comoving":
         # scale_factor**(scale_exponent) from the helper, plus another scale_factor**1
