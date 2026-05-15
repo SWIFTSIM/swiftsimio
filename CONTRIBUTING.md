@@ -35,6 +35,8 @@ The API documentation is built automatically from the docstrings of classes, fun
 
 In addition to this there is "narrative documentation" that should describe the features of the code. The docs are built with `sphinx` and use the "ReadTheDocs" theme. If you have the dependencies installed (check `pyproject.toml` or use `pip install -e .[docs]` in the project root directory) you can build the documentation locally with `make html` in the `/docs` directory. Opening the `/docs/build/index.html` file with a browser will then allow you to browse the documentation and check your contributions.
 
+Style issues in the documentation source files can be checked with `sphinx-lint --max-line-length 90 -e all docs/source/` (run from the project root directory).
+
 Docstrings
 ----------
 

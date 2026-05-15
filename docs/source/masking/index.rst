@@ -7,40 +7,36 @@ Masking
 software packages that read HDF5 data) through its masking facility.
 
 SWIFT snapshots contain cell metadata that allow us to spatially mask the
-data ahead of time. :mod:`swiftsimio` provides a number of objects that help
+data ahead of time. :mod:`swiftsimio` provides a number of tools that help
 with this. This functionality is provided through the :mod:`swiftsimio.masks`
 sub-module but is available easily through the :meth:`swiftsimio.mask`
 top-level function.
 
 This functionality is used heavily in `swiftgalaxy`_.
 
-There are two types of mask, with the default only allowing spatial masking.
-Full masks require significantly more memory overhead and are generally much
-slower than the spatial only mask.
-
 .. _`swiftgalaxy`: https://github.com/SWIFTSIM/swiftgalaxy
 
-Spatial-only masking
---------------------
+Spatial masking
+---------------
 
-Spatial only masking is approximate and allows you to only load particles
-within a given region. It is precise to the top-level cells that are defined
+Spatial masking is approximate and allows you to only load particles within
+a given cuboid region. It is precise to the top-level cells that are defined
 within SWIFT. It will always load all of the particles that you request, but
-for simplicity it may also load some particles that are slightly outside
+in general it will also load some particles that are slightly outside
 of the region of interest. This is because it works as follows:
 
 1. Load the top-level cell metadata.
 2. Find the overlap between the specified region and these cells.
 3. Load all cells within that overlap.
 
-As you can see, the edges of regions may load in extra information as we
-always load the whole top-level cell.
+As you can see, some extra particles around the edges of regions may be
+loaded as we always load the whole top-level cell.
 
 Example
 ^^^^^^^
 
 In this example we will use the :obj:`swiftsimio.masks.SWIFTMask` object
-to load the the octant of the box closes to the origin.
+to load the the octant of the box closest to the origin.
 
 .. code-block:: python
 
@@ -51,7 +47,7 @@ to load the the octant of the box closes to the origin.
    mask = sw.mask(filename)
    # The full metadata object is available from within the mask
    boxsize = mask.metadata.boxsize
-   # load_region is a 3x2 list [[left, right], [bottom, top], [front, back]]
+   # load_region is a 3x2 list [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
    load_region = [[0.0 * b, 0.5 * b] for b in boxsize]
 
    # Constrain the mask
@@ -71,20 +67,37 @@ with ease.
 
 It is also possible to build up a region with a more complicated geometry by
 making repeated calls to :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial`
-and setting the optional argument ``intersect=True``. By default any existing
-selection of cells would be overwritten; this option adds any additional cells
-that need to be selected for the new region to the existing selection instead.
-For instance, to add the diagonally opposed octant to the selection made above
-(and so obtain a region shaped like two cubes with a single corner touching):
+and setting the optional argument ``union=True``. This option adds any
+additional cells that need to be selected for the new region to the existing
+selection. For instance, to add the diagonally opposed octant to the selection
+made above (and so obtain a region shaped like two cubes with a single corner
+touching):
 
 .. code-block:: python
 
+   two_octant_mask = sw.mask(filename)
+   first_region = [[0.0 * b, 0.5 * b] for b in boxsize]
    additional_region = [[0.5 * b, 1.0 * b] for b in boxsize]
-   mask.constrain_spatial(additional_region, intersect=True)
+   two_octant_mask.constrain_spatial(first_region)
+   two_octant_mask.constrain_spatial(additional_region, union=True)
+   two_octant_dataset = sw.load(filename, mask=two_octant_mask)
 
-In the first call to :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` the
-``intersect`` argument can be set to ``True`` or left ``False`` (the default): since
-no mask yet exists both give the same result.
+Rows of the ``load_region`` can also be replaced with ``None`` to indicate that no
+constraint should be imposed along that axis. For example, to select a 1 Mpc thick
+"slab" perpendicular to the z-axis:
+
+.. code-block:: python
+
+   import unyt as u
+   slab_mask = sw.mask(filename)
+   scale_factor = slab_mask.metadata.scale_factor
+   slab_region = [
+       cosmo_array([1, 2], u.Mpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
+       None,
+       None,
+   ]
+   slab_mask.constrain_spatial(slab_region)
+   slab_dataset = sw.load(filename, slab_mask)
 
 Periodic boundaries
 ^^^^^^^^^^^^^^^^^^^
@@ -97,26 +110,27 @@ lying at the upper edge of the box:
 .. code-block:: python
 
    mask = sw.mask(filename)
+   boxsize = mask.metadata.boxsize
    mask.constrain_spatial(
        [
            None,
            None,
-           [0.0 * mask.metadata.boxsize[2], 0.1 * mask.metadata.boxsize[2]],
+           [0.0 * boxsize[2], 0.1 * boxsize[2]],
        ]
    )
    mask.constrain_spatial(
        [
            None,
            None,
-           [0.9 * mask.metadata.boxsize[2], 1.0 * mask.metadata.boxsize[2]],
-       ],
-       intersect=True,
+           [0.9 * boxsize[2], 1.0 * boxsize[2]],
+       ]
+       union=True,
    )
 
 This is a bit inconvenient though since the region is actually contiguous if we
-account for the periodic boundary. :meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` allows us
-to select a region straddling the periodic boundary, for example this is an
-equivalent selection:
+account for the periodic boundary.
+:meth:`~swiftsimio.masks.SWIFTMask.constrain_spatial` allows us to select a region
+straddling the periodic boundary, for example this is an equivalent selection:
 
 .. code-block:: python
 
@@ -124,8 +138,8 @@ equivalent selection:
    mask.constrain_spatial(
        [
            None,
-	   None,
-	   [-0.1 * mask.metadata.boxsize[2], 0.1 * mask.metadata.boxsize[2]],
+           None,
+           [-0.1 * boxsize[2], 0.1 * boxsize[2]],
        ]
    )
 
@@ -138,9 +152,7 @@ of every particle and is equivalent to providing no spatial mask:
 .. code-block:: python
 
    mask = sw.mask(filename)
-   mask.constrain_spatial(
-       [[-0.1 * lbox, 1.1 * lbox] for lbox in mask.metadata.boxsize]
-   )
+   mask.constrain_spatial([[-0.1 * b, 1.1 * b] for b in mask.metadata.boxsize])
 
 Remember to wrap the coordinates yourself if relevant! Alternatively, the
 `swiftgalaxy`_ package offers support for coordinate transformations including
@@ -158,8 +170,8 @@ bound is reached:
    mask.constrain_spatial(
        [
            None,
-	   None,
-	   [0.9 * mask.metadata.boxsize[2], 0.1 * mask.metadata.boxsize[2]],
+           None,
+           [0.9 * boxsize[2], 0.1 * boxsize[2]],
        ]
    )
 
@@ -192,7 +204,7 @@ region.
 Older SWIFT snapshots lack the metadata to know exactly how far particles have
 drifted out of their cells. In ``v10.2.0`` or newer, if :mod:`swiftsimio` does not
 find this metadata, it will pad the region (by 0.1 times the cell length by default),
-and issue a `UserWarning` indicating this.
+and issue a ``UserWarning`` indicating this.
 
 .. warning::
 
@@ -211,40 +223,61 @@ the region can be extended or switched off with the ``safe_padding`` parameter:
    mask = sw.mask(filename)
    lbox = mask.metadata.boxsize
    mask.constrain_spatial(
-       [[0.4 * lbox, 0.6 * lbox] for lbox in mask.metadata.boxsize],
+       [[0.4 * b, 0.6 * b] for b in mask.metadata.boxsize],
        safe_padding=False,  # padding switched off
    )
    mask.constrain_spatial(
-       [[0.4 * lbox, 0.6 * lbox] for lbox in mask.metadata.boxsize],
+       [[0.4 * b, 0.6 * b] for b in mask.metadata.boxsize],
        safe_padding=1.0,  # pad more, by 1.0 instead of 0.1 cell lengths
    )
 
 
-Full mask
----------
+Masking by properties
+---------------------
 
-The below example shows the use of a full masking object, used to constrain
-densities of particles and only load particles within that density window.
+The below example shows the use of the masking tools to constrain loading only
+particles within a chosen density window.
 
 .. code-block:: python
-   
+
    import swiftsimio as sw
 
    # This creates and sets up the masking object.
-   mask = sw.mask("cosmological_volume.hdf5", spatial_only=False)
+   mask = sw.mask("cosmological_volume.hdf5")
 
    # This ahead-of-time creates a spatial mask based on the cell metadata.
-   mask.constrain_spatial([
-       [0.2 * mask.metadata.boxsize[0], 0.7 * mask.metadata.boxsize[0]],
-       None,
-       None]
+   mask.constrain_spatial(
+       np.array(
+           [
+               [0.2, 0.7],
+               [0.0, 1.0],
+               [0.0, 1.0],
+           ]
+       ) * mask.metadata.boxsize[:, np.newaxis]
    )
 
-   # Now, just for fun, we also constrain the density between
-   # 0.4 g/cm^3 and 0.8. This reads in the relevant data in the region,
+   # Now we also constrain the density between
+   # 0.4 and 0.8 g/cm^3. This reads in the relevant data in the region,
    # and tests it element-by-element.
    density_units = mask.units.mass / mask.units.length**3
-   mask.constrain_mask("gas", "density", 0.4 * density_units, 0.8 * density_units)
+   mask.constrain_mask(
+       "gas",
+       "density",
+       cosmo_quantity(
+           0.4,
+           u.g / u.cm ** 3,
+           comoving=True,
+           scale_factor=mask.metadata.scale_factor,
+           scale_exponent=-3
+       ),
+       cosmo_quantity(
+           0.8,
+           u.g / u.cm ** 3,
+           comoving=True,
+           scale_factor=mask.metadata.scale_factor,
+           scale_exponent=-3
+       ),
+   )
 
    # Now we can grab the actual data object. This includes the mask as a parameter.
    data = sw.load("cosmo_volume_example.hdf5", mask=mask)
@@ -257,7 +290,7 @@ densities of particles and only load particles within that density window.
    particle data arrays in the hdf5 files, and the code is not optimized for this (this
    could be optimized in the future). If you encounter slow reads with a full mask,
    consider:
-   
+
     - using a spatial-only mask instead, then discarding unwanted particles afterwards;
     - using the mask feature on the visualisation functions, if the mask is wanted for
       visualisation (for example
@@ -268,8 +301,8 @@ densities of particles and only load particles within that density window.
 When the attributes of this data object are accessed, *only* the ones that
 belong to the masked region (in both density and spatial) are read. I.e. if I
 ask for the temperature of particles, it will recieve an array containing
-temperatures of particles that lie in the region :math:`[0.2, 0.7]` and have a
-density between :math:`0.4` and :math:`0.8 \mathrm{g}/\mathrm{cm}^3`.
+temperatures of particles that lie in the x-coordinate interval :math:`[0.2, 0.7]`
+and have a density between :math:`0.4` and :math:`0.8 \mathrm{g}/\mathrm{cm}^3`.
 
 Row Masking
 -----------
@@ -283,7 +316,7 @@ return ``swiftsimio`` data objects containing arrays with only those
 rows.
 
 .. code-block:: python
-    
+
     import swiftsimio as sw
 
     mask = sw.mask(filename)
@@ -293,13 +326,14 @@ rows.
     data = sw.load(filename, mask=mask)
 
 Here, the length of all the arrays will be 3. A quick performance note: if you
-are using many indices (over 1000), you will want to set ``spatial_only=False``
-to potentially benefit from range reading of overlapping rows in a single chunk.
+are using many indices (over 1000), you should use ``mask.convert_masks_to_bool()``
+before using the mask to benefit from range reading of overlapping rows in a
+single chunk.
 
 Writing subset of snapshot
 --------------------------
 In some cases it may be useful to write a subset of an existing snapshot to its
-own hdf5 file. This could be used, for example, to extract a galaxy halo that 
+own hdf5 file. This could be used, for example, to extract a galaxy halo that
 is of interest from a snapshot so that the file is easier to work with and transport.
 
 To do this the ``write_subset`` function is provided. It can be used, for example,
@@ -307,25 +341,25 @@ as follows
 
 .. code-block:: python
 
-    import swiftsimio as sw                                                 
-    import unyt                                                             
-    
-    mask = sw.mask("eagle_snapshot.hdf5")                                       
-    mask.constrain_spatial([
-        [unyt.unyt_quantity(100, unyt.kpc), unyt.unyt_quantity(1000, unyt.kpc)], 
-        None, 
-        None])                                   
-    
+    import swiftsimio as sw
+    import unyt
+
+    mask = sw.mask("eagle_snapshot.hdf5")
+    scale_factor = mask.metadata.scale_factor
+    mask.constrain_spatial(
+        [
+            cosmo_array([100, 200], u.kpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
+            None,
+            None,
+        ]
+    )
     sw.subset_writer.write_subset("test_subset.hdf5", mask)
 
-This will write a snapshot which contains the particles from the specified snapshot 
-whose :math:`x`-coordinate is within the range [100, 1000] kpc. This function uses the 
-cell mask which encompases the specified spatial domain to successively read portions 
-of datasets from the input file and writes them to a new snapshot. 
+This will write a snapshot which contains the particles from the specified snapshot
+whose :math:`x`-coordinate is within the range [100, 200] kpc. This function uses the
+cell mask which encompases the specified spatial domain to successively read portions
+of datasets from the input file and writes them to a new snapshot.
 
-Due to the coarse grained nature of the cell mask, particles from outside this range 
-may also be included if they are within the same top level cells as particles that 
+Due to the coarse grained nature of the cell mask, particles from outside this range
+may also be included if they are within the same top level cells as particles that
 fall within the given range.
-
-Please note that it is important to run ``constrain_spatial`` as this generates
-and stores the cell mask needed to write the snapshot subset. 

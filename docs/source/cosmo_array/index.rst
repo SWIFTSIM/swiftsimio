@@ -35,8 +35,12 @@ the scale factor. The conversion factors can be accessed like this:
    # Symbolic scale-factor expression
    print(rho_gas.cosmo_factor.expr)
 
-which will output ``132651.002785671`` and ``a**(-3.0)``. Converting an array to/from physical/comoving
-is done with the :meth:`~swiftsimio.objects.cosmo_array.to_physical`, :meth:`~swiftsimio.objects.cosmo_array.to_comoving`, :meth:`~swiftsimio.objects.cosmo_array.convert_to_physical` and :meth:`~swiftsimio.objects.cosmo_array.to_comoving` methods. These can also convert units at the same time, for instance:
+which will output ``132651.002785671`` and ``a**(-3.0)``. Converting an array to/from
+physical/comoving is done with the :meth:`~swiftsimio.objects.cosmo_array.to_physical`,
+:meth:`~swiftsimio.objects.cosmo_array.to_comoving`,
+:meth:`~swiftsimio.objects.cosmo_array.convert_to_physical` and
+:meth:`~swiftsimio.objects.cosmo_array.to_comoving` methods. These can also convert units
+at the same time, for instance:
 
 .. code-block:: python
 
@@ -50,7 +54,8 @@ is done with the :meth:`~swiftsimio.objects.cosmo_array.to_physical`, :meth:`~sw
    rho_gas.convert_to_physical()  # preserves current units
    rho_gas.convert_to_physical(u.g / u.cm ** 2)
 
-Equivalently, the :meth:`~swiftsimio.objects.cosmo_array.to` can accept a comoving argument:
+Equivalently, the :meth:`~swiftsimio.objects.cosmo_array.to` can accept a comoving
+argument:
 
 .. code-block:: python
 
@@ -58,7 +63,11 @@ Equivalently, the :meth:`~swiftsimio.objects.cosmo_array.to` can accept a comovi
    physical_rho_gas = rho_gas.to(comoving=False)  # preserves current unit
    physical_rho_gas_cgs = rho_gas.to(u.g / u.cm**3, comoving=False)
 
-If you instead want to get the raw array values in either physical or comoving units, the :meth:`~swiftsimio.objects.cosmo_array.to_physical_value` and :meth:`~swiftsimio.objects.cosmo_array.to_comoving_value` are provided, analogous to the :meth:`~unyt.unyt_array.unyt_array.to_value` (which also has a ``comoving`` argument available):
+If you instead want to get the raw array values in either physical or comoving units, the
+:meth:`~swiftsimio.objects.cosmo_array.to_physical_value` and
+:meth:`~swiftsimio.objects.cosmo_array.to_comoving_value` are provided, analogous to the
+:meth:`~unyt.unyt_array.unyt_array.to_value` (which also has a ``comoving`` argument
+available):
 
 .. code-block:: python
 
@@ -67,22 +76,40 @@ If you instead want to get the raw array values in either physical or comoving u
    # Or:
    physical_rho_gas_cgs = rho_gas.to_value(u.g / u.cm**3, comoving=False)
 
-The ``valid_transform`` is a boolean flag that is set to ``False`` for some arrays that don't make sense to convert to comoving.
+The ``valid_transform`` is a boolean flag that is set to ``False`` for some arrays that
+don't make sense to convert to comoving.
 
-:class:`~swiftsimio.objects.cosmo_array` supports array arithmetic and the entire :mod:`numpy` range of functions. Attempting to combine arrays (e.g. by addition) will validate the cosmology information first. The implementation is designed to be permissive: it will only raise exceptions when a genuinely invalid combination is encountered, but is tolerant of missing cosmology information. When one argument in a relevant operation (like addition, for example) is not a :class:`~swiftsimio.objects.cosmo_array` the attributes of the :class:`~swiftsimio.objects.cosmo_array` will be assumed for both arguments. In such cases a warning is produced stating that this assumption has been made.
+:class:`~swiftsimio.objects.cosmo_array` supports array arithmetic and the entire
+:mod:`numpy` range of functions. Attempting to combine arrays (e.g. by addition) will
+validate the cosmology information first. The implementation is designed to be permissive:
+it will only raise exceptions when a genuinely invalid combination is encountered, but is
+tolerant of missing cosmology information. When one argument in a relevant operation (like
+addition, for example) is not a :class:`~swiftsimio.objects.cosmo_array` the attributes of
+the :class:`~swiftsimio.objects.cosmo_array` will be assumed for both arguments. In such
+cases a warning is produced stating that this assumption has been made.
 
 .. note::
 
-   :class:`~swiftsimio.objects.cosmo_array` and the related :class:`~swiftsimio.objects.cosmo_quantity` are now intended to support all :mod:`numpy` functions, propagating units and cosmology information correctly through mathematical operations. Try making a histogram with weights and ``density=True`` with :func:`numpy.histogram`! There are a large number of functions and a very large number of possible parameter combinations, so some corner cases may have been missed in development. Please report any errors or unexpected results using github issues or other channels so that they can be fixed. Currently :mod:`scipy` functions are not supported (although some might "just work"). Requests to support specific functions can be accommodated.
+   :class:`~swiftsimio.objects.cosmo_array` and the related
+   :class:`~swiftsimio.objects.cosmo_quantity` are now intended to support all
+   :mod:`numpy` functions, propagating units and cosmology information correctly through
+   mathematical operations. Try making a histogram with weights and ``density=True`` with
+   :func:`numpy.histogram`! There are a large number of functions and a very large number
+   of possible parameter combinations, so some corner cases may have been missed in
+   development. Please report any errors or unexpected results using github issues or
+   other channels so that they can be fixed. Currently :mod:`scipy` functions are not
+   supported (although some might "just work"). Requests to support specific functions can
+   be accommodated.
 
-To make the most of the utility offered by the :class:`~swiftsimio.objects.cosmo_array` class, it is helpful to know how to create your own. A good template for this looks like:
+To make the most of the utility offered by the :class:`~swiftsimio.objects.cosmo_array`
+class, it is helpful to know how to create your own. A good template for this looks like:
 
 .. code-block:: python
 
    import unyt as u
    from swiftsimio.objects import cosmo_array, cosmo_factor
 
-   # suppose the scale factor is 0.5 and it scales as a**1, then: 
+   # suppose the scale factor is 0.5 and it scales as a**1, then:
    my_cosmo_array = cosmo_array(
        [1, 2, 3],
        u.Mpc,
@@ -95,8 +122,10 @@ To make the most of the utility offered by the :class:`~swiftsimio.objects.cosmo
    # with:
    # scale_factor=data.metadata.a
 
-There is also a very similar :class:`~swiftsimio.objects.cosmo_quantity` class designed for scalar values,
-analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter this being returned by :mod:`numpy` functions. Cosmology-aware scalar values can be initialized similarly:
+There is also a very similar :class:`~swiftsimio.objects.cosmo_quantity` class designed
+for scalar values, analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter
+this being returned by :mod:`numpy` functions. Cosmology-aware scalar values can be
+initialized similarly:
 
 .. code-block:: python
 
@@ -110,4 +139,4 @@ analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter this bein
        scale_factor=0.5,
        scale_exponent=1,
    )
-   
+

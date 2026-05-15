@@ -20,9 +20,9 @@ Welcome to SWIFTsimIO's documentation!
             :outline:
             :expand:
 
-	    installation & quick-start
+            installation & quick-start
 
-	    
+
     .. grid-item-card:: :octicon:`code-square` Contributing
         :text-align: center
         :class-title: sd-fs-5
@@ -35,7 +35,7 @@ Welcome to SWIFTsimIO's documentation!
 
             information for developers
 
-	.. button-link:: https://github.com/SWIFTSIM/swiftsimio
+        .. button-link:: https://github.com/SWIFTSIM/swiftsimio
             :color: primary
             :outline:
             :expand:
@@ -53,7 +53,7 @@ Welcome to SWIFTsimIO's documentation!
             :outline:
             :expand:
 
-	    lists of modules and functions
+            lists of modules and functions
 
     .. grid-item-card:: :octicon:`bookmark` Publishing?
         :text-align: center
@@ -61,12 +61,12 @@ Welcome to SWIFTsimIO's documentation!
         :class-card: sd-p-3
 
         .. button-ref:: citing/index
-	    :click-parent:
+            :click-parent:
             :color: primary
             :outline:
             :expand:
 
-	    citation information
+            citation information
 
 Documentation contents
 ----------------------

@@ -1,0 +1,5 @@
+docker run -d -p 8080:8080 \
+  -v ./test_data:/opt/hdfstream/data:ro \
+  -e HDFSTREAM_PREFIX=test_data \
+  --name hdfstream-api \
+  ghcr.io/jchelly/hdfstream-api:0.0.6

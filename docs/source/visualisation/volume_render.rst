@@ -41,9 +41,9 @@ Example
 This basic demonstration creates a mass density cube.
 
 To create, for example, a projected temperature cube, we need to remove the
-density dependence (i.e. :func:`~swiftsimio.visualisation.volume_render.render_gas` returns a volumetric
-temperature in units of K / kpc^3 and we just want K) by dividing out by
-this:
+density dependence (i.e. :func:`~swiftsimio.visualisation.volume_render.render_gas`
+returns a volumetric temperature in units of K / kpc^3 and we just want K) by dividing
+out by this:
 
 .. code-block:: python
 
@@ -103,16 +103,17 @@ and should therefore not be used together with a rotation.
 Rotations
 ---------
 
-Rotations of the box prior to volume rendering are provided in a similar fashion 
-to the :mod:`swiftsimio.visualisation.projection` sub-module, by using the 
+Rotations of the box prior to volume rendering are provided in a similar fashion
+to the :mod:`swiftsimio.visualisation.projection` sub-module, by using the
 :mod:`swiftsimio.visualisation.rotation` sub-module. To rotate the perspective
-prior to slicing a ``rotation_center`` argument in :func:`~swiftsimio.visualisation.volume_render.render_gas` needs
-to be provided, specifying the point around which the rotation takes place. 
+prior to slicing a ``rotation_center`` argument in
+:func:`~swiftsimio.visualisation.volume_render.render_gas` needs
+to be provided, specifying the point around which the rotation takes place.
 The angle of rotation is specified with a matrix, supplied by ``rotation_matrix``
-in :func:`~swiftsimio.visualisation.volume_render.render_gas`. The rotation matrix may be computed with 
-:func:`~swiftsimio.visualisation.rotation.rotation_matrix_from_vector`. This will result in the perspective being 
-rotated to be along the provided vector. This approach to rotations applied to 
-the above example is shown below.
+in :func:`~swiftsimio.visualisation.volume_render.render_gas`. The rotation matrix may
+be computed with :func:`~swiftsimio.visualisation.rotation.rotation_matrix_from_vector`.
+This will result in the perspective being rotated to be along the provided vector. This
+approach to rotations applied to the above example is shown below.
 
 .. code-block:: python
 
@@ -129,7 +130,7 @@ the above example is shown below.
    center = 0.5 * data.metadata.boxsize
    rotate_vec = [0.5,0.5,1]
    matrix = rotation_matrix_from_vector(rotate_vec, axis='z')
-   
+
    # Map in msun / mpc^3
    mass_cube = render_gas(
        data,
@@ -140,10 +141,10 @@ the above example is shown below.
        parallel=True,
        periodic=False,  # disable periodic boundaries for rotations
    )
-   
+
    # Map in msun * K / mpc^3
    mass_weighted_temp_cube = render_gas(
-       data, 
+       data,
        resolution=256,
        project="mass_weighted_temps",
        rotation_matrix=matrix,
@@ -170,13 +171,13 @@ these highlights. The example below shows how to use this.
    import matplotlib.pyplot as plt
    import numpy as np
    from matplotlib.colors import LogNorm
-   
+
    from swiftsimio import load
    from swiftsimio.visualisation import volume_render
-   
+
    # Load the data
    data = load("eagle_6.hdf5")
-   
+
    # Rough location of an interesting galaxy in the volume.
    region = [
        0.225 * data.metadata.boxsize[0],
@@ -186,11 +187,13 @@ these highlights. The example below shows how to use this.
        0.45 * data.metadata.boxsize[2],
        0.5 * data.metadata.boxsize[2],
    ]
-   
+
    # Render the volume (note 1024 is reasonably high resolution so this won't complete
    # immediately; you should consider using 256, etc. for testing).
-   rendered = volume_render.render_gas(data, resolution=1024, region=region, parallel=True)
-   
+   rendered = volume_render.render_gas(
+       data, resolution=1024, region=region, parallel=True
+   )
+
    # Quick view! By projecting along the final axis you can get
    # the projected density from the rendered image.
    plt.imsave("volume_render_quick_view.png", LogNorm()(rendered.sum(-1)))
@@ -200,11 +203,11 @@ Here we can see the quick view of this image. It's just a regular density projec
 .. image:: volume_render_quick_view.png
 
 .. code-block:: python
-   
+
    # Now we will move onto the real volume rendering. Let's use the log of the density;
    # using the real density leads to low contrast images.
    log_rendered = np.log10(rendered)
-   
+
    # The volume rendering function expects centers of 'bins' and widths. These
    # bins actually represent gaussian functions around a specific density (or other
    # visualization quantity). The brightest pixel value is at center. We will
@@ -212,39 +215,39 @@ Here we can see the quick view of this image. It's just a regular density projec
    width = 0.1
    std = np.std(log_rendered)
    mean = np.mean(log_rendered)
-   
+
    # It's helpful to choose the centers relative to the data you have. When making
    # a movie, you will obviously want to choose the centers to be the same for each
    # frame.
    centers = [mean + x * std for x in [1.0, 3.0, 5.0, 7.0]]
-   
+
    # This will visualize your render options. The centers are shown as gaussians and
    # vertical lines.
    fig, ax = volume_render.visualise_render_options(
        centers=centers, widths=width, cmap="viridis"
    )
-   
+
    histogram, edges = np.histogram(
        log_rendered.flat,
        bins=128,
        range=(min(centers) - 5.0 * width, max(centers) + 5.0 * width),
    )
    bc = (edges[:-1] + edges[1:]) / 2.0
-   
+
    # The normalization here is the height of a gaussian!
    ax.plot(bc, histogram / (np.max(histogram) * np.sqrt(2.0 * np.pi) * width))
    ax.semilogy()
    ax.set_xlabel("$\\log_{10}(\\rho)$")
-   
+
    plt.savefig("volume_render_options.png")
 
-This function :func:`swiftsimio.visualisation.volume_render.visualise_render_options` allows
-you to see what densities your rendering is picking out:
+This function :func:`swiftsimio.visualisation.volume_render.visualise_render_options`
+allows you to see what densities your rendering is picking out:
 
 .. image:: volume_render_options.png
 
-.. code-block:: python   
-   
+.. code-block:: python
+
    # Now we can really visualize the rendering.
    img, norms = volume_render.visualise_render(
        log_rendered,
@@ -252,16 +255,16 @@ you to see what densities your rendering is picking out:
        widths=width,
        cmap="viridis",
    )
-   
+
    # Sometimes, these images can be a bit dark. You can increase the brightness using
    # tools like PIL or in your favourite image editor.
    from PIL import Image, ImageEnhance
-   
+
    pilimg = Image.fromarray((img * 255.0).astype(np.uint8))
    enhanced = ImageEnhance.Contrast(ImageEnhance.Brightness(pilimg).enhance(2.0)).enhance(
        1.2
    )
-   
+
    enhanced.save("volume_render_example.png")
 
 Which produces the image:
@@ -304,8 +307,8 @@ and [0, 1] in z. will be visible in the cube. You may have particles outside
 of this range; they will not crash the code, and may even contribute to the
 image if their smoothing lengths overlap with [0, 1]. You will need to
 re-scale your data such that it lives within this range. You should pass in
-raw numpy array (not :class:`~swiftsimio.objects.cosmo_array` or :class:`~unyt.array.unyt_array`).
-Then you may use the function as follows:
+raw numpy array (not :class:`~swiftsimio.objects.cosmo_array` or
+:class:`~unyt.array.unyt_array`). Then you may use the function as follows:
 
 .. code-block:: python
 
@@ -321,7 +324,7 @@ correct units, and do not forget that it now represents the smoothed quantity
 per volume.
 
 If the optional arguments ``box_x``, ``box_y`` and ``box_z`` are provided, they
-should contain the simulation box size in the same re-scaled coordinates as 
+should contain the simulation box size in the same re-scaled coordinates as
 ``x``, ``y`` and ``z``. The rendering function will then correctly apply
 periodic boundary wrapping. If ``box_x``, ``box_y`` and ``box_z`` are not
 provided or set to 0, no periodic boundaries are applied.

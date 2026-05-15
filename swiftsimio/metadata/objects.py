@@ -80,6 +80,10 @@ class SWIFTMetadata(HandleProvider, ABC):
     # multiple types (e.g. Gas, Dark Matter, etc.). Allows you to use constrain_index
     # in masking as everyone uses the same _shared mask!
     homogeneous_arrays: bool = False
+    # The type of file, e.g. FullVolume, VolumeSubset, SOAP, FOF, etc.
+    output_type: str
+    # The size of the simulation volume in each dimension.
+    boxsize: cosmo_array
 
     def __init__(
         self,
@@ -831,11 +835,11 @@ def _metadata_discriminator(
     if isinstance(file_type, bytes):
         file_type = file_type.decode("utf-8")
 
-    if file_type in ["FullVolume"]:
+    if file_type in ["FullVolume", "VolumeSubset"]:
         return SWIFTSnapshotMetadata(filename, units, handle=handle)
-    elif file_type in ["SOAP"]:
+    elif file_type in ["SOAP", "SOAPSubset"]:
         return SWIFTSOAPMetadata(filename, units, handle=handle)
-    elif file_type in ["FOF"]:
+    elif file_type in ["FOF", "FOFSubset"]:
         return SWIFTFOFMetadata(filename, units, handle=handle)
     else:
         raise ValueError(f"File type {file_type} not recognised.")
