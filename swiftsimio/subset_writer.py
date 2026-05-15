@@ -129,7 +129,7 @@ def _find_datasets(
         if is_dataset(input_file[subpath]):
             dataset_names.append(subpath)
         elif input_file[subpath].keys() is not None:
-            _find_datasets(input_file, dataset_names, subpath, recursing=True)
+            _find_datasets(input_file, dataset_names, subpath, recurse=True)
 
     return dataset_names
 
