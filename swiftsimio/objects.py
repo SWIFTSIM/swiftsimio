@@ -301,7 +301,7 @@ class cosmo_factor(object):
     ----------
     expr : sympy.Expr
         Expression used to convert between comoving and physical coordinates.
-    scale_factor : float
+    scale_factor : float or ~swiftsimio.objects._AHelper
         The scale factor (a).
 
     Attributes
@@ -335,10 +335,17 @@ class cosmo_factor(object):
         cosmo_factor(expr=a, scale_factor=0.5)
     """
 
-    def __init__(self, expr: sympy.Expr, scale_factor: float) -> None:
+    def __init__(self, expr: sympy.Expr, scale_factor: "float | _AHelper") -> None:
         self.expr = expr
-        self.scale_factor = scale_factor
-        pass
+        if getattr(scale_factor, "_comoving", None) is not None:
+            # We got an `_AHelper` that had its `comoving` or `physical` attribute
+            # accessed, this is not the backwards-compatible case that we want to support
+            # and leads to ambiguity: raise.
+            raise InvalidCosmoUnit("...")
+        # If we got an `_AHelper`, get its `_scale_factor` attribute, bypassing the
+        # checks that happen when accessing its `scale_factor` attribute: this is an
+        # intentional exception to the rule.
+        self.scale_factor = getattr(scale_factor, "_scale_factor", scale_factor)
 
     @classmethod
     def create(cls, scale_factor: float, exponent: numeric_type) -> "cosmo_factor":
@@ -2810,13 +2817,42 @@ class _AHelper(object):
         self,
         scale_factor: float,
         scale_exponent: int | float = 1,
-        units: unyt.Unit = unyt.dimensionless,
+        units: unyt.Unit = unyt.Unit("1"),  # auto-simplifies unlike unyt.dimensionless
         comoving: bool | None = None,
     ) -> None:
-        self.scale_factor = scale_factor
+        self._scale_factor = scale_factor
         self.scale_exponent = scale_exponent
         self.units = units
         self._comoving = comoving
+
+    @property
+    def scale_factor(self) -> float:
+        """
+        Get the scale factor.
+
+        The scale factor should always be accessed through this property. This ensures
+        that the :class:`~swiftsimio.objects._AHelper` cannot be used when its
+        ``_comoving`` attribute is ``None``, i.e. ``10 * metadata.a * u.kpc`` is invalid
+        but ``10 * metadata.a.physical * u.kpc`` is valid (the ``comoving`` and
+        ``physical`` properties return a copy with ``_comoving is not None``).
+
+        The exception is when creating new :class:`~swiftsimio.objects._AHelper` objects
+        from old ones, then ``_AHelper(scale_factor=self._scale_factor, ...)`` is
+        needed.
+
+        Returns
+        -------
+        float
+            The scale factor.
+
+        Raises
+        ------
+        InvalidCosmoUnit
+            If access is attempted when physical or comoving has not been specified.
+        """
+        if self._comoving is None:
+            raise InvalidCosmoUnit("...")
+        return self._scale_factor
 
     @property
     def _comoving_str(self) -> str:
@@ -2952,7 +2988,13 @@ class _AHelper(object):
                 scale_exponent=a_helper_input.scale_exponent,
             )
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> cosmo_array:
+    def __array_ufunc__(
+        self,
+        ufunc: np.ufunc,
+        method: str,
+        *inputs: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> cosmo_array:
         """
         Handle :mod:`numpy` ufunc calls on :class:`~swiftsimio.objects.cosmo_array` input.
 
@@ -3036,7 +3078,7 @@ class _AHelper(object):
     @__mul__.register
     def _(self, other: unyt.Unit) -> Self:
         return _AHelper(
-            scale_factor=self.scale_factor,
+            scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
             units=other.units * self.units,
             comoving=self._comoving,
@@ -3093,7 +3135,7 @@ class _AHelper(object):
     ) -> Self | cosmo_array:
         return (
             _AHelper(
-                scale_factor=self.scale_factor,
+                scale_factor=self._scale_factor,
                 scale_exponent=self.scale_exponent,
                 units=self.units,
                 comoving=self._comoving,
@@ -3105,7 +3147,7 @@ class _AHelper(object):
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
     ) -> Self | cosmo_array:
         return other * _AHelper(
-            scale_factor=self.scale_factor,
+            scale_factor=self._scale_factor,
             scale_exponent=-self.scale_exponent,
             units=self.units,
             comoving=self._comoving,
@@ -3113,7 +3155,7 @@ class _AHelper(object):
 
     def __pow__(self, exponent: int | float) -> Self:
         return _AHelper(
-            scale_factor=self.scale_factor,
+            scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent * exponent,
             units=self.units**exponent,
             comoving=self._comoving,
@@ -3122,7 +3164,7 @@ class _AHelper(object):
     @property
     def comoving(self) -> Self:
         return _AHelper(
-            scale_factor=self.scale_factor,
+            scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
             units=self.units,
             comoving=True,
@@ -3131,7 +3173,7 @@ class _AHelper(object):
     @property
     def physical(self) -> Self:
         return _AHelper(
-            scale_factor=self.scale_factor,
+            scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
             units=self.units,
             comoving=False,

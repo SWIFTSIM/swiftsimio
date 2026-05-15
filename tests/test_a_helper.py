@@ -5,7 +5,7 @@ from copy import deepcopy
 import numpy as np
 import unyt as u
 from swiftsimio import mask, cosmo_array, cosmo_quantity
-from swiftsimio.objects import _AHelper, InvalidCosmoUnit
+from swiftsimio.objects import _AHelper, InvalidCosmoUnit, cosmo_factor
 
 
 @pytest.mark.parametrize("scale_exponent", (-1, 0, 1, 2, None))
@@ -160,7 +160,7 @@ def test_helper_available_from_metadata(cosmological_volume_only_single_local):
     """
     m = mask(cosmological_volume_only_single_local)
     a = m.metadata.a
-    scale_factor = mask.metadata.scale_factor
+    scale_factor = m.metadata.scale_factor
     region = [
         [1.0 * u.Mpc * a.comoving, 2.0 * u.Mpc * a.comoving],
         [1.0 * u.Mpc * a.physical, 2.0 * u.Mpc * a.physical],
@@ -202,17 +202,67 @@ def test_helper_available_from_metadata(cosmological_volume_only_single_local):
 
 def test_comoving_or_physical_missing():
     """Test that failing to specify ``a.comoving`` or ``a.physical`` is an error."""
+    scale_factor = 0.5
+    a = _AHelper(scale_factor=scale_factor)
     with pytest.raises(InvalidCosmoUnit, match="..."):
-        # didn't specify comoving/physical, should error on use:
-        scale_factor = 0.5
-        a = _AHelper(scale_factor=scale_factor)
-        with pytest.raises(InvalidCosmoUnit, match="..."):
-            10 * u.Mpc * a
-        with pytest.raises(InvalidCosmoUnit, match="..."):
-            cosmo_quantity(
-                10, u.Mpc, comoving=True, scale_factor=0.5, scale_exponent=1
-            ) * a
+        10 * u.Mpc * a
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        cosmo_quantity(10, u.Mpc, comoving=True, scale_factor=0.5, scale_exponent=1) * a
 
 
-# also division, multiply-and-assign, divide-and-assign?
-# disallow (a**2).comoving? no reason it shouldn't work but just seems confusing
+def test_metadata_attribute_not_backwards_compatible(
+    cosmological_volume_only_single_local,
+):
+    """
+    Test that users get a clear error when metadata.a is used in old style.
+
+    The introduction of the _AHelper is a breaking API change. We want to avoid users
+    doing things like ``10 * metadata.a * u.kpc`` (even though they should probably be
+    using :class:`~swiftsimio.objects.cosmo_quantity` instead) in the way that they used
+    to and getting strange/incorrect results. Requiring that ``metadata.a.comoving``
+    or ``metadata.a.physical`` is used before multiplication or division achieves this:
+    ``10 * metadata.a * u.kpc`` is an error when ``metadata.a`` is a ``_AHelper``.
+
+    The exception is ``cosmo_array(..., scale_factor=metadata.a)``. The ``cosmo_array``
+    can handle this case safely and interpret the object as just a scale factor, offering
+    some helpful backwards compatibility. See ``test_cosmo_factor_accepts_ahelper``.
+    """
+    m = mask(cosmological_volume_only_single_local)
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        10 * m.metadata.a * u.kpc
+
+
+def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
+    """
+    Check that cosmo array/quantity accepts metadata.a as a scale factor.
+
+    This is an explicit exception to not being able to use ``metadata.a`` without using
+    ``metadata.a.comoving`` or ``metadata.a.physical``. Actually, we specifically require
+    it not to be used in this case (``metadata.a._comoving`` should be ``None``) to avoid
+    ambiguity.
+    """
+    m = mask(cosmological_volume_only_single_local)
+    scale_exponent = 2  # pick a non-default case
+    assert m.metadata.a._comoving is None
+    cq = cosmo_quantity(
+        1,
+        u.kpc**2,
+        comoving=True,
+        scale_factor=m.metadata.a,  # can use it like this (backwards compatible)
+        scale_exponent=scale_exponent,
+    )
+    assert cq.comoving
+    assert cq.cosmo_factor == cosmo_factor.create(
+        m.metadata.scale_factor, scale_exponent
+    )
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        cosmo_quantity(
+            1,
+            u.kpc**2,
+            comoving=True,
+            scale_factor=m.metadata.a.comoving,  # can't use it like this
+            scale_exponent=scale_exponent,
+        )
+
+
+# also test division, multiply-and-assign, divide-and-assign

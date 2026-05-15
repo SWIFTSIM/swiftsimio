@@ -14,7 +14,7 @@ from unyt.array import _iterable
 
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
-from swiftsimio.objects import cosmo_array, cosmo_quantity
+from swiftsimio.objects import cosmo_array, cosmo_quantity, _AHelper
 from swiftsimio._handle_provider import HandleProvider
 from abc import ABC, abstractmethod
 
@@ -196,12 +196,10 @@ class SWIFTMetadata(HandleProvider, ABC):
                 # Must not be present, just skip it
                 continue
         # need the scale factor first for cosmology on other header attributes
-        try:
-            self.a = self.scale_factor
-        except AttributeError:
-            # These must always be present for the initialisation of cosmology properties
-            self.a = 1.0
+        if not hasattr(self, "scale_factor"):
+            # This must always be present for the initialisation of cosmology properties
             self.scale_factor = 1.0
+        self.a = _AHelper(scale_factor=self.scale_factor)
 
         # These are just read straight in to variables
         header_unpack_arrays_units = (
