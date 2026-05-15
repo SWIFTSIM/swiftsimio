@@ -92,7 +92,7 @@ def _find_datasets(
     input_file: h5py.File,
     dataset_names: list[str] = [],
     path: str | None = None,
-    recursing: bool = False,
+    recurse: bool = False,
 ) -> list[str]:
     """
     Recursively find all of the datasets in the snapshot and write them to a list.
@@ -108,7 +108,7 @@ def _find_datasets(
     path : str, optional
         The path to the current location in the snapshot.
 
-    recursing : bool
+    recurse : bool
         Whether this is a recursive call.
 
     Returns
@@ -116,7 +116,7 @@ def _find_datasets(
     list of str
         Names of datasets in ``path`` in ``input_file``.
     """
-    if not recursing:
+    if not recurse:
         dataset_names = []
     if path is not None:
         keys = input_file[path].keys()
