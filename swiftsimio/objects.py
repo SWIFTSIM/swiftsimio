@@ -2411,27 +2411,13 @@ class cosmo_array(unyt_array):
         if isinstance(result, tuple):
             for r in result:
                 if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
-                    r.comoving = (
-                        helper_result["comoving"] if r.comoving is None else r.comoving
-                    )
-                    r.cosmo_factor = (
-                        ret_cf
-                        if r.cosmo_factor == cosmo_factor(None, None)
-                        else ret_cf * r.cosmo_factor
-                    )
+                    r.comoving = helper_result["comoving"]
+                    r.cosmo_factor = ret_cf
                     r.valid_transform = helper_result["valid_transform"]
                     r.compression = helper_result["compression"]
         elif isinstance(result, cosmo_array):  # also recognizes cosmo_quantity
-            result.comoving = (
-                helper_result["comoving"]
-                if result.comoving is None
-                else result.comoving
-            )
-            result.cosmo_factor = (
-                ret_cf
-                if result.cosmo_factor == cosmo_factor(None, None)
-                else ret_cf * result.cosmo_factor
-            )
+            result.comoving = helper_result["comoving"]
+            result.cosmo_factor = ret_cf
             result.valid_transform = helper_result["valid_transform"]
             result.compression = helper_result["compression"]
         if "out" in kwargs:
@@ -2439,31 +2425,15 @@ class cosmo_array(unyt_array):
             if ufunc not in multiple_output_operators:
                 out = out[0]
                 if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
-                    out.comoving = (
-                        helper_result["comoving"]
-                        if result.comoving is None
-                        else result.comoving
-                    )
-                    out.cosmo_factor = (
-                        ret_cf
-                        if result.cosmo_factor == cosmo_factor(None, None)
-                        else ret_cf * result.cosmo_factor
-                    )
+                    out.comoving = helper_result["comoving"]
+                    out.cosmo_factor = ret_cf
                     out.valid_transform = helper_result["valid_transform"]
                     out.compression = helper_result["compression"]
             else:
                 for o, r in zip(out, result):
                     if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
-                        o.comoving = (
-                            helper_result["comoving"]
-                            if r.comoving is None
-                            else r.comoving
-                        )
-                        o.cosmo_factor = (
-                            ret_cf
-                            if r.cosmo_factor == cosmo_factor(None, None)
-                            else ret_cf * r.cosmo_factor
-                        )
+                        o.comoving = helper_result["comoving"]
+                        o.cosmo_factor = ret_cf
                         o.valid_transform = helper_result["valid_transform"]
                         o.compression = helper_result["compression"]
 
@@ -2535,18 +2505,19 @@ class cosmo_array(unyt_array):
         return function_to_invoke(*args, **kwargs)
 
     def __mul__(
-        self, b: int | float | np.ndarray | unyt.unit_object.Unit
+        self, b: "int | float | np.ndarray | unyt.unit_object.Unit | _AHelper"
     ) -> "cosmo_array":
         """
         Multiply this :class:`~swiftsimio.objects.cosmo_array`.
 
         We delegate most cases to :mod:`unyt`, but we need to handle the case where the
-        second argument is a :class:`~unyt.unit_object.Unit`.
+        second argument is a :class:`~unyt.unit_object.Unit` and the case where the
+        second argument is a :class:`~swiftsimio.objects._AHelper`.
 
         Parameters
         ----------
-        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
-        :class:`~unyt.unit_object.Unit`
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float`, \
+        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects._AHelper`
             The object to multiply with this one.
 
         Returns
@@ -2563,6 +2534,8 @@ class cosmo_array(unyt_array):
                     else self.view(unyt_array)
                 ),
             )
+        elif isinstance(b, _AHelper):
+            return b.__mul__(self)
         else:
             return super().__mul__(b)
 
