@@ -263,6 +263,3 @@ def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
             scale_factor=m.metadata.a.comoving,  # can't use it like this
             scale_exponent=scale_exponent,
         )
-
-
-# also test division, multiply-and-assign, divide-and-assign
