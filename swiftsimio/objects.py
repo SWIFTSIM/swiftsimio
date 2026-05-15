@@ -2414,6 +2414,7 @@ class cosmo_array(unyt_array):
         result = _ensure_result_is_cosmo_array_or_quantity(super().__array_ufunc__)(
             ufunc, method, *helper_result["args"], **helper_result["kwargs"]
         )
+        raise RuntimeError
         # if we get a tuple we have multiple return values to deal with
         if isinstance(result, tuple):
             for r in result:
