@@ -11,6 +11,7 @@ helpers, wrappers and implementations that enable most :mod:`numpy` and
 :mod:`unyt` functions to work with our cosmology-aware arrays.
 """
 
+import inspect
 import unyt
 from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
@@ -2306,6 +2307,11 @@ class cosmo_array(unyt_array):
         else:
             # default to numpy's private implementation
             function_to_invoke = func._implementation
+        # check if the function has a "like" argument and if so pass self (which is where
+        # numpy puts the `like` argument that it received when dispatching to us) along
+        # as the like argument
+        if "like" in inspect.getfullargspec(function_to_invoke).kwonlyargs:
+            kwargs["like"] = self
         return function_to_invoke(*args, **kwargs)
 
     def __mul__(
