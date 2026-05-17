@@ -2318,40 +2318,40 @@ def meshgrid(*xi, **kwargs):  # noqa numpydoc ignore=GL08
     )
 
 
-@implements(np.array)
-def array(  # noqa: ANN202
-    object,  # noqa: ANN001
-    dtype=None,  # noqa: ANN001
-    *,
-    copy=None,  # noqa: ANN001
-    order="K",  # noqa: ANN001
-    subok=False,  # noqa: ANN001
-    ndmin=0,  # noqa: ANN001
-    like=None,  # noqa: ANN001
-):  # noqa numpydoc ignore=GL08
-    arr = np.array(
-        object, dtype=dtype, copy=copy, order=order, subok=subok, ndmin=ndmin
-    )
-    cosmo = arr.view(
-        objects.cosmo_quantity if np.isscalar(arr) else objects.cosmo_array
-    )
-    _copy_cosmo_array_attributes_if_present(like, cosmo, copy_units=True)
-    return cosmo
+def _array_like_wrapper(func: Callable) -> Callable:
+
+    def wrapper(
+        *args: tuple[Any], like: "objects.cosmo_array" = None, **kwargs: dict[str, Any]
+    ) -> Callable:
+        arr = func(*args, **kwargs)
+        cosmo = arr.view(
+            objects.cosmo_quantity if arr.ndim == 0 else objects.cosmo_array
+        )
+        _copy_cosmo_array_attributes_if_present(like, cosmo, copy_units=True)
+        return cosmo
+
+    return wrapper
 
 
-@implements(np.asarray)
-def asarray(  # noqa: ANN202
-    a,  # noqa: ANN001
-    dtype=None,  # noqa: ANN001
-    order=None,  # noqa: ANN001
-    *,
-    device=None,  # noqa: ANN001
-    copy=None,  # noqa: ANN001
-    like=None,  # noqa: ANN001
-):  # noqa numpydoc ignore=GL08
-    arr = np.asarray(a, dtype=dtype, order=order, device=device, copy=copy)
-    cosmo = arr.view(
-        objects.cosmo_quantity if np.isscalar(arr) else objects.cosmo_array
-    )
-    _copy_cosmo_array_attributes_if_present(like, cosmo, copy_units=True)
-    return cosmo
+# wrap array creation functions that take a `like` kwarg
+implements(np.arange)(_array_like_wrapper(np.arange))
+implements(np.empty)(_array_like_wrapper(np.empty))
+implements(np.ones)(_array_like_wrapper(np.ones))
+implements(np.zeros)(_array_like_wrapper(np.zeros))
+implements(np.full)(_array_like_wrapper(np.full))
+implements(np.array)(_array_like_wrapper(np.array))
+implements(np.asarray)(_array_like_wrapper(np.asarray))
+implements(np.asanyarray)(_array_like_wrapper(np.asanyarray))
+implements(np.ascontiguousarray)(_array_like_wrapper(np.ascontiguousarray))
+implements(np.asfortranarray)(_array_like_wrapper(np.asfortranarray))
+implements(np.require)(_array_like_wrapper(np.require))
+implements(np.fromfunction)(_array_like_wrapper(np.fromfunction))
+implements(np.fromstring)(_array_like_wrapper(np.fromstring))
+implements(np.fromiter)(_array_like_wrapper(np.fromiter))
+implements(np.fromfile)(_array_like_wrapper(np.fromfile))
+implements(np.frombuffer)(_array_like_wrapper(np.frombuffer))
+implements(np.identity)(_array_like_wrapper(np.identity))
+implements(np.loadtxt)(_array_like_wrapper(np.loadtxt))
+implements(np.genfromtxt)(_array_like_wrapper(np.genfromtxt))
+implements(np.eye)(_array_like_wrapper(np.eye))
+implements(np.tri)(_array_like_wrapper(np.tri))

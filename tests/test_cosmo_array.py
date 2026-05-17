@@ -1372,3 +1372,88 @@ class TestPhysicalComovingConversion:
         elif starting_comoving is True:
             print(arr, arr_copy)
             assert np.allclose(arr.value, arr_copy.value * 2)
+
+
+class TestArrayCreation:
+    """Test functions that create new arrays with a `like` kwarg."""
+
+    @pytest.mark.parametrize(
+        "func",
+        (
+            np.array,
+            np.asarray,
+            np.asanyarray,
+            np.ascontiguousarray,
+            np.asfortranarray,
+        ),
+    )
+    @pytest.mark.parametrize("inp", (1.0, [1.0]))
+    def test_array_and_similar(self, func, inp):
+        """
+        Test functions that take an array-like and produce a cosmo_array.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        cosmo_out = func(inp, like=cosmo_in)
+        if np.isscalar(inp) and func not in (np.ascontiguousarray, np.asfortranarray):
+            assert isinstance(cosmo_out, cosmo_quantity)
+        else:
+            assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+                cosmo_out, cosmo_quantity
+            )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+    @pytest.mark.parametrize(
+        "func",
+        (
+            np.arange,
+            np.empty,
+            np.ones,
+            np.zeros,
+            lambda x, like=None: np.full(x, fill_value=0, like=like),
+            np.identity,
+            np.eye,
+            np.tri,
+        ),
+    )
+    def test_arange_and_similar(self, func):
+        """
+        Test functions that take an integer and produce a cosmo_array.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        cosmo_out = func(3, like=cosmo_in)
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+
+# TODO:
+# require, fromfunction, fromstring, fromiter, fromfile, frombuffer, loadtxt genfromtxt
