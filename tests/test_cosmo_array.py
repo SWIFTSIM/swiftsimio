@@ -1,6 +1,7 @@
 """Tests the initialisation of a cosmo_array."""
 
 from typing import Callable
+from io import StringIO
 import pytest
 import os
 import warnings
@@ -1385,6 +1386,7 @@ class TestArrayCreation:
             np.asanyarray,
             np.ascontiguousarray,
             np.asfortranarray,
+            np.require,
         ),
     )
     @pytest.mark.parametrize("inp", (1.0, [1.0]))
@@ -1454,6 +1456,191 @@ class TestArrayCreation:
         assert cosmo_out.valid_transform == cosmo_in.valid_transform
         assert cosmo_out.compression == cosmo_in.compression
 
+    def test_fromstring(self):
+        """
+        Test the fromstring function.
 
-# TODO:
-# require, fromfunction, fromstring, fromiter, fromfile, frombuffer, loadtxt genfromtxt
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        cosmo_out = np.fromstring("1 2", dtype=int, sep=" ", like=cosmo_in)
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+    def test_fromiter(self):
+        """
+        Test the fromiter function.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        iterable = (x for x in range(3))
+        cosmo_out = np.fromiter(iterable, float, like=cosmo_in)
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+    def test_fromfunction(self):
+        """
+        Test the fromfunction function.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        cosmo_out = np.fromfunction(lambda i, j: i, (2, 2), dtype=float, like=cosmo_in)
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+    def test_frombuffer(self):
+        """
+        Test the frombuffer function.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        cosmo_out = np.frombuffer(b"\x01\x02", dtype=np.uint8, like=cosmo_in)
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+    def test_loadtxt(self):
+        """
+        Test the loadtxt function.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        fname = "np_arr.txt"
+        try:
+            np.savetxt(fname, [1, 2])
+            cosmo_out = np.loadtxt(fname, like=cosmo_in)
+        finally:
+            os.remove(fname)
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+    def test_fromfile(self):
+        """
+        Test the fromfile function.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        fname = "np_arr"
+        try:
+            np.array([1, 2], dtype=int).tofile(fname)
+            cosmo_out = np.fromfile(fname, dtype=int, like=cosmo_in)
+        finally:
+            os.remove(fname)
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
+
+    def test_genfromtxt(self):
+        """
+        Test the genfromtxt function.
+
+        Attributes are copied from the `like` kwarg.
+        """
+        cosmo_in = cosmo_array(
+            [0],
+            u.Mpc,
+            comoving=False,
+            scale_factor=0.5,
+            scale_exponent=1,
+            valid_transform=False,
+            compression="testing",
+        )
+        s = StringIO("1,2\n3,4")
+        cosmo_out = np.genfromtxt(
+            s, dtype=[("a", int), ("b", int)], delimiter=",", like=cosmo_in
+        )
+        assert isinstance(cosmo_out, cosmo_array) and not isinstance(
+            cosmo_out, cosmo_quantity
+        )
+        assert cosmo_out.units == cosmo_in.units
+        assert cosmo_out.comoving == cosmo_in.comoving
+        assert cosmo_out.cosmo_factor == cosmo_in.cosmo_factor
+        assert cosmo_out.valid_transform == cosmo_in.valid_transform
+        assert cosmo_out.compression == cosmo_in.compression
