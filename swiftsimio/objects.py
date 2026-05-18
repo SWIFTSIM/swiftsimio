@@ -2606,14 +2606,14 @@ class cosmo_array(unyt_array):
         if getattr(b, "is_Unit", False):
             return _copy_cosmo_array_attributes_if_present(
                 self,
-                _ensure_result_is_cosmo_array_or_quantity((b**-1).__mul__)(
+                _ensure_result_is_cosmo_array_or_quantity((1 / b).__mul__)(
                     self.view(unyt_quantity)
                     if self.shape == ()
                     else self.view(unyt_array)
                 ),
             )
         elif isinstance(b, _AHelper):
-            return (b**-1).__mul__(self)
+            return (1 / b).__mul__(self)
         else:
             return super().__truediv__(b)
 
