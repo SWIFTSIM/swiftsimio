@@ -2517,7 +2517,8 @@ class cosmo_array(unyt_array):
         return function_to_invoke(*args, **kwargs)
 
     def __mul__(
-        self, b: "int | float | np.ndarray | unyt.unit_object.Unit | _AHelper"
+        self,
+        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
     ) -> "cosmo_array":
         """
         Multiply this :class:`~swiftsimio.objects.cosmo_array`.
@@ -2528,8 +2529,9 @@ class cosmo_array(unyt_array):
 
         Parameters
         ----------
-        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float`, \
-        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects._AHelper`
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects.cosmo_array` or \
+        :class:`~swiftsimio.objects._AHelper`
             The object to multiply with this one.
 
         Returns
@@ -2552,7 +2554,8 @@ class cosmo_array(unyt_array):
             return super().__mul__(b)
 
     def __rmul__(
-        self, b: int | float | np.ndarray | unyt.unit_object.Unit
+        self,
+        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
     ) -> "cosmo_array":
         """
         Multiply this :class:`~swiftsimio.objects.cosmo_array` (as the right argument).
@@ -2563,7 +2566,8 @@ class cosmo_array(unyt_array):
         Parameters
         ----------
         b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
-        :class:`~unyt.unit_object.Unit`
+        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects.cosmo_array` or \
+        :class:`~swiftsimio.objects._AHelper`
             The object to multiply with this one.
 
         Returns
@@ -2575,6 +2579,70 @@ class cosmo_array(unyt_array):
             return self.__mul__(b)
         else:
             return super().__rmul__(b)
+
+    def __truediv__(
+        self,
+        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array":
+        """
+        Divide this :class:`~swiftsimio.objects.cosmo_array`.
+
+        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
+        second argument is a :class:`~unyt.unit_object.Unit` and the case where the
+        second argument is a :class:`~swiftsimio.objects._AHelper`.
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects.cosmo_array` or \
+        :class:`~swiftsimio.objects._AHelper`
+            The object to divide this one by.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            The result of the division.
+        """
+        if getattr(b, "is_Unit", False):
+            return _copy_cosmo_array_attributes_if_present(
+                self,
+                _ensure_result_is_cosmo_array_or_quantity((b**-1).__mul__)(
+                    self.view(unyt_quantity)
+                    if self.shape == ()
+                    else self.view(unyt_array)
+                ),
+            )
+        elif isinstance(b, _AHelper):
+            return (b**-1).__mul__(self)
+        else:
+            return super().__truediv__(b)
+
+    def __rtruediv__(
+        self,
+        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array":
+        """
+        Divide by this :class:`~swiftsimio.objects.cosmo_array` (as the right argument).
+
+        We delegate most cases to :mod:`unyt`, but we need to handle the case where the
+        second argument is a :class:`~unyt.unit_object.Unit`.
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects.cosmo_array` or \
+        :class:`~swiftsimio.objects._AHelper`
+            The object to divide by this one.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            The result of the division.
+        """
+        if getattr(b, "is_Unit", False):
+            return (1 / self).__mul__(b)
+        else:
+            return super().__rtruediv__(b)
 
 
 class cosmo_quantity(cosmo_array, unyt_quantity):
@@ -2915,6 +2983,8 @@ class _AHelper(object):
         dict
             The now prepared kwargs for the ufunc.
         """
+        if ufunc not in (np.multiply, np, divide):
+            return NotImplemented
         prepared_inputs = tuple(
             unyt_quantity(
                 1,
@@ -2989,7 +3059,8 @@ class _AHelper(object):
                 result,
                 comoving=a_helper_input._comoving,
                 scale_factor=a_helper_input.scale_factor,
-                scale_exponent=a_helper_input.scale_exponent,
+                scale_exponent={np.divide: -1}.get(ufunc, 1)
+                * a_helper_input.scale_exponent,
             )
 
     def __array_ufunc__(
@@ -3308,14 +3379,15 @@ class _AHelper(object):
         ~swiftsimio.objects._AHelper or ~swiftsimio.objects.cosmo_aray
             The result of applying the helper to the other operand.
         """
-        return (
-            _AHelper(
+        # avoid using other ** -1, e.g. integers raise on this
+        return 1 / (
+            other
+            * _AHelper(
                 scale_factor=self._scale_factor,
-                scale_exponent=self.scale_exponent,
+                scale_exponent=-self.scale_exponent,
                 units=self.units,
                 comoving=self._comoving,
             )
-            * other**-1
         )
 
     def __rtruediv__(
