@@ -15,7 +15,12 @@ import unyt
 from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from numbers import Number as numeric_type
-from typing import Iterable, Callable, Any, Self
+from typing import Iterable, Callable, Any
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self  # in python 3.10
 from collections.abc import Collection
 from functools import singledispatchmethod
 
