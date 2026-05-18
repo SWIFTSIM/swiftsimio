@@ -1272,6 +1272,59 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
     return wrapper
 
 
+def _array_like_wrapper(func: Callable) -> Callable:
+    """
+    Wrap functions accepting a ``like`` kwarg.
+
+    Several :mod:`numpy` functions allow passing a ``like`` kwarg that can be used to
+    copy attributes or otherwise handle properties from a subclass when a new array is
+    created. This wrapper lets us implement these functions easily.
+
+    Can be used as a decorator.
+
+    Parameters
+    ----------
+    func : Callable
+        The :mod:`numpy` function to be wrapped.
+
+    Returns
+    -------
+    Callable
+        The wrapped function.
+    """
+
+    def wrapper(
+        *args: tuple[Any], like: "objects.cosmo_array" = None, **kwargs: dict[str, Any]
+    ) -> Callable:
+        """
+        Create the new array, view it as a cosmo array or quantity, and attach attributes.
+
+        Parameters
+        ----------
+        *args : tuple[Any]
+            Arbitrary arguments of the wrapped function.
+
+        like : ~swiftsimio.objects.cosmo_array
+            The array that attributes are copied from.
+
+        **kwargs : dict[str, Any]
+            Arbitrary kwargs of the wrapped function.
+
+        Returns
+        -------
+        Callable
+            The wrapped function.
+        """
+        arr = func(*args, **kwargs)
+        cosmo = arr.view(
+            objects.cosmo_quantity if arr.ndim == 0 else objects.cosmo_array
+        )
+        _copy_cosmo_array_attributes_if_present(like, cosmo, copy_units=True)
+        return cosmo
+
+    return wrapper
+
+
 # Next we wrap functions from unyt and numpy. There's not much point in writing docstrings
 # or type hints for all of these.
 
@@ -2316,21 +2369,6 @@ def meshgrid(*xi, **kwargs):  # noqa numpydoc ignore=GL08
     return tuple(
         _copy_cosmo_array_attributes_if_present(x, r) for (x, r) in zip(xi, res)
     )
-
-
-def _array_like_wrapper(func: Callable) -> Callable:
-
-    def wrapper(
-        *args: tuple[Any], like: "objects.cosmo_array" = None, **kwargs: dict[str, Any]
-    ) -> Callable:
-        arr = func(*args, **kwargs)
-        cosmo = arr.view(
-            objects.cosmo_quantity if arr.ndim == 0 else objects.cosmo_array
-        )
-        _copy_cosmo_array_attributes_if_present(like, cosmo, copy_units=True)
-        return cosmo
-
-    return wrapper
 
 
 # wrap array creation functions that take a `like` kwarg
