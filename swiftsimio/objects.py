@@ -2310,8 +2310,12 @@ class cosmo_array(unyt_array):
         # check if the function has a "like" argument and if so pass self (which is where
         # numpy puts the `like` argument that it received when dispatching to us) along
         # as the like argument
-        if "like" in inspect.getfullargspec(function_to_invoke).kwonlyargs:
-            kwargs["like"] = self
+        try:
+            if "like" in inspect.getfullargspec(function_to_invoke).kwonlyargs:
+                kwargs["like"] = self
+        except TypeError:
+            # e.g. unyt raises if function_to_invoke is cumprod
+            pass
         return function_to_invoke(*args, **kwargs)
 
     def __mul__(
