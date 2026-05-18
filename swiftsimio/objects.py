@@ -1515,14 +1515,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.to_value
         """
         if comoving:
             self.convert_to_comoving(units, equivalence=equivalence, **kwargs)
@@ -1567,14 +1567,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.to_value
         """
         if units is not None:
             self.convert_to_units(units, equivalence=equivalence, **kwargs)
@@ -1626,14 +1626,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.to_value
         """
         if units is not None:
             self.convert_to_units(units, equivalence=equivalence, **kwargs)
@@ -1683,14 +1683,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.to_value
         """
         if not self.valid_transform and self.comoving:
             raise InvalidConversionError
@@ -1736,14 +1736,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.to_value
         """
         if not self.valid_transform and self.comoving is not False:
             raise InvalidConversionError
@@ -1802,14 +1802,14 @@ class cosmo_array(unyt_array):
         
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.to_value
 
         Examples
         --------
@@ -1902,14 +1902,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_comoving_value
 
         Examples
         --------
@@ -1972,14 +1972,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_comoving_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_comoving_value
+        swiftsimio.objects.cosmo_array.to_value
         """
         return self.to_value(units, equivalence=equivalence, comoving=False, **kwargs)
 
@@ -2025,14 +2025,14 @@ class cosmo_array(unyt_array):
 
         See Also
         --------
-        ~swiftsimio.objects.cosmo_array.convert_to_physical
-        ~swiftsimio.objects.cosmo_array.convert_to_comoving
-        ~swiftsimio.objects.cosmo_array.convert_to
-        ~swiftsimio.objects.cosmo_array.to_physical
-        ~swiftsimio.objects.cosmo_array.to_comoving
-        ~swiftsimio.objects.cosmo_array.to
-        ~swiftsimio.objects.cosmo_array.to_physical_value
-        ~swiftsimio.objects.cosmo_array.to_value
+        swiftsimio.objects.cosmo_array.convert_to_physical
+        swiftsimio.objects.cosmo_array.convert_to_comoving
+        swiftsimio.objects.cosmo_array.convert_to
+        swiftsimio.objects.cosmo_array.to_physical
+        swiftsimio.objects.cosmo_array.to_comoving
+        swiftsimio.objects.cosmo_array.to
+        swiftsimio.objects.cosmo_array.to_physical_value
+        swiftsimio.objects.cosmo_array.to_value
         """
         return self.to_value(units, equivalence=equivalence, comoving=True, **kwargs)
 
