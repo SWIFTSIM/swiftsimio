@@ -2983,7 +2983,6 @@ class _AHelper(object):
                 result.cosmo_factor = result.cosmo_factor * cosmo_factor.create(
                     a_helper_input.scale_factor, a_helper_input.scale_exponent
                 )
-            # raise RuntimeError
             return result
         else:
             return (cosmo_array if result.ndim else cosmo_quantity)(
@@ -3052,7 +3051,6 @@ class _AHelper(object):
         NotImplemented
             This operation is not defined.
         """
-        # keep message generic, we might get here through __truediv__ also
         return NotImplemented
 
     def _ndarray_or_number_mul(self, other: numeric_type | np.ndarray) -> cosmo_array:
@@ -3133,7 +3131,7 @@ class _AHelper(object):
             ``other`` :obj:`tuple` or :obj:`list`.
         """
         # the two registered functions calling this can be merged into one with
-        # type hint `other: numeric_type | np.ndarray` once python3.10 support is
+        # type hint `other: tuple | list` once python3.10 support is
         # dropped
 
         # leave other arguments implicit, could pick up values from content of other:
