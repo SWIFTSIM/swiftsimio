@@ -24,8 +24,11 @@ def test_cosmology_metadata(cosmological_volume):
     """Test to see if we get the unpacked cosmology metadata correct."""
     data = load(cosmological_volume)
 
-    assert data.metadata.a == data.metadata.scale_factor
-    assert np.isclose(data.metadata.a, 1.0 / (1.0 + data.metadata.redshift), atol=1e-8)
+    # data.metadata.a is our helper for easier initialization of cosmo_arrays:
+    assert data.metadata.a._scale_factor == data.metadata.scale_factor
+    assert np.isclose(
+        data.metadata.scale_factor, 1.0 / (1.0 + data.metadata.redshift), atol=1e-8
+    )
 
     return
 
