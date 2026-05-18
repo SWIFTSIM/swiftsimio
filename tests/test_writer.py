@@ -31,7 +31,7 @@ def test_scale_factor_written(simple_snapshot_data):
     w.write(testfile)
     dat = load(testfile)
     assert w.scale_factor != 1.0  # make sure it's not just a default value
-    assert dat.metadata.a == w.scale_factor
+    assert dat.metadata.scale_factor == w.scale_factor
 
 
 def test_write_non_required_field(simple_writer):
