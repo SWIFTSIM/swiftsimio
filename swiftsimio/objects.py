@@ -2798,11 +2798,11 @@ class _AHelper(object):
         The scale factor used to create/modify :class:`~swiftsimio.objects.cosmo_factor`
         objects as needed.
 
+    scale_exponent : int, optional
+        The exponent that the scale factor scales with, default of ``1``.
+
     units : ~unyt.Unit, optional
         The units to attach to objects.
-
-    exponent : int, optional
-        The exponent that the scale factor scales with, default of ``1``.
 
     comoving : bool, optional
         Whether to create comoving or physical objects.
@@ -3037,16 +3037,35 @@ class _AHelper(object):
         """
         Default implementation for invalid multiplications.
 
-        Raises
-        ------
-        NotImplementedError
-            When something that we cannot multiply with is encountered.
+        Parameters
+        ----------
+        other : Any
+            The object to multiply with.
+
+        Returns
+        -------
+        NotImplemented
+            This operation is not defined.
         """
         # keep message generic, we might get here through __truediv__ also
         return NotImplemented
 
     @__mul__.register
     def _(self, other: numeric_type | np.ndarray) -> cosmo_array:
+        """
+        Multiply with a number or :mod:`numpy` array.
+
+        Parameters
+        ----------
+        other : numeric_type or np.ndarray
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` number or array.
+        """
         return (cosmo_quantity if np.isscalar(other) else cosmo_array)(
             other,
             units=self.units,
@@ -3057,6 +3076,20 @@ class _AHelper(object):
 
     @__mul__.register
     def _(self, other: tuple | list) -> cosmo_array:
+        """
+        Multiply with a :obj:`list` or :obj:`tuple`.
+
+        Parameters
+        ----------
+        other : tuple or list
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` :obj:`tuple` or :obj:`list`.
+        """
         # leave the rest implicit, could pick up values from content of other:
         ret = cosmo_array(other)
         # now modify attributes:
@@ -3077,6 +3110,22 @@ class _AHelper(object):
 
     @__mul__.register
     def _(self, other: unyt.Unit) -> Self:
+        """
+        Multiply with a :class:`unyt.unit_object.Unit`.
+
+        These are multplied with the existing units on the helper (could be dimensionless)
+        and a new helper with these new units is returned.
+
+        Parameters
+        ----------
+        other : ~unyt.unit_object.Unit
+            The unit to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects._AHelper
+            A helper updated with the provided units.
+        """
         return _AHelper(
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
@@ -3086,6 +3135,20 @@ class _AHelper(object):
 
     @__mul__.register
     def _(self, other: unyt.unyt_array) -> cosmo_array:
+        """
+        Multiply with a :class:`~unyt.array.unyt_array`.
+
+        Parameters
+        ----------
+        other : ~unyt.array.unyt_array
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` :class:`~unyt.array.unyt_array`.
+        """
         return (
             cosmo_quantity if isinstance(other, unyt.unyt_quantity) else cosmo_array
         )(
@@ -3097,6 +3160,20 @@ class _AHelper(object):
 
     @__mul__.register
     def _(self, other: cosmo_array) -> cosmo_array:
+        """
+        Multiply with a :class:`~swiftsimio.objects.cosmo_array`.
+
+        Parameters
+        ----------
+        other : ~swiftsimio.objects.cosmo_array
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` :class:`~swiftsimio.objects.cosmo_array`.
+        """
         if self._comoving:
             other.convert_to_comoving()  # no-op if already comoving
         elif self._comoving is False:
@@ -3118,21 +3195,39 @@ class _AHelper(object):
         Just pass the operation to :meth:`~swiftsimio.objects._AHelper.__mul__` to
         handle.
 
+        Parameters
+        ----------
+        other : ~unyt.unit_object.Unit, ~unyt.array.unyt_array or \
+        ~swiftsimio.objects.cosmo_array
+            The object to multiply with.
+
         Returns
         -------
         ~swiftsimio.objects._AHelper or ~swiftsimio.objects.cosmo_aray
             The result of applying the helper to the other operand.
-
-        Raises
-        ------
-        NotImplementedError
-            When something that we cannot multiply with is encountered.
         """
         return self.__mul__(other)
 
     def __truediv__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
     ) -> Self | cosmo_array:
+        """
+        Divide this helper by a unit, number or array.
+
+        Just delegates the operation to :meth:`~swiftsimio.objects._AHelper.__mul__` to
+        handle.
+
+        Parameters
+        ----------
+        other : ~unyt.unit_object.Unit, ~unyt.array.unyt_array or \
+        ~swiftsimio.objects.cosmo_array
+            The object to divide by.
+
+        Returns
+        -------
+        ~swiftsimio.objects._AHelper or ~swiftsimio.objects.cosmo_aray
+            The result of applying the helper to the other operand.
+        """
         return (
             _AHelper(
                 scale_factor=self._scale_factor,
@@ -3146,6 +3241,23 @@ class _AHelper(object):
     def __rtruediv__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
     ) -> Self | cosmo_array:
+        """
+        Divide a unit, number or array by this helper.
+
+        Just delegates the operation to :meth:`~swiftsimio.objects._AHelper.__mul__` to
+        handle.
+
+        Parameters
+        ----------
+        other : ~unyt.unit_object.Unit, ~unyt.array.unyt_array or \
+        ~swiftsimio.objects.cosmo_array
+            The object to divide by this.
+
+        Returns
+        -------
+        ~swiftsimio.objects._AHelper or ~swiftsimio.objects.cosmo_aray
+            The result of applying the helper to the other operand.
+        """
         return other * _AHelper(
             scale_factor=self._scale_factor,
             scale_exponent=-self.scale_exponent,
@@ -3154,6 +3266,26 @@ class _AHelper(object):
         )
 
     def __pow__(self, exponent: int | float) -> Self:
+        """
+        Raise this helper to a power.
+
+        This modifies the exponent of the scale factor, so that for density scaling as
+        the inverse cube we can write e.g. (for a helper called ``a``):
+
+        .. code-block:: python
+
+           raw_density * a.comoving ** -3 * u.g * u.cm**-3
+
+        Parameters
+        ----------
+        exponent : int or float
+            The exponent to raise the scale factor to (cumulative with current exponent).
+
+        Returns
+        -------
+        ~swiftsimio.objects._AHelper
+            A new helper with the modified exponent.
+        """
         return _AHelper(
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent * exponent,
@@ -3163,6 +3295,28 @@ class _AHelper(object):
 
     @property
     def comoving(self) -> Self:
+        """
+        Indicate that this helper is for a comoving quantity.
+
+        This helper makes it easy to attach the cosmological scaling of quantities to
+        arrays. To do this, whether the quantity is physical or comoving must be
+        specified. This is done by accessing the ``comoving`` or ``physical`` attributes.
+
+        Returns
+        -------
+        ~swiftsimio.objects._AHelper
+            A new helper object flagged for comoving quantities.
+
+        Examples
+        --------
+        .. code-block:: python
+
+           from swiftsimio import load
+           dat = load("snap.hdf5")
+           a = dat.metadata.a
+           cMpc = a.comoving * u.Mpc
+           comoving_distances = np.arange(3) * cMpc
+        """
         return _AHelper(
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
@@ -3172,14 +3326,31 @@ class _AHelper(object):
 
     @property
     def physical(self) -> Self:
+        """
+        Indicate that this helper is for a physical quantity.
+
+        This helper makes it easy to attach the cosmological scaling of quantities to
+        arrays. To do this, whether the quantity is physical or comoving must be
+        specified. This is done by accessing the ``comoving`` or ``physical`` attributes.
+
+        Returns
+        -------
+        ~swiftsimio.objects._AHelper
+            A new helper object flagged for comoving quantities.
+
+        Examples
+        --------
+        .. code-block:: python
+
+           from swiftsimio import load
+           dat = load("snap.hdf5")
+           a = dat.metadata.a
+           pMpc = a.physical * u.Mpc
+           physical_distances = np.arange(3) * pMpc
+        """
         return _AHelper(
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
             units=self.units,
             comoving=False,
         )
-
-    def ensure_comoving_or_physical(self) -> None:
-        # want this to be a decorator...
-        if self._comoving is None:
-            raise InvalidCosmoUnit("...")
