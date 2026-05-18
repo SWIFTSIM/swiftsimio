@@ -3055,8 +3055,7 @@ class _AHelper(object):
         # keep message generic, we might get here through __truediv__ also
         return NotImplemented
 
-    @__mul__.register
-    def _(self, other: numeric_type | np.ndarray) -> cosmo_array:
+    def _ndarray_or_number_mul(self, other: numeric_type | np.ndarray) -> cosmo_array:
         """
         Multiply with a number or :mod:`numpy` array.
 
@@ -3071,6 +3070,9 @@ class _AHelper(object):
             A cosmo array or quantity based on the content of this helper and the
             ``other`` number or array.
         """
+        # the two registered functions calling this can be merged into one with
+        # type hint `other: numeric_type | np.ndarray` once python3.10 support is
+        # dropped
         return (cosmo_quantity if np.isscalar(other) else cosmo_array)(
             other,
             units=self.units,
@@ -3080,7 +3082,42 @@ class _AHelper(object):
         )
 
     @__mul__.register
-    def _(self, other: tuple | list) -> cosmo_array:
+    def _(self, other: numeric_type) -> cosmo_array:
+        """
+        Multiply with a number.
+
+        Parameters
+        ----------
+        other : numeric_type
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` number.
+        """
+        return self._ndarray_or_number_mul(other)
+
+    @__mul__.register
+    def _(self, other: np.ndarray) -> cosmo_array:
+        """
+        Multiply with a :mod:`numpy` array.
+
+        Parameters
+        ----------
+        other : np.ndarray
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` array.
+        """
+        return self._ndarray_or_number_mul(other)
+
+    def _tuple_or_list_mul(self, other: tuple | list) -> cosmo_array:
         """
         Multiply with a :obj:`list` or :obj:`tuple`.
 
@@ -3095,7 +3132,11 @@ class _AHelper(object):
             A cosmo array or quantity based on the content of this helper and the
             ``other`` :obj:`tuple` or :obj:`list`.
         """
-        # leave the rest implicit, could pick up values from content of other:
+        # the two registered functions calling this can be merged into one with
+        # type hint `other: numeric_type | np.ndarray` once python3.10 support is
+        # dropped
+
+        # leave other arguments implicit, could pick up values from content of other:
         ret = cosmo_array(other)
         # now modify attributes:
         if ret.comoving is not None:
@@ -3112,6 +3153,42 @@ class _AHelper(object):
                 self.scale_factor, self.scale_exponent
             )
         return ret
+
+    @__mul__.register
+    def _(self, other: tuple) -> cosmo_array:
+        """
+        Multiply with a :obj:`tuple`.
+
+        Parameters
+        ----------
+        other : tuple
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` :obj:`tuple`.
+        """
+        return self._tuple_or_list_mul(other)
+
+    @__mul__.register
+    def _(self, other: list) -> cosmo_array:
+        """
+        Multiply with a :obj:`list` or :obj:`tuple`.
+
+        Parameters
+        ----------
+        other : tuple or list
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            A cosmo array or quantity based on the content of this helper and the
+            ``other`` :obj:`tuple` or :obj:`list`.
+        """
+        return self._tuple_or_list_mul(other)
 
     @__mul__.register
     def _(self, other: unyt.Unit) -> Self:
