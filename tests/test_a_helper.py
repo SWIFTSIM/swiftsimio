@@ -149,6 +149,59 @@ def test_assign_comoving_or_physical_units_to_name(
     )
 
 
+@pytest.mark.parametrize(
+    "data",
+    (
+        10,
+        10.0,
+        np.array([1.0, 2.0]),
+        (1.0, 2.0),
+        [1.0, 2.0],
+        u.kpc,
+        10.0 * u.kpc,
+        [1.0, 2.0] * u.kpc,
+        cosmo_quantity(10.0, u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1),
+        cosmo_array(
+            [1.0, 2.0], u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1
+        ),
+    ),
+)
+@pytest.mark.parametrize("order", ("a_data", "data_a"))
+def test_division(data, order):
+    """Test that the helper can handle division by and of all supported data types."""
+    scale_factor = 0.5
+    a = _AHelper(scale_factor=scale_factor).physical
+    operands = {"a": a, "data": data}
+    first, second = [operands[i] for i in order.split("_")]
+    cosmo = first / second
+    if isinstance(first, u.Unit):
+        assert isinstance(cosmo, _AHelper)
+    elif np.asarray(data).ndim == 0:
+        assert isinstance(cosmo, cosmo_quantity)
+    else:
+        # careful, cosmo_quantity is a subclass and therefore counts as a cosmo_array
+        assert isinstance(cosmo, cosmo_array) and not isinstance(cosmo, cosmo_quantity)
+    if isinstance(cosmo, _AHelper):
+        assert cosmo._comoving == a._comoving
+    else:
+        assert cosmo.comoving == getattr(data, "comoving", a._comoving)
+    if isinstance(cosmo, _AHelper):
+        assert cosmo.scale_factor == scale_factor
+    else:
+        assert cosmo.cosmo_factor.scale_factor == scale_factor
+    assert scale_factor != 1  # else trivial
+    if hasattr(data, "cosmo_factor"):
+        expected_exponent = 0
+    else:
+        expected_exponent = 1 if isinstance(first, _AHelper) else -1
+    if isinstance(cosmo, _AHelper):
+        assert (
+            cosmo._scale_factor**cosmo.scale_exponent == scale_factor**expected_exponent
+        )
+    else:
+        assert cosmo.cosmo_factor.a_factor == scale_factor**expected_exponent
+
+
 def test_helper_available_from_metadata(cosmological_volume_only_single_local):
     """
     Test that the helper is available as a metadata attribute on datasets.
