@@ -41,7 +41,7 @@ dependencies = [
     "astropy>=6.0",
     "numpy>=2.1.0",
     "h5py",
-    "unyt>=3.1.0",
+    "unyt @ git+https://github.com/kyleaoman/unyt@main",  # both PR branches merged here
     "numba>=0.50.0",
 ]
 
