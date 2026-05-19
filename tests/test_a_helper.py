@@ -4,6 +4,7 @@ import pytest
 from copy import deepcopy
 import numpy as np
 import unyt as u
+from unyt.exceptions import InvalidUnitOperation
 from swiftsimio import mask, cosmo_array, cosmo_quantity
 from swiftsimio.objects import _AHelper, InvalidCosmoUnit, cosmo_factor
 
@@ -316,3 +317,59 @@ def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
             scale_factor=m.metadata.a.comoving,  # can't use it like this
             scale_exponent=scale_exponent,
         )
+
+
+def test_inplace_operations():
+    """
+    Test that in-place operations work/don't as intended.
+
+    The helper should not allow in-place operations as left argument.
+    """
+    a = _AHelper(scale_factor=0.5).comoving
+    with pytest.raises(TypeError, match="In-place operations with"):
+        a *= 1
+    with pytest.raises(TypeError, match="In-place operations with"):
+        a /= 1
+    with pytest.raises(TypeError, match="In-place operations with"):
+        a **= 1
+    with pytest.raises(
+        InvalidUnitOperation,
+        match="in-place operations with unit objects are not allowed",
+    ):
+        u.kpc *= a
+    x = 10
+    x *= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.Unit("")
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 1)
+    x = u.unyt_quantity(10, u.kpc)
+    x *= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 1)
+    x = cosmo_quantity(10, u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1)
+    x *= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 2)
+    x = 10
+    x /= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.Unit("")
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, -1)
+    x = u.unyt_quantity(10, u.kpc)
+    x /= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, -1)
+    x = cosmo_quantity(10, u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1)
+    x /= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 0)
