@@ -297,7 +297,9 @@ def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
     """
     m = mask(cosmological_volume_only_single_local)
     scale_exponent = 2  # pick a non-default case
-    assert m.metadata.a._comoving is None
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        # the __comoving attribute is supposed to be None so this should raise
+        m.metadata.a._comoving
     cq = cosmo_quantity(
         1,
         u.kpc**2,
