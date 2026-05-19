@@ -342,10 +342,16 @@ class cosmo_factor(object):
 
     def __init__(self, expr: sympy.Expr, scale_factor: "float | _AHelper") -> None:
         self.expr = expr
-        if getattr(scale_factor, "_comoving", None) is not None:
-            # We got an `_AHelper` that had its `comoving` or `physical` attribute
-            # accessed, this is not the backwards-compatible case that we want to support
-            # and leads to ambiguity: raise.
+        try:
+            getattr(scale_factor, "_comoving")
+        except AttributeError:
+            # we're just dealing with a float, this is fine
+            pass
+        except InvalidCosmoUnit:
+            # for an _AHelper we require this, otherwise _comoving is True or False
+            pass
+        else:
+            # for an _AHelper complain that .comoving or .physical was accessed
             raise InvalidCosmoUnit("...")
         # If we got an `_AHelper`, get its `_scale_factor` attribute, bypassing the
         # checks that happen when accessing its `scale_factor` attribute: this is an
@@ -353,7 +359,7 @@ class cosmo_factor(object):
         self.scale_factor = getattr(scale_factor, "_scale_factor", scale_factor)
 
     @classmethod
-    def create(cls, scale_factor: float, exponent: numeric_type) -> "cosmo_factor":
+    def create(cls, scale_factor: float, exponent: int | float) -> "cosmo_factor":
         """
         Create :class:`~swiftsimio.objects.cosmo_factor` from scale factor and exponent.
 
@@ -2583,7 +2589,7 @@ class cosmo_array(unyt_array):
     def __imul__(
         self,
         b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> Self:
+    ) -> "cosmo_array":
         """
         Multiply this :class:`~swiftsimio.objects.cosmo_array` (in-place).
 
@@ -2668,7 +2674,7 @@ class cosmo_array(unyt_array):
     def __itruediv__(
         self,
         b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> Self:
+    ) -> "cosmo_array":
         """
         Divide this :class:`~swiftsimio.objects.cosmo_array` (in-place).
 
@@ -2923,10 +2929,10 @@ class _AHelper(object):
         Whether to create comoving or physical objects.
     """
 
-    scale_factor: float
+    _scale_factor: float
     scale_exponent: int | float
     units: unyt.Unit
-    comoving: bool | None
+    __comoving: bool | None
 
     def __init__(
         self,
@@ -2938,7 +2944,7 @@ class _AHelper(object):
         self._scale_factor = scale_factor
         self.scale_exponent = scale_exponent
         self.units = units
-        self._comoving = comoving
+        self.__comoving = comoving
 
     @property
     def scale_factor(self) -> float:
@@ -2965,9 +2971,38 @@ class _AHelper(object):
         InvalidCosmoUnit
             If access is attempted when physical or comoving has not been specified.
         """
-        if self._comoving is None:
+        if self.__comoving is None:
             raise InvalidCosmoUnit("...")
         return self._scale_factor
+
+    @property
+    def _comoving(self) -> bool:
+        """
+        Get the comoving status of the helper.
+
+        The comoving status should always be accessed through this property. This ensures
+        that the :class:`~swiftsimio.objects._AHelper` cannot be used when its
+        ``_comovin`` attriubte is ``None``, i.e. ``10 * metadata.a * u.kpc`` is invalid
+        but ``10 * metadata.a.physical * u.kpc`` is valid (the ``comoving`` and
+        ``physical`` properties return a copy with ``_comoving is not None``).
+
+        The exception is when creating new :class:`~swiftsimio.objects._AHelper` objects
+        from old ones, then ``_AHelper(comoving=self.__comoving, ...)`` is
+        needed.
+
+        Returns
+        -------
+        float
+            The comoving status.
+
+        Raises
+        ------
+        InvalidCosmoUnit
+            If access is attempted when physical or comoving has not been specified.
+        """
+        if self.__comoving is None:
+            raise InvalidCosmoUnit("...")
+        return self.__comoving
 
     @property
     def _comoving_str(self) -> str:
@@ -3080,14 +3115,14 @@ class _AHelper(object):
         """
         for inp in inputs:
             if isinstance(inp, _AHelper):
-                a_helper_input = inp
+                a_helper_input: _AHelper = inp
         if isinstance(result, cosmo_array):
             if result.comoving is None:
                 result.comoving = a_helper_input._comoving
             else:
                 result.convert_to(result.units, comoving=a_helper_input._comoving)
             result.units = result.units * a_helper_input.units
-            if result.cosmo_factor == cosmo_factor(None, None):
+            if result.cosmo_factor == NULL_CF:
                 result.cosmo_factor = cosmo_factor.create(
                     a_helper_input.scale_factor, a_helper_input.scale_exponent
                 )
@@ -3097,11 +3132,11 @@ class _AHelper(object):
                 )
             return result
         else:
-            return (cosmo_array if result.ndim else cosmo_quantity)(
+            return (cosmo_array if np.asarray(result).ndim else cosmo_quantity)(
                 result,
                 comoving=a_helper_input._comoving,
                 scale_factor=a_helper_input.scale_factor,
-                scale_exponent={np.divide: -1}.get(ufunc, 1)
+                scale_exponent=(-1 if ufunc is np.divide else 1)
                 * a_helper_input.scale_exponent,
             )
 
@@ -3323,7 +3358,7 @@ class _AHelper(object):
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
             units=other.units * self.units,
-            comoving=self._comoving,
+            comoving=self.__comoving,
         )
 
     @__mul__.register
@@ -3381,7 +3416,7 @@ class _AHelper(object):
 
     def __rmul__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
-    ) -> Self | cosmo_array:
+    ) -> "_AHelper | cosmo_array":
         """
         Multiply with argument on the right.
 
@@ -3403,7 +3438,7 @@ class _AHelper(object):
 
     def __truediv__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
-    ) -> Self | cosmo_array:
+    ) -> "_AHelper | cosmo_array":
         """
         Divide this helper by a unit, number or array.
 
@@ -3428,13 +3463,13 @@ class _AHelper(object):
                 scale_factor=self._scale_factor,
                 scale_exponent=-self.scale_exponent,
                 units=self.units,
-                comoving=self._comoving,
+                comoving=self.__comoving,
             )
         )
 
     def __rtruediv__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
-    ) -> Self | cosmo_array:
+    ) -> "_AHelper | cosmo_array":
         """
         Divide a unit, number or array by this helper.
 
@@ -3456,10 +3491,10 @@ class _AHelper(object):
             scale_factor=self._scale_factor,
             scale_exponent=-self.scale_exponent,
             units=self.units,
-            comoving=self._comoving,
+            comoving=self.__comoving,
         )
 
-    def __pow__(self, exponent: int | float) -> Self:
+    def __pow__(self, exponent: int | float) -> "_AHelper":
         """
         Raise this helper to a power.
 
@@ -3484,12 +3519,11 @@ class _AHelper(object):
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent * exponent,
             units=self.units**exponent,
-            comoving=self._comoving,
+            comoving=self.__comoving,
         )
 
-    def __imul__(
-        self, other: numeric_type | tuple | list | np.ndarray | unyt_array | cosmo_array
-    ) -> None:
+    @singledispatchmethod
+    def __imul__(self, other) -> None:  # noqa: ANN001
         """
         Do not support in-place multiplication as left operand.
 
@@ -3510,16 +3544,13 @@ class _AHelper(object):
             "argument are not supported."
         )
 
-    def __ipow__(
-        self, other: numeric_type | tuple | list | np.ndarray | unyt_array | cosmo_array
-    ) -> None:
+    def __ipow__(self, exponent: int | float) -> None:
         """
         Do not support in-place exponentiation as left operand.
 
         Parameters
         ----------
-        other : numeric_type or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
-        ~swiftsimio.objects.cosmo_array
+        exponent : int or float
             The exponent to raise this to.
 
         Raises
@@ -3557,7 +3588,7 @@ class _AHelper(object):
         )
 
     @property
-    def comoving(self) -> Self:
+    def comoving(self) -> "_AHelper":
         """
         Indicate that this helper is for a comoving quantity.
 
@@ -3588,7 +3619,7 @@ class _AHelper(object):
         )
 
     @property
-    def physical(self) -> Self:
+    def physical(self) -> "_AHelper":
         """
         Indicate that this helper is for a physical quantity.
 
