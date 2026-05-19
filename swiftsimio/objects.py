@@ -2580,6 +2580,27 @@ class cosmo_array(unyt_array):
         else:
             return super().__rmul__(b)
 
+    def __imul__(
+        self,
+        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> Self:
+        """
+        Multiply this :class:`~swiftsimio.objects.cosmo_array` (in-place).
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects.cosmo_array` or \
+        :class:`~swiftsimio.objects._AHelper`
+            The object to multiply with this one.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            The result of the multiplication.
+        """
+        return self.__mul__(b)
+
     def __truediv__(
         self,
         b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
@@ -2643,6 +2664,27 @@ class cosmo_array(unyt_array):
             return (1 / self).__mul__(b)
         else:
             return super().__rtruediv__(b)
+
+    def __itruediv__(
+        self,
+        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> Self:
+        """
+        Divide this :class:`~swiftsimio.objects.cosmo_array` (in-place).
+
+        Parameters
+        ----------
+        b : :class:`~numpy.ndarray`, :obj:`int`, :obj:`float` or \
+        :class:`~unyt.unit_object.Unit` or :class:`~swiftsimio.objects.cosmo_array` or \
+        :class:`~swiftsimio.objects._AHelper`
+            The object to divide this one by.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_array
+            The result of the division.
+        """
+        return self.__truediv__(b)
 
 
 class cosmo_quantity(cosmo_array, unyt_quantity):
@@ -3443,6 +3485,75 @@ class _AHelper(object):
             scale_exponent=self.scale_exponent * exponent,
             units=self.units**exponent,
             comoving=self._comoving,
+        )
+
+    def __imul__(
+        self, other: numeric_type | tuple | list | np.ndarray | unyt_array | cosmo_array
+    ) -> None:
+        """
+        Do not support in-place multiplication as left operand.
+
+        Parameters
+        ----------
+        other : numeric_type or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
+        ~swiftsimio.objects.cosmo_array
+            The other object to multiply with this one.
+
+        Raises
+        ------
+        TypeError
+            In-place operations with :class:`~swiftsimio.objects._AHelper` as left
+            argument are not supported.
+        """
+        raise TypeError(
+            "In-place operations with :class:`~swiftsimio.objects._AHelper` as left "
+            "argument are not supported."
+        )
+
+    def __ipow__(
+        self, other: numeric_type | tuple | list | np.ndarray | unyt_array | cosmo_array
+    ) -> None:
+        """
+        Do not support in-place exponentiation as left operand.
+
+        Parameters
+        ----------
+        other : numeric_type or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
+        ~swiftsimio.objects.cosmo_array
+            The exponent to raise this to.
+
+        Raises
+        ------
+        TypeError
+            In-place operations with :class:`~swiftsimio.objects._AHelper` as left
+            argument are not supported.
+        """
+        raise TypeError(
+            "In-place operations with :class:`~swiftsimio.objects._AHelper` as left "
+            "argument are not supported."
+        )
+
+    def __itruediv__(
+        self, other: numeric_type | tuple | list | np.ndarray | unyt_array | cosmo_array
+    ) -> None:
+        """
+        Do not support in-place division as left operand.
+
+        Parameters
+        ----------
+        other : numeric_type or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
+        ~swiftsimio.objects.cosmo_array
+            The other object to divide this one by.
+
+        Raises
+        ------
+        TypeError
+            In-place operations with :class:`~swiftsimio.objects._AHelper` as left
+            argument are not supported.
+        """
+        raise TypeError(
+            "In-place operations with :class:`~swiftsimio.objects._AHelper` as left "
+            "argument are not supported."
         )
 
     @property
