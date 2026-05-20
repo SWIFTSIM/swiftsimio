@@ -4,6 +4,7 @@ import pytest
 from copy import deepcopy
 import numpy as np
 import unyt as u
+from unyt.exceptions import InvalidUnitOperation
 from swiftsimio import mask, cosmo_array, cosmo_quantity
 from swiftsimio.objects import _AHelper, InvalidCosmoUnit, cosmo_factor
 
@@ -149,6 +150,59 @@ def test_assign_comoving_or_physical_units_to_name(
     )
 
 
+@pytest.mark.parametrize(
+    "data",
+    (
+        10,
+        10.0,
+        np.array([1.0, 2.0]),
+        (1.0, 2.0),
+        [1.0, 2.0],
+        u.kpc,
+        10.0 * u.kpc,
+        [1.0, 2.0] * u.kpc,
+        cosmo_quantity(10.0, u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1),
+        cosmo_array(
+            [1.0, 2.0], u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1
+        ),
+    ),
+)
+@pytest.mark.parametrize("order", ("a_data", "data_a"))
+def test_division(data, order):
+    """Test that the helper can handle division by and of all supported data types."""
+    scale_factor = 0.5
+    a = _AHelper(scale_factor=scale_factor).physical
+    operands = {"a": a, "data": data}
+    first, second = [operands[i] for i in order.split("_")]
+    cosmo = first / second
+    if isinstance(first, u.Unit):
+        assert isinstance(cosmo, _AHelper)
+    elif np.asarray(data).ndim == 0:
+        assert isinstance(cosmo, cosmo_quantity)
+    else:
+        # careful, cosmo_quantity is a subclass and therefore counts as a cosmo_array
+        assert isinstance(cosmo, cosmo_array) and not isinstance(cosmo, cosmo_quantity)
+    if isinstance(cosmo, _AHelper):
+        assert cosmo._comoving == a._comoving
+    else:
+        assert cosmo.comoving == getattr(data, "comoving", a._comoving)
+    if isinstance(cosmo, _AHelper):
+        assert cosmo.scale_factor == scale_factor
+    else:
+        assert cosmo.cosmo_factor.scale_factor == scale_factor
+    assert scale_factor != 1  # else trivial
+    if hasattr(data, "cosmo_factor"):
+        expected_exponent = 0
+    else:
+        expected_exponent = 1 if isinstance(first, _AHelper) else -1
+    if isinstance(cosmo, _AHelper):
+        assert (
+            cosmo._scale_factor**cosmo.scale_exponent == scale_factor**expected_exponent
+        )
+    else:
+        assert cosmo.cosmo_factor.a_factor == scale_factor**expected_exponent
+
+
 def test_helper_available_from_metadata(cosmological_volume_only_single_local):
     """
     Test that the helper is available as a metadata attribute on datasets.
@@ -243,7 +297,9 @@ def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
     """
     m = mask(cosmological_volume_only_single_local)
     scale_exponent = 2  # pick a non-default case
-    assert m.metadata.a._comoving is None
+    with pytest.raises(InvalidCosmoUnit, match="..."):
+        # the __comoving attribute is supposed to be None so this should raise
+        m.metadata.a._comoving
     cq = cosmo_quantity(
         1,
         u.kpc**2,
@@ -263,3 +319,59 @@ def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
             scale_factor=m.metadata.a.comoving,  # can't use it like this
             scale_exponent=scale_exponent,
         )
+
+
+def test_inplace_operations():
+    """
+    Test that in-place operations work/don't as intended.
+
+    The helper should not allow in-place operations as left argument.
+    """
+    a = _AHelper(scale_factor=0.5).comoving
+    with pytest.raises(TypeError, match="In-place operations with"):
+        a *= 1
+    with pytest.raises(TypeError, match="In-place operations with"):
+        a /= 1
+    with pytest.raises(TypeError, match="In-place operations with"):
+        a **= 1
+    with pytest.raises(
+        InvalidUnitOperation,
+        match="in-place operations with unit objects are not allowed",
+    ):
+        u.kpc *= a
+    x = 10
+    x *= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.Unit("")
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 1)
+    x = u.unyt_quantity(10, u.kpc)
+    x *= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 1)
+    x = cosmo_quantity(10, u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1)
+    x *= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 2)
+    x = 10
+    x /= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.Unit("")
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, -1)
+    x = u.unyt_quantity(10, u.kpc)
+    x /= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, -1)
+    x = cosmo_quantity(10, u.kpc, comoving=True, scale_factor=0.5, scale_exponent=1)
+    x /= a
+    assert isinstance(x, cosmo_quantity)
+    assert x.units == u.kpc
+    assert x.comoving
+    assert x.cosmo_factor == cosmo_factor.create(0.5, 0)
