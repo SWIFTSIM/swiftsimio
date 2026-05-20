@@ -258,9 +258,9 @@ def test_comoving_or_physical_missing():
     """Test that failing to specify ``a.comoving`` or ``a.physical`` is an error."""
     scale_factor = 0.5
     a = _AHelper(scale_factor=scale_factor)
-    with pytest.raises(InvalidCosmoUnit, match="..."):
+    with pytest.raises(InvalidCosmoUnit, match="Cannot use scale factor helper as"):
         10 * u.Mpc * a
-    with pytest.raises(InvalidCosmoUnit, match="..."):
+    with pytest.raises(InvalidCosmoUnit, match="Cannot use scale factor helper as"):
         cosmo_quantity(10, u.Mpc, comoving=True, scale_factor=0.5, scale_exponent=1) * a
 
 
@@ -282,7 +282,7 @@ def test_metadata_attribute_not_backwards_compatible(
     some helpful backwards compatibility. See ``test_cosmo_factor_accepts_ahelper``.
     """
     m = mask(cosmological_volume_only_single_local)
-    with pytest.raises(InvalidCosmoUnit, match="..."):
+    with pytest.raises(InvalidCosmoUnit, match="Cannot use scale factor helper as"):
         10 * m.metadata.a * u.kpc
 
 
@@ -297,7 +297,7 @@ def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
     """
     m = mask(cosmological_volume_only_single_local)
     scale_exponent = 2  # pick a non-default case
-    with pytest.raises(InvalidCosmoUnit, match="..."):
+    with pytest.raises(InvalidCosmoUnit, match="Cannot use scale factor helper as"):
         # the __comoving attribute is supposed to be None so this should raise
         m.metadata.a._comoving
     cq = cosmo_quantity(
@@ -311,7 +311,7 @@ def test_cosmo_factor_accepts_ahelper(cosmological_volume_only_single_local):
     assert cq.cosmo_factor == cosmo_factor.create(
         m.metadata.scale_factor, scale_exponent
     )
-    with pytest.raises(InvalidCosmoUnit, match="..."):
+    with pytest.raises(InvalidCosmoUnit, match="Initialize cosmo_array"):
         cosmo_quantity(
             1,
             u.kpc**2,

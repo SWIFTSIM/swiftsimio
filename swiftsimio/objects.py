@@ -378,7 +378,12 @@ class cosmo_factor:
             pass
         else:
             # for an _AHelper complain that .comoving or .physical was accessed
-            raise InvalidCosmoUnit("...")
+            raise InvalidCosmoUnit(
+                "Initialize cosmo_array (or cosmo_quantity, or cosmo_factor) with e.g. "
+                "`scale_factor=metadata.scale_factor`, not e.g. "
+                "`scale_factor=metadata.a.comoving` or "
+                "`scale_factor=metadata.a.physical`."
+            )
         # If we got an `_AHelper`, get its `_scale_factor` attribute, bypassing the
         # checks that happen when accessing its `scale_factor` attribute: this is an
         # intentional exception to the rule.
@@ -3001,7 +3006,10 @@ class _AHelper:
             If access is attempted when physical or comoving has not been specified.
         """
         if self._comoving_state is None:
-            raise InvalidCosmoUnit("...")
+            raise InvalidCosmoUnit(
+                "Cannot use scale factor helper as `a` alone, use `a.comoving` or "
+                "`a.physical`."
+            )
         return self._scale_factor
 
     @property
@@ -3030,7 +3038,10 @@ class _AHelper:
             If access is attempted when physical or comoving has not been specified.
         """
         if self._comoving_state is None:
-            raise InvalidCosmoUnit("...")
+            raise InvalidCosmoUnit(
+                "Cannot use scale factor helper as `a` alone, use `a.comoving` or "
+                "`a.physical`."
+            )
         return self._comoving_state
 
     @property
