@@ -2969,7 +2969,8 @@ class _AHelper(object):
         for inp in inputs:
             if isinstance(inp, _AHelper):
                 a_helper_input = inp
-        if isinstance(result, cosmo_array):
+
+        if isinstance(result, cosmo_array):  # -- UNUSED, REMOVE?
             if result.comoving is None:
                 result.comoving = a_helper_input._comoving
             else:
@@ -2982,7 +2983,7 @@ class _AHelper(object):
             else:
                 result.cosmo_factor = result.cosmo_factor * cosmo_factor.create(
                     a_helper_input.scale_factor, a_helper_input.scale_exponent
-                )
+                )  # --
             return result
         else:
             return (cosmo_array if result.ndim else cosmo_quantity)(
@@ -3213,7 +3214,7 @@ class _AHelper(object):
             comoving=self._comoving,
         )
 
-    @__mul__.register
+    @__mul__.register  # -- UNUSED, REMOVE? OR JUST UNTESTED SO FAR?
     def _(self, other: unyt.unyt_array) -> cosmo_array:
         """
         Multiply with a :class:`~unyt.array.unyt_array`.
