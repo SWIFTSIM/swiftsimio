@@ -130,8 +130,10 @@ _HANDLED_FUNCTIONS: dict[Callable, Callable] = {}
 
 
 def _copy_cosmo_array_attributes(
-    from_ca: objects.cosmo_array, to_ca: objects.cosmo_array, copy_units: bool = False
-) -> objects.cosmo_array:
+    from_ca: "objects.cosmo_array",
+    to_ca: "objects.cosmo_array",
+    copy_units: bool = False,
+) -> "objects.cosmo_array":
     """
     Copy :class:`~swiftsimio.objects.cosmo_array` attributes across two objects.
 
