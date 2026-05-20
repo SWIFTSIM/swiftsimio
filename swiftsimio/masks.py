@@ -15,7 +15,7 @@ from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 from swiftsimio._handle_provider import HandleProvider
 
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Any
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP", "FOFSubset", "SOAPSubset"]
@@ -39,8 +39,8 @@ def _constraint(method: Callable) -> Callable:
 
     def wrapped(
         self: "SWIFTMask",
-        *args: tuple,
-        **kwargs: dict,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:  # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
         retval = method(self, *args, **kwargs)
