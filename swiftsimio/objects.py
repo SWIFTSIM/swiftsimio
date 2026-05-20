@@ -14,7 +14,6 @@ helpers, wrappers and implementations that enable most :mod:`numpy` and
 import unyt
 from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
-from numbers import Number as numeric_type
 from typing import Iterable, Callable, Any
 
 try:
@@ -84,8 +83,6 @@ from numpy import (
     minimum,
     fmax,
     fmin,
-    isreal,
-    iscomplex,
     isfinite,
     isinf,
     isnan,
@@ -107,11 +104,10 @@ from numpy import (
     matmul,
     vecdot,
 )
-from numpy._core.umath import _ones_like, clip
 from ._array_functions import (
     _propagate_cosmo_array_attributes_to_result,
     _ensure_result_is_cosmo_array_or_quantity,
-    _copy_cosmo_array_attributes_if_present,
+    _copy_cosmo_array_attributes,
     _sqrt_cosmo_factor,
     _multiply_cosmo_factor,
     _preserve_cosmo_factor,
@@ -140,6 +136,8 @@ except ImportError:
 
 # The scale factor!
 a = sympy.symbols("a")
+
+numeric_type = int | float | np.number | complex
 
 
 def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
@@ -210,11 +208,11 @@ class InvalidScaleFactor(Exception):
     message : str, optional
         Message to print in case of invalid scale factor.
 
-    *args : tuple[Any]
+    *args : Any
         Arbitrary arguments.
     """
 
-    def __init__(self, message: str | None = None, *args: tuple[Any]) -> None:
+    def __init__(self, message: str | None = None, *args: Any) -> None:
         self.message = message
 
     def __str__(self) -> str:
@@ -240,11 +238,11 @@ class InvalidSnapshot(Exception):
     message : str, optional
         Message to print in case of invalid snapshot.
 
-    *args : tuple[Any]
+    *args : Any
         Arbitrary arguments.
     """
 
-    def __init__(self, message: str | None = None, *args: tuple[Any]) -> None:
+    def __init__(self, message: str | None = None, *args: Any) -> None:
         self.message = message
 
     def __str__(self) -> str:
@@ -270,11 +268,11 @@ class InvalidCosmoUnit(Exception):
     message : str, optional
         Message to print in case of incompatible input.
 
-    *args : tuple[Any]
+    *args : Any
         Arbitrary arguments.
     """
 
-    def __init__(self, message: str | None = None, *args: tuple[Any]) -> None:
+    def __init__(self, message: str | None = None, *args: Any) -> None:
         self.message = message
 
     def __str__(self) -> str:
@@ -289,7 +287,7 @@ class InvalidCosmoUnit(Exception):
         return f"{self.__class__}: {self.message}"
 
 
-class cosmo_factor(object):
+class cosmo_factor:
     r"""
     Cosmology factor class.
 
@@ -306,7 +304,7 @@ class cosmo_factor(object):
     ----------
     expr : sympy.Expr
         Expression used to convert between comoving and physical coordinates.
-    scale_factor : float or ~swiftsimio.objects._AHelper
+    scale_factor : int or float or ~swiftsimio.objects._AHelper
         The scale factor (a).
 
     Attributes
@@ -314,7 +312,7 @@ class cosmo_factor(object):
     expr : sympy.Expr
         Expression used to convert between comoving and physical coordinates.
 
-    scale_factor : float
+    scale_factor : int or float
         The scale factor (a).
 
     See Also
@@ -340,8 +338,36 @@ class cosmo_factor(object):
         cosmo_factor(expr=a, scale_factor=0.5)
     """
 
-    def __init__(self, expr: sympy.Expr, scale_factor: "float | _AHelper") -> None:
+    def __init__(
+        self, expr: sympy.Expr | None, scale_factor: numeric_type | None
+    ) -> None:
         self.expr = expr
+        self.scale_factor = scale_factor
+
+    @classmethod
+    def create(
+        cls,
+        scale_factor: "numeric_type | _AHelper | None",
+        exponent: numeric_type | None,
+    ) -> "cosmo_factor":
+        """
+        Create :class:`~swiftsimio.objects.cosmo_factor` from scale factor and exponent.
+
+        Parameters
+        ----------
+        scale_factor : int or float or ~swiftsimio.objects._AHelper
+            The scale factor.
+
+        exponent : int or float
+            The exponent defining the scaling with the scale factor.
+
+        Examples
+        --------
+        ::
+
+            >>> cosmo_factor.create(0.5, 2)
+            cosmo_factor(expr=a**2, scale_factor=0.5)
+        """
         try:
             getattr(scale_factor, "_comoving")
         except AttributeError:
@@ -356,28 +382,11 @@ class cosmo_factor(object):
         # If we got an `_AHelper`, get its `_scale_factor` attribute, bypassing the
         # checks that happen when accessing its `scale_factor` attribute: this is an
         # intentional exception to the rule.
-        self.scale_factor = getattr(scale_factor, "_scale_factor", scale_factor)
-
-    @classmethod
-    def create(cls, scale_factor: float, exponent: int | float) -> "cosmo_factor":
-        """
-        Create :class:`~swiftsimio.objects.cosmo_factor` from scale factor and exponent.
-
-        Parameters
-        ----------
-        scale_factor : :obj:`float`
-            The scale factor.
-
-        exponent : :obj:`int` or :obj:`float`
-            The exponent defining the scaling with the scale factor.
-
-        Examples
-        --------
-        ::
-
-            >>> cosmo_factor.create(0.5, 2)
-            cosmo_factor(expr=a**2, scale_factor=0.5)
-        """
+        scale_factor = (
+            scale_factor._scale_factor
+            if isinstance(scale_factor, _AHelper)
+            else scale_factor
+        )
         obj = cls(a**exponent, scale_factor)
 
         return obj
@@ -394,7 +403,7 @@ class cosmo_factor(object):
         return str(self.expr) + f" at a={self.scale_factor}"
 
     @property
-    def a_factor(self) -> float:
+    def a_factor(self) -> float | None:
         """
         The multiplicative factor for conversion from comoving to physical.
 
@@ -407,10 +416,11 @@ class cosmo_factor(object):
         """
         if (self.expr is None) or (self.scale_factor is None):
             return None
-        return float(self.expr.subs(a, self.scale_factor))
+        else:
+            return float(self.expr.subs(a, self.scale_factor))
 
     @property
-    def redshift(self) -> float:
+    def redshift(self) -> numeric_type | None:
         r"""
         The redshift computed from the scale factor.
 
@@ -424,7 +434,8 @@ class cosmo_factor(object):
         """
         if self.scale_factor is None:
             return None
-        return (1.0 / self.scale_factor) - 1.0
+        else:
+            return (1.0 / self.scale_factor) - 1.0
 
     def __add__(self, b: "cosmo_factor") -> "cosmo_factor":
         """
@@ -540,19 +551,16 @@ class cosmo_factor(object):
                 "Attempting to multiply two cosmo_factors with different scale factors "
                 f"{self.scale_factor} and {b.scale_factor}"
             )
-
-        if ((self.expr is None) and (b.expr is not None)) or (
-            (self.expr is not None) and (b.expr is None)
-        ):
+        if (self.expr is None) and (b.expr is None):
+            # let's be permissive and allow two uninitialized cosmo_factors through
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
+        elif self.expr is None or b.expr is None:
             raise InvalidScaleFactor(
                 "Attempting to multiply an initialized cosmo_factor with an "
                 f"uninitialized cosmo_factor {self} and {b}."
             )
-        if (self.expr is None) and (b.expr is None):
-            # let's be permissive and allow two uninitialized cosmo_factors through
-            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-
-        return cosmo_factor(expr=self.expr * b.expr, scale_factor=self.scale_factor)
+        else:
+            return cosmo_factor(expr=self.expr * b.expr, scale_factor=self.scale_factor)
 
     def __truediv__(self, b: "cosmo_factor") -> "cosmo_factor":
         """
@@ -585,18 +593,16 @@ class cosmo_factor(object):
                 f"{self.scale_factor} and {b.scale_factor}"
             )
 
-        if ((self.expr is None) and (b.expr is not None)) or (
-            (self.expr is not None) and (b.expr is None)
-        ):
+        if (self.expr is None) and (b.expr is None):
+            # let's be permissive and allow two uninitialized cosmo_factors through
+            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
+        elif self.expr is None or b.expr is None:
             raise InvalidScaleFactor(
                 "Attempting to divide an initialized cosmo_factor with an "
                 f"uninitialized cosmo_factor {self} and {b}."
             )
-        if (self.expr is None) and (b.expr is None):
-            # let's be permissive and allow two uninitialized cosmo_factors through
-            return cosmo_factor(expr=None, scale_factor=self.scale_factor)
-
-        return cosmo_factor(expr=self.expr / b.expr, scale_factor=self.scale_factor)
+        else:
+            return cosmo_factor(expr=self.expr / b.expr, scale_factor=self.scale_factor)
 
     def __radd__(self, b: "cosmo_factor") -> "cosmo_factor":
         """
@@ -741,7 +747,11 @@ class cosmo_factor(object):
             If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
         """
         if not isinstance(b, cosmo_factor):
-            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
+            return NotImplemented
+        if self.a_factor is None or b.a_factor is None:
+            raise ValueError(
+                "Cannot compare cosmo_factors when one has unset a_factor."
+            )
         return self.a_factor < b.a_factor
 
     def __gt__(self, b: "cosmo_factor") -> bool:
@@ -767,7 +777,11 @@ class cosmo_factor(object):
             If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
         """
         if not isinstance(b, cosmo_factor):
-            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
+            return NotImplemented
+        if self.a_factor is None or b.a_factor is None:
+            raise ValueError(
+                "Cannot compare cosmo_factors when one has unset a_factor."
+            )
         return self.a_factor > b.a_factor
 
     def __le__(self, b: "cosmo_factor") -> bool:
@@ -793,7 +807,11 @@ class cosmo_factor(object):
             If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
         """
         if not isinstance(b, cosmo_factor):
-            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
+            return NotImplemented
+        if self.a_factor is None or b.a_factor is None:
+            raise ValueError(
+                "Cannot compare cosmo_factors when one has unset a_factor."
+            )
         return self.a_factor <= b.a_factor
 
     def __ge__(self, b: "cosmo_factor") -> bool:
@@ -819,10 +837,14 @@ class cosmo_factor(object):
             If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
         """
         if not isinstance(b, cosmo_factor):
-            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
+            return NotImplemented
+        if self.a_factor is None or b.a_factor is None:
+            raise ValueError(
+                "Cannot compare cosmo_factors when one has unset a_factor."
+            )
         return self.a_factor >= b.a_factor
 
-    def __eq__(self, b: "cosmo_factor") -> bool:
+    def __eq__(self, b: object) -> bool:
         """
         Compare the expressions and values of two scale factor expressions for equality.
 
@@ -849,7 +871,7 @@ class cosmo_factor(object):
             If the object to compare is not a :class:`~swiftsimio.objects.cosmo_factor`.
         """
         if not isinstance(b, cosmo_factor):
-            raise ValueError("Can only compare cosmo_factor with another cosmo_factor.")
+            return NotImplemented
         scale_factor_match = self.scale_factor == b.scale_factor
         if self.a_factor is None and b.a_factor is None:
             # guards passing None to isclose
@@ -863,7 +885,7 @@ class cosmo_factor(object):
             a_factor_match = False
         return scale_factor_match and a_factor_match
 
-    def __ne__(self, b: "cosmo_factor") -> bool:
+    def __ne__(self, b: object) -> bool:
         """
         Compare the expressions and values of two scale factor expressions for inequality.
 
@@ -903,14 +925,11 @@ class cosmo_factor(object):
         return f"cosmo_factor(expr={self.expr}, scale_factor={self.scale_factor})"
 
 
-NULL_CF = cosmo_factor(None, None)  # helps avoid name collisions with kwargs below
-
-
 def _parse_cosmo_factor_args(
-    cf: cosmo_factor = None,
-    scale_factor: float = None,
-    scale_exponent: numeric_type = None,
-) -> cosmo_factor:
+    cf: cosmo_factor | None = None,
+    scale_factor: numeric_type | None = None,
+    scale_exponent: numeric_type | None = None,
+) -> cosmo_factor | None:
     """
     Decide what provided cosmology information to use, or raise an error.
 
@@ -926,7 +945,7 @@ def _parse_cosmo_factor_args(
     cf : swiftsimio.objects.cosmo_factor
         The :class:`~swiftsimio.objects.cosmo_factor` passed as an explicit argument.
 
-    scale_factor : numeric_type
+    scale_factor : int or float
         The scale factor passed as a kwarg.
 
     scale_exponent : float
@@ -970,6 +989,9 @@ def _parse_cosmo_factor_args(
             return NULL_CF
         else:
             return cosmo_factor.create(scale_factor, scale_exponent)
+
+
+NULL_CF = cosmo_factor(None, None)  # helps avoid name collisions with kwargs below
 
 
 class cosmo_array(unyt_array):
@@ -1046,7 +1068,7 @@ class cosmo_array(unyt_array):
                valid_transform='True')
     """
 
-    _cosmo_factor_ufunc_registry = {
+    _cosmo_factor_ufunc_registry: dict[np.ufunc, Callable] = {
         add: _preserve_cosmo_factor,
         subtract: _preserve_cosmo_factor,
         multiply: _multiply_cosmo_factor,
@@ -1112,8 +1134,6 @@ class cosmo_array(unyt_array):
         minimum: _passthrough_cosmo_factor,
         fmax: _preserve_cosmo_factor,
         fmin: _preserve_cosmo_factor,
-        isreal: _return_without_cosmo_factor,
-        iscomplex: _return_without_cosmo_factor,
         isfinite: _return_without_cosmo_factor,
         isinf: _return_without_cosmo_factor,
         isnan: _return_without_cosmo_factor,
@@ -1131,9 +1151,7 @@ class cosmo_array(unyt_array):
         divmod_: _passthrough_cosmo_factor,
         isnat: _return_without_cosmo_factor,
         heaviside: _preserve_cosmo_factor,
-        _ones_like: _preserve_cosmo_factor,
         matmul: _multiply_cosmo_factor,
-        clip: _passthrough_cosmo_factor,
         vecdot: _multiply_cosmo_factor,
     }
 
@@ -1142,14 +1160,14 @@ class cosmo_array(unyt_array):
         input_array: Iterable,
         units: "str | unyt.unit_object.Unit | astropy.units.core.Unit | None" = None,
         *,
-        registry: unyt.unit_registry.UnitRegistry = None,
+        registry: unyt.unit_registry.UnitRegistry | None = None,
         dtype: np.dtype | str | None = None,
         bypass_validation: bool = False,
-        name: str = None,
-        cosmo_factor: cosmo_factor = None,
-        scale_factor: float | None = None,
-        scale_exponent: float | None = None,
-        comoving: bool = None,
+        name: str | None = None,
+        cosmo_factor: cosmo_factor | None = None,
+        scale_factor: numeric_type | None = None,
+        scale_exponent: numeric_type | None = None,
+        comoving: bool | None = None,
         valid_transform: bool = True,
         compression: str | None = None,
     ) -> "cosmo_array":
@@ -1190,7 +1208,7 @@ class cosmo_array(unyt_array):
         cosmo_factor : swiftsimio.objects.cosmo_factor
             Object to store conversion data between comoving and physical coordinates.
 
-        scale_factor : float
+        scale_factor : int or float
             The scale factor associated to the data. Also provide a value for
             ``scale_exponent``.
 
@@ -1224,7 +1242,9 @@ class cosmo_array(unyt_array):
             obj.comoving = comoving
             obj.cosmo_factor = cosmo_factor if cosmo_factor is not None else NULL_CF
             if scale_factor is not None:  # ambiguity, but this is `bypass_validation`
-                obj.cosmo_factor = cosmo_factor.create(scale_factor, scale_exponent)
+                obj.cosmo_factor = NULL_CF.__class__.create(
+                    scale_factor, scale_exponent
+                )
             obj.valid_transform = valid_transform
             obj.compression = compression
 
@@ -1480,7 +1500,7 @@ class cosmo_array(unyt_array):
         *,
         comoving: bool | None = None,
         equivalence: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Convert the internal data in-place to desired units and comoving status.
@@ -1501,7 +1521,7 @@ class cosmo_array(unyt_array):
             The equivalence to use. To see which equivalences are supported for this
             quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1536,7 +1556,7 @@ class cosmo_array(unyt_array):
         units: unyt.Unit | str | None = None,
         *,
         equivalence: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Convert the internal data in-place to be in comoving units.
@@ -1553,7 +1573,7 @@ class cosmo_array(unyt_array):
             The equivalence to use. To see which equivalences are supported for this
             quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1595,7 +1615,7 @@ class cosmo_array(unyt_array):
         units: unyt.Unit | str | None = None,
         *,
         equivalence: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """
         Convert the internal data in-place to be in physical units.
@@ -1612,7 +1632,7 @@ class cosmo_array(unyt_array):
             The equivalence to use. To see which equivalences are supported for this
             quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1655,7 +1675,7 @@ class cosmo_array(unyt_array):
         units: unyt.Unit | str | None = None,
         *,
         equivalence: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> "cosmo_array":
         """
         Create a copy of the data in physical units.
@@ -1669,7 +1689,7 @@ class cosmo_array(unyt_array):
             The equivalence to use. To see which equivalences are supported for this
             quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1708,7 +1728,7 @@ class cosmo_array(unyt_array):
         units: unyt.Unit | str | None = None,
         *,
         equivalence: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> "cosmo_array":
         """
         Create a copy of the data in comoving units.
@@ -1722,7 +1742,7 @@ class cosmo_array(unyt_array):
             The equivalence to use. To see which equivalences are supported for this
             quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1762,7 +1782,7 @@ class cosmo_array(unyt_array):
         *,
         equivalence: str | None = None,
         comoving: bool | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> "cosmo_array":
         """
         Create a copy of the data in specified comoving or physical units.
@@ -1788,7 +1808,7 @@ class cosmo_array(unyt_array):
             If ``True``, the result is comoving, if ``False`` it is physical. By default
             the ``comoving`` status of the array is preserved.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1838,7 +1858,7 @@ class cosmo_array(unyt_array):
         if units is None:
             arr_copy = self.copy()
         else:
-            arr_copy = _copy_cosmo_array_attributes_if_present(
+            arr_copy = _copy_cosmo_array_attributes(
                 self,
                 _ensure_result_is_cosmo_array_or_quantity(super().to)(
                     units, equivalence=equivalence, **kwargs
@@ -1860,7 +1880,7 @@ class cosmo_array(unyt_array):
         *,
         equivalence: str | None = None,
         comoving: bool | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> np.ndarray:
         """
         Create a copy of the data in specified comoving or physical units.
@@ -1888,7 +1908,7 @@ class cosmo_array(unyt_array):
             If ``True``, the result is comoving, if ``False`` it is physical. By default
             the ``comoving`` status of the array is preserved.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1936,7 +1956,7 @@ class cosmo_array(unyt_array):
         self,
         units: Unit | str,
         equivalence: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> np.ndarray:
         """
         Return a copy of the array values in the specified physical units.
@@ -1958,7 +1978,7 @@ class cosmo_array(unyt_array):
             The equivalence to use. To see which equivalences are supported for this
             quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -1989,7 +2009,7 @@ class cosmo_array(unyt_array):
         self,
         units: Unit | str,
         equivalence: str | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> np.ndarray:
         """
         Return a copy of the array values in the specified comoving units.
@@ -2011,7 +2031,7 @@ class cosmo_array(unyt_array):
             The equivalence to use. To see which equivalences are supported for this
             quantity, try the :meth:`~unyt.array.unyt_array.list_equivalencies` method.
 
-        **kwargs : dict
+        **kwargs : Any
             Any additional keyword arguments are supplied to the equivalence.
 
         Returns
@@ -2073,9 +2093,9 @@ class cosmo_array(unyt_array):
         cls,
         arr: "astropy.units.quantity.Quantity",
         unit_registry: unyt.unit_registry.UnitRegistry = None,
-        comoving: bool = None,
-        cosmo_factor: cosmo_factor = cosmo_factor(None, None),
-        compression: str = None,
+        comoving: bool | None = None,
+        cosmo_factor: cosmo_factor = NULL_CF,
+        compression: str | None = None,
         valid_transform: bool = True,
     ) -> "cosmo_array":
         """
@@ -2133,9 +2153,9 @@ class cosmo_array(unyt_array):
         cls,
         arr: "pint.registry.Quantity",
         unit_registry: unyt.unit_registry.UnitRegistry = None,
-        comoving: bool = None,
-        cosmo_factor: cosmo_factor = cosmo_factor(None, None),
-        compression: str = None,
+        comoving: bool | None = None,
+        cosmo_factor: cosmo_factor = NULL_CF,
+        compression: str | None = None,
         valid_transform: bool = True,
     ) -> "cosmo_array":
         """
@@ -2192,7 +2212,7 @@ class cosmo_array(unyt_array):
 
     @classmethod
     def __unyt_ufunc_prepare__(
-        cls, ufunc: np.ufunc, method: str, *inputs: tuple, **kwargs: dict[str, Any]
+        cls, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any
     ) -> tuple[np.ufunc, str, tuple, dict]:
         """
         Prepare arguments for a ufunc call.
@@ -2210,10 +2230,10 @@ class cosmo_array(unyt_array):
         method : str
             The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
 
-        *inputs : tuple
+        *inputs : Any
             The ufunc arguments.
 
-        **kwargs : dict
+        **kwargs : Any
             The ufunc kwargs.
 
         Returns
@@ -2239,8 +2259,8 @@ class cosmo_array(unyt_array):
         result: tuple | unyt_array,
         ufunc: np.ufunc,
         method: str,
-        *inputs: tuple,
-        **kwargs: dict[str, Any],
+        *inputs: Any,
+        **kwargs: Any,
     ) -> "tuple | cosmo_array":
         """
         Finalize results after a ufunc call.
@@ -2261,10 +2281,10 @@ class cosmo_array(unyt_array):
         method : str
             The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
 
-        *inputs : tuple
+        *inputs : Any
             The ufunc arguments.
 
-        **kwargs : dict
+        **kwargs : Any
             The ufunc kwargs.
 
         Returns
@@ -2277,6 +2297,7 @@ class cosmo_array(unyt_array):
         # here?
         helper_result = _prepare_array_func_args(*inputs, **kwargs)
         cfs = helper_result["cfs"]
+        ret_cf: cosmo_factor | None
         # make sure we evaluate the cosmo_factor_ufunc_registry function:
         # might raise/warn even if we're not returning a cosmo_array
         if ufunc in (multiply, divide) and method == "reduce":
@@ -2328,20 +2349,20 @@ class cosmo_array(unyt_array):
             result.valid_transform = helper_result["valid_transform"]
             result.compression = helper_result["compression"]
         if "out" in kwargs:
-            out = kwargs.pop("out")
+            out: tuple | unyt_array = kwargs.pop("out")
             if ufunc not in multiple_output_operators:
-                out = out[0]
-                if isinstance(out, unyt_array) and not isinstance(out, cosmo_array):
-                    out = (
-                        out.view(cosmo_quantity)
-                        if out.shape == ()
-                        else out.view(cosmo_array)
+                aout = out[0]
+                if isinstance(aout, unyt_array) and not isinstance(aout, cosmo_array):
+                    aout = (
+                        aout.view(cosmo_quantity)
+                        if aout.shape == ()
+                        else aout.view(cosmo_array)
                     )
-                if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
-                    out.comoving = helper_result["comoving"]
-                    out.cosmo_factor = ret_cf
-                    out.valid_transform = helper_result["valid_transform"]
-                    out.compression = helper_result["compression"]
+                if isinstance(aout, cosmo_array):  # also recognizes cosmo_quantity
+                    aout.comoving = helper_result["comoving"]
+                    aout.cosmo_factor = ret_cf
+                    aout.valid_transform = helper_result["valid_transform"]
+                    aout.compression = helper_result["compression"]
             else:
                 out = tuple(
                     (
@@ -2367,8 +2388,8 @@ class cosmo_array(unyt_array):
         self,
         ufunc: np.ufunc,
         method: str,
-        *inputs: tuple[Any],
-        **kwargs: dict[str, Any],
+        *inputs: Any,
+        **kwargs: Any,
     ) -> object:
         """
         Handle :mod:`numpy` ufunc calls on :class:`~swiftsimio.objects.cosmo_array` input.
@@ -2388,10 +2409,10 @@ class cosmo_array(unyt_array):
             Some ufuncs have methods accessed as attributes, such as ``"reduce"``.
             If using such a method, this argument receives its name.
 
-        *inputs : tuple
+        *inputs : Any
             Arguments to the ufunc.
 
-        **kwargs : dict
+        **kwargs : Any
             Keyword arguments to the ufunc.
 
         Returns
@@ -2418,7 +2439,8 @@ class cosmo_array(unyt_array):
             ufunc in (logical_and, logical_or, logical_xor, logical_not)
             and method == "reduce"
         ):
-            ret_cf = _return_without_cosmo_factor(cfs[0])
+            _return_without_cosmo_factor(cfs[0])  # check validity
+            ret_cf = None
         else:
             ret_cf = self._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
 
@@ -2439,7 +2461,7 @@ class cosmo_array(unyt_array):
             result.valid_transform = helper_result["valid_transform"]
             result.compression = helper_result["compression"]
         if "out" in kwargs:
-            out = kwargs.pop("out")
+            out: tuple | unyt_array = kwargs.pop("out")
             if ufunc not in multiple_output_operators:
                 out = out[0]
                 if isinstance(out, cosmo_array):  # also recognizes cosmo_quantity
@@ -2458,7 +2480,11 @@ class cosmo_array(unyt_array):
         return result
 
     def __array_function__(
-        self, func: Callable, types: Collection, args: tuple, kwargs: dict
+        self,
+        func: Callable,
+        types: Collection,
+        args: tuple[Any],
+        kwargs: dict[str, Any],
     ) -> object:
         """
         Handle :mod:`numpy` functions for :class:`~swiftsimio.objects.cosmo_array` input.
@@ -2519,13 +2545,16 @@ class cosmo_array(unyt_array):
             function_to_invoke = _UNYT_HANDLED_FUNCTIONS[func]
         else:
             # default to numpy's private implementation
-            function_to_invoke = func._implementation
+            if hasattr(func, "_implementation"):
+                function_to_invoke = getattr(func, "_implementation")
+            else:
+                raise ValueError(f"Unsupported function {func}, please report this.")
         return function_to_invoke(*args, **kwargs)
 
     def __mul__(
         self,
-        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> "cosmo_array":
+        b: "numeric_type | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array | _AHelper":
         """
         Multiply this :class:`~swiftsimio.objects.cosmo_array`.
 
@@ -2546,7 +2575,7 @@ class cosmo_array(unyt_array):
             The result of the multiplication.
         """
         if getattr(b, "is_Unit", False):
-            return _copy_cosmo_array_attributes_if_present(
+            return _copy_cosmo_array_attributes(
                 self,
                 _ensure_result_is_cosmo_array_or_quantity(b.__mul__)(
                     self.view(unyt_quantity)
@@ -2561,8 +2590,8 @@ class cosmo_array(unyt_array):
 
     def __rmul__(
         self,
-        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> "cosmo_array":
+        b: "numeric_type | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array | _AHelper":
         """
         Multiply this :class:`~swiftsimio.objects.cosmo_array` (as the right argument).
 
@@ -2588,8 +2617,8 @@ class cosmo_array(unyt_array):
 
     def __imul__(
         self,
-        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> "cosmo_array":
+        b: "numeric_type | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array | _AHelper":
         """
         Multiply this :class:`~swiftsimio.objects.cosmo_array` (in-place).
 
@@ -2609,8 +2638,8 @@ class cosmo_array(unyt_array):
 
     def __truediv__(
         self,
-        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> "cosmo_array":
+        b: "numeric_type | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array | _AHelper":
         """
         Divide this :class:`~swiftsimio.objects.cosmo_array`.
 
@@ -2631,7 +2660,7 @@ class cosmo_array(unyt_array):
             The result of the division.
         """
         if getattr(b, "is_Unit", False):
-            return _copy_cosmo_array_attributes_if_present(
+            return _copy_cosmo_array_attributes(
                 self,
                 _ensure_result_is_cosmo_array_or_quantity((1 / b).__mul__)(
                     self.view(unyt_quantity)
@@ -2646,8 +2675,8 @@ class cosmo_array(unyt_array):
 
     def __rtruediv__(
         self,
-        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> "cosmo_array":
+        b: "numeric_type | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array | _AHelper":
         """
         Divide by this :class:`~swiftsimio.objects.cosmo_array` (as the right argument).
 
@@ -2667,14 +2696,14 @@ class cosmo_array(unyt_array):
             The result of the division.
         """
         if getattr(b, "is_Unit", False):
-            return (1 / self).__mul__(b)
+            return (self.__rtruediv__(1)).__mul__(b)
         else:
             return super().__rtruediv__(b)
 
     def __itruediv__(
         self,
-        b: "int | float | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
-    ) -> "cosmo_array":
+        b: "numeric_type | np.ndarray | unyt.unit_object.Unit | cosmo_array | _AHelper",
+    ) -> "cosmo_array | _AHelper":
         """
         Divide this :class:`~swiftsimio.objects.cosmo_array` (in-place).
 
@@ -2728,7 +2757,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
 
     def __new__(
         cls,
-        input_scalar: numeric_type,
+        input_scalar: numeric_type | unyt.unyt_quantity,
         units: "str | unyt.unit_object.Unit | astropy.units.core.Unit | None" = None,
         # *,
         registry: unyt.unit_registry.UnitRegistry | None = None,
@@ -2736,8 +2765,8 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
         bypass_validation: bool = False,
         name: str | None = None,
         cosmo_factor: cosmo_factor | None = None,
-        scale_factor: float | None = None,
-        scale_exponent: float | None = None,
+        scale_factor: numeric_type | None = None,
+        scale_exponent: numeric_type | None = None,
         comoving: bool | None = None,
         valid_transform: bool = True,
         compression: str | None = None,
@@ -2747,7 +2776,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
 
         Parameters
         ----------
-        input_scalar : float or unyt.array.unyt_quantity
+        input_scalar : int or float or unyt.array.unyt_quantity
             A tuple, list, or array to attach units and cosmology information to.
 
         units : str, unyt.unit_object.Unit or astropy.units.core.Unit, optional
@@ -2818,7 +2847,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
                 compression=compression,
             )
 
-        if not isinstance(input_scalar, (numeric_type, np.number, np.ndarray)):
+        if not isinstance(input_scalar, (numeric_type, np.ndarray)):
             raise RuntimeError("cosmo_quantity values must be numeric")
 
         # Use values from kwargs, if None use values from input_scalar
@@ -2866,7 +2895,7 @@ class cosmo_quantity(cosmo_array, unyt_quantity):
     )
 
 
-class _AHelper(object):
+class _AHelper:
     """
     Offer an easy way to initialize cosmo scalars and arrays.
 
@@ -2929,25 +2958,25 @@ class _AHelper(object):
         Whether to create comoving or physical objects.
     """
 
-    _scale_factor: float
-    scale_exponent: int | float
+    _scale_factor: numeric_type
+    scale_exponent: numeric_type
     units: unyt.Unit
-    __comoving: bool | None
+    _comoving_state: bool | None
 
     def __init__(
         self,
-        scale_factor: float,
-        scale_exponent: int | float = 1,
+        scale_factor: numeric_type,
+        scale_exponent: numeric_type = 1,
         units: unyt.Unit = unyt.Unit("1"),  # auto-simplifies unlike unyt.dimensionless
         comoving: bool | None = None,
     ) -> None:
         self._scale_factor = scale_factor
         self.scale_exponent = scale_exponent
         self.units = units
-        self.__comoving = comoving
+        self._comoving_state = comoving
 
     @property
-    def scale_factor(self) -> float:
+    def scale_factor(self) -> numeric_type:
         """
         Get the scale factor.
 
@@ -2971,7 +3000,7 @@ class _AHelper(object):
         InvalidCosmoUnit
             If access is attempted when physical or comoving has not been specified.
         """
-        if self.__comoving is None:
+        if self._comoving_state is None:
             raise InvalidCosmoUnit("...")
         return self._scale_factor
 
@@ -2987,7 +3016,7 @@ class _AHelper(object):
         ``physical`` properties return a copy with ``_comoving is not None``).
 
         The exception is when creating new :class:`~swiftsimio.objects._AHelper` objects
-        from old ones, then ``_AHelper(comoving=self.__comoving, ...)`` is
+        from old ones, then ``_AHelper(comoving=self._comoving_state, ...)`` is
         needed.
 
         Returns
@@ -3000,9 +3029,9 @@ class _AHelper(object):
         InvalidCosmoUnit
             If access is attempted when physical or comoving has not been specified.
         """
-        if self.__comoving is None:
+        if self._comoving_state is None:
             raise InvalidCosmoUnit("...")
-        return self.__comoving
+        return self._comoving_state
 
     @property
     def _comoving_str(self) -> str:
@@ -3023,7 +3052,7 @@ class _AHelper(object):
 
     @classmethod
     def __unyt_ufunc_prepare__(
-        cls, ufunc: np.ufunc, method: str, *inputs: tuple, **kwargs: dict[str, Any]
+        cls, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any
     ) -> tuple[np.ufunc, str, tuple, dict]:
         """
         Prepare arguments for a ufunc call.
@@ -3040,10 +3069,10 @@ class _AHelper(object):
         method : str
             The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
 
-        *inputs : tuple
+        *inputs : Any
             The ufunc arguments.
 
-        **kwargs : dict
+        **kwargs : Any
             The ufunc kwargs.
 
         Returns
@@ -3076,11 +3105,11 @@ class _AHelper(object):
     @classmethod
     def __unyt_ufunc_finalize__(
         cls,
-        result: tuple | unyt_array,
+        result: unyt_array,
         ufunc: np.ufunc,
         method: str,
-        *inputs: tuple,
-        **kwargs: dict[str, Any],
+        *inputs: Any,
+        **kwargs: Any,
     ) -> cosmo_array:
         """
         Finalize results after a ufunc call.
@@ -3090,9 +3119,12 @@ class _AHelper(object):
         :class:`~swiftsimio.objects.cosmo_array` or
         :class:`~swiftsimio.objects.cosmo_quantity` and set its attributes.
 
+        We only support ``multiply`` and ``divide`` ufuncs so result is a
+        :class:`~unyt.array.unyt_array` (never a ``tuple``).
+
         Parameters
         ----------
-        result : ~unyt.array.unyt_array or tuple
+        result : ~unyt.array.unyt_array
             The return value of the called ufunc.
 
         ufunc : ~numpy.ufunc
@@ -3101,10 +3133,10 @@ class _AHelper(object):
         method : str
             The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
 
-        *inputs : tuple
+        *inputs : Any
             The ufunc arguments.
 
-        **kwargs : dict
+        **kwargs : Any
             The ufunc kwargs.
 
         Returns
@@ -3117,36 +3149,20 @@ class _AHelper(object):
             if isinstance(inp, _AHelper):
                 a_helper_input: _AHelper = inp
 
-        if isinstance(result, cosmo_array):  # -- UNUSED, REMOVE?
-            if result.comoving is None:
-                result.comoving = a_helper_input._comoving
-            else:
-                result.convert_to(result.units, comoving=a_helper_input._comoving)
-            result.units = result.units * a_helper_input.units
-            if result.cosmo_factor == NULL_CF:
-                result.cosmo_factor = cosmo_factor.create(
-                    a_helper_input.scale_factor, a_helper_input.scale_exponent
-                )
-            else:
-                result.cosmo_factor = result.cosmo_factor * cosmo_factor.create(
-                    a_helper_input.scale_factor, a_helper_input.scale_exponent
-                )  # --
-            return result
-        else:
-            return (cosmo_array if np.asarray(result).ndim else cosmo_quantity)(
-                result,
-                comoving=a_helper_input._comoving,
-                scale_factor=a_helper_input.scale_factor,
-                scale_exponent=(-1 if ufunc is np.divide else 1)
-                * a_helper_input.scale_exponent,
-            )
+        return (cosmo_array if np.asarray(result).ndim else cosmo_quantity)(
+            result,
+            comoving=a_helper_input._comoving,
+            scale_factor=a_helper_input.scale_factor,
+            scale_exponent=(-1 if ufunc is np.divide else 1)
+            * a_helper_input.scale_exponent,
+        )
 
     def __array_ufunc__(
         self,
         ufunc: np.ufunc,
         method: str,
-        *inputs: tuple[Any],
-        **kwargs: dict[str, Any],
+        *inputs: Any,
+        **kwargs: Any,
     ) -> cosmo_array:
         """
         Handle :mod:`numpy` ufunc calls on :class:`~swiftsimio.objects.cosmo_array` input.
@@ -3166,10 +3182,10 @@ class _AHelper(object):
             Some ufuncs have methods accessed as attributes, such as ``"reduce"``.
             If using such a method, this argument receives its name.
 
-        *inputs : tuple
+        *inputs : Any
             Arguments to the ufunc.
 
-        **kwargs : dict
+        **kwargs : Any
             Keyword arguments to the ufunc.
 
         Returns
@@ -3186,7 +3202,7 @@ class _AHelper(object):
         return self.__unyt_ufunc_finalize__(result, ufunc, method, *inputs, **kwargs)
 
     @singledispatchmethod
-    def __mul__(self, other) -> None:  # noqa: ANN001
+    def __mul__(self, other: object) -> "cosmo_array | _AHelper":
         """
         Default implementation for invalid multiplications.
 
@@ -3202,49 +3218,103 @@ class _AHelper(object):
         """
         return NotImplemented
 
-    def _ndarray_or_number_mul(self, other: numeric_type | np.ndarray) -> cosmo_array:
+    @__mul__.register
+    def _(self, other: int) -> cosmo_quantity:
         """
-        Multiply with a number or :mod:`numpy` array.
+        Multiply with a number.
 
         Parameters
         ----------
-        other : numeric_type or np.ndarray
+        other : int
             The quantity to multiply with.
 
         Returns
         -------
-        ~swiftsimio.objects.cosmo_array
-            A cosmo array or quantity based on the content of this helper and the
-            ``other`` number or array.
+        ~swiftsimio.objects.cosmo_quantity
+            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
+            helper and the ``other`` number.
         """
-        # the two registered functions calling this can be merged into one with
-        # type hint `other: numeric_type | np.ndarray` once python3.10 support is
+        return self._mul_numeric_type(other)
+
+    @__mul__.register
+    def _(self, other: float) -> cosmo_quantity:
+        """
+        Multiply with a number.
+
+        Parameters
+        ----------
+        other : float
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_quantity
+            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
+            helper and the ``other`` number.
+        """
+        return self._mul_numeric_type(other)
+
+    @__mul__.register
+    def _(self, other: np.number) -> cosmo_quantity:
+        """
+        Multiply with a number.
+
+        Parameters
+        ----------
+        other : np.number
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_quantity
+            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
+            helper and the ``other`` number.
+        """
+        return self._mul_numeric_type(other)
+
+    @__mul__.register
+    def _(self, other: complex) -> cosmo_quantity:
+        """
+        Multiply with a number.
+
+        Parameters
+        ----------
+        other : complex
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_quantity
+            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
+            helper and the ``other`` number.
+        """
+        return self._mul_numeric_type(other)
+
+    def _mul_numeric_type(self, other: numeric_type) -> cosmo_quantity:
+        """
+        Multiply with a number.
+
+        Parameters
+        ----------
+        other : int or float or np.number or complex
+            The quantity to multiply with.
+
+        Returns
+        -------
+        ~swiftsimio.objects.cosmo_quantity
+            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
+            helper and the ``other`` number.
+        """
+        # the four registered functions calling this can be merged into one with
+        # type hint `other: numeric_type` once python3.10 support is
         # dropped
-        return (cosmo_quantity if np.isscalar(other) else cosmo_array)(
+        return cosmo_quantity(
             other,
             units=self.units,
             comoving=self._comoving,
             scale_factor=self.scale_factor,
             scale_exponent=self.scale_exponent,
         )
-
-    @__mul__.register
-    def _(self, other: numeric_type) -> cosmo_array:
-        """
-        Multiply with a number.
-
-        Parameters
-        ----------
-        other : numeric_type
-            The quantity to multiply with.
-
-        Returns
-        -------
-        ~swiftsimio.objects.cosmo_array
-            A cosmo array or quantity based on the content of this helper and the
-            ``other`` number.
-        """
-        return self._ndarray_or_number_mul(other)
 
     @__mul__.register
     def _(self, other: np.ndarray) -> cosmo_array:
@@ -3262,7 +3332,13 @@ class _AHelper(object):
             A cosmo array or quantity based on the content of this helper and the
             ``other`` array.
         """
-        return self._ndarray_or_number_mul(other)
+        return (cosmo_array if other.ndim else cosmo_quantity)(
+            other,
+            units=self.units,
+            comoving=self._comoving,
+            scale_factor=self.scale_factor,
+            scale_exponent=self.scale_exponent,
+        )
 
     def _tuple_or_list_mul(self, other: tuple | list) -> cosmo_array:
         """
@@ -3291,7 +3367,7 @@ class _AHelper(object):
         else:
             ret.comoving = self._comoving
         ret.units = ret.units * self.units
-        if ret.cosmo_factor == cosmo_factor(None, None):
+        if ret.cosmo_factor == NULL_CF:
             ret.cosmo_factor = cosmo_factor.create(
                 self.scale_factor, self.scale_exponent
             )
@@ -3338,7 +3414,7 @@ class _AHelper(object):
         return self._tuple_or_list_mul(other)
 
     @__mul__.register
-    def _(self, other: unyt.Unit) -> Self:
+    def _(self, other: unyt.unit_object.Unit) -> Self:
         """
         Multiply with a :class:`unyt.unit_object.Unit`.
 
@@ -3355,36 +3431,16 @@ class _AHelper(object):
         ~swiftsimio.objects._AHelper
             A helper updated with the provided units.
         """
-        return _AHelper(
+        # Ideally want to set the return type to `"_AHelper"` or even `_AHelper` but this
+        # isn't possible in python<3.15, see github.com/python/cpython/issues/86153.
+        # Best workaround found is to set return type to `Self`, but this forces us
+        # to `return self.__class__(...)` instead of `return _AHelper(...)` (a subclass
+        # could otherwise invalidate the return type).
+        return self.__class__(
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent,
             units=other.units * self.units,
-            comoving=self.__comoving,
-        )
-
-    @__mul__.register  # -- UNUSED, REMOVE? OR JUST UNTESTED SO FAR?
-    def _(self, other: unyt.unyt_array) -> cosmo_array:
-        """
-        Multiply with a :class:`~unyt.array.unyt_array`.
-
-        Parameters
-        ----------
-        other : ~unyt.array.unyt_array
-            The quantity to multiply with.
-
-        Returns
-        -------
-        ~swiftsimio.objects.cosmo_array
-            A cosmo array or quantity based on the content of this helper and the
-            ``other`` :class:`~unyt.array.unyt_array`.
-        """
-        return (
-            cosmo_quantity if isinstance(other, unyt.unyt_quantity) else cosmo_array
-        )(
-            other.ndview,
-            units=other.units * self.units,
-            comoving=self._comoving,
-            cosmo_factor=cosmo_factor.create(self.scale_factor, self.scale_exponent),
+            comoving=self._comoving_state,
         )
 
     @__mul__.register
@@ -3458,15 +3514,13 @@ class _AHelper(object):
             The result of applying the helper to the other operand.
         """
         # avoid using other ** -1, e.g. integers raise on this
-        return 1 / (
-            other
-            * _AHelper(
-                scale_factor=self._scale_factor,
-                scale_exponent=-self.scale_exponent,
-                units=self.units,
-                comoving=self.__comoving,
-            )
+        inv: "_AHelper | cosmo_array" = other * _AHelper(
+            scale_factor=self._scale_factor,
+            scale_exponent=-self.scale_exponent,
+            units=self.units,
+            comoving=self._comoving_state,
         )
+        return 1 / inv
 
     def __rtruediv__(
         self, other: unyt.Unit | unyt.unyt_array | cosmo_array
@@ -3492,10 +3546,10 @@ class _AHelper(object):
             scale_factor=self._scale_factor,
             scale_exponent=-self.scale_exponent,
             units=self.units,
-            comoving=self.__comoving,
+            comoving=self._comoving_state,
         )
 
-    def __pow__(self, exponent: int | float) -> "_AHelper":
+    def __pow__(self, exponent: numeric_type) -> "_AHelper":
         """
         Raise this helper to a power.
 
@@ -3520,17 +3574,17 @@ class _AHelper(object):
             scale_factor=self._scale_factor,
             scale_exponent=self.scale_exponent * exponent,
             units=self.units**exponent,
-            comoving=self.__comoving,
+            comoving=self._comoving_state,
         )
 
     @singledispatchmethod
-    def __imul__(self, other) -> None:  # noqa: ANN001
+    def __imul__(self, other: object) -> None:
         """
         Do not support in-place multiplication as left operand.
 
         Parameters
         ----------
-        other : numeric_type or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
+        other : int or float or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
         ~swiftsimio.objects.cosmo_array
             The other object to multiply with this one.
 
@@ -3545,7 +3599,7 @@ class _AHelper(object):
             "argument are not supported."
         )
 
-    def __ipow__(self, exponent: int | float) -> None:
+    def __ipow__(self, exponent: numeric_type) -> None:
         """
         Do not support in-place exponentiation as left operand.
 
@@ -3566,14 +3620,15 @@ class _AHelper(object):
         )
 
     def __itruediv__(
-        self, other: numeric_type | tuple | list | np.ndarray | unyt_array | cosmo_array
+        self,
+        other: numeric_type | tuple | list | np.ndarray | unyt_array | cosmo_array,
     ) -> None:
         """
         Do not support in-place division as left operand.
 
         Parameters
         ----------
-        other : numeric_type or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
+        other : int or float or tuple or list or np.ndarray or ~unyt.array.unyt_array or \
         ~swiftsimio.objects.cosmo_array
             The other object to divide this one by.
 
