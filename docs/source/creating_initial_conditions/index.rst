@@ -38,60 +38,38 @@ Example
    import numpy as np
    import unyt as u
    from swiftsimio import Writer, cosmo_array
-   from swiftsimio.metadata.writer.unit_systems import cosmo_unit_system
+   from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
    # number of gas particles
    n_p = 1000
    # scale factor of 1.0
-   a = 1.0
+   scale_factor = 1.0
    # Box is 100 Mpc
    lbox = 100
    boxsize = cosmo_array(
         [lbox, lbox, lbox],
         u.Mpc,
         comoving=True,
-        scale_factor=a,
+        scale_factor=scale_factor,
         scale_exponent=1,
    )
 
    # Create the Writer object. cosmo_unit_system corresponds to default Gadget-like units
    # of 10^10 Msun, Mpc, and km/s
-   w = Writer(unit_system=cosmo_unit_system, boxsize=boxsize, scale_factor=a)
+   w = Writer(unit_system=cosmo_units, boxsize=boxsize, scale_factor=a)
 
    # Randomly spaced coordinates from 0 to lbox Mpc in each direction
-   w.gas.coordinates = cosmo_array(
-       np.random.rand(n_p, 3) * lbox,
-       u.Mpc,
-       comoving=True,
-       scale_factor=w.scale_factor,
-       scale_exponent=1,
-   )
+   w.gas.coordinates = np.random.rand(n_p, 3) * lbox * u.Mpc * w.a.comoving
 
    # Random velocities from 0 to 1 km/s
-   w.gas.velocities = cosmo_array(
-       np.random.rand(n_p, 3),
-       u.km / u.s,
-       comoving=True,
-       scale_factor=w.scale_factor,
-       scale_exponent=1,
-   )
+   w.gas.velocities = np.random.rand(n_p, 3) * u.km / u.s * w.a.comoving**0
 
    # Generate uniform masses as 10^6 solar masses for each particle
-   w.gas.masses = cosmo_array(
-       np.ones(n_p, dtype=float) * 1e6,
-       u.solMass,
-       comoving=True,
-       scale_factor=w.scale_factor,
-       scale_exponent=0,
-   )
+   w.gas.masses = np.ones(n_p, dtype=float) * 1e6 * u.solMass * w.a.comoving**0
 
    # Generate internal energy corresponding to 10^4 K
-   w.gas.internal_energy = cosmo_array(
-       np.ones(n_p, dtype=float) * 1e4 / 1e6,
-       u.kb * u.K / u.solMass,
-       comoving=True,
-       scale_factor=w.scale_factor,
-       scale_exponent=-2,
+   w.gas.internal_energy = (
+       np.ones(n_p, dtype=float) * 1e4 / 1e6 * u.kb * u.K / u.solMass * w.a.comoving**-2
    )
 
    # Generate initial guess for smoothing lengths based on mean inter-particle spacing

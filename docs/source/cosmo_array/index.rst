@@ -101,6 +101,9 @@ cases a warning is produced stating that this assumption has been made.
    supported (although some might "just work"). Requests to support specific functions can
    be accommodated.
 
+Creating "cosmo" arrays and scalars
+-----------------------------------
+
 To make the most of the utility offered by the :class:`~swiftsimio.objects.cosmo_array`
 class, it is helpful to know how to create your own. A good template for this looks like:
 
@@ -120,7 +123,42 @@ class, it is helpful to know how to create your own. A good template for this lo
    # consider getting the scale factor from metadata when applicable, i.e. replace:
    # scale_factor=0.5
    # with:
-   # scale_factor=data.metadata.a
+   # scale_factor=data.metadata.scale_factor
+
+This can be long to write out. To alleviate this a helper is available in the
+``metadata``. Just like units can be multiplied with "raw" numbers/arrays to create
+arrays with units, the helper can be multiplied or divided in to attach the "cosmo"
+attributes.
+
+.. code-block:: python
+
+   dat = load("snap.hdf5")
+   a = dat.metadata.a  # best give it a short name for ease of use
+   densities = [1, 2, 3] * u.g / u.cm**3 * a.physical**-3
+
+This specifies that these densities are in physical (not comoving) units and scale as
+:math:`a^{-3}`. The shorter ``a.phys`` and ``a.com`` are also available as aliases for
+``a.physical`` and ``a.comoving``, or for the especially keystroke-averse, ``a.p`` and
+``a.c`` are also available.
+
+.. warning::
+
+   In older versions of :mod:`swiftsimio` the ``metadata.a`` attribute was an alias for
+   ``metadata.scale_factor``, and stored a ``float``. Now, trying to use this helper as
+   previously will raise an error, for example ``10 * metadata.a`` complains that you
+   need to use ``metadata.a.physical`` or ``metadata.a.comoving``, not just
+   ``metadata.a``. You can substitute ``metadata.scale_factor`` for a drop-in replacement.
+   The one exception to this is that ``cosmo_array(..., scale_factor=metadata.a)`` will
+   still work, to offer some backwards-compatibility.
+
+You can also easily define cosmology-aware units with this helper, for example:
+
+.. code-block:: python
+
+   cMpc = u.Mpc * a.comoving  # equivalently: a.comoving**1, the power of 1 is implicit
+   pMpc = u.Mpc * a.physical
+   distance = 10 * pMpc
+   number_density = 0.5 / cMpc**3
 
 There is also a very similar :class:`~swiftsimio.objects.cosmo_quantity` class designed
 for scalar values, analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter
@@ -139,4 +177,6 @@ initialized similarly:
        scale_factor=0.5,
        scale_exponent=1,
    )
+   # or, equivalently:
+   my_cosmo_quantity = 2 * u.Mpc * a.physical
 
