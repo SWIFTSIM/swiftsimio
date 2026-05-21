@@ -163,7 +163,7 @@ approach to rotations applied to the above example is shown below.
 
    # Specify the rotation parameters
    center = 0.5 * data.metadata.boxsize
-   rotate_vec = [0.5,0.5,1]
+   rotate_vec = [0.5, 0.5, 1]
    matrix = rotation_matrix_from_vector(rotate_vec, axis='z')
 
    # Map in msun / mpc^3

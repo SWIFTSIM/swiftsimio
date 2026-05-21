@@ -20,12 +20,12 @@ You can load SOAP files as follows:
 
    print(catalogue.spherical_overdensity_200_mean.total_mass)
 
-   # >>> [
-   #        591.      328.5     361.      553.      530.      507.      795.
-   #        574.      489.5     233.75      0.     1406.      367.5    2308.
-   #        ...
-   #        0.      534.        0.      191.75   1450.      600.      290.
-   #     ] 10000000000.0*Msun (Physical)
+   # [
+   #    591.      328.5     361.      553.      530.      507.      795.
+   #    574.      489.5     233.75      0.     1406.      367.5    2308.
+   #    ...
+   #    0.      534.        0.      191.75   1450.      600.      290.
+   # ] 10000000000.0*Msun (Physical)
 
 What's going on here? Under the hood, ``swiftsimio`` has a discrimination function
 between different metadata types, based upon a property stored in the HDF5 file,
