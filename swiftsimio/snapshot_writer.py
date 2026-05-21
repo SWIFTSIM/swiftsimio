@@ -604,7 +604,7 @@ class SWIFTSnapshotWriter(object):
 
        # Create the Writer object. cosmo_units corresponds to default Gadget-like
        # units of 10^10 Msun, Mpc, and km/s
-       w = Writer(unit_system=cosmo_units, boxsize=boxsize, scale_factor=a)
+       w = Writer(unit_system=cosmo_units, boxsize=boxsize, scale_factor=scale_factor)
 
        # Randomly spaced coordinates from 0 to lbox Mpc in each direction
        w.gas.coordinates = np.random.rand(n_p, 3) * lbox * u.Mpc * w.a.comoving
