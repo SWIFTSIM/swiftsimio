@@ -375,3 +375,16 @@ def test_inplace_operations():
     assert x.units == u.kpc
     assert x.comoving
     assert x.cosmo_factor == cosmo_factor.create(0.5, 0)
+
+
+def test_aliases():
+    """Test ``a.com``, ``a.c`` and ``a.phys``, ``a.p`` work as shorthands."""
+    a = _AHelper(scale_factor=0.5)
+    assert 10 * a.comoving == 10 * a.com
+    assert 10 * a.physical == 10 * a.phys
+    assert 10 * a.comoving != 10 * a.phys
+    assert 10 * a.physical != 10 * a.com
+    assert 10 * a.comoving == 10 * a.c
+    assert 10 * a.physical == 10 * a.p
+    assert 10 * a.comoving != 10 * a.p
+    assert 10 * a.physical != 10 * a.c

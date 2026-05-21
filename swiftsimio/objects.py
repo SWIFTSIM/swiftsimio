@@ -3024,7 +3024,8 @@ class _AHelper:
         if self._comoving_state is None:
             raise InvalidCosmoUnit(
                 "Cannot use scale factor helper as `a` alone, use `a.comoving` or "
-                "`a.physical`."
+                "`a.physical`. For the scale factor as a number, use "
+                "`metadata.scale_factor` instead of `metadata.a`."
             )
         return self._scale_factor
 
@@ -3056,7 +3057,8 @@ class _AHelper:
         if self._comoving_state is None:
             raise InvalidCosmoUnit(
                 "Cannot use scale factor helper as `a` alone, use `a.comoving` or "
-                "`a.physical`."
+                "`a.physical`. For the scale factor as a number, use "
+                "`metadata.scale_factor` instead of `metadata.a`."
             )
         return self._comoving_state
 
@@ -3731,3 +3733,9 @@ class _AHelper:
             units=self.units,
             comoving=False,
         )
+
+    # provide aliases:
+    com = comoving
+    phys = physical
+    c = comoving
+    p = physical
