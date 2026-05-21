@@ -29,6 +29,10 @@ jobs:
         run: pip install numpydoc
       - name: Run docstring validation
         run: python -m numpydoc lint **/*.py
+      - name: Install sphinx-lint
+        run: pip install sphinx-lint
+      - name: Run sphinx-lint
+        run: sphinx-lint --max-line-length 90 -e all docs/source/
 
   tests:
     needs: lint

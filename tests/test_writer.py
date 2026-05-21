@@ -4,6 +4,8 @@ import os
 import pytest
 import numpy as np
 from swiftsimio import load, cosmo_array, cosmo_quantity, Writer
+from swiftsimio.metadata.particle.particle_types import particle_name_underscores
+from swiftsimio.metadata.writer import required_fields
 from .helper import create_minimal_writer
 import unyt as u
 
@@ -481,3 +483,9 @@ def test_mismatched_boxsize_dimension(boxsize):
             dimension=2,
             scale_factor=a,
         )
+
+
+def test_all_particle_types_required_fields_defined():
+    """Check that all available particle types have a required_fields listing."""
+    for particle_name in particle_name_underscores.values():
+        assert hasattr(required_fields, particle_name)

@@ -95,8 +95,8 @@ def validate_file(filename: str) -> bool:
 
 def mask(
     filename: str | Path,
-    spatial_only: bool = True,
     safe_padding: bool | float = True,
+    spatial_only: bool | None = None,  # deprecated
 ) -> SWIFTMask:
     """
     Set up a mask to apply to a :mod:`swiftsimio` dataset.
@@ -107,11 +107,6 @@ def mask(
     ----------
     filename : str or Path
         SWIFT data file to read from. Can also be an open h5py.File handle.
-
-    spatial_only : bool, optional
-        Flag for only spatial masking, this is much faster but will not
-        allow you to use masking on other variables (e.g. density).
-        Defaults to True.
 
     safe_padding : bool or float, optional
         If snapshot does not specify bounding box of cell particles (MinPositions &
@@ -126,18 +121,13 @@ def mask(
         https://swiftsimio.readthedocs.io/en/latest/masking/index.html for further
         details.
 
+    spatial_only : bool, optional
+        Deprecated, any necessary conversions now happen automatically.
+
     Returns
     -------
     SWIFTMask
         Empty mask object set up with the correct units and metadata.
-
-    Notes
-    -----
-    If you are only planning on using this as a spatial mask, ensure
-    that spatial_only remains true. If you require the use of the
-    constrain_mask function, then you will need to use the (considerably
-    more expensive, ~bytes per particle instead of ~bytes per cell
-    spatial_only=False version).
     """
     with open_path_or_handle(filename) as handle:
         units = SWIFTUnits(handle.filename, handle=handle)
@@ -145,9 +135,9 @@ def mask(
         mask = SWIFTMask(
             handle.filename,
             metadata=metadata,
-            spatial_only=spatial_only,
             safe_padding=safe_padding,
             handle=handle,
+            spatial_only=spatial_only,
         )
     return mask
 

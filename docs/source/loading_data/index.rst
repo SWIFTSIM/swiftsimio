@@ -124,7 +124,7 @@ the available particle types. For example:
 .. code-block:: python
 
    data
-   
+
 prints the available particle types (or, more generally, groups):
 
 .. code-block:: python
@@ -144,10 +144,10 @@ gives:
 
    SWIFT dataset at cosmo_volume_example.hdf5.
    Available fields: coordinates, masses, particle_ids, velocities
-   
+
 With compatible python interpreters, the available fields (and other attributes
 such as functions) can be seen using the tab completion feature, for example
-typing `>>> data.dark_matter.` at the command prompt and pressing tab twice
+typing ``>>> data.dark_matter.`` at the command prompt and pressing tab twice
 gives:
 
 .. code-block:: python
@@ -157,7 +157,7 @@ gives:
    data.dark_matter.particle_ids                 data.dark_matter.generate_empty_properties()
    data.dark_matter.group                        data.dark_matter.units
    data.dark_matter.group_metadata               data.dark_matter.velocities
-   data.dark_matter.group_name                   
+   data.dark_matter.group_name
 
 The available fields can also be accessed programatically using the instance of
 :obj:`swiftsimio.reader.SWIFTMetadata`, ``data.metadata``,
@@ -355,7 +355,7 @@ place of the filename.
    mask = sw.mask(snap_file)
    # The full metadata object is available from within the mask
    boxsize = mask.metadata.boxsize
-   # load_region is a 3x2 list [[left, right], [bottom, top], [front, back]]
+   # load_region is a 3x2 list [[xmin, xmax], [ymin, ymax], [zmin, zmax]]
    load_region = [[0.0 * b, 0.5 * b] for b in boxsize]
 
    # Constrain the mask

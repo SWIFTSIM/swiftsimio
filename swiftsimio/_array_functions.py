@@ -192,8 +192,10 @@ def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
     """
 
     def wrapped(
-        obj: object, *args: tuple[Any], **kwargs: dict[str, Any]
-    ) -> object:  # # noqa numpydoc ignore=GL08
+        obj: object,
+        *args: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> object:  # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
         return _copy_cosmo_array_attributes_if_present(obj, func(obj, *args, **kwargs))
 
@@ -886,9 +888,9 @@ def _prepare_array_func_args(
     -------
     dict
         A dictionary containing the input ``args`` and ``kwargs`` coerced to a common
-        state, and lists of their ``cosmo_factor`` attributes, and ``comoving`` and
-        ``compression`` values that can be used in return values for wrapped functions,
-        when relevant.
+        state, and lists of their ``cosmo_factor`` attributes, and ``comoving``,
+        ``valid_transform`` and ``compression`` values that can be used in return values
+        for wrapped functions, when relevant.
 
     Raises
     ------
@@ -897,6 +899,7 @@ def _prepare_array_func_args(
     """
     cms = [(hasattr(arg, "comoving"), getattr(arg, "comoving", None)) for arg in args]
     cfs = [getattr(arg, "cosmo_factor", None) for arg in args]
+    vts = [getattr(arg, "valid_transform", True) for arg in args]
     comps = [
         (hasattr(arg, "compression"), getattr(arg, "compression", None)) for arg in args
     ]
@@ -905,6 +908,7 @@ def _prepare_array_func_args(
         for k, kwarg in kwargs.items()
     }
     kw_cfs = {k: getattr(kwarg, "cosmo_factor", None) for k, kwarg in kwargs.items()}
+    kw_vts = {k: getattr(kwarg, "valid_transform", True) for k, kwarg in kwargs.items()}
     kw_comps = {
         k: (hasattr(kwarg, "compression"), getattr(kwarg, "compression", None))
         for k, kwarg in kwargs.items()
@@ -955,20 +959,22 @@ def _prepare_array_func_args(
                 for k, kwarg in kwargs.items()
             }
             ret_cm = False
+    ret_vt = all(vts + list(kw_vts.values()))  # if any False, then False
     if len(set(comps + list(kw_comps.values()))) == 1:
         # all compressions identical, preserve it
         ret_comp = (comps + list(kw_comps.values()))[0]
     else:
         # mixed compressions, strip it off
         ret_comp = None
-    return dict(
-        args=args,
-        kwargs=kwargs,
-        cfs=cfs,
-        kw_cfs=kw_cfs,
-        comoving=ret_cm,
-        compression=ret_comp,
-    )
+    return {
+        "args": args,
+        "kwargs": kwargs,
+        "cfs": cfs,
+        "kw_cfs": kw_cfs,
+        "comoving": ret_cm,
+        "valid_transform": ret_vt,
+        "compression": ret_comp,
+    }
 
 
 def implements(numpy_function: Callable) -> Callable:
@@ -1044,10 +1050,12 @@ def _return_helper(
     if isinstance(res, objects.cosmo_array):  # also recognizes cosmo_quantity
         res.comoving = helper_result["comoving"]
         res.cosmo_factor = ret_cf
+        res.valid_transform = helper_result["valid_transform"]
         res.compression = helper_result["compression"]
     if isinstance(out, objects.cosmo_array):  # also recognizes cosmo_quantity
         out.comoving = helper_result["comoving"]
         out.cosmo_factor = ret_cf
+        out.valid_transform = helper_result["valid_transform"]
         out.compression = helper_result["compression"]
     return res
 
@@ -1351,6 +1359,7 @@ def histogram(  # noqa: ANN202
     if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
         counts.comoving = helper_result["comoving"]
         counts.cosmo_factor = ret_cf_counts
+        counts.valid_transform = helper_result["valid_transform"]
         counts.compression = helper_result["compression"]
     return counts, _return_helper(bins, helper_result, ret_cf_bins)
 
@@ -1408,6 +1417,7 @@ def histogram2d(  # noqa: ANN202
             ):  # also recognizes cosmo_quantity
                 counts.comoving = helper_result_w["comoving"]
                 counts.cosmo_factor = ret_cf_w
+                counts.valid_transform = helper_result_w["valid_transform"]
                 counts.compression = helper_result_w["compression"]
     else:  # density=True
         # now x, y and weights must be compatible because they will combine
@@ -1453,6 +1463,7 @@ def histogram2d(  # noqa: ANN202
         if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
             counts.comoving = helper_result["comoving"]
             counts.cosmo_factor = ret_cf_counts
+            counts.valid_transform = helper_result["valid_transform"]
             counts.compression = helper_result["compression"]
     return (
         counts,
@@ -1514,6 +1525,7 @@ def histogramdd(  # noqa: ANN202
             if isinstance(counts, objects.cosmo_array):
                 counts.comoving = helper_result_w["comoving"]
                 counts.cosmo_factor = ret_cf_w
+                counts.valid_transform = helper_result_w["valid_transform"]
                 counts.compression = helper_result_w["compression"]
     else:  # density=True
         # now sample and weights must be compatible because they will combine
@@ -1543,6 +1555,7 @@ def histogramdd(  # noqa: ANN202
         if isinstance(counts, objects.cosmo_array):  # also recognizes cosmo_quantity
             counts.comoving = helper_result["comoving"]
             counts.cosmo_factor = ret_cf_counts
+            counts.valid_transform = helper_result["valid_transform"]
             counts.compression = helper_result["compression"]
     return (
         counts,
@@ -1620,6 +1633,7 @@ def _prepare_array_block_args(lst: list, recursing: bool = False) -> dict:
     if recursing:
         return helper_results
     cms = [hr["comoving"] for hr in helper_results]
+    vts = [hr["valid_transform"] for hr in helper_results]
     comps = [hr["compression"] for hr in helper_results]
     cfs = [hr["cfs"] for hr in helper_results]
     convert_to_cm = False
@@ -1638,6 +1652,7 @@ def _prepare_array_block_args(lst: list, recursing: bool = False) -> dict:
         # mix of True and False only
         ret_cm = True
         convert_to_cm = True
+    ret_vt = all(vts)
     if len(set(comps)) == 1:
         ret_comp = comps[0]
     else:
@@ -1650,13 +1665,14 @@ def _prepare_array_block_args(lst: list, recursing: bool = False) -> dict:
         ret_lst = _recursive_to_comoving(lst)
     else:
         ret_lst = lst
-    return dict(
-        args=ret_lst,
-        kwargs=dict(),
-        comoving=ret_cm,
-        cosmo_factor=ret_cf,
-        compression=ret_comp,
-    )
+    return {
+        "args": ret_lst,
+        "kwargs": {},
+        "comoving": ret_cm,
+        "cosmo_factor": ret_cf,
+        "valid_transform": ret_vt,
+        "compression": ret_comp,
+    }
 
 
 @implements(np.block)

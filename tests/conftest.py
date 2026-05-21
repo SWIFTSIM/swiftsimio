@@ -264,6 +264,24 @@ def cosmological_volume_only_single_local() -> Generator[str, None, None]:
     yield _requires("EagleSingle.hdf5")
 
 
+@pytest.fixture
+def soap_only_local() -> Generator[str, None, None]:
+    """
+    Fixture provides only a SOAP dataset.
+
+    This verison only opens the file by name. Tests using this fixture will
+    only run once and will not try passing in an already open h5py.File or
+    a hdfstream.RemoteFile. This is intended for tests where we are not
+    testing the file access mechanism.
+
+    Yields
+    ------
+    Generator[str, None, None]
+        The file name, after downloading if required.
+    """
+    yield _requires("SoapExample.hdf5")
+
+
 @pytest.fixture(params=access_methods)
 def cosmological_volume_only_distributed(
     request: pytest.FixtureRequest,

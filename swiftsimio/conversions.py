@@ -1,7 +1,7 @@
 """Convert between SWIFT internal values and :mod:`astropy` cosmologies."""
 
 from swiftsimio.optional_packages import ASTROPY_AVAILABLE
-from swiftsimio.objects import cosmo_quantity
+from unyt import unyt_quantity
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -77,7 +77,7 @@ if ASTROPY_AVAILABLE:
             An instance of ``astropy.cosmology.Cosmology`` filled with the
             correct parameters.
         """
-        H0 = cosmo_quantity(cosmo["H0 [internal units]"][0], units=1.0 / units.time)
+        H0 = unyt_quantity(cosmo["H0 [internal units]"][0], units=1.0 / units.time)
 
         Omega_b = cosmo["Omega_b"][0]
         Omega_lambda = cosmo["Omega_lambda"][0]

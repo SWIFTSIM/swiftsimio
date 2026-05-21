@@ -8,6 +8,7 @@ particle_name_underscores = {
     "PartType4": "stars",
     "PartType5": "black_holes",
     "PartType6": "neutrinos",
+    "PartType7": "sidm",
 }
 
 particle_name_class = {
@@ -18,6 +19,7 @@ particle_name_class = {
     "PartType4": "Stars",
     "PartType5": "BlackHoles",
     "PartType6": "Neutrinos",
+    "PartType7": "SelfInteractingDarkMatter",
 }
 
 particle_name_text = {
@@ -28,4 +30,5 @@ particle_name_text = {
     "PartType4": "Stars",
     "PartType5": "Black Holes",
     "PartType6": "Neutrinos",
+    "PartType7": "Self Interacting Dark Matter",
 }
