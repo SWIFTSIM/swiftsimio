@@ -370,7 +370,7 @@ class cosmo_factor:
 
         Examples
         --------
-        ::
+        .. code-block:: python
 
             >>> cosmo_factor.create(0.5, 2)
             cosmo_factor(expr=a**2, scale_factor=0.5)
@@ -2203,7 +2203,7 @@ class cosmo_array(unyt_array):
 
         Examples
         --------
-        ::
+        .. code-block:: python
 
             >>> from pint import UnitRegistry
             >>> import numpy as np
@@ -3690,11 +3690,11 @@ class _AHelper:
         --------
         .. code-block:: python
 
-           from swiftsimio import load
-           dat = load("snap.hdf5")
-           a = dat.metadata.a
-           cMpc = a.comoving * u.Mpc
-           comoving_distances = np.arange(3) * cMpc
+           >>> from swiftsimio import load
+           >>> dat = load("snap.hdf5")
+           >>> a = dat.metadata.a
+           >>> cMpc = a.comoving * u.Mpc
+           >>> comoving_distances = np.arange(3) * cMpc
         """
         return _AHelper(
             scale_factor=self._scale_factor,
@@ -3721,11 +3721,11 @@ class _AHelper:
         --------
         .. code-block:: python
 
-           from swiftsimio import load
-           dat = load("snap.hdf5")
-           a = dat.metadata.a
-           pMpc = a.physical * u.Mpc
-           physical_distances = np.arange(3) * pMpc
+           >>> from swiftsimio import load
+           >>> dat = load("snap.hdf5")
+           >>> a = dat.metadata.a
+           >>> pMpc = a.physical * u.Mpc
+           >>> physical_distances = np.arange(3) * pMpc
         """
         return _AHelper(
             scale_factor=self._scale_factor,
