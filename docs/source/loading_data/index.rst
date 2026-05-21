@@ -363,3 +363,47 @@ place of the filename.
 
    # Now load the snapshot with this mask
    data = sw.load(snap_file, mask=mask)
+
+Line of sight files
+-------------------
+
+SWIFT can output dedicated line-of-sight (LOS) files containing all the gas particles
+that overlap with specific lines of sight through the simulation volume.
+Each line of sight is contained within its own group (e.g., ``los_0000``, ``los_0001``)
+and carries the exact same gas datasets present in a standard snapshot.
+
+To read a line-of-sight file, pass the filename directly to :mod:`swiftsimio.load`.
+You can then access individual lines of sight and their particle
+fields just like standard particle types:
+
+.. code-block:: python
+
+   import swiftsimio as sw
+
+   # Load the line-of-sight dataset
+   data = sw.load(los_filename)
+
+   # Standard metadata is available
+   data.metadata.redshift
+
+   # Extract gas particle fields of the first los group
+   data.los_0000.masses
+
+Each line of sight group contains metadata detailing its orientation and
+location within the simulation volume. These attributes can be
+accessed directly as properties of the group:
+
+* ``xaxis``, ``yaxis``, and ``zaxis``: Indicate which coordinate axis
+  the line of sight runs parallel to.
+* ``xpos`` and ``ypos``: The the remaining two coordinates
+  that define the line's exact position in the simulation box.
+
+For example, you can inspect these attributes as follows:
+
+.. code-block:: python
+
+   # Check which axis the line of sight is parallel to
+   data.los_0000.xaxis
+
+   # Access the coordinates defining the line's location
+   data.los_0000.xpos
