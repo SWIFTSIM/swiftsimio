@@ -15,7 +15,7 @@ from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
 from swiftsimio.accelerated import ranges_from_array
 from swiftsimio._handle_provider import HandleProvider
 
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Any
 
 _DEFAULT_SAFE_PADDING = 0.1
 _GROUPCAT_OUTPUT_TYPES = ["FOF", "SOAP", "FOFSubset", "SOAPSubset"]
@@ -39,8 +39,8 @@ def _constraint(method: Callable) -> Callable:
 
     def wrapped(
         self: "SWIFTMask",
-        *args: tuple,
-        **kwargs: dict,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:  # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
         retval = method(self, *args, **kwargs)
@@ -759,37 +759,21 @@ class SWIFTMask(HandleProvider):
 
             .. code-block:: python
 
-                restrict = cosmo_array(
-                    [
-                        [0.5, 0.7],
-                        [0.1, 0.9],
-                        [0.0, 0.1]
-                    ],
-                    u.Mpc,
-                    comoving=True,
-                    scale_factor=1.0,
-                    scale_exponent=1,
-                )
+                m = mask("snap.hdf5")
+                a = m.metadata.a
+                restrict = [
+                    [0.5, 0.7],
+                    [0.1, 0.9],
+                    [0.0, 0.1]
+                ] * u.Mpc * a.comoving
 
             If no constraint is desired along an axis, ``None`` can be given instead. For
             example, to select a "slab" in the x-y plane:
 
             .. code-block:: python
 
-                zmin = cosmo_quantity(
-                    5.0,
-                    u.Mpc,
-                    comoving=True,
-                    scale_factor=1.0,
-                    scale_exponent=1
-                )
-                zmax = cosmo_quantity(
-                    6.0,
-                    u.Mpc,
-                    comoving=True,
-                    scale_factor=1.0,
-                    scale_exponent=1
-                )
+                zmin = 5.0 * u.Mpc * a.comoving
+                zmax = 6.0 * u.Mpc * a.comoving
                 restrict = [
                     None,
                     None,

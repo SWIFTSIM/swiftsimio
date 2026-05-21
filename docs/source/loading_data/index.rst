@@ -261,7 +261,6 @@ in SWIFT will be automatically read.
 
    import swiftsimio as sw
    import swiftsimio.metadata.particle as swp
-   from swiftsimio.objects import cosmo_factor, a
 
    swp.particle_name_underscores[6] = "extratype"
    swp.particle_name_class[6] = "Extratype"

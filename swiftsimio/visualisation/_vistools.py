@@ -6,7 +6,7 @@ from functools import reduce
 from typing import Callable, Any
 from swiftsimio.objects import cosmo_array, cosmo_quantity
 from swiftsimio.reader import __SWIFTGroupDataset
-from swiftsimio._array_functions import _copy_cosmo_array_attributes_if_present
+from swiftsimio._array_functions import _copy_cosmo_array_attributes
 
 
 def _get_projection_field(data: __SWIFTGroupDataset, field_name: str) -> cosmo_array:
@@ -192,7 +192,7 @@ def backend_strip_and_restore_cosmo_and_units(
         The wrapped function.
     """
 
-    def wrapper(*args: tuple[Any], **kwargs: dict[str, Any]) -> cosmo_array:
+    def wrapper(*args: Any, **kwargs: Any) -> cosmo_array:
         """
         Wrap function to re-attach cosmology metadata to output.
 
@@ -202,10 +202,10 @@ def backend_strip_and_restore_cosmo_and_units(
 
         Parameters
         ----------
-        *args : tuple
+        *args : Any
             Arbitrary arguments for the wrapped function.
 
-        **kwargs : dict
+        **kwargs : Any
             Arbitrary kwargs for the wrapped function.
 
         Returns
@@ -253,7 +253,7 @@ def backend_strip_and_restore_cosmo_and_units(
             for k, v in kwargs.items()
         }
         return (
-            _copy_cosmo_array_attributes_if_present(
+            _copy_cosmo_array_attributes(
                 kwargs["m"],
                 backend_func(*args, **stripped_kwargs).view(cosmo_array),
                 copy_units=True,

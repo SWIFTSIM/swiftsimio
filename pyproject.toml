@@ -41,7 +41,7 @@ dependencies = [
     "astropy>=6.0",
     "numpy>=2.1.0",
     "h5py",
-    "unyt>=3.1.0",
+    "unyt @ git+https://github.com/kyleaoman/unyt@main",  # both PR branches merged here
     "numba>=0.50.0",
 ]
 
@@ -88,6 +88,9 @@ ignore = []
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]

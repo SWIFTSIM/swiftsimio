@@ -11,13 +11,13 @@ def test_convert(cosmological_volume_only_single):
     coords = data.gas.coordinates
     units = u.kpc
     assert units != coords.units  # ensure we make a non-trivial conversion
-    assert data.metadata.a != 1.0  # ensure we make a non-trivial conversion
+    assert data.metadata.scale_factor != 1.0  # ensure we make a non-trivial conversion
     coords_physical = coords.to_physical()
 
     # allclose applied to cosmo_array's is aware of physical & comoving
     # make sure to compare bare arrays:
     assert np.allclose(
-        coords.to_value(units) * data.metadata.a,
+        coords.to_value(units) * data.metadata.scale_factor,
         coords_physical.to_value(units),
         rtol=1e-6,
     )
@@ -30,12 +30,16 @@ def test_convert_to_value(cosmological_volume_only_single):
     coords = data.gas.coordinates
     units = u.kpc
     assert units != coords.units  # ensure we make a non-trivial conversion
-    assert data.metadata.a != 1.0  # ensure we make a non-trivial conversion
+    assert data.metadata.scale_factor != 1.0  # ensure we make a non-trivial conversion
     coords_physical_values = coords.to_physical_value(units)
     coords_comoving_values = coords.to_comoving_value(units)
-    print(coords_physical_values / (coords_comoving_values * data.metadata.a))
+    print(
+        coords_physical_values / (coords_comoving_values * data.metadata.scale_factor)
+    )
     assert np.allclose(
-        coords_physical_values, coords_comoving_values * data.metadata.a, rtol=1e-6
+        coords_physical_values,
+        coords_comoving_values * data.metadata.scale_factor,
+        rtol=1e-6,
     )
 
 

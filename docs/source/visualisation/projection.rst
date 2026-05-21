@@ -236,29 +236,19 @@ is shown in the ``velociraptor`` section.
    )
 
    data_mask = mask(snapshot_filename)
-   region = cosmo_array(
-       [
-           [x - size, x + size],
-           [y - size, y + size],
-           [z - size, z + size],
-       ],
-       x.units,
-       comoving=True,
-       scale_factor=data_mask.metadata.a,
-       scale_exponent=1,
-   )
+   a = data_mask.metadata.a
+   region = [
+       [x - size, x + size],
+       [y - size, y + size],
+       [z - size, z + size],
+   ] * a.comoving
 
-   visualise_region = cosmo_array(
-       [
-           x - 0.5 * size,
-           x + 0.5 * size,
-           y - 0.5 * size,
-           y + 0.5 * size,
-       ],
-       comoving=True,
-       scale_factor=data_mask.metadata.a,
-       scale_exponent=1,
-   )
+   visualise_region = [
+       x - 0.5 * size,
+       x + 0.5 * size,
+       y - 0.5 * size,
+       y + 0.5 * size,
+   ] * a.comoving
 
    data_mask.constrain_spatial(region)
    data = load(snapshot_filename, mask=data_mask)
@@ -275,9 +265,7 @@ is shown in the ``velociraptor`` section.
 
    un_rotated = project_gas(**common_arguments)
 
-   rotation_center = cosmo_array(
-       [x, y, z], comoving=True, scale_factor=data_mask.metadata.a, scale_exponent=1
-   )
+   rotation_center = [x, y, z] * a.comoving
    face_on = project_gas(
        **common_arguments,
        rotation_center=rotation_center,
