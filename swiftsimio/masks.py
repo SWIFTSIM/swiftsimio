@@ -573,6 +573,7 @@ class SWIFTMask(HandleProvider):
 
             .. code-block:: python
 
+                m = mask(data_file)
                 restrict = cosmo_array(
                     [
                         [0.5, 0.7],
@@ -581,8 +582,17 @@ class SWIFTMask(HandleProvider):
                     ],
                     u.Mpc,
                     comoving=True,
-                    scale_factor=1.0,
+                    scale_factor=m.metadata.scale_factor,
                     scale_exponent=1,
+                )
+                # or, equivalent:
+                restrict = np.array(
+                    [
+                        [0.5, 0.7],
+                        [0.1, 0.9],
+                        [0.0, 0.1]
+                    ],
+                    like=m.metadata.boxsize,  # copies units, comoving, etc.
                 )
 
         Returns
@@ -769,6 +779,15 @@ class SWIFTMask(HandleProvider):
                     comoving=True,
                     scale_factor=1.0,
                     scale_exponent=1,
+                )
+                # or, equivalent:
+                restrict = np.array(
+                    [
+                        [0.5, 0.7],
+                        [0.1, 0.9],
+                        [0.0, 0.1]
+                    ],
+                    like=m.metadata.boxsize,  # copies units, comoving, etc.
                 )
 
             If no constraint is desired along an axis, ``None`` can be given instead. For

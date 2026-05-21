@@ -88,11 +88,9 @@ constraint should be imposed along that axis. For example, to select a 1 Mpc thi
 
 .. code-block:: python
 
-   import unyt as u
    slab_mask = sw.mask(filename)
-   scale_factor = slab_mask.metadata.scale_factor
    slab_region = [
-       cosmo_array([1, 2], u.Mpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
+       np.array([1, 2], like=slab_mask.metadata.boxsize),  # copies units, etc.
        None,
        None,
    ]
@@ -245,15 +243,16 @@ particles within a chosen density window.
    # This creates and sets up the masking object.
    mask = sw.mask("cosmological_volume.hdf5")
 
-   # This ahead-of-time creates a spatial mask based on the cell metadata.
+   # This creates a 1x1x1 Mpc spatial mask based on the cell metadata.
    mask.constrain_spatial(
        np.array(
            [
-               [0.2, 0.7],
-               [0.0, 1.0],
-               [0.0, 1.0],
-           ]
-       ) * mask.metadata.boxsize[:, np.newaxis]
+               [1.0, 2.0],
+               [1.0, 2.0],
+               [1.0, 2.0],
+           ],
+           like=mask.metadata.boxsize,  # copies units, comoving, etc.
+       )
    )
 
    # Now we also constrain the density between

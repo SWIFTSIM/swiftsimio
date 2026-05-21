@@ -21,8 +21,8 @@ The cosmology information is stored in three attributes:
  + ``cosmo_factor``
  + ``valid_transform``
 
-The ``comoving`` attribute specifies whether the array is a physical (``True``) or
-comoving (``False``) quantity, while the ``cosmo_factor`` stores the expression needed
+The ``comoving`` attribute specifies whether the array is a physical (``False``) or
+comoving (``True``) quantity, while the ``cosmo_factor`` stores the expression needed
 to convert back and forth between comoving and physical quantities and the value of
 the scale factor. The conversion factors can be accessed like this:
 
@@ -122,6 +122,24 @@ class, it is helpful to know how to create your own. A good template for this lo
    # with:
    # scale_factor=data.metadata.a
 
+This can be tedious to write out, but often a new array with the same units, ``comoving``,
+and scale factor & exponent as an existing :class:`~swiftsimio.objects.cosmo_array` is
+wanted. All of the main :mod:`numpy` array creation functions such as :func:`numpy.array`,
+:func:`numpy.asarray` and several others accept a keyword argument called ``like``. Using
+this with a :class:`~swiftsimio.objects.cosmo_array` will copy over all of the metadata
+but use the new values provided, for example:
+
+.. code-block:: python
+
+   my_new_cosmo_array = np.asarray(
+      [4, 5, 6],
+      like=my_cosmo_array,
+   )
+   # has units of u.Mpc, comoving=True, scale_factor=0.5, scale_exponent=1
+
+Keep in mind that :func:`numpy.asarray` tries to avoid copying the input data when
+possible while :func:`numpy.array` usually makes a copy with a corresponding memory cost.
+
 There is also a very similar :class:`~swiftsimio.objects.cosmo_quantity` class designed
 for scalar values, analogous to the :class:`~unyt.array.unyt_quantity`. You may encounter
 this being returned by :mod:`numpy` functions. Cosmology-aware scalar values can be
@@ -139,4 +157,6 @@ initialized similarly:
        scale_factor=0.5,
        scale_exponent=1,
    )
+   # or:
+   my_cosmo_quantity = np.array(2, like=my_cosmo_array)
 
