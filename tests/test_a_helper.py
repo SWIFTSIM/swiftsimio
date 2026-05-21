@@ -5,8 +5,9 @@ from copy import deepcopy
 import numpy as np
 import unyt as u
 from unyt.exceptions import InvalidUnitOperation
-from swiftsimio import mask, cosmo_array, cosmo_quantity
+from swiftsimio import mask, cosmo_array, cosmo_quantity, Writer
 from swiftsimio.objects import _AHelper, InvalidCosmoUnit, cosmo_factor
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 
 @pytest.mark.parametrize("scale_exponent", (-1, 0, 1, 2, None))
@@ -252,6 +253,26 @@ def test_helper_available_from_metadata(cosmological_volume_only_single_local):
             assert element == manual_element
     # be a bit paranoid and make sure that constraining mask works:
     m.constrain_spatial(region)
+
+
+def test_helper_available_from_writer():
+    """Test that the helper is available as an attribute on the ``Writer``."""
+    scale_factor = 0.5
+    w = Writer(
+        unit_system=cosmo_units,
+        boxsize=cosmo_array(
+            [100, 100, 100],
+            u.Mpc,
+            comoving=True,
+            scale_factor=scale_factor,
+            scale_exponent=1,
+        ),
+        scale_factor=scale_factor,
+    )
+    a = w.a
+    assert 10 * u.Mpc * a.comoving == cosmo_quantity(
+        10, u.Mpc, comoving=True, scale_factor=scale_factor, scale_exponent=1
+    )
 
 
 def test_comoving_or_physical_missing():
