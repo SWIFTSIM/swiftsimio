@@ -261,8 +261,6 @@ class InvalidCosmoUnit(Exception):
     """
     Generated when a :class:`~swiftsimio.objects._AHelper` encounters an incompatibility.
 
-    For example, trying to multiply with a bare scalar.
-
     Parameters
     ----------
     message : str, optional
