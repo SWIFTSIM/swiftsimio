@@ -279,6 +279,12 @@ class cosmo_factor(object):
         from swiftsimio.objects import a  # the scale factor (a sympy symbol object)
         density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
 
+    Or equivalently, but avoiding the extra import, with the ``create`` classmethod:
+
+    .. code-block:: python
+
+        density_cosmo_factor = cosmo_factor.create(0.97, 3)
+
     :class:`~swiftsimio.objects.cosmo_factor` supports arithmetic, for example:
 
     .. code-block:: python
@@ -1903,7 +1909,7 @@ class cosmo_array(unyt_array):
 
         Examples
         --------
-        ::
+        .. code-block:: python
 
             >>> from astropy.units import kpc
             >>> cosmo_array.from_astropy([1, 2, 3] * kpc)
