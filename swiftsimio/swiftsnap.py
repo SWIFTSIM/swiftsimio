@@ -162,9 +162,7 @@ def swiftsnap() -> None:
         print()
 
         # Current state information
-        time_string = (
-            f"Simulation state: z={data.z:.4g}, a={data.a:.4g}, t={data.time:.4g}"
-        )
+        time_string = f"Simulation state: z={data.z:.4g}, a={data.a:.4g}, t={data.time.to(data.units.time.units):.4g}"
         print(f"{time_string}")
         print()
         print(f"Cosmology: {data.cosmology}")
