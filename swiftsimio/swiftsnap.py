@@ -85,6 +85,7 @@ def swiftsnap() -> None:
     """
     import swiftsimio as sw
     from swiftsimio.metadata.objects import _metadata_discriminator
+    import unyt as u
 
     from swiftsimio.metadata.particle import particle_name_underscores
     from textwrap import wrap
@@ -161,10 +162,24 @@ def swiftsnap() -> None:
 
         print()
 
+        # Units must be in descending order.
+        target_time_units = [
+            u.Gyr,
+            u.Myr,
+            u.yr,
+            u.s,
+        ]
+        # Use first units less than the internal code unit.
+        for unit in target_time_units:
+            if data.units.time > 1 * unit:
+                time_unit = unit
+                break
+        else:
+            # Nothing found? Just use the original unit then.
+            time_unit = data.units.time
+
         # Current state information
-        time_string = (
-            f"Simulation state: z={data.z:.4g}, a={data.a:.4g}, t={data.time:.4g}"
-        )
+        time_string = f"Simulation state: z={data.z:.4g}, a={data.a:.4g}, t={data.time.to(time_unit):.4g}"
         print(f"{time_string}")
         print()
         print(f"Cosmology: {data.cosmology}")
