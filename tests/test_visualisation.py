@@ -1210,9 +1210,7 @@ class TestPowerSpectrum:
             scale_exponent=1,
         )
 
-        _, default_power_spectrum, _ = deposition_to_power_spectrum(
-            deposition, boxsize
-        )
+        _, default_power_spectrum, _ = deposition_to_power_spectrum(deposition, boxsize)
         _, infinite_norm_power_spectrum, _ = deposition_to_power_spectrum(
             deposition, boxsize, shot_noise_norm=np.inf
         )

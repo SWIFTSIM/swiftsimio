@@ -511,7 +511,7 @@ def deposition_to_power_spectrum(
     wavenumber_bins: cosmo_array | None = None,
     workers: int | None = None,
     shot_noise_norm: float | None = None,
-) -> tuple[cosmo_array]:
+) -> tuple[cosmo_array, cosmo_array, cosmo_array]:
     """
     Convert a deposition to a power spectrum.
 
@@ -567,9 +567,9 @@ def deposition_to_power_spectrum(
         raise ValueError("Deposition must be a cube")
 
     if cross_deposition is not None:
-        assert deposition.shape == cross_deposition.shape, (
-            "Depositions must have the same shape"
-        )
+        assert (
+            deposition.shape == cross_deposition.shape
+        ), "Depositions must have the same shape"
 
     folding = 2.0**folding
 
@@ -632,9 +632,9 @@ def deposition_to_power_spectrum(
     wavenumbers.name = "Wavenumber $k$"
 
     shot_noise = (
-        (boxsize[0] ** 3 / shot_noise_norm)
+        (np.prod(boxsize) / shot_noise_norm)
         if shot_noise_norm is not None
-        else (boxsize[0] ** 3) * 0.0  # copy cosmo properties
+        else (np.prod(boxsize) * 0.0)  # copy cosmo properties
     )
     power_spectrum = (binned_amplitudes / divisor) - shot_noise
 
