@@ -1193,6 +1193,40 @@ def test_nongas_smoothing_lengths(cosmological_volume_only_single_local):
 class TestPowerSpectrum:
     """Tests for the visualisation module's power spectrum tools."""
 
+    def test_deposition_to_power_spectrum_defaults_to_zero_shot_noise(self):
+        """Missing shot-noise normalization should not subtract the box volume."""
+        deposition = cosmo_array(
+            np.ones((4, 4, 4)),
+            units="Msun / Mpc**3",
+            comoving=True,
+            scale_factor=1.0,
+            scale_exponent=-3,
+        )
+        boxsize = cosmo_array(
+            [10.0, 10.0, 10.0],
+            units="Mpc",
+            comoving=True,
+            scale_factor=1.0,
+            scale_exponent=1,
+        )
+
+        _, default_power_spectrum, _ = deposition_to_power_spectrum(
+            deposition, boxsize
+        )
+        _, infinite_norm_power_spectrum, _ = deposition_to_power_spectrum(
+            deposition, boxsize, shot_noise_norm=np.inf
+        )
+
+        np.testing.assert_allclose(
+            default_power_spectrum.value, infinite_norm_power_spectrum.value
+        )
+        assert default_power_spectrum.units == infinite_norm_power_spectrum.units
+        assert default_power_spectrum.comoving == infinite_norm_power_spectrum.comoving
+        assert (
+            default_power_spectrum.cosmo_factor
+            == infinite_norm_power_spectrum.cosmo_factor
+        )
+
     def test_dark_matter_power_spectrum(
         self, cosmological_volume_only_single_local, save=False
     ):

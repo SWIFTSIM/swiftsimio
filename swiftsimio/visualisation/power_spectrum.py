@@ -634,7 +634,7 @@ def deposition_to_power_spectrum(
     shot_noise = (
         (boxsize[0] ** 3 / shot_noise_norm)
         if shot_noise_norm is not None
-        else (boxsize[0] ** 3)  # copy cosmo properties
+        else (boxsize[0] ** 3) * 0.0  # copy cosmo properties
     )
     power_spectrum = (binned_amplitudes / divisor) - shot_noise
 
