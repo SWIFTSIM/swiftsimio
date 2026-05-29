@@ -567,7 +567,7 @@ def deposition_to_power_spectrum(
         raise ValueError("Deposition must be a cube")
 
     if cross_deposition is not None:
-        assert deposition.shape == cross_deposition.shape (
+        assert deposition.shape == cross_deposition.shape, (
             "Depositions must have the same shape"
         )
 
