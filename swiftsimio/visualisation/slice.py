@@ -2,6 +2,7 @@
 
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array, cosmo_quantity
+from swiftsimio.reader import __SWIFTGroupDataset
 from swiftsimio.visualisation.slice_backends import backends, backends_parallel
 from swiftsimio.visualisation.smoothing_length import backends_get_hsml
 from swiftsimio.visualisation._vistools import (
@@ -12,8 +13,8 @@ from swiftsimio.visualisation._vistools import (
 )
 
 
-def slice_gas(
-    data: SWIFTDataset,
+def slice_pixel_grid(
+    data: __SWIFTGroupDataset,
     resolution: int,
     z_slice: cosmo_quantity | None = None,
     project: str | None = "masses",
@@ -25,12 +26,12 @@ def slice_gas(
     periodic: bool = True,
 ) -> cosmo_array:
     """
-    Create a data field-weighted 2D slice through a SWIFT dataset as a pixel grid.
+    Create a data field-weighted 2D slice through a particle dataset as a pixel grid.
 
     Parameters
     ----------
-    data : SWIFTDataset
-        Dataset from which slice is extracted.
+    data : __SWIFTGroupDataset
+        Particle dataset to slice (e.g. ``data.gas``, ``data.dark_matter``).
 
     resolution : int
         Specifies size of return np.array.
@@ -51,12 +52,12 @@ def slice_gas(
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix : np.np.array, optional
+    rotation_matrix : np.ndarray, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a slice
         perpendicular to the z axis.
 
-    rotation_center : np.np.array, optional
+    rotation_center : cosmo_array, optional
         Center of the rotation. If you are trying to rotate around a galaxy, this
         should be the most bound particle.
 
@@ -86,10 +87,11 @@ def slice_gas(
 
     See Also
     --------
-    render_gas_voxel_grid
-        Creates a 3D voxel grid from a SWIFT dataset.
+    render_voxel_grid
+        Creates a 3D voxel grid from a particle dataset.
+    slice_gas
+        Convenience wrapper for slicing gas particles.
     """
-    data = data.gas
     z_slice = np.zeros_like(data.metadata.boxsize[0]) if z_slice is None else z_slice
 
     m = _get_projection_field(data, project)
@@ -135,3 +137,96 @@ def slice_gas(
     backend_func = (backends_parallel if parallel else backends)[backend]
     image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
     return image
+
+
+def slice_gas(
+    data: SWIFTDataset,
+    resolution: int,
+    z_slice: cosmo_quantity | None = None,
+    project: str | None = "masses",
+    parallel: bool = False,
+    rotation_matrix: np.ndarray | None = None,
+    rotation_center: cosmo_array | None = None,
+    region: cosmo_array | None = None,
+    backend: str = "sph",
+    periodic: bool = True,
+) -> cosmo_array:
+    """
+    Create a data field-weighted 2D slice through the gas of a SWIFT dataset as a pixel grid.
+
+    Parameters
+    ----------
+    data : SWIFTDataset
+        Dataset from which slice is extracted.
+
+    resolution : int
+        Specifies size of return np.array.
+
+    z_slice : cosmo_quantity
+        Specifies the location along the z-axis where the slice is to be
+        extracted, relative to the rotation center or the origin of the box
+        if no rotation center is provided. If the perspective is rotated
+        this value refers to the location along the rotated z-axis.
+
+    project : str, optional
+        Data field to be projected. Default is mass. If ``None`` then simply
+        count number of particles. The result is comoving if this is comoving,
+        else it is physical.
+
+    parallel : bool
+        Used to determine if we will create the image in parallel. This
+        defaults to False, but can speed up the creation of large images
+        significantly at the cost of increased memory usage.
+
+    rotation_matrix : np.ndarray, optional
+        Rotation matrix (3x3) that describes the rotation of the box around
+        ``rotation_center``. In the default case, this provides a slice
+        perpendicular to the z axis.
+
+    rotation_center : cosmo_array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
+
+    region : cosmo_array, optional
+        Determines where the image will be created
+        (this corresponds to the left and right-hand edges, and top and bottom edges)
+        if it is not None. It should have a length of four, and take the form:
+
+        [x_min, x_max, y_min, y_max]
+
+        Particles outside of this range are still considered if their
+        smoothing lengths overlap with the range.
+
+    backend : str, optional
+        Backend to use. Choices are "sph" (default) for interpolation using kernel
+        weights or "nearest_neighbours" for nearest neighbour interpolation.
+
+    periodic : bool, optional
+        Account for periodic boundaries for the simulation box?
+        Default is ``True``.
+
+    Returns
+    -------
+    cosmo_array
+        Slice image with units of project / length^2, of size ``res`` x ``res``.
+        Comoving if ``project`` data are comoving, else physical.
+
+    See Also
+    --------
+    slice_pixel_grid
+        Slices any particle type, not just gas.
+    render_voxel_grid
+        Creates a 3D voxel grid from a particle dataset.
+    """
+    return slice_pixel_grid(
+        data=data.gas,
+        resolution=resolution,
+        z_slice=z_slice,
+        project=project,
+        parallel=parallel,
+        rotation_matrix=rotation_matrix,
+        rotation_center=rotation_center,
+        region=region,
+        backend=backend,
+        periodic=periodic,
+    )

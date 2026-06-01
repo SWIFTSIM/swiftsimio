@@ -1,11 +1,12 @@
 """Tools to get nearest-neighbour smoothing lengths."""
 
 import numpy as np
-from swiftsimio import SWIFTDataset, cosmo_array
+from swiftsimio import cosmo_array
+from swiftsimio.reader import __SWIFTGroupDataset
 from swiftsimio.visualisation.smoothing_length.sph import get_hsml as get_hsml_sph
 
 
-def get_hsml(data: SWIFTDataset) -> cosmo_array:
+def get_hsml(data: __SWIFTGroupDataset) -> cosmo_array:
     """
     Compute a "smoothing length".
 
@@ -14,8 +15,8 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
 
     Parameters
     ----------
-    data : SWIFTDataset
-        The dataset from which slice will be extracted.
+    data : __SWIFTGroupDataset
+        The particle dataset for which smoothing lengths will be computed.
 
     Returns
     -------
@@ -23,11 +24,11 @@ def get_hsml(data: SWIFTDataset) -> cosmo_array:
         The extracted "smoothing lengths".
     """
     try:
-        hsml = np.cbrt(data.gas.volumes)
+        hsml = np.cbrt(data.volumes)
     except AttributeError:
         try:
             # Try computing the volumes explicitly?
-            hsml = np.cbrt(data.gas.masses / data.gas.densities)
+            hsml = np.cbrt(data.masses / data.densities)
         except AttributeError:
             # Fall back to SPH behavior if above didn't work...
             hsml = get_hsml_sph(data)
