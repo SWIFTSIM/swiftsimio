@@ -1167,13 +1167,26 @@ def test_nongas_smoothing_lengths(cosmological_volume_only_single_local):
     Just makes sure that we get back a unyt_array for unyt_array input, and
     a cosmo_array for cosmo_array input.
     """
-    # If project_gas runs without error the smoothing lengths seem usable.
     data = load(cosmological_volume_only_single_local)
     data.dark_matter.smoothing_length = generate_smoothing_lengths(
         data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
     )
-    project_pixel_grid(data.dark_matter, resolution=256, project="masses")
     assert isinstance(data.dark_matter.smoothing_length, cosmo_array)
+
+    project_pixel_grid(data.dark_matter, resolution=256, project="masses")
+    assert isinstance(
+        slice_pixel_grid(
+            data.dark_matter,
+            z_slice=0.5 * data.metadata.boxsize[2],
+            resolution=256,
+            project="masses",
+        ),
+        cosmo_array,
+    )
+    assert isinstance(
+        render_voxel_grid(data.dark_matter, resolution=64, project="masses"),
+        cosmo_array,
+    )
 
     # We should also be able to use a unyt_array (rather than cosmo_array) as input,
     # and in this case get unyt_array as output.
@@ -1188,35 +1201,6 @@ def test_nongas_smoothing_lengths(cosmological_volume_only_single_local):
     assert not isinstance(hsml, cosmo_array)
 
     return
-
-
-def test_slice_pixel_grid_nongas(cosmological_volume_only_single_local):
-    """Check that slice_pixel_grid works for non-gas particle types."""
-    data = load(cosmological_volume_only_single_local)
-    data.dark_matter.smoothing_length = generate_smoothing_lengths(
-        data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
-    )
-    result = slice_pixel_grid(
-        data.dark_matter,
-        z_slice=0.5 * data.metadata.boxsize[2],
-        resolution=256,
-        project="masses",
-    )
-    assert isinstance(result, cosmo_array)
-
-
-def test_render_voxel_grid_nongas(cosmological_volume_only_single_local):
-    """Check that render_voxel_grid works for non-gas particle types."""
-    data = load(cosmological_volume_only_single_local)
-    data.dark_matter.smoothing_length = generate_smoothing_lengths(
-        data.dark_matter.coordinates, data.metadata.boxsize, kernel_gamma=1.8
-    )
-    result = render_voxel_grid(
-        data.dark_matter,
-        resolution=64,
-        project="masses",
-    )
-    assert isinstance(result, cosmo_array)
 
 
 class TestPowerSpectrum:
