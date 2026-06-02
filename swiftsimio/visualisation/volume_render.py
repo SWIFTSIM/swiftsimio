@@ -86,6 +86,8 @@ def render_voxel_grid(
 
     See Also
     --------
+    project_pixel_grid
+        Creates a 2D projection of a particle dataset.
     slice_pixel_grid
         Creates a 2D slice of a particle dataset.
     render_gas

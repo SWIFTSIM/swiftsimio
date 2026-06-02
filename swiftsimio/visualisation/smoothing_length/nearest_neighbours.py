@@ -23,13 +23,12 @@ def get_hsml(data: __SWIFTGroupDataset) -> cosmo_array:
     cosmo_array
         The extracted "smoothing lengths".
     """
-    try:
+    if hasattr(data, "volumes"):
         hsml = np.cbrt(data.volumes)
-    except AttributeError:
-        try:
-            # Try computing the volumes explicitly?
-            hsml = np.cbrt(data.masses / data.densities)
-        except AttributeError:
-            # Fall back to SPH behavior if above didn't work...
-            hsml = get_hsml_sph(data)
+    elif hasattr(data, "masses") and hasattr(data, "densities"):
+        # Try computing the volumes explicitly?
+        hsml = np.cbrt(data.masses / data.densities)
+    else:
+        # Fall back to SPH behavior if above didn't work...
+        hsml = get_hsml_sph(data)
     return hsml
