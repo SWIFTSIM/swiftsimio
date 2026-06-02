@@ -14,9 +14,11 @@ with :math:`\tilde{A}_i` the smoothed quantity in pixel :math:`i`, and
 :math:`j` all particles in the simulation, with :math:`W` the 3D kernel.
 Here we use the Wendland-C2 kernel.
 
-The primary function here is
-:func:`swiftsimio.visualisation.volume_render.render_gas`, which allows you
-to create a gas density grid of any field, see the example below.
+The primary functions here are
+:func:`swiftsimio.visualisation.volume_render.render_voxel_grid`, which allows
+you to create a voxel grid of any field for any particle type, and the
+convenience wrapper :func:`swiftsimio.visualisation.volume_render.render_gas`
+for gas particles. See the examples below.
 
 Example
 -------
@@ -155,6 +157,50 @@ approach to rotations applied to the above example is shown below.
 
    # A 256 x 256 x 256 cube with dimensions of temperature
    temp_cube = mass_weighted_temp_cube / mass_cube
+
+
+Other particle types
+--------------------
+
+Other particle types can be volume rendered using
+:func:`swiftsimio.visualisation.volume_render.render_voxel_grid`.
+
+For particle types that do not have smoothing lengths (e.g. dark matter),
+you will need to generate them first using
+:func:`~swiftsimio.visualisation.smoothing_length.generate.generate_smoothing_lengths`.
+
+.. code-block:: python
+
+   from swiftsimio import load
+   from swiftsimio.visualisation.volume_render import render_voxel_grid
+   from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
+
+   data = load("cosmo_volume_example.hdf5")
+
+   # Generate smoothing lengths for the dark matter
+   data.dark_matter.smoothing_length = generate_smoothing_lengths(
+       data.dark_matter.coordinates,
+       data.metadata.boxsize,
+       kernel_gamma=1.8,
+       neighbours=57,
+       speedup_fac=2,
+       dimension=3,
+   )
+
+   # Render the dark matter mass
+   dm_mass_cube = render_voxel_grid(
+       # Pass the dark matter dataset, not the whole data object
+       data=data.dark_matter,
+       resolution=256,
+       project="masses",
+       parallel=True,
+       periodic=True,
+   )
+
+   from matplotlib.pyplot import imsave
+   from matplotlib.colors import LogNorm
+
+   imsave("dm_mass_cube_projection.png", LogNorm()(dm_mass_cube.sum(-1).value), cmap="inferno")
 
 
 Rendering

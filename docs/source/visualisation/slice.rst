@@ -18,9 +18,11 @@ There is also an alternative :code:`"nearest_neighbours"` backend, which uses
 nearest-neighbour interpolation to compute the densities at each pixel.
 This backend is more suited for use with moving-mesh hydrodynamics schemes.
 
-The primary function here is
-:func:`swiftsimio.visualisation.slice.slice_gas`, which allows you to
-create a gas slice of any field. See the example below.
+The primary functions here are
+:func:`swiftsimio.visualisation.slice.slice_pixel_grid`, which allows you to
+create a slice of any field for any particle type, and the convenience wrapper
+:func:`swiftsimio.visualisation.slice.slice_gas` for gas particles. See the
+examples below.
 
 Example
 -------
@@ -202,6 +204,51 @@ approach to rotations applied to the above example is shown below.
 
    # Normalize and save
    imsave("temp_map.png", LogNorm()(temp_map.value), cmap="twilight")
+
+
+Other particle types
+--------------------
+
+Other particle types can be sliced using
+:func:`swiftsimio.visualisation.slice.slice_pixel_grid`.
+
+For particle types that do not have smoothing lengths (e.g. dark matter),
+you will need to generate them first using
+:func:`~swiftsimio.visualisation.smoothing_length.generate.generate_smoothing_lengths`.
+
+.. code-block:: python
+
+   from swiftsimio import load
+   from swiftsimio.visualisation.slice import slice_pixel_grid
+   from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
+
+   data = load("cosmo_volume_example.hdf5")
+
+   # Generate smoothing lengths for the dark matter
+   data.dark_matter.smoothing_length = generate_smoothing_lengths(
+       data.dark_matter.coordinates,
+       data.metadata.boxsize,
+       kernel_gamma=1.8,
+       neighbours=57,
+       speedup_fac=2,
+       dimension=3,
+   )
+
+   # Slice the dark matter mass at the midplane
+   dm_mass_slice = slice_pixel_grid(
+       # Pass the dark matter dataset, not the whole data object
+       data=data.dark_matter,
+       z_slice=0.5 * data.metadata.boxsize[2],
+       resolution=1024,
+       project="masses",
+       parallel=True,
+       periodic=True,
+   )
+
+   from matplotlib.pyplot import imsave
+   from matplotlib.colors import LogNorm
+
+   imsave("dm_mass_slice.png", LogNorm()(dm_mass_slice.value), cmap="inferno")
 
 
 Lower-level API

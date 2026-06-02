@@ -8,6 +8,7 @@ from typing import Literal
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.accelerated import jit
+from swiftsimio.reader import __SWIFTGroupDataset
 
 from swiftsimio.optional_packages import plt
 
@@ -21,8 +22,8 @@ from swiftsimio.visualisation._vistools import (
 )
 
 
-def render_gas(
-    data: SWIFTDataset,
+def render_voxel_grid(
+    data: __SWIFTGroupDataset,
     resolution: int,
     project: str | None = "masses",
     parallel: bool = False,
@@ -32,12 +33,12 @@ def render_gas(
     periodic: bool = True,
 ) -> cosmo_array:
     """
-    Create a data-field weighted 3D render of a SWIFT dataset as a voxel grid.
+    Create a data-field weighted 3D render of a particle dataset as a voxel grid.
 
     Parameters
     ----------
-    data : SWIFTDataset
-        Dataset from which render is extracted.
+    data : __SWIFTGroupDataset
+        Particle dataset to render (e.g. ``data.gas``, ``data.dark_matter``).
 
     resolution : int
         Specifies size of return np.array.
@@ -52,7 +53,7 @@ def render_gas(
         defaults to False, but can speed up the creation of large images
         significantly at the cost of increased memory usage.
 
-    rotation_matrix : np.array, optional
+    rotation_matrix : np.ndarray, optional
         Rotation matrix (3x3) that describes the rotation of the box around
         ``rotation_center``. In the default case, this provides a volume render
         viewed along the z axis.
@@ -85,11 +86,13 @@ def render_gas(
 
     See Also
     --------
-    slice_gas_pixel_grid
-        Creates a 2D slice of a SWIFT dataset.
+    project_pixel_grid
+        Creates a 2D projection of a particle dataset.
+    slice_pixel_grid
+        Creates a 2D slice of a particle dataset.
+    render_gas
+        Convenience wrapper for volume rendering gas particles.
     """
-    data = data.gas
-
     m = _get_projection_field(data, project)
     region_info = _get_region_info(data, region, require_cubic=True, periodic=periodic)
     hsml = backends_get_hsml["sph"](data)
@@ -121,6 +124,87 @@ def render_gas(
     image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
 
     return image
+
+
+def render_gas(
+    data: SWIFTDataset,
+    resolution: int,
+    project: str | None = "masses",
+    parallel: bool = False,
+    rotation_matrix: np.ndarray | None = None,
+    rotation_center: cosmo_array | None = None,
+    region: cosmo_array | None = None,
+    periodic: bool = True,
+) -> cosmo_array:
+    """
+    Create a data-field weighted 3D render of the gas in a SWIFT dataset as a voxel grid.
+
+    Parameters
+    ----------
+    data : SWIFTDataset
+        Dataset from which render is extracted.
+
+    resolution : int
+        Specifies size of return np.array.
+
+    project : str, optional
+        Data field to be projected. Default is ``"mass"``. If ``None`` then simply
+        count number of particles. The result is comoving if this is comoving, else
+        it is physical.
+
+    parallel : bool
+        Used to determine if we will create the image in parallel. This
+        defaults to False, but can speed up the creation of large images
+        significantly at the cost of increased memory usage.
+
+    rotation_matrix : np.ndarray, optional
+        Rotation matrix (3x3) that describes the rotation of the box around
+        ``rotation_center``. In the default case, this provides a volume render
+        viewed along the z axis.
+
+    rotation_center : cosmo_array, optional
+        Center of the rotation. If you are trying to rotate around a galaxy, this
+        should be the most bound particle.
+
+    region : cosmo_array, optional
+        Determines where the image will be created
+        (this corresponds to the left and right-hand edges, and top and bottom
+        edges, and front and back edges) if it is not None. It should have a
+        length of six, and take the form:
+
+        [x_min, x_max, y_min, y_max, z_min, z_max]
+
+        Particles outside of this range are still considered if their
+        smoothing lengths overlap with the range.
+
+    periodic : bool, optional
+        Account for periodic boundaries for the simulation box?
+        Default is ``True``.
+
+    Returns
+    -------
+    cosmo_array
+        Voxel grid with units of project / length^3, of size ``resolution`` x
+        ``resolution`` x ``resolution``. Comoving if ``project`` data are
+        comoving, else physical.
+
+    See Also
+    --------
+    render_voxel_grid
+        Renders any particle type, not just gas.
+    slice_pixel_grid
+        Creates a 2D slice of a particle dataset.
+    """
+    return render_voxel_grid(
+        data=data.gas,
+        resolution=resolution,
+        project=project,
+        parallel=parallel,
+        rotation_matrix=rotation_matrix,
+        rotation_center=rotation_center,
+        region=region,
+        periodic=periodic,
+    )
 
 
 @jit(nopython=True, fastmath=True)
