@@ -17,8 +17,9 @@ def test_ranges_from_array():
     my_array = np.array([0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 13], dtype=int)
 
     out = np.array([[0, 4], [5, 8], [9, 10], [11, 14]])
-
-    assert (ranges_from_array(my_array) == out).all()
+    result = ranges_from_array(my_array)
+    assert (result == out).all()
+    assert result.dtype == np.dtype("int")
 
     return
 
@@ -36,11 +37,12 @@ def test_ranges_from_array_non_contiguous():
 
 def test_ranges_from_array_empty():
     """Tests the ranges from array function when the array is empty."""
-    my_array = np.array([], dtype=int)
+    my_array = np.array([])
 
     out = np.array([[0, 0]])
-
-    assert (ranges_from_array(my_array) == out).all()
+    result = ranges_from_array(my_array)
+    assert (result == out).all()
+    assert result.dtype == np.dtype("int")
 
 
 def test_read_ranges_from_file():

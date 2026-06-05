@@ -83,7 +83,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     if len(array) == 0:
         # the "empty" mask, from 0 to 0 gets 0 elements
-        return np.array([[0, 0]])
+        return np.array([[0, 0]], dtype=np.dtype("int"))
     start = array[0]
     stop = array[0]
 
@@ -98,7 +98,7 @@ def ranges_from_array(array: np.array) -> np.ndarray:
 
     output.append([start, stop + 1])
 
-    return np.array(output)
+    return np.array(output, dtype=np.dtype("int"))
 
 
 def read_ranges_from_file_unchunked(
