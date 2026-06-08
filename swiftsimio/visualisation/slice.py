@@ -24,6 +24,7 @@ def slice_pixel_grid(
     region: cosmo_array | None = None,
     backend: str = "sph",
     periodic: bool = True,
+    mask: np.ndarray | None = None,
 ) -> cosmo_array:
     """
     Create a data field-weighted 2D slice through a particle dataset as a pixel grid.
@@ -79,6 +80,12 @@ def slice_pixel_grid(
         Account for periodic boundaries for the simulation box?
         Default is ``True``.
 
+    mask : np.array, optional
+        Allows only a sub-set of the particles in data to be visualised. Useful
+        in cases where you have read data out of a ``velociraptor`` catalogue,
+        or if you only want to visualise e.g. star forming particles. This boolean
+        mask is applied just before visualisation.
+
     Returns
     -------
     cosmo_array
@@ -107,14 +114,15 @@ def slice_pixel_grid(
         if rotation_center is not None
         else np.zeros_like(data.metadata.boxsize[2])
     )
+    mask = mask if mask is not None else np.s_[...]
 
     # determine the effective number of pixels for each dimension
     xres = int(np.ceil(resolution * region_info["x_range"] / region_info["max_range"]))
     yres = int(np.ceil(resolution * region_info["y_range"] / region_info["max_range"]))
 
-    normed_x = (x - region_info["x_min"]) / region_info["max_range"]
-    normed_y = (y - region_info["y_min"]) / region_info["max_range"]
-    normed_z = z / region_info["max_range"]
+    normed_x = (x[mask] - region_info["x_min"]) / region_info["max_range"]
+    normed_y = (y[mask] - region_info["y_min"]) / region_info["max_range"]
+    normed_z = z[mask] / region_info["max_range"]
     normed_z_slice = (z_slice + z_center) / region_info["max_range"]
     if periodic:
         # place everything in the region inside [0, 1], the backend will tile as needed
@@ -122,6 +130,11 @@ def slice_pixel_grid(
         normed_y %= region_info["periodic_box_y"]
         normed_z %= region_info["periodic_box_z"]
         normed_z_slice %= region_info["periodic_box_z"]
+
+    # Apply the mask to the other arrays
+    m = m[mask]
+    hsml = hsml[mask]
+
     kwargs = dict(
         x=normed_x,
         y=normed_y,
@@ -152,6 +165,7 @@ def slice_gas(
     region: cosmo_array | None = None,
     backend: str = "sph",
     periodic: bool = True,
+    mask: np.ndarray | None = None,
 ) -> cosmo_array:
     """
     Create a data field-weighted 2D slice through the gas of a SWIFT dataset as a pixel grid.
@@ -207,6 +221,12 @@ def slice_gas(
         Account for periodic boundaries for the simulation box?
         Default is ``True``.
 
+    mask : np.array, optional
+        Allows only a sub-set of the particles in data to be visualised. Useful
+        in cases where you have read data out of a ``velociraptor`` catalogue,
+        or if you only want to visualise e.g. star forming particles. This boolean
+        mask is applied just before visualisation.
+
     Returns
     -------
     cosmo_array
@@ -231,4 +251,5 @@ def slice_gas(
         region=region,
         backend=backend,
         periodic=periodic,
+        mask=mask,
     )
