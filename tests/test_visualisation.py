@@ -1604,3 +1604,81 @@ def test_input_region_unmutated(cosmological_volume_only_single_local):
     assert np.allclose(im_region.to_physical_value(unyt.Mpc), float_region)
     project_gas(data, 16, region=im_region, periodic=False)
     assert np.allclose(im_region.to_physical_value(unyt.Mpc), float_region)
+
+
+class TestVisualisationMask:
+    """Tests for the particle masking functionality in projections and slices."""
+
+    def test_projection(self, cosmological_volume_only_single_local):
+        """
+        Tests masking for projections.
+
+        Passing the mask parameter should be equivalent to filtering out the un-masked data and calling without a mask.
+        """
+        sd = load(cosmological_volume_only_single_local)
+        n_gas = sd.metadata.n_gas
+
+        mask = np.zeros(n_gas, dtype=np.bool)
+        mask[::2] = True
+
+        parallel = True
+        box_res = 256
+
+        with np.errstate(
+            invalid="ignore"
+        ):  # invalid value encountered in divide happens sometimes
+            masked_img = project_gas(
+                sd, resolution=box_res, parallel=parallel, periodic=True, mask=mask
+            )
+
+            # Now we just get rid of all the masked outright.
+            for f in ("coordinates", "smoothing_lengths", "masses"):
+                masked_arr = getattr(sd.gas, f)[::2]
+                setattr(sd.gas, f, masked_arr)
+
+            ref_img = project_gas(
+                sd,
+                resolution=box_res,
+                parallel=parallel,
+                periodic=True,
+            )
+            assert np.allclose(masked_img, ref_img)
+
+    def test_slice(self, cosmological_volume_only_single_local):
+        """
+        Tests masking for slices.
+
+        Passing the mask parameter should be equivalent to filtering out the un-masked data and calling without a mask.
+        """
+        sd = load(cosmological_volume_only_single_local)
+        n_gas = sd.metadata.n_gas
+
+        mask = np.zeros(n_gas, dtype=np.bool)
+        mask[::2] = True
+
+        parallel = True
+        box_res = 256
+
+        with np.errstate(
+            invalid="ignore"
+        ):  # invalid value encountered in divide happens sometimes
+            masked_img = slice_gas(
+                sd,
+                resolution=box_res,
+                parallel=parallel,
+                periodic=True,
+                mask=mask,
+            )
+
+            # Now we just get rid of all the masked outright.
+            for f in ("coordinates", "smoothing_lengths", "masses"):
+                masked_arr = getattr(sd.gas, f)[::2]
+                setattr(sd.gas, f, masked_arr)
+
+            ref_img = slice_gas(
+                sd,
+                resolution=box_res,
+                parallel=parallel,
+                periodic=True,
+            )
+            assert np.allclose(masked_img, ref_img)
