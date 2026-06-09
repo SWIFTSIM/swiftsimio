@@ -1628,7 +1628,11 @@ class TestVisualisationMask:
             invalid="ignore"
         ):  # invalid value encountered in divide happens sometimes
             masked_img = project_gas(
-                sd, resolution=box_res, parallel=parallel, periodic=True, mask=mask
+                sd,
+                resolution=box_res,
+                parallel=parallel,
+                periodic=True,
+                mask=mask,
             )
 
             # Now we just get rid of all the un-masked data outright.
