@@ -11,6 +11,7 @@ helpers, wrappers and implementations that enable most :mod:`numpy` and
 :mod:`unyt` functions to work with our cosmology-aware arrays.
 """
 
+import inspect
 import unyt
 from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
@@ -277,6 +278,12 @@ class cosmo_factor(object):
 
         from swiftsimio.objects import a  # the scale factor (a sympy symbol object)
         density_cosmo_factor = cosmo_factor(a**3, scale_factor=0.97)
+
+    Or equivalently, but avoiding the extra import, with the ``create`` classmethod:
+
+    .. code-block:: python
+
+        density_cosmo_factor = cosmo_factor.create(0.97, 3)
 
     :class:`~swiftsimio.objects.cosmo_factor` supports arithmetic, for example:
 
@@ -1902,7 +1909,7 @@ class cosmo_array(unyt_array):
 
         Examples
         --------
-        ::
+        .. code-block:: python
 
             >>> from astropy.units import kpc
             >>> cosmo_array.from_astropy([1, 2, 3] * kpc)
@@ -2306,6 +2313,15 @@ class cosmo_array(unyt_array):
         else:
             # default to numpy's private implementation
             function_to_invoke = func._implementation
+        # check if the function has a "like" argument and if so pass self (which is where
+        # numpy puts the `like` argument that it received when dispatching to us) along
+        # as the like argument
+        try:
+            if "like" in inspect.getfullargspec(function_to_invoke).kwonlyargs:
+                kwargs["like"] = self
+        except TypeError:
+            # e.g. unyt raises if function_to_invoke is cumprod
+            pass
         return function_to_invoke(*args, **kwargs)
 
     def __mul__(

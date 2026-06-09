@@ -287,9 +287,7 @@ def _ensure_result_is_cosmo_array_or_quantity(func: Callable) -> Callable:
         The wrapped function.
     """
 
-    def wrapped(
-        *args: tuple[Any], **kwargs: dict[str, Any]
-    ) -> object:  # # noqa numpydoc ignore=GL08
+    def wrapped(*args: tuple[Any], **kwargs: dict[str, Any]) -> object:  # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
         result = func(*args, **kwargs)
         if isinstance(result, tuple):
@@ -1270,6 +1268,59 @@ def _default_oplist_wrapper(unyt_func: Callable) -> Callable:
             **helper_result["kwargs"],
         )
         return _return_helper(res, helper_result_oplist, ret_cf)
+
+    return wrapper
+
+
+def _array_like_wrapper(func: Callable) -> Callable:
+    """
+    Wrap functions accepting a ``like`` kwarg.
+
+    Several :mod:`numpy` functions allow passing a ``like`` kwarg that can be used to
+    copy attributes or otherwise handle properties from a subclass when a new array is
+    created. This wrapper lets us implement these functions easily.
+
+    Can be used as a decorator.
+
+    Parameters
+    ----------
+    func : Callable
+        The :mod:`numpy` function to be wrapped.
+
+    Returns
+    -------
+    Callable
+        The wrapped function.
+    """
+
+    def wrapper(
+        *args: tuple[Any], like: "objects.cosmo_array" = None, **kwargs: dict[str, Any]
+    ) -> Callable:
+        """
+        Create the new array, view it as a cosmo array or quantity, and attach attributes.
+
+        Parameters
+        ----------
+        *args : tuple[Any]
+            Arbitrary arguments of the wrapped function.
+
+        like : ~swiftsimio.objects.cosmo_array
+            The array that attributes are copied from.
+
+        **kwargs : dict[str, Any]
+            Arbitrary kwargs of the wrapped function.
+
+        Returns
+        -------
+        Callable
+            The wrapped function.
+        """
+        arr = func(*args, **kwargs)
+        cosmo = arr.view(
+            objects.cosmo_quantity if arr.ndim == 0 else objects.cosmo_array
+        )
+        _copy_cosmo_array_attributes_if_present(like, cosmo, copy_units=True)
+        return cosmo
 
     return wrapper
 
@@ -2318,3 +2369,27 @@ def meshgrid(*xi, **kwargs):  # noqa numpydoc ignore=GL08
     return tuple(
         _copy_cosmo_array_attributes_if_present(x, r) for (x, r) in zip(xi, res)
     )
+
+
+# wrap array creation functions that take a `like` kwarg
+implements(np.arange)(_array_like_wrapper(np.arange))
+implements(np.empty)(_array_like_wrapper(np.empty))
+implements(np.ones)(_array_like_wrapper(np.ones))
+implements(np.zeros)(_array_like_wrapper(np.zeros))
+implements(np.full)(_array_like_wrapper(np.full))
+implements(np.array)(_array_like_wrapper(np.array))
+implements(np.asarray)(_array_like_wrapper(np.asarray))
+implements(np.asanyarray)(_array_like_wrapper(np.asanyarray))
+implements(np.ascontiguousarray)(_array_like_wrapper(np.ascontiguousarray))
+implements(np.asfortranarray)(_array_like_wrapper(np.asfortranarray))
+implements(np.require)(_array_like_wrapper(np.require))
+implements(np.fromfunction)(_array_like_wrapper(np.fromfunction))
+implements(np.fromstring)(_array_like_wrapper(np.fromstring))
+implements(np.fromiter)(_array_like_wrapper(np.fromiter))
+implements(np.fromfile)(_array_like_wrapper(np.fromfile))
+implements(np.frombuffer)(_array_like_wrapper(np.frombuffer))
+implements(np.identity)(_array_like_wrapper(np.identity))
+implements(np.loadtxt)(_array_like_wrapper(np.loadtxt))
+implements(np.genfromtxt)(_array_like_wrapper(np.genfromtxt))
+implements(np.eye)(_array_like_wrapper(np.eye))
+implements(np.tri)(_array_like_wrapper(np.tri))
