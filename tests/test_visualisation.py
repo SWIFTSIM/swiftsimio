@@ -1631,7 +1631,7 @@ class TestVisualisationMask:
                 sd, resolution=box_res, parallel=parallel, periodic=True, mask=mask
             )
 
-            # Now we just get rid of all the masked outright.
+            # Now we just get rid of all the un-masked data outright.
             for f in ("coordinates", "smoothing_lengths", "masses"):
                 masked_arr = getattr(sd.gas, f)[::2]
                 setattr(sd.gas, f, masked_arr)
@@ -1670,7 +1670,7 @@ class TestVisualisationMask:
                 mask=mask,
             )
 
-            # Now we just get rid of all the masked outright.
+            # Now we just get rid of all the un-masked data outright.
             for f in ("coordinates", "smoothing_lengths", "masses"):
                 masked_arr = getattr(sd.gas, f)[::2]
                 setattr(sd.gas, f, masked_arr)
