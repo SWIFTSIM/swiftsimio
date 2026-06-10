@@ -31,6 +31,7 @@ def render_voxel_grid(
     rotation_center: cosmo_array | None = None,
     region: cosmo_array | None = None,
     periodic: bool = True,
+    mask: np.ndarray | None = None,
 ) -> cosmo_array:
     """
     Create a data-field weighted 3D render of a particle dataset as a voxel grid.
@@ -77,6 +78,12 @@ def render_voxel_grid(
         Account for periodic boundaries for the simulation box?
         Default is ``True``.
 
+    mask : np.array, optional
+        Allows only a sub-set of the particles in data to be visualised. Useful
+        in cases where you have read data out of a ``velociraptor`` catalogue,
+        or if you only want to visualise e.g. star forming particles. This boolean
+        mask is applied just before visualisation.
+
     Returns
     -------
     cosmo_array
@@ -100,20 +107,22 @@ def render_voxel_grid(
         data, rotation_matrix, rotation_center, periodic
     )
 
-    normed_x = (x - region_info["x_min"]) / region_info["x_range"]
-    normed_y = (y - region_info["y_min"]) / region_info["y_range"]
-    normed_z = (z - region_info["z_min"]) / region_info["z_range"]
+    mask = mask if mask is not None else np.s_[...]
+    normed_x = (x[mask] - region_info["x_min"]) / region_info["x_range"]
+    normed_y = (y[mask] - region_info["y_min"]) / region_info["y_range"]
+    normed_z = (z[mask] - region_info["z_min"]) / region_info["z_range"]
     if periodic:
         # place everything in the region inside [0, 1], the backend will tile as needed
         normed_x %= region_info["periodic_box_x"]
         normed_y %= region_info["periodic_box_y"]
         normed_z %= region_info["periodic_box_z"]
+
     kwargs = dict(
         x=normed_x,
         y=normed_y,
         z=normed_z,
-        m=m,
-        h=hsml / region_info["x_range"],  # cubic so x_range == y_range == z_range
+        m=m[mask],
+        h=hsml[mask] / region_info["x_range"],  # cubic so x_range == y_range == z_range
         res=resolution,
         box_x=region_info["periodic_box_x"],
         box_y=region_info["periodic_box_y"],
@@ -135,6 +144,7 @@ def render_gas(
     rotation_center: cosmo_array | None = None,
     region: cosmo_array | None = None,
     periodic: bool = True,
+    mask: np.ndarray | None = None,
 ) -> cosmo_array:
     """
     Create a data-field weighted 3D render of the gas in a SWIFT dataset as a voxel grid.
@@ -181,6 +191,12 @@ def render_gas(
         Account for periodic boundaries for the simulation box?
         Default is ``True``.
 
+    mask : np.array, optional
+        Allows only a sub-set of the particles in data to be visualised. Useful
+        in cases where you have read data out of a ``velociraptor`` catalogue,
+        or if you only want to visualise e.g. star forming particles. This boolean
+        mask is applied just before visualisation.
+
     Returns
     -------
     cosmo_array
@@ -204,6 +220,7 @@ def render_gas(
         rotation_center=rotation_center,
         region=region,
         periodic=periodic,
+        mask=mask,
     )
 
 
