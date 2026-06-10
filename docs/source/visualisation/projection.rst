@@ -189,7 +189,7 @@ The :mod:`swiftsimio.visualisation.rotation` sub-module provides routines to
 generate rotation matrices corresponding to vectors, which can then be
 provided to the ``rotation_matrix`` argument of
 :func:`~swiftsimio.visualisation.projection.project_gas` (and
-:func:`~swiftsimio.visualisation.projection.project_gas_pixel_grid`). You will also need
+:func:`~swiftsimio.visualisation.projection.project_pixel_grid`). You will also need
 to supply the ``rotation_center`` argument, as the rotation takes place around this given
 point. The example code below loads a snapshot, and a halo catalogue, and
 creates an edge-on and face-on projection using the integration in
@@ -263,7 +263,7 @@ is shown in the ``velociraptor`` section.
    data_mask.constrain_spatial(region)
    data = load(snapshot_filename, mask=data_mask)
 
-   # Use project_gas_pixel_grid to generate projected images
+   # Use project_pixel_grid to generate projected images
 
    common_arguments = dict(
        data=data,
