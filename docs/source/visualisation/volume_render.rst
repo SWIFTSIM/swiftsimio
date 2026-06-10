@@ -159,6 +159,65 @@ approach to rotations applied to the above example is shown below.
    temp_cube = mass_weighted_temp_cube / mass_cube
 
 
+Masking
+-------
+
+Sometimes you want to render only a subset of a snapshot's data, for example
+just particles belonging to a given friends-of-friends group.
+To achieve this, you can provide a boolean mask to
+:func:`~swiftsimio.visualisation.volume_render.render_pixel_grid` or
+:func:`~swiftsimio.visualisation.volume_render.render_gas` to render only the
+particles which the mask specifies.
+
+.. code-block:: python
+
+   from swiftsimio import load, mask, cosmo_array
+   from swiftsimio.visualisation.volume_render import render_gas
+
+   snapshot_filename = "cosmo_volume_example.hdf5"
+   catalog_filename = "fof_output_example.hdf5"
+
+   # Which halo are we looking at?
+   halo = 0
+
+   fof_catalog = load(catalog_filename)
+
+   fof_id = fof_catalog.fof_groups.group_ids[halo]
+   fof_radius = fof_catalog.fof_groups.radii[halo]
+   fof_centre = fof_catalog.fof_groups.centres[halo]
+
+   # Add some buffer space around the edges
+   fof_radius *= 1.1
+
+   # Define a region around the fof group
+   region = cosmo_array(
+       [
+           [fof_centre[0] - fof_radius, fof_centre[0] + fof_radius],
+           [fof_centre[1] - fof_radius, fof_centre[1] + fof_radius],
+           [fof_centre[2] - fof_radius, fof_centre[2] + fof_radius],
+       ],
+       fof_centre.units,
+       comoving=True,
+       scale_factor=fof_catalog.metadata.a,
+       scale_exponent=1,
+   )
+
+   # Only load data in our region of interest
+   data_mask = mask(snapshot_filename)
+   data_mask.constrain_spatial(region)
+
+   data = load(snapshot_filename, mask=data_mask)
+
+   halo_render = render_gas(
+       data,
+       resolution=512,
+       parallel=True,
+       region=region.ravel(),
+       periodic=True,
+       mask=data.gas.fofgroup_id == fof_id, # Only render particles in the group
+   )
+
+
 Other particle types
 --------------------
 
