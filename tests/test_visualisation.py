@@ -1647,6 +1647,7 @@ class TestVisualisationMask:
                 periodic=True,
             )
             assert np.allclose(masked_img, ref_img)
+            assert np.any(masked_img > 0.0)
 
     def test_slice(self, cosmological_volume_only_single_local):
         """
@@ -1686,6 +1687,7 @@ class TestVisualisationMask:
                 periodic=True,
             )
             assert np.allclose(masked_img, ref_img)
+            assert np.any(masked_img > 0.0)
 
     def test_render(self, cosmological_volume_only_single_local):
         """
@@ -1725,3 +1727,4 @@ class TestVisualisationMask:
                 periodic=True,
             )
             assert np.allclose(masked_img, ref_img)
+            assert np.any(masked_img > 0.0)
