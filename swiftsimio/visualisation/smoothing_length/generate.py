@@ -18,6 +18,7 @@ def generate_smoothing_lengths(
     kernel_gamma: np.float32,
     neighbours: int = 32,
     speedup_fac: int = 2,
+    /,
     dimension: int = 3,
 ) -> cosmo_array:
     """
