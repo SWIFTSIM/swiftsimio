@@ -11,8 +11,9 @@ Nothing in this module is intended to be user-facing, but the helpers and wrappe
 are documented to assist in maintenance and development of swiftsimio.
 """
 
+import inspect
 import warnings
-from functools import reduce
+from functools import reduce, wraps
 import numpy as np
 from typing import Callable, Any
 import unyt
@@ -191,13 +192,21 @@ def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
         The wrapped function.
     """
 
-    def wrapped(
-        obj: object,
-        *args: tuple[Any],
-        **kwargs: dict[str, Any],
-    ) -> object:  # noqa numpydoc ignore=GL08
-        # omit docstring so that sphinx picks up docstring of wrapped function
-        return _copy_cosmo_array_attributes_if_present(obj, func(obj, *args, **kwargs))
+    @wraps(func)
+    def wrapped(*args: Any, **kwargs: Any) -> Any:  # noqa numpydoc ignore=GL08
+        # The first argument (whose attributes are copied onto the result) may be
+        # supplied positionally or by keyword. Recover it in either case so the
+        # decorator no longer depends on the argument being passed positionally
+        # (see issue #234, where ``coordinates=...`` raised a cryptic
+        # "missing 1 required positional argument: 'obj'" error).
+        if args:
+            obj = args[0]
+        else:
+            # All-keyword call: fall back to the wrapped function's first
+            # parameter name to locate the object whose attributes we propagate.
+            obj = kwargs.get(next(iter(inspect.signature(func).parameters)))
+
+        return _copy_cosmo_array_attributes_if_present(obj, func(*args, **kwargs))
 
     return wrapped
 
