@@ -2222,180 +2222,6 @@ class cosmo_array(unyt_array):
 
         return obj
 
-    @classmethod
-    def __unyt_ufunc_prepare__(
-        cls, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any
-    ) -> tuple[np.ufunc, str, tuple, dict]:
-        """
-        Prepare arguments for a ufunc call.
-
-        This function gives us the opportunity to pre-process arguments to a ufunc call
-        before handing control off to :mod:`unyt`. The arguments and kwargs are checked
-        for consistent ``cosmo_factor`` attributes and coerced to a common
-        comoving/physical state.
-
-        Parameters
-        ----------
-        ufunc : ~numpy.ufunc
-            The ufunc that is about to be called.
-
-        method : str
-            The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
-
-        *inputs : Any
-            The ufunc arguments.
-
-        **kwargs : Any
-            The ufunc kwargs.
-
-        Returns
-        -------
-        ~numpy.ufunc
-            The ufunc that is about to be called.
-
-        str
-            The call method for the ufunc.
-
-        tuple
-            The now prepared arguments for the ufunc.
-
-        dict
-            The now prepared kwargs for the ufunc.
-        """
-        helper_result = _prepare_array_func_args(*inputs, **kwargs)
-        return ufunc, method, helper_result["args"], helper_result["kwargs"]
-
-    @classmethod
-    def __unyt_ufunc_finalize__(
-        cls,
-        result: tuple | unyt_array,
-        ufunc: np.ufunc,
-        method: str,
-        *inputs: Any,
-        **kwargs: Any,
-    ) -> "tuple | cosmo_array":
-        """
-        Finalize results after a ufunc call.
-
-        This function gives us the opportunity to post-process return value(s) from a
-        ufunc when we get control back from :mod:`unyt`. We check that the return type is
-        consistent with its shape (i.e. a :class:`~swiftsimio.objects.cosmo_array` or
-        :class:`~swiftsimio.objects.cosmo_quantity`) and attach our cosmo attributes.
-
-        Parameters
-        ----------
-        result : ~unyt.array.unyt_array or tuple
-            The return value of the called ufunc.
-
-        ufunc : ~numpy.ufunc
-            The ufunc that was called.
-
-        method : str
-            The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
-
-        *inputs : Any
-            The ufunc arguments.
-
-        **kwargs : Any
-            The ufunc kwargs.
-
-        Returns
-        -------
-        tuple or comso_array
-            The result of the ufunc call, with the appropriate type and cosmo attributes
-            attached.
-        """
-        # wonder if we could cache helper_result during __unyt_ufunc_prepare__ to use
-        # here?
-        helper_result = _prepare_array_func_args(*inputs, **kwargs)
-        cfs = helper_result["cfs"]
-        ret_cf: cosmo_factor | None
-        # make sure we evaluate the cosmo_factor_ufunc_registry function:
-        # might raise/warn even if we're not returning a cosmo_array
-        if ufunc in (multiply, divide) and method == "reduce":
-            power_map = POWER_MAPPING[ufunc]
-            if "axis" in kwargs and kwargs["axis"] is not None:
-                ret_cf = _power_cosmo_factor(
-                    cfs[0], None, power=power_map(inputs[0].shape[kwargs["axis"]])
-                )
-            else:
-                ret_cf = _power_cosmo_factor(
-                    cfs[0], None, power=power_map(inputs[0].size)
-                )
-        elif (
-            ufunc in (logical_and, logical_or, logical_xor, logical_not)
-            and method == "reduce"
-        ):
-            ret_cf = _return_without_cosmo_factor(cfs[0])
-        else:
-            ret_cf = cls._cosmo_factor_ufunc_registry[ufunc](*cfs, inputs=inputs)
-        # if we get a tuple we have multiple return values to deal with
-        if isinstance(result, tuple):
-            result = tuple(
-                (
-                    r.view(cosmo_quantity)
-                    if r.shape == ()
-                    else (
-                        r.view(cosmo_array)
-                        if isinstance(r, unyt_array) and not isinstance(r, cosmo_array)
-                        else r
-                    )
-                )
-                for r in result
-            )
-            for r in result:
-                if isinstance(r, cosmo_array):  # also recognizes cosmo_quantity
-                    r.comoving = helper_result["comoving"]
-                    r.cosmo_factor = ret_cf
-                    r.valid_transform = helper_result["valid_transform"]
-                    r.compression = helper_result["compression"]
-        elif isinstance(result, unyt_array):  # also recognizes cosmo_quantity
-            if not isinstance(result, cosmo_array):
-                result = (
-                    result.view(cosmo_quantity)
-                    if result.shape == ()
-                    else result.view(cosmo_array)
-                )
-            result.comoving = helper_result["comoving"]
-            result.cosmo_factor = ret_cf
-            result.valid_transform = helper_result["valid_transform"]
-            result.compression = helper_result["compression"]
-        if "out" in kwargs:
-            out: tuple | unyt_array = kwargs.pop("out")
-            if ufunc not in multiple_output_operators:
-                aout = out[0]
-                if isinstance(aout, unyt_array) and not isinstance(aout, cosmo_array):
-                    aout = (
-                        aout.view(cosmo_quantity)
-                        if aout.shape == ()
-                        else aout.view(cosmo_array)
-                    )
-                if isinstance(aout, cosmo_array):  # also recognizes cosmo_quantity
-                    aout.comoving = helper_result["comoving"]
-                    aout.cosmo_factor = ret_cf
-                    aout.valid_transform = helper_result["valid_transform"]
-                    aout.compression = helper_result["compression"]
-            else:
-                out = tuple(
-                    (
-                        (
-                            o.view(cosmo_quantity)
-                            if o.shape == ()
-                            else o.view(cosmo_array)
-                        )
-                        if isinstance(o, unyt_array) and not isinstance(o, cosmo_array)
-                        else o
-                    )
-                    for o in out
-                )
-                for o in out:
-                    if isinstance(o, cosmo_array):  # also recognizes cosmo_quantity
-                        o.comoving = helper_result["comoving"]
-                        o.cosmo_factor = ret_cf
-                        o.valid_transform = helper_result["valid_transform"]
-                        o.compression = helper_result["compression"]
-        return result
-
     def __array_ufunc__(
         self,
         ufunc: np.ufunc,
@@ -3077,113 +2903,6 @@ class _AHelper:
         else:
             return "None"
 
-    @classmethod
-    def __unyt_ufunc_prepare__(
-        cls, ufunc: np.ufunc, method: str, *inputs: Any, **kwargs: Any
-    ) -> tuple[np.ufunc, str, tuple, dict]:
-        """
-        Prepare arguments for a ufunc call.
-
-        This function gives us the opportunity to pre-process arguments to a ufunc call
-        before handing control off to :mod:`unyt`. We strip away any cosmo attributes
-        to be restored in :meth:`~swiftsimio.objects._AHelper.__unyt_ufunc_finalize__`.
-
-        Parameters
-        ----------
-        ufunc : ~numpy.ufunc
-            The ufunc that is about to be called.
-
-        method : str
-            The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
-
-        *inputs : Any
-            The ufunc arguments.
-
-        **kwargs : Any
-            The ufunc kwargs.
-
-        Returns
-        -------
-        ~numpy.ufunc
-            The ufunc that is about to be called.
-
-        str
-            The call method for the ufunc.
-
-        tuple
-            The now prepared arguments for the ufunc.
-
-        dict
-            The now prepared kwargs for the ufunc.
-        """
-        if ufunc not in (np.multiply, np, divide):
-            return NotImplemented
-        prepared_inputs = tuple(
-            unyt_quantity(
-                1,
-                inp.units,
-            )
-            if isinstance(inp, _AHelper)
-            else inp
-            for inp in inputs
-        )
-        return (ufunc, method, prepared_inputs, kwargs)
-
-    @classmethod
-    def __unyt_ufunc_finalize__(
-        cls,
-        result: unyt_array,
-        ufunc: np.ufunc,
-        method: str,
-        *inputs: Any,
-        **kwargs: Any,
-    ) -> cosmo_array:
-        """
-        Finalize results after a ufunc call.
-
-        This function gives us the opportunity to post-process return value(s) from a
-        ufunc when we get control back from :mod:`unyt`. We turn it into a
-        :class:`~swiftsimio.objects.cosmo_array` or
-        :class:`~swiftsimio.objects.cosmo_quantity` and set its attributes.
-
-        We only support ``multiply`` and ``divide`` ufuncs so result is a
-        :class:`~unyt.array.unyt_array` (never a ``tuple``).
-
-        Parameters
-        ----------
-        result : ~unyt.array.unyt_array
-            The return value of the called ufunc.
-
-        ufunc : ~numpy.ufunc
-            The ufunc that was called.
-
-        method : str
-            The call method for the ufunc (for example ``"call"`` or ``"reduce"``).
-
-        *inputs : Any
-            The ufunc arguments.
-
-        **kwargs : Any
-            The ufunc kwargs.
-
-        Returns
-        -------
-        tuple or comso_array
-            The result of the ufunc call, with the appropriate type and cosmo attributes
-            attached.
-        """
-        for inp in inputs:
-            if isinstance(inp, _AHelper):
-                a_helper_input: _AHelper = inp
-
-        return (cosmo_array if np.asarray(result).ndim else cosmo_quantity)(
-            result,
-            comoving=a_helper_input._comoving,
-            scale_factor=a_helper_input.scale_factor,
-            scale_exponent=(-1 if ufunc is np.divide else 1)
-            * a_helper_input.scale_exponent,
-        )
-
     def __array_ufunc__(
         self,
         ufunc: np.ufunc,
@@ -3220,13 +2939,26 @@ class _AHelper:
         object
             The result of the ufunc call, with our cosmology attribute processing applied.
         """
-        prepared_ufunc, prepared_method, prepared_inputs, prepared_kwargs = (
-            self.__unyt_ufunc_prepare__(ufunc, method, *inputs, **kwargs)
+        if ufunc not in (np.multiply, np, divide):
+            return NotImplemented
+        prepared_input = []
+        for inp in inputs:
+            if isinstance(inp, _AHelper):
+                prepared_input.append(unyt_quantity(1, inp.units))
+                a_helper_input: _AHelper = inp
+            else:
+                prepared_input.append(inp)
+        result = getattr(ufunc, method)(
+            *prepared_input,
+            **kwargs,
         )
-        result = getattr(prepared_ufunc, prepared_method)(
-            *prepared_inputs, **prepared_kwargs
+        return (cosmo_array if np.asarray(result).ndim else cosmo_quantity)(
+            result,
+            comoving=a_helper_input._comoving,
+            scale_factor=a_helper_input.scale_factor,
+            scale_exponent=(-1 if ufunc is np.divide else 1)
+            * a_helper_input.scale_exponent,
         )
-        return self.__unyt_ufunc_finalize__(result, ufunc, method, *inputs, **kwargs)
 
     @singledispatchmethod
     def __mul__(self, other: object) -> "cosmo_array | _AHelper":
