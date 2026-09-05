@@ -4,7 +4,7 @@ Import optional packages.
 This includes:
 
 + tqdm: progress bars
-+ scipy.spatial: KDTrees
++ scipy.spatial: KDTrees and rotations
 + numba/cuda: visualisation
 + hdfstream: remote data access
 """
@@ -49,6 +49,14 @@ try:
 except (ImportError, ModuleNotFoundError):
     KDTree = None
     TREE_AVAILABLE = False
+
+try:
+    from scipy.spatial.transform import Rotation
+
+    ROTATION_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    Rotation = None
+    ROTATION_AVAILABLE = False
 
 
 # Astropy

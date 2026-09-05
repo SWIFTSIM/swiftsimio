@@ -3,6 +3,8 @@
 import numpy as np
 import unyt as u
 
+from swiftsimio.optional_packages import ROTATION_AVAILABLE, Rotation
+
 
 def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarray:
     """
@@ -28,6 +30,12 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
     np.ndarray[float64]
         Rotation matrix (3x3).
     """
+    if not ROTATION_AVAILABLE:
+        raise ImportError(
+            "The scipy.spatial.transform.Rotation class is required to construct "
+            "rotation matrices."
+        )
+
     normed_vector = vector / np.linalg.norm(vector)
     if isinstance(normed_vector, u.unyt_array):
         normed_vector = normed_vector.to_value(u.dimensionless)
@@ -43,30 +51,6 @@ def rotation_matrix_from_vector(vector: np.float64, axis: str = "z") -> np.ndarr
             f"Parameter axis must be one of x, y, or z. You supplied {axis}."
         )
 
-    cross_product = np.cross(original_direction, normed_vector)
-    mod_cross_product = np.linalg.norm(cross_product)
-    cross_product = cross_product / mod_cross_product
+    rotation, _ = Rotation.align_vectors([original_direction], [normed_vector])
 
-    if mod_cross_product <= 1e-6:
-        # This case only covers when we point the vector
-        # in the exact opposite direction (e.g. flip z).
-        output = np.identity(3)
-        output[switch[axis], switch[axis]] = -1.0
-
-        return output
-    else:
-        cos_theta = np.dot(original_direction, normed_vector)
-        sin_theta = np.sin(np.arccos(cos_theta))
-
-        # Skew symmetric matrix for cross product
-        A = np.array(
-            [
-                [0.0, -cross_product[2], cross_product[1]],
-                [cross_product[2], 0.0, -cross_product[0]],
-                [-cross_product[1], cross_product[0], 0.0],
-            ]
-        )
-
-        return np.linalg.inv(
-            np.identity(3) + sin_theta * A + (1 - cos_theta) * np.dot(A, A)
-        )
+    return rotation.as_matrix()
