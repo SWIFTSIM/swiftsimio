@@ -1,9 +1,41 @@
 """Reader for the statistics file."""
 
-import unyt
+import keyword
 import re
 
+import unyt
+
 from swiftsimio.accelerated import list_of_strings_to_arrays
+
+
+def _sanitize_identifier(name: str) -> str:
+    """
+    Convert a statistics column name to a valid Python identifier.
+
+    Parameters
+    ----------
+    name : str
+        Column name read from the statistics file header.
+
+    Returns
+    -------
+    str
+        Normalized name suitable for attribute access.
+    """
+    # Keep the established normalization for dots and spaces so existing
+    # attribute names remain stable, then handle all other invalid characters.
+    clean_name = name.replace(".", "").replace(" ", "_").strip().lower()
+    clean_name = re.sub(r"[^a-zA-Z0-9_]", "_", clean_name)
+    clean_name = re.sub(r"_+", "_", clean_name).strip("_")
+
+    if not clean_name:
+        return "_var"
+    if clean_name[0].isdigit():
+        clean_name = f"_{clean_name}"
+    if keyword.iskeyword(clean_name):
+        clean_name = f"{clean_name}_"
+
+    return clean_name
 
 
 class SWIFTStatisticsFile(object):
@@ -80,9 +112,9 @@ class SWIFTStatisticsFile(object):
 
         # The last line will be the names, so extract those here.
         header_snake_case_names = [
-            x.replace(".", "").replace(" ", "_").replace("\n", "").lower()
-            for x in re.split(r"\s{2,}", lines[current_line - 1][1:])
-            if x != ""
+            _sanitize_identifier(name)
+            for name in re.split(r"\s{2,}", lines[current_line - 1][1:])
+            if name
         ]
 
         self.header_names = header_names

@@ -6,6 +6,9 @@ Statistics Files
 :obj:`swiftsimio.statistics.SWIFTStatisticsFile` object, or through
 the main ``load_statistics`` function.
 
+Column headings are normalized to valid Python identifiers for attribute access. For
+example, a column named ``SFR (total)`` is available as ``data.sfr_total``.
+
 Example
 -------
 
@@ -24,7 +27,7 @@ Will output:
 
 .. code-block:: bash
 
-   Statistics file: energy.txt, containing fields: #, step, time, a, z, total_mass,
+   Statistics file: energy.txt, containing fields: _var, step, time, a, z, total_mass,
    gas_mass, dm_mass, sink_mass, star_mass, bh_mass, gas_z_mass, star_z_mass,
    bh_z_mass, kin_energy, int_energy, pot_energy, rad_energy, gas_entropy, com_x,
    com_y, com_z, mom_x, mom_y, mom_z, ang_mom_x, ang_mom_y, ang_mom_z
