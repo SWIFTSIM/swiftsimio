@@ -1,11 +1,18 @@
 """Test the smoothing length generation code."""
 
 import numpy as np
+import pytest
 import unyt as u
 from swiftsimio import load, cosmo_array
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
 
 from numpy import isclose
+
+
+def test_generate_smoothing_lengths_coordinates_must_be_positional():
+    """Reject keyword coordinates clearly instead of failing inside the decorator."""
+    with pytest.raises(TypeError, match="positional-only"):
+        generate_smoothing_lengths(coordinates=None, boxsize=None, kernel_gamma=1.0)
 
 
 def test_generate_smoothing_length(cosmological_volume):
