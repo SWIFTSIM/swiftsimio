@@ -12,8 +12,9 @@ from swiftsimio._array_functions import _propagate_cosmo_array_attributes_to_res
 
 
 @_propagate_cosmo_array_attributes_to_result  # copies attrs of first arg to result
-def generate_smoothing_lengths(
+def _generate_smoothing_lengths(
     coordinates: cosmo_array,
+    /,
     boxsize: cosmo_array,
     kernel_gamma: np.float32,
     neighbours: int = 32,
@@ -115,3 +116,21 @@ def generate_smoothing_lengths(
         * (hsml_correction_fac_speedup / kernel_gamma)
         * coordinates.units
     )
+
+
+def generate_smoothing_lengths(
+    coordinates: cosmo_array,
+    /,
+    boxsize: cosmo_array,
+    kernel_gamma: np.float32,
+    neighbours: int = 32,
+    speedup_fac: int = 2,
+    dimension: int = 3,
+) -> cosmo_array:
+    """Generate smoothing lengths, requiring coordinates as a positional argument."""
+    return _generate_smoothing_lengths(
+        coordinates, boxsize, kernel_gamma, neighbours, speedup_fac, dimension
+    )
+
+
+generate_smoothing_lengths.__doc__ = _generate_smoothing_lengths.__doc__
