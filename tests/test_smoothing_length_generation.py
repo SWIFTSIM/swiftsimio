@@ -1,6 +1,7 @@
 """Test the smoothing length generation code."""
 
 import numpy as np
+import pytest
 import unyt as u
 from swiftsimio import load, cosmo_array
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
@@ -94,3 +95,12 @@ def test_generate_smoothing_length_return_type():
     assert isinstance(from_ua_input, u.unyt_array) and not isinstance(
         from_ua_input, cosmo_array
     )
+
+
+def test_generate_smoothing_length_coordinates_must_be_positional():
+    """Check that the decorated first argument reports positional-only usage."""
+    coords = cosmo_array(np.arange(3), u.Mpc)
+    boxsize = cosmo_array([3, 3, 3], u.Mpc)
+
+    with pytest.raises(TypeError, match="positional-only"):
+        generate_smoothing_lengths(coordinates=coords, boxsize=boxsize, kernel_gamma=1)

@@ -12,6 +12,8 @@ are documented to assist in maintenance and development of swiftsimio.
 """
 
 import warnings
+import inspect
+import functools
 from functools import reduce
 import numpy as np
 from typing import Callable, Any
@@ -190,14 +192,15 @@ def _propagate_cosmo_array_attributes_to_result(func: Callable) -> Callable:
     Callable
         The wrapped function.
     """
+    func_signature = inspect.signature(func)
+    first_parameter = next(iter(func_signature.parameters))
 
-    def wrapped(
-        obj: object,
-        *args: tuple[Any],
-        **kwargs: dict[str, Any],
-    ) -> object:  # noqa numpydoc ignore=GL08
+    @functools.wraps(func)
+    def wrapped(*args: Any, **kwargs: Any) -> object:  # noqa numpydoc ignore=GL08
         # omit docstring so that sphinx picks up docstring of wrapped function
-        return _copy_cosmo_array_attributes_if_present(obj, func(obj, *args, **kwargs))
+        bound_arguments = func_signature.bind(*args, **kwargs)
+        obj = args[0] if args else bound_arguments.arguments[first_parameter]
+        return _copy_cosmo_array_attributes_if_present(obj, func(*args, **kwargs))
 
     return wrapped
 

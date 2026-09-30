@@ -14,6 +14,7 @@ from swiftsimio._array_functions import _propagate_cosmo_array_attributes_to_res
 @_propagate_cosmo_array_attributes_to_result  # copies attrs of first arg to result
 def generate_smoothing_lengths(
     coordinates: cosmo_array,
+    /,
     boxsize: cosmo_array,
     kernel_gamma: np.float32,
     neighbours: int = 32,
