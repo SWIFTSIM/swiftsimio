@@ -148,6 +148,23 @@ class SWIFTMetadata(HandleProvider, ABC):
 
         return
 
+    def get_named_column_metadata(self) -> None:
+        """
+        Load the custom named column metadata from SubgridScheme/NamedColumns.
+
+        If name column didn't exist just set an empty :obj:`dict` instead.
+        """
+        try:
+            data = self.handle["SubgridScheme/NamedColumns"]
+
+            self.named_columns = {
+                k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
+            }
+        except KeyError:
+            self.named_columns = {}
+
+        return
+
     def postprocess_header(self) -> None:
         """Do some minor postprocessing on the header to local variables."""
         # We need the scale factor to initialize `cosmo_array`s, so start with the float
@@ -908,23 +925,6 @@ class SWIFTSnapshotMetadata(SWIFTMetadata):
 
         return
 
-    def get_named_column_metadata(self) -> None:
-        """
-        Load the custom named column metadata from SubgridScheme/NamedColumns.
-
-        If name column didn't exist just set an empty :obj:`dict` instead.
-        """
-        try:
-            data = self.handle["SubgridScheme/NamedColumns"]
-
-            self.named_columns = {
-                k: [x.decode("utf-8") for x in data[k][:]] for k in data.keys()
-            }
-        except KeyError:
-            self.named_columns = {}
-
-        return
-
     def get_mapping_metadata(self) -> None:
         """
         Get the mappings based on the named columns (must have already been read).
@@ -1590,6 +1590,7 @@ class SWIFTSOAPMetadata(SWIFTMetadata):
     ) -> None:
         super().__init__(filename, units=units, handle=handle)
         self.get_metadata()
+        self.get_named_column_metadata()
         self.postprocess_header()
         self.unpack_subhalo_number()
 
