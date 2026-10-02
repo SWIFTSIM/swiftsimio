@@ -464,6 +464,7 @@ def test_generated_smoothing_lengths(two_type_writer):
         if os.path.exists(testfile):
             os.remove(testfile)
 
+
 def test_created_links(two_type_writer):
     """Check that we create links for particle types that have them."""
     testfile = "created_links.hdf5"
@@ -485,7 +486,7 @@ def test_created_links(two_type_writer):
         assert hasattr(dat.gas, "internal_energies")
     finally:
         if os.path.exists(testfile):
-           os.remove(testfile)
+            os.remove(testfile)
 
 
 @pytest.mark.parametrize(
