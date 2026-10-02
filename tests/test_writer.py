@@ -464,6 +464,29 @@ def test_generated_smoothing_lengths(two_type_writer):
         if os.path.exists(testfile):
             os.remove(testfile)
 
+def test_created_links(two_type_writer):
+    """Check that we create links for particle types that have them."""
+    testfile = "created_links.hdf5"
+    two_type_writer.gas._smoothing_lengths = None  # ensure they are blank
+    n_gas = two_type_writer.gas.coordinates.shape[0]
+    assert (np.diff(two_type_writer.boxsize) == 0).all()
+    gas_mips = two_type_writer.boxsize[0] / n_gas ** (1 / two_type_writer.dimension)
+    two_type_writer.gas.generate_smoothing_lengths()
+    assert np.allclose(two_type_writer.gas.smoothing_lengths, 2 * gas_mips)
+    assert two_type_writer.gas._smoothing_lengths is not None
+    try:
+        two_type_writer.write(testfile)
+        dat = load(testfile)
+        assert np.allclose(
+            dat.gas.smoothing_lengths, two_type_writer.gas.smoothing_lengths
+        )
+        # check that the links were created
+        assert hasattr(dat.gas, "smoothing_length")
+        assert hasattr(dat.gas, "internal_energies")
+    finally:
+        if os.path.exists(testfile):
+           os.remove(testfile)
+
 
 @pytest.mark.parametrize(
     "boxsize",
