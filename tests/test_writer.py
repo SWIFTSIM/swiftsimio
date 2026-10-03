@@ -8,6 +8,7 @@ from swiftsimio.metadata.particle.particle_types import particle_name_underscore
 from swiftsimio.metadata.writer import required_fields
 from .helper import create_minimal_writer
 import unyt as u
+import h5py
 
 
 def test_write(simple_snapshot_data):
@@ -484,6 +485,13 @@ def test_created_links(two_type_writer):
         # check that the links were created
         assert hasattr(dat.gas, "smoothing_length")
         assert hasattr(dat.gas, "internal_energies")
+        assert np.all(dat.gas.smoothing_length == dat.gas.smoothing_lengths)
+        assert np.all(dat.gas.internal_energies == dat.gas.internal_energy)
+        # Check that they both point to same dataset
+        with h5py.File(testfile, "r") as handle:
+            assert handle["PartType0/SmoothingLength"].id == handle["PartType0/SmoothingLengths"].id
+            assert handle["PartType0/InternalEnergies"].id == handle["PartType0/InternalEnergy"].id
+
     finally:
         if os.path.exists(testfile):
             os.remove(testfile)
