@@ -489,8 +489,14 @@ def test_created_links(two_type_writer):
         assert np.all(dat.gas.internal_energies == dat.gas.internal_energy)
         # Check that they both point to same dataset
         with h5py.File(testfile, "r") as handle:
-            assert handle["PartType0/SmoothingLength"].id == handle["PartType0/SmoothingLengths"].id
-            assert handle["PartType0/InternalEnergies"].id == handle["PartType0/InternalEnergy"].id
+            assert (
+                handle["PartType0/SmoothingLength"].id
+                == handle["PartType0/SmoothingLengths"].id
+            )
+            assert (
+                handle["PartType0/InternalEnergies"].id
+                == handle["PartType0/InternalEnergy"].id
+            )
 
     finally:
         if os.path.exists(testfile):
