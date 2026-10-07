@@ -175,7 +175,8 @@ def scatter(
                             # Ensure that the highest x value lies within the np.array
                             # bounds, otherwise we'll segfault (oops).
                             min(
-                                particle_cell_x + cells_spanned, maximal_array_index + 1
+                                particle_cell_x + cells_spanned + 1,
+                                maximal_array_index + 1,
                             ),
                         ):
                             # The distance in x to our new favourite cell -- remember that
@@ -188,7 +189,7 @@ def scatter(
                             for cell_y in range(
                                 max(0, particle_cell_y - cells_spanned),
                                 min(
-                                    particle_cell_y + cells_spanned,
+                                    particle_cell_y + cells_spanned + 1,
                                     maximal_array_index + 1,
                                 ),
                             ):
@@ -199,7 +200,7 @@ def scatter(
                                 for cell_z in range(
                                     max(0, particle_cell_z - cells_spanned),
                                     min(
-                                        particle_cell_z + cells_spanned,
+                                        particle_cell_z + cells_spanned + 1,
                                         maximal_array_index + 1,
                                     ),
                                 ):
