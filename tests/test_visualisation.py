@@ -1026,6 +1026,7 @@ class TestVolumeRender:
             ),
         )
 
+
     def test_volume_mirror_symmetry(self):
         """
         Check that mirroring a particle's position mirrors its deposited grid.
@@ -1050,6 +1051,44 @@ class TestVolumeRender:
         density_high = scatter(x=x_high, y=y, z=z, m=m, h=h, res=res)
 
         assert np.allclose(density_high, density_low[::-1, :, :])
+
+
+    def test_drop_to_single_cell(self):
+        """
+        Check that particles can't drop between the cracks between cells.
+
+        We place a particle on the intersection between 8 cells and give it a smoothing
+        length such that its ``kernel_width`` is too short to reach any cell centres
+        (just over ``0.25``). This is a regression test for
+        https://github.com/SWIFTSIM/swiftsimio/pull/292. Previously it was assumed that
+        ``0.5 * kernel_length`` was enough to check for touching nearby cells, but along
+        the cube diagonal we actually need ``0.5 * np.sqrt(3)``. If no cell centres are
+        touched we should fall back to cloud in cell and still deposit some mass.
+        """
+        from swiftsimio.visualisation.slice_backends.sph import kernel_gamma
+
+        x = np.array([0.50001])
+        y = np.array([0.50001])
+        z = np.array([0.50001])
+        m = np.array([1.0])
+        h = np.array([0.250001]) / kernel_gamma
+
+        res = 2
+        boxsize = 1.0
+
+        # Need to norm coords and box for the volume render (but we're using 1.0 anyway)
+        volume = volume_render_backends["scatter"](
+            x=x / boxsize,
+            y=y / boxsize,
+            z=z / boxsize,
+            m=m,
+            h=h / boxsize,
+            res=res,
+            box_x=boxsize,
+            box_y=boxsize,
+            box_z=boxsize,
+        )
+        assert np.isclose(volume.sum(), res**3)
 
 
 def test_selection_render(cosmological_volume_only_single_local):
