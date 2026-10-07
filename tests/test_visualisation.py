@@ -1026,7 +1026,6 @@ class TestVolumeRender:
             ),
         )
 
-
     def test_volume_mirror_symmetry(self):
         """
         Check that mirroring a particle's position mirrors its deposited grid.
@@ -1051,7 +1050,6 @@ class TestVolumeRender:
         density_high = scatter(x=x_high, y=y, z=z, m=m, h=h, res=res)
 
         assert np.allclose(density_high, density_low[::-1, :, :])
-
 
     def test_drop_to_single_cell(self):
         """
