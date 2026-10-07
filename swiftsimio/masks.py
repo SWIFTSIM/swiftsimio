@@ -12,7 +12,7 @@ from swiftsimio.metadata.field.attr_reader import (
 )
 from swiftsimio.metadata.objects import SWIFTMetadata
 from swiftsimio.objects import InvalidSnapshot, cosmo_array, cosmo_quantity
-from swiftsimio.accelerated import ranges_from_array
+from swiftsimio.accelerated import ranges_from_array, ranges_from_cells
 from swiftsimio._handle_provider import HandleProvider
 
 from typing import Callable, Sequence
@@ -685,9 +685,13 @@ class SWIFTMask(HandleProvider):
                 counts = self.counts[count_name][self.cell_mask[count_name]]
                 offsets = self.offsets[count_name][self.cell_mask[count_name]]
 
-                this_mask = [[o, c + o] for c, o in zip(counts, offsets)]
+                # Cells are sorted by offset, so cells adjacent on disk merge
+                # into one range and are read with one HDF5 request.
+                this_mask = ranges_from_cells(offsets, counts)
+                if this_mask.shape[0] == 0:
+                    this_mask = np.array([])  # preserve the empty-selection form
 
-                setattr(self, data_name, np.array(this_mask))
+                setattr(self, data_name, this_mask)
                 setattr(self, f"{data_name}_size", np.sum(counts))
 
             else:
