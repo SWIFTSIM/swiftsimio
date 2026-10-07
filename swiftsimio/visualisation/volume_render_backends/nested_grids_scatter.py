@@ -44,7 +44,7 @@ this requires ``res`` to be a multiple of 16.
 from math import ceil, floor, sqrt
 
 import numpy as np
-from numpy import float32, float64, int32, zeros, int64
+from numpy.typing import NDArray
 
 from numba import get_num_threads, njit, prange
 
@@ -68,7 +68,7 @@ from swiftsimio.visualisation.slice_backends.sph import (
     inline="always",
 )
 def _deposit_particle_flat(
-    destination: np.ndarray,
+    destination: NDArray[np.float32],
     level_offset: int,
     level_res: int,
     level_plane: int,
@@ -79,8 +79,8 @@ def _deposit_particle_flat(
     weighted_prefactor: np.float32,
     radius_cells_64: np.float64,
     level: int,
-    bounds_min: np.ndarray,
-    bounds_max: np.ndarray,
+    bounds_min: NDArray[np.int32],
+    bounds_max: NDArray[np.int32],
 ) -> None:
     """
     Deposit one particle onto the flat destination array at the given level.
@@ -127,19 +127,19 @@ def _deposit_particle_flat(
         Per-level bounding-box maximum cell indices (updated in-place).
     """
     # Positions scaled to cell-index space; float64 for accurate index derivation.
-    scaled_x_64 = float64(level_res) * x_pos
-    scaled_y_64 = float64(level_res) * y_pos
-    scaled_z_64 = float64(level_res) * z_pos
+    scaled_x_64 = np.float64(level_res) * x_pos
+    scaled_y_64 = np.float64(level_res) * y_pos
+    scaled_z_64 = np.float64(level_res) * z_pos
 
-    radius_cells_f32 = float32(radius_cells_64)
+    radius_cells_f32 = np.float32(radius_cells_64)
     maximal_index = level_res - 1
 
     # Sub-pixel fast path: kernel spans less than one cell half-width.
     # Deposit the full particle weight into the containing cell to preserve mass.
-    if radius_cells_f32 < float32(0.5):
-        px = int32(floor(scaled_x_64))
-        py = int32(floor(scaled_y_64))
-        pz = int32(floor(scaled_z_64))
+    if radius_cells_f32 < np.float32(0.5):
+        px = np.int32(floor(scaled_x_64))
+        py = np.int32(floor(scaled_y_64))
+        pz = np.int32(floor(scaled_z_64))
         if (
             0 <= px <= maximal_index
             and 0 <= py <= maximal_index
@@ -166,22 +166,22 @@ def _deposit_particle_flat(
     # i + 0.5; we include cells where that centre falls strictly inside the
     # kernel compact support.  Float64 avoids the asymmetric rounding produced
     # by the previous (particle_cell ± cells_spanned) approach.
-    x_start = int32(floor(scaled_x_64 - radius_cells_64 - 0.5)) + 1
-    x_stop = int32(ceil(scaled_x_64 + radius_cells_64 - 0.5))
+    x_start = np.int32(floor(scaled_x_64 - radius_cells_64 - 0.5)) + 1
+    x_stop = np.int32(ceil(scaled_x_64 + radius_cells_64 - 0.5))
     if x_start < 0:
         x_start = 0
     if x_stop > level_res:
         x_stop = level_res
 
-    y_start = int32(floor(scaled_y_64 - radius_cells_64 - 0.5)) + 1
-    y_stop = int32(ceil(scaled_y_64 + radius_cells_64 - 0.5))
+    y_start = np.int32(floor(scaled_y_64 - radius_cells_64 - 0.5)) + 1
+    y_stop = np.int32(ceil(scaled_y_64 + radius_cells_64 - 0.5))
     if y_start < 0:
         y_start = 0
     if y_stop > level_res:
         y_stop = level_res
 
-    z_start = int32(floor(scaled_z_64 - radius_cells_64 - 0.5)) + 1
-    z_stop = int32(ceil(scaled_z_64 + radius_cells_64 - 0.5))
+    z_start = np.int32(floor(scaled_z_64 - radius_cells_64 - 0.5)) + 1
+    z_stop = np.int32(ceil(scaled_z_64 + radius_cells_64 - 0.5))
     if z_start < 0:
         z_start = 0
     if z_stop > level_res:
@@ -206,27 +206,27 @@ def _deposit_particle_flat(
 
     # float32 particle positions for kernel arithmetic; inner-loop distances
     # accumulate by exactly 1.0 rather than pixel_width, removing that multiply.
-    scaled_x_f32 = float32(scaled_x_64)
-    scaled_y_f32 = float32(scaled_y_64)
-    scaled_z_f32 = float32(scaled_z_64)
+    scaled_x_f32 = np.float32(scaled_x_64)
+    scaled_y_f32 = np.float32(scaled_y_64)
+    scaled_z_f32 = np.float32(scaled_z_64)
     radius_cells_2_64 = radius_cells_64 * radius_cells_64
-    inverse_radius_cells = float32(1.0) / radius_cells_f32
+    inverse_radius_cells = np.float32(1.0) / radius_cells_f32
 
     # Single-cell fast path: evaluate the kernel once, no loop overhead.
     if x_stop - x_start == 1 and y_stop - y_start == 1 and z_stop - z_start == 1:
-        dx = float32(x_start) + float32(0.5) - scaled_x_f32
-        dy = float32(y_start) + float32(0.5) - scaled_y_f32
-        dz = float32(z_start) + float32(0.5) - scaled_z_f32
+        dx = np.float32(x_start) + np.float32(0.5) - scaled_x_f32
+        dy = np.float32(y_start) + np.float32(0.5) - scaled_y_f32
+        dz = np.float32(z_start) + np.float32(0.5) - scaled_z_f32
         radius_2 = dx * dx + dy * dy + dz * dz
         ratio = sqrt(radius_2) * inverse_radius_cells
-        one_minus_ratio = float32(1.0) - ratio
+        one_minus_ratio = np.float32(1.0) - ratio
         one_minus_ratio_2 = one_minus_ratio * one_minus_ratio
         flat_cell = level_offset + (x_start * level_res + y_start) * level_res + z_start
         destination[flat_cell] += (
             weighted_prefactor
             * one_minus_ratio_2
             * one_minus_ratio_2
-            * (float32(1.0) + float32(4.0) * ratio)
+            * (np.float32(1.0) + np.float32(4.0) * ratio)
         )
         return
 
@@ -235,8 +235,8 @@ def _deposit_particle_flat(
     # arithmetic stays in float32.  The innermost z-loop is branch-free because
     # tight_z bounds already exclude cells outside the kernel support.
     # Wendland-C2: W(r,H) = (21/2π) H⁻³ (1 - r/H)⁴ (1 + 4r/H)
-    dx_64 = float64(x_start) + 0.5 - scaled_x_64
-    dx = float32(dx_64)
+    dx_64 = np.float64(x_start) + 0.5 - scaled_x_64
+    dx = np.float32(dx_64)
     for cell_x in range(x_start, x_stop):
         dx_2 = dx * dx
 
@@ -245,8 +245,8 @@ def _deposit_particle_flat(
         if rem_x_sq < 0.0:
             rem_x_sq = 0.0
         rem_x_64 = sqrt(rem_x_sq)
-        tight_y_start = int32(floor(scaled_y_64 - rem_x_64 - 0.5)) + 1
-        tight_y_stop = int32(ceil(scaled_y_64 + rem_x_64 - 0.5))
+        tight_y_start = np.int32(floor(scaled_y_64 - rem_x_64 - 0.5)) + 1
+        tight_y_stop = np.int32(ceil(scaled_y_64 + rem_x_64 - 0.5))
         if tight_y_start < y_start:
             tight_y_start = y_start
         if tight_y_stop > y_stop:
@@ -254,8 +254,8 @@ def _deposit_particle_flat(
 
         if tight_y_start < tight_y_stop:
             x_base = level_offset + cell_x * level_plane
-            dy_64 = float64(tight_y_start) + 0.5 - scaled_y_64
-            dy = float32(dy_64)
+            dy_64 = np.float64(tight_y_start) + 0.5 - scaled_y_64
+            dy = np.float32(dy_64)
 
             for cell_y in range(tight_y_start, tight_y_stop):
                 dx_dy_2 = dx_2 + dy * dy
@@ -265,8 +265,8 @@ def _deposit_particle_flat(
                 if rem_xy_sq < 0.0:
                     rem_xy_sq = 0.0
                 rem_xy_64 = sqrt(rem_xy_sq)
-                tight_z_start = int32(floor(scaled_z_64 - rem_xy_64 - 0.5)) + 1
-                tight_z_stop = int32(ceil(scaled_z_64 + rem_xy_64 - 0.5))
+                tight_z_start = np.int32(floor(scaled_z_64 - rem_xy_64 - 0.5)) + 1
+                tight_z_stop = np.int32(ceil(scaled_z_64 + rem_xy_64 - 0.5))
                 if tight_z_start < z_start:
                     tight_z_start = z_start
                 if tight_z_stop > z_stop:
@@ -274,44 +274,44 @@ def _deposit_particle_flat(
 
                 if tight_z_start < tight_z_stop:
                     flat_cell = x_base + cell_y * level_res + tight_z_start
-                    dz = float32(tight_z_start) + float32(0.5) - scaled_z_f32
+                    dz = np.float32(tight_z_start) + np.float32(0.5) - scaled_z_f32
 
                     for cell_z in range(tight_z_start, tight_z_stop):
                         radius_2 = dx_dy_2 + dz * dz
                         ratio = sqrt(radius_2) * inverse_radius_cells
-                        one_minus_ratio = float32(1.0) - ratio
+                        one_minus_ratio = np.float32(1.0) - ratio
                         one_minus_ratio_2 = one_minus_ratio * one_minus_ratio
                         destination[flat_cell] += (
                             weighted_prefactor
                             * one_minus_ratio_2
                             * one_minus_ratio_2
-                            * (float32(1.0) + float32(4.0) * ratio)
+                            * (np.float32(1.0) + np.float32(4.0) * ratio)
                         )
                         flat_cell += 1
-                        dz += float32(1.0)
+                        dz += np.float32(1.0)
                 dy_64 += 1.0
-                dy += float32(1.0)
+                dy += np.float32(1.0)
         dx_64 += 1.0
-        dx += float32(1.0)
+        dx += np.float32(1.0)
 
 
 @njit(fastmath=True, cache=True, nogil=True, boundscheck=False, error_model="numpy")
 def _scatter_particles(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    m: np.ndarray,
-    h: np.ndarray,
-    level_index: np.ndarray,
-    level_offsets: np.ndarray,
-    level_resolutions: np.ndarray,
-    finest: np.ndarray,
-    coarse: np.ndarray,
-    box_x: float64,
-    box_y: float64,
-    box_z: float64,
-    bounds_min: np.ndarray,
-    bounds_max: np.ndarray,
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    z: NDArray[np.float64],
+    m: NDArray[np.float32],
+    h: NDArray[np.float32],
+    level_index: NDArray[np.int8],
+    level_offsets: NDArray[np.int64],
+    level_resolutions: NDArray[np.int32],
+    finest: NDArray[np.float32],
+    coarse: NDArray[np.float32],
+    box_x: np.float64,
+    box_y: np.float64,
+    box_z: np.float64,
+    bounds_min: NDArray[np.int32],
+    bounds_max: NDArray[np.int32],
 ) -> None:
     """
     Scatter all particles onto their assigned hierarchy levels.
@@ -364,15 +364,15 @@ def _scatter_particles(
 
     # Global shift bounds: the widest range any particle could need.
     # Per-particle ranges are derived analytically below and clipped to these.
-    xshift_min = int32(0) if box_x == 0.0 else int32(-1)
-    yshift_min = int32(0) if box_y == 0.0 else int32(-1)
-    zshift_min = int32(0) if box_z == 0.0 else int32(-1)
-    xshift_max = int32(1) if box_x == 0.0 else int32(ceil(1.0 / box_x) + 1)
-    yshift_max = int32(1) if box_y == 0.0 else int32(ceil(1.0 / box_y) + 1)
-    zshift_max = int32(1) if box_z == 0.0 else int32(ceil(1.0 / box_z) + 1)
+    xshift_min = np.int32(0) if box_x == 0.0 else np.int32(-1)
+    yshift_min = np.int32(0) if box_y == 0.0 else np.int32(-1)
+    zshift_min = np.int32(0) if box_z == 0.0 else np.int32(-1)
+    xshift_max = np.int32(1) if box_x == 0.0 else np.int32(ceil(1.0 / box_x) + 1)
+    yshift_max = np.int32(1) if box_y == 0.0 else np.int32(ceil(1.0 / box_y) + 1)
+    zshift_max = np.int32(1) if box_z == 0.0 else np.int32(ceil(1.0 / box_z) + 1)
 
     for particle in range(h.size):
-        level = int32(level_index[particle])
+        level = np.int32(level_index[particle])
         if level < 0:
             continue
 
@@ -380,7 +380,7 @@ def _scatter_particles(
         hsml = h[particle]
         if level == 0:
             destination = finest
-            level_offset = int64(0)
+            level_offset = np.int64(0)
         else:
             destination = coarse
             level_offset = level_offsets[level] - finest_cells
@@ -392,54 +392,60 @@ def _scatter_particles(
         original_z = z[particle]
 
         # Compute all per-particle constants once, outside the periodic image loop.
-        kernel_width = float32(kernel_gamma) * hsml
-        inverse_kernel_width = float32(1.0) / kernel_width
+        kernel_width = np.float32(kernel_gamma) * hsml
+        inverse_kernel_width = np.float32(1.0) / kernel_width
         weighted_prefactor = (
             mass
-            * float32(kernel_constant)
+            * np.float32(kernel_constant)
             * inverse_kernel_width
             * inverse_kernel_width
             * inverse_kernel_width
         )
-        float_res = float32(level_res)
+        float_res = np.float32(level_res)
         mass_icv = mass * float_res * float_res * float_res
-        kernel_width_64 = float64(kernel_width)
-        radius_cells_64 = kernel_width_64 * float64(level_res)
+        kernel_width_64 = np.float64(kernel_width)
+        radius_cells_64 = kernel_width_64 * np.float64(level_res)
 
         # Per-particle image range: only shifts whose kernel overlaps [0, 1].
         # For an interior particle this collapses to a single image (shift = 0).
         if box_x != 0.0:
-            local_x_min = int32(ceil((-kernel_width_64 - original_x) / box_x))
-            local_x_max = int32(floor((1.0 + kernel_width_64 - original_x) / box_x)) + 1
+            local_x_min = np.int32(ceil((-kernel_width_64 - original_x) / box_x))
+            local_x_max = (
+                np.int32(floor((1.0 + kernel_width_64 - original_x) / box_x)) + 1
+            )
             if local_x_min < xshift_min:
                 local_x_min = xshift_min
             if local_x_max > xshift_max:
                 local_x_max = xshift_max
         else:
-            local_x_min = int32(0)
-            local_x_max = int32(1)
+            local_x_min = np.int32(0)
+            local_x_max = np.int32(1)
 
         if box_y != 0.0:
-            local_y_min = int32(ceil((-kernel_width_64 - original_y) / box_y))
-            local_y_max = int32(floor((1.0 + kernel_width_64 - original_y) / box_y)) + 1
+            local_y_min = np.int32(ceil((-kernel_width_64 - original_y) / box_y))
+            local_y_max = (
+                np.int32(floor((1.0 + kernel_width_64 - original_y) / box_y)) + 1
+            )
             if local_y_min < yshift_min:
                 local_y_min = yshift_min
             if local_y_max > yshift_max:
                 local_y_max = yshift_max
         else:
-            local_y_min = int32(0)
-            local_y_max = int32(1)
+            local_y_min = np.int32(0)
+            local_y_max = np.int32(1)
 
         if box_z != 0.0:
-            local_z_min = int32(ceil((-kernel_width_64 - original_z) / box_z))
-            local_z_max = int32(floor((1.0 + kernel_width_64 - original_z) / box_z)) + 1
+            local_z_min = np.int32(ceil((-kernel_width_64 - original_z) / box_z))
+            local_z_max = (
+                np.int32(floor((1.0 + kernel_width_64 - original_z) / box_z)) + 1
+            )
             if local_z_min < zshift_min:
                 local_z_min = zshift_min
             if local_z_max > zshift_max:
                 local_z_max = zshift_max
         else:
-            local_z_min = int32(0)
-            local_z_max = int32(1)
+            local_z_min = np.int32(0)
+            local_z_max = np.int32(1)
 
         for xshift in range(local_x_min, local_x_max):
             x_pos = original_x + xshift * box_x
@@ -465,13 +471,13 @@ def _scatter_particles(
 
 @njit(fastmath=True, cache=True, nogil=True, boundscheck=False, error_model="numpy")
 def _collapse_serial_flat(
-    finest: np.ndarray,
-    coarse: np.ndarray,
-    level_offsets: np.ndarray,
-    level_resolutions: np.ndarray,
-    nlevels: int32,
-    bounds_min: np.ndarray,
-    bounds_max: np.ndarray,
+    finest: NDArray[np.float32],
+    coarse: NDArray[np.float32],
+    level_offsets: NDArray[np.int64],
+    level_resolutions: NDArray[np.int32],
+    nlevels: np.int32,
+    bounds_min: NDArray[np.int32],
+    bounds_max: NDArray[np.int32],
 ) -> None:
     """
     Trilinearly upsample each coarse level and accumulate into the next finer one.
@@ -552,8 +558,8 @@ def _collapse_serial_flat(
         for fine_x in range(fine_x_start, fine_x_stop):
             coarse_x0 = (fine_x - 1) >> 1
             coarse_x1 = coarse_x0 + 1
-            weight_x1 = float32(0.75) if (fine_x & 1) == 0 else float32(0.25)
-            weight_x0 = float32(1.0) - weight_x1
+            weight_x1 = np.float32(0.75) if (fine_x & 1) == 0 else np.float32(0.25)
+            weight_x0 = np.float32(1.0) - weight_x1
             if coarse_x0 < 0:
                 coarse_x0 = 0
             if coarse_x1 > coarse_max:
@@ -566,8 +572,8 @@ def _collapse_serial_flat(
             for fine_y in range(fine_y_start, fine_y_stop):
                 coarse_y0 = (fine_y - 1) >> 1
                 coarse_y1 = coarse_y0 + 1
-                weight_y1 = float32(0.75) if (fine_y & 1) == 0 else float32(0.25)
-                weight_y0 = float32(1.0) - weight_y1
+                weight_y1 = np.float32(0.75) if (fine_y & 1) == 0 else np.float32(0.25)
+                weight_y0 = np.float32(1.0) - weight_y1
                 if coarse_y0 < 0:
                     coarse_y0 = 0
                 if coarse_y1 > coarse_max:
@@ -623,10 +629,10 @@ def _collapse_serial_flat(
                     xy_r = weight_x0 * xy_r_x0 + weight_x1 * xy_r_x1
 
                     fine_z = coarse_z << 1
-                    destination[output_base + fine_z] += xy_c + float32(0.25) * (
+                    destination[output_base + fine_z] += xy_c + np.float32(0.25) * (
                         xy_l - xy_c
                     )
-                    destination[output_base + fine_z + 1] += xy_c + float32(0.25) * (
+                    destination[output_base + fine_z + 1] += xy_c + np.float32(0.25) * (
                         xy_r - xy_c
                     )
 
@@ -676,17 +682,17 @@ def _build_hierarchy_layout(res: int, nlevels: int) -> tuple:
         Total number of cells across all levels.
     """
     level_resolutions = np.empty(nlevels + 1, dtype=np.int32)
-    level_offsets = np.empty(nlevels + 1, dtype=int64)
-    level_pixel_widths = np.empty(nlevels + 1, dtype=float32)
-    level_inverse_cell_volumes = np.empty(nlevels + 1, dtype=float32)
+    level_offsets = np.empty(nlevels + 1, dtype=np.int64)
+    level_pixel_widths = np.empty(nlevels + 1, dtype=np.float32)
+    level_inverse_cell_volumes = np.empty(nlevels + 1, dtype=np.float32)
     total_cells = 0
 
     for level in range(nlevels + 1):
         level_res = res >> level
-        float_res = float32(level_res)
+        float_res = np.float32(level_res)
         level_resolutions[level] = level_res
         level_offsets[level] = total_cells
-        level_pixel_widths[level] = float32(1.0) / float_res
+        level_pixel_widths[level] = np.float32(1.0) / float_res
         level_inverse_cell_volumes[level] = float_res * float_res * float_res
         total_cells += level_res * level_res * level_res
 
@@ -708,15 +714,15 @@ def _build_hierarchy_layout(res: int, nlevels: int) -> tuple:
 
 @njit(fastmath=True, cache=True, nogil=True, boundscheck=False, error_model="numpy")
 def _scatter_serial_chunk(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    m: np.ndarray,
-    h: np.ndarray,
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    z: NDArray[np.float64],
+    m: NDArray[np.float32],
+    h: NDArray[np.float32],
     res: int,
-    box_x: float64,
-    box_y: float64,
-    box_z: float64,
+    box_x: np.float64,
+    box_y: np.float64,
+    box_z: np.float64,
     ntarget: int,
     nlevels: int,
 ) -> np.ndarray:
@@ -761,7 +767,7 @@ def _scatter_serial_chunk(
     level_index, active_nlevels_val = assign_levels(
         h, m, res, ntarget, nlevels, kernel_gamma
     )
-    active_nlevels = int32(active_nlevels_val)
+    active_nlevels = np.int32(active_nlevels_val)
 
     (
         level_offsets,
@@ -771,10 +777,12 @@ def _scatter_serial_chunk(
         total_cells,
     ) = _build_hierarchy_layout(res, active_nlevels)
 
-    finest_cells = int64(res) * int64(res) * int64(res)
-    finest = zeros(finest_cells, dtype=float32)
+    finest_cells = np.int64(res) * np.int64(res) * np.int64(res)
+    finest = np.zeros(finest_cells, dtype=np.float32)
     n_coarse = total_cells - finest_cells
-    coarse = zeros(n_coarse if n_coarse > int64(0) else int64(1), dtype=float32)
+    coarse = np.zeros(
+        n_coarse if n_coarse > np.int64(0) else np.int64(1), dtype=np.float32
+    )
 
     bounds_min = np.empty((active_nlevels + 1, 3), dtype=np.int32)
     bounds_max = np.full((active_nlevels + 1, 3), np.int32(-1), dtype=np.int32)
@@ -816,15 +824,15 @@ def _scatter_serial_chunk(
 
 @njit(fastmath=True, parallel=True)
 def _scatter_parallel_impl(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    m: np.ndarray,
-    h: np.ndarray,
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    z: NDArray[np.float64],
+    m: NDArray[np.float32],
+    h: NDArray[np.float32],
     res: int,
-    box_x: float64 = float64(0.0),
-    box_y: float64 = float64(0.0),
-    box_z: float64 = float64(0.0),
+    box_x: np.float64 = np.float64(0.0),
+    box_y: np.float64 = np.float64(0.0),
+    box_z: np.float64 = np.float64(0.0),
     ntarget: int = 6,
     nlevels: int = 4,
 ) -> np.ndarray:
@@ -878,7 +886,7 @@ def _scatter_parallel_impl(
     number_of_particles = x.size
     number_of_chunks = min(get_num_threads(), number_of_particles)
 
-    output = zeros((res, res, res), dtype=float32)
+    output = np.zeros((res, res, res), dtype=np.float32)
 
     for chunk in prange(number_of_chunks):
         left_edge = chunk * number_of_particles // number_of_chunks
@@ -901,11 +909,11 @@ def _scatter_parallel_impl(
 
 
 def _prepare(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    m: np.ndarray,
-    h: np.ndarray,
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    z: NDArray[np.float64],
+    m: NDArray[np.float32],
+    h: NDArray[np.float32],
     res: int,
     ntarget: int,
     nlevels: int,
@@ -966,15 +974,15 @@ def _prepare(
 
 
 def scatter(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    m: np.ndarray,
-    h: np.ndarray,
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    z: NDArray[np.float64],
+    m: NDArray[np.float32],
+    h: NDArray[np.float32],
     res: int,
-    box_x: float64 = float64(0.0),
-    box_y: float64 = float64(0.0),
-    box_z: float64 = float64(0.0),
+    box_x: np.float64 = np.float64(0.0),
+    box_y: np.float64 = np.float64(0.0),
+    box_z: np.float64 = np.float64(0.0),
     ntarget: int = 6,
     nlevels: int = 4,
 ) -> np.ndarray:
@@ -1043,24 +1051,24 @@ def scatter(
         m,
         h,
         res,
-        float64(box_x),
-        float64(box_y),
-        float64(box_z),
+        np.float64(box_x),
+        np.float64(box_y),
+        np.float64(box_z),
         ntarget,
         nlevels,
     )
 
 
 def scatter_parallel(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    m: np.ndarray,
-    h: np.ndarray,
+    x: NDArray[np.float64],
+    y: NDArray[np.float64],
+    z: NDArray[np.float64],
+    m: NDArray[np.float32],
+    h: NDArray[np.float32],
     res: int,
-    box_x: float64 = float64(0.0),
-    box_y: float64 = float64(0.0),
-    box_z: float64 = float64(0.0),
+    box_x: np.float64 = np.float64(0.0),
+    box_y: np.float64 = np.float64(0.0),
+    box_z: np.float64 = np.float64(0.0),
     ntarget: int = 6,
     nlevels: int = 4,
 ) -> np.ndarray:
@@ -1122,9 +1130,9 @@ def scatter_parallel(
     x, y, z, m, h, res, ntarget, nlevels = _prepare(
         x, y, z, m, h, res, ntarget, nlevels
     )
-    box_x = float64(box_x)
-    box_y = float64(box_y)
-    box_z = float64(box_z)
+    box_x = np.float64(box_x)
+    box_y = np.float64(box_y)
+    box_z = np.float64(box_z)
 
     if get_num_threads() == 1:
         return _scatter_serial_chunk(

@@ -12,15 +12,15 @@ validating and converting the user inputs.
 """
 
 import numpy as np
-from numpy import float32, float64, int32
+from numpy.typing import NDArray
 
 from numba import njit
 
 
 @njit(fastmath=True, cache=True, nogil=True, boundscheck=False, error_model="numpy")
 def assign_levels(
-    h: np.ndarray,
-    m: np.ndarray,
+    h: NDArray[np.float32],
+    m: NDArray[np.float32],
     res: int,
     ntarget: int,
     nlevels: int,
@@ -57,19 +57,19 @@ def assign_levels(
         Highest level actually occupied (bounds hierarchy allocation).
     """
     level_index = np.empty(h.size, dtype=np.int8)
-    support_scale = float32(kernel_gamma) * float32(res)
-    target = float32(ntarget)
-    deepest = int32(0)
+    support_scale = np.float32(kernel_gamma) * np.float32(res)
+    target = np.float32(ntarget)
+    deepest = np.int32(0)
 
     for particle in range(h.size):
-        if m[particle] != float32(0.0) and h[particle] >= float32(0.0):
+        if m[particle] != np.float32(0.0) and h[particle] >= np.float32(0.0):
             # Double the threshold at each step rather than computing log2.
             support_cells = h[particle] * support_scale
             threshold = target
-            level = int32(0)
+            level = np.int32(0)
             while support_cells > threshold and level < nlevels:
-                level += int32(1)
-                threshold *= float32(2.0)
+                level += np.int32(1)
+                threshold *= np.float32(2.0)
             level_index[particle] = level
             if level > deepest:
                 deepest = level
@@ -207,7 +207,7 @@ def prepare_particle_arrays(positions: dict, m: np.ndarray, h: np.ndarray) -> tu
     number_of_positions = len(positions)
     return tuple(
         np.ascontiguousarray(
-            array, dtype=float64 if i < number_of_positions else float32
+            array, dtype=np.float64 if i < number_of_positions else np.float32
         )
         for i, array in enumerate(arrays)
     )

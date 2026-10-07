@@ -104,6 +104,260 @@ loading data section should look something like:
 
 .. image:: temp_map.png
 
+Periodic boundaries
+-------------------
+
+Cosmological simulations and many other simulations use periodic boundary
+conditions. This has implications for the particles at the edge of the
+simulation box: they can contribute to pixels on multiple sides of the image.
+If this effect is not taken into account, then the pixels close to the edge
+will have values that are too low because of missing contributions.
+
+All visualisation functions by default assume a periodic box. Rather than
+simply projecting each individual particle once, four additional periodic copies
+of each particle are also projected. Most copies will project outside the valid
+pixel range, but the copies that do not ensure that pixels close to the edge
+receive all necessary contributions. Thanks to :mod:`numba` optimisations, the overhead
+of these additional copies is relatively small.
+
+There are some caveats with this approach. If you try to visualise a subset of
+the particles in the box (e.g. using a mask), then only periodic copies of
+particles in this subset will be used. If the subset does not include particles
+on the other side of the periodic boundary, then these will still be missing
+from the projection. The same is true if you visualise a region of the box.
+The periodic boundary wrapping is also not compatible with rotations (see below)
+and should therefore not be used together with a rotation.
+
+Rotations
+---------
+
+Sometimes you will need to visualise a galaxy from a different perspective.
+The :mod:`swiftsimio.visualisation.rotation` sub-module provides routines to
+generate rotation matrices corresponding to vectors, which can then be
+provided to the ``rotation_matrix`` argument of
+:func:`~swiftsimio.visualisation.projection.project_gas` (and
+:func:`~swiftsimio.visualisation.projection.project_pixel_grid`). You will also need
+to supply the ``rotation_center`` argument, as the rotation takes place around this given
+point. The example code below loads a snapshot, and a halo catalogue, and
+creates an edge-on and face-on projection using the integration in
+``velociraptor``. More information on possible integrations with this library
+is shown in the ``velociraptor`` section.
+
+.. code-block:: python
+
+   from swiftsimio import load, mask, cosmo_array
+   from velociraptor import load as load_catalogue
+   from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
+   from swiftsimio.visualisation.projection import project_gas
+
+   import unyt
+   import numpy as np
+
+   # Radius around which to load data, we will visualise half of this
+   size = 1000 * unyt.kpc
+
+   snapshot_filename = "cosmo_volume_example.hdf5"
+   catalogue_filename = "cosmo_volume_example.properties"
+
+   catalogue = load_catalogue(catalogue_filename)
+
+   # Which halo should we visualise?
+   halo = 0
+
+   x = catalogue.positions.xcmbp[halo]
+   y = catalogue.positions.ycmbp[halo]
+   z = catalogue.positions.zcmbp[halo]
+
+   lx = catalogue.angular_momentum.lx[halo]
+   ly = catalogue.angular_momentum.ly[halo]
+   lz = catalogue.angular_momentum.lz[halo]
+
+   # The angular momentum vector will point perpendicular to the galaxy disk.
+   # If your simulation contains stars, use lx_star
+   angular_momentum_vector = cosmo_array([lx, ly, lz])
+   angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
+
+   face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
+   edge_on_rotation_matrix = rotation_matrix_from_vector(
+       angular_momentum_vector, axis="y"
+   )
+
+   data_mask = mask(snapshot_filename)
+   region = cosmo_array(
+       [
+           [x - size, x + size],
+           [y - size, y + size],
+           [z - size, z + size],
+       ],
+       x.units,
+       comoving=True,
+       scale_factor=data_mask.metadata.a,
+       scale_exponent=1,
+   )
+
+   visualise_region = cosmo_array(
+       [
+           x - 0.5 * size,
+           x + 0.5 * size,
+           y - 0.5 * size,
+           y + 0.5 * size,
+       ],
+       comoving=True,
+       scale_factor=data_mask.metadata.a,
+       scale_exponent=1,
+   )
+
+   data_mask.constrain_spatial(region)
+   data = load(snapshot_filename, mask=data_mask)
+
+   # Use project_pixel_grid to generate projected images
+
+   common_arguments = dict(
+       data=data,
+       resolution=512,
+       parallel=True,
+       region=visualise_region,
+       periodic=False,  # disable periodic boundaries when using rotations
+   )
+
+   un_rotated = project_gas(**common_arguments)
+
+   rotation_center = cosmo_array(
+       [x, y, z], comoving=True, scale_factor=data_mask.metadata.a, scale_exponent=1
+   )
+   face_on = project_gas(
+       **common_arguments,
+       rotation_center=rotation_center,
+       rotation_matrix=face_on_rotation_matrix,
+   )
+
+   edge_on = project_gas(
+       **common_arguments,
+       rotation_center=rotation_center,
+       rotation_matrix=edge_on_rotation_matrix,
+   )
+
+Using this with the provided example data will just show blobs due to its low resolution
+nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
+galaxies, but that data is too large to provide as an example in this tutorial.
+
+You can also provide an extra two values, the z min and max, as part of the
+``region`` parameter. This may have some slight performance impact, so it is
+generally advised that you do this on sub-loaded volumes only.
+
+
+Masking
+-------
+
+Sometimes you want to render only a subset of a snapshot's data, for example
+just particles belonging to a given friends-of-friends group.
+To achieve this, you can provide a boolean mask to
+:func:`~swiftsimio.visualisation.projection.project_pixel_grid` or
+:func:`~swiftsimio.visualisation.projection.project_gas` to render only the
+particles which the mask specifies.
+
+.. code-block:: python
+
+   from swiftsimio import load, mask, cosmo_array
+   from swiftsimio.visualisation.projection import project_gas
+
+   snapshot_filename = "cosmo_volume_example.hdf5"
+   catalog_filename = "fof_output_example.hdf5"
+
+   # Which halo are we looking at?
+   halo = 0
+
+   fof_catalog = load(catalog_filename)
+
+   fof_id = fof_catalog.fof_groups.group_ids[halo]
+   fof_radius = fof_catalog.fof_groups.radii[halo]
+   fof_centre = fof_catalog.fof_groups.centres[halo]
+
+   # Add some buffer space around the edges
+   fof_radius *= 1.1
+
+   # Define a region around the fof group
+   region = cosmo_array(
+       [
+           [fof_centre[0] - fof_radius, fof_centre[0] + fof_radius],
+           [fof_centre[1] - fof_radius, fof_centre[1] + fof_radius],
+           [fof_centre[2] - fof_radius, fof_centre[2] + fof_radius],
+       ],
+       fof_centre.units,
+       comoving=True,
+       scale_factor=fof_catalog.metadata.a,
+       scale_exponent=1,
+   )
+
+   # Only load data in our region of interest
+   data_mask = mask(snapshot_filename)
+   data_mask.constrain_spatial(region)
+
+   data = load(snapshot_filename, mask=data_mask)
+
+   halo_map = project_gas(
+       data,
+       resolution=512,
+       parallel=True,
+       region=region.ravel(),
+       periodic=True,
+       mask=data.gas.fofgroup_id == fof_id, # Only render particles in the group
+   )
+
+
+Other particle types
+--------------------
+
+Other particle types are able to be visualised through the use of the
+:func:`swiftsimio.visualisation.projection.project_pixel_grid` function.
+
+To use this feature for particle types that do not have smoothing lengths, you
+will need to generate them, as in the example below where we create a
+mass density map for dark matter. We provide a utility to do this through
+:func:`~swiftsimio.visualisation.smoothing_length.generate.generate_smoothing_lengths`.
+
+.. code-block:: python
+
+   from swiftsimio import load
+   from swiftsimio.visualisation.projection import project_pixel_grid
+   from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
+
+   data = load("cosmo_volume_example.hdf5")
+
+   # Generate smoothing lengths for the dark matter
+   data.dark_matter.smoothing_length = generate_smoothing_lengths(
+       data.dark_matter.coordinates,
+       data.metadata.boxsize,
+       kernel_gamma=1.8,
+       neighbours=57,
+       speedup_fac=2,
+       dimension=3,
+   )
+
+   # Project the dark matter mass
+   dm_mass = project_pixel_grid(
+       # Note here that we pass in the dark matter dataset not the whole
+       # data object, to specify what particle type we wish to visualise
+       data=data.dark_matter,
+       resolution=1024,
+       project="masses",
+       parallel=True,
+       region=None,
+       periodic=True,
+   )
+
+   from matplotlib.pyplot import imsave
+   from matplotlib.colors import LogNorm
+
+   # Everyone knows that dark matter is purple
+   imsave("dm_mass_map.png", LogNorm()(dm_mass), cmap="inferno")
+
+The output from this example, when used with the example data provided in the
+loading data section should look something like:
+
+.. image:: dm_mass_map.png
+
+
 Backends
 --------
 
@@ -389,260 +643,6 @@ distributions.
 
 .. _Benítez-Llambay (2025): https://iopscience.iop.org/article/10.3847/2515-5172/addab2
 
-Periodic boundaries
--------------------
-
-Cosmological simulations and many other simulations use periodic boundary
-conditions. This has implications for the particles at the edge of the
-simulation box: they can contribute to pixels on multiple sides of the image.
-If this effect is not taken into account, then the pixels close to the edge
-will have values that are too low because of missing contributions.
-
-All visualisation functions by default assume a periodic box. Rather than
-simply projecting each individual particle once, four additional periodic copies
-of each particle are also projected. Most copies will project outside the valid
-pixel range, but the copies that do not ensure that pixels close to the edge
-receive all necessary contributions. Thanks to :mod:`numba` optimisations, the overhead
-of these additional copies is relatively small.
-
-There are some caveats with this approach. If you try to visualise a subset of
-the particles in the box (e.g. using a mask), then only periodic copies of
-particles in this subset will be used. If the subset does not include particles
-on the other side of the periodic boundary, then these will still be missing
-from the projection. The same is true if you visualise a region of the box.
-The periodic boundary wrapping is also not compatible with rotations (see below)
-and should therefore not be used together with a rotation.
-
-Rotations
----------
-
-Sometimes you will need to visualise a galaxy from a different perspective.
-The :mod:`swiftsimio.visualisation.rotation` sub-module provides routines to
-generate rotation matrices corresponding to vectors, which can then be
-provided to the ``rotation_matrix`` argument of
-:func:`~swiftsimio.visualisation.projection.project_gas` (and
-:func:`~swiftsimio.visualisation.projection.project_pixel_grid`). You will also need
-to supply the ``rotation_center`` argument, as the rotation takes place around this given
-point. The example code below loads a snapshot, and a halo catalogue, and
-creates an edge-on and face-on projection using the integration in
-``velociraptor``. More information on possible integrations with this library
-is shown in the ``velociraptor`` section.
-
-.. code-block:: python
-
-   from swiftsimio import load, mask, cosmo_array
-   from velociraptor import load as load_catalogue
-   from swiftsimio.visualisation.rotation import rotation_matrix_from_vector
-   from swiftsimio.visualisation.projection import project_gas
-
-   import unyt
-   import numpy as np
-
-   # Radius around which to load data, we will visualise half of this
-   size = 1000 * unyt.kpc
-
-   snapshot_filename = "cosmo_volume_example.hdf5"
-   catalogue_filename = "cosmo_volume_example.properties"
-
-   catalogue = load_catalogue(catalogue_filename)
-
-   # Which halo should we visualise?
-   halo = 0
-
-   x = catalogue.positions.xcmbp[halo]
-   y = catalogue.positions.ycmbp[halo]
-   z = catalogue.positions.zcmbp[halo]
-
-   lx = catalogue.angular_momentum.lx[halo]
-   ly = catalogue.angular_momentum.ly[halo]
-   lz = catalogue.angular_momentum.lz[halo]
-
-   # The angular momentum vector will point perpendicular to the galaxy disk.
-   # If your simulation contains stars, use lx_star
-   angular_momentum_vector = cosmo_array([lx, ly, lz])
-   angular_momentum_vector /= np.linalg.norm(angular_momentum_vector)
-
-   face_on_rotation_matrix = rotation_matrix_from_vector(angular_momentum_vector)
-   edge_on_rotation_matrix = rotation_matrix_from_vector(
-       angular_momentum_vector, axis="y"
-   )
-
-   data_mask = mask(snapshot_filename)
-   region = cosmo_array(
-       [
-           [x - size, x + size],
-           [y - size, y + size],
-           [z - size, z + size],
-       ],
-       x.units,
-       comoving=True,
-       scale_factor=data_mask.metadata.a,
-       scale_exponent=1,
-   )
-
-   visualise_region = cosmo_array(
-       [
-           x - 0.5 * size,
-           x + 0.5 * size,
-           y - 0.5 * size,
-           y + 0.5 * size,
-       ],
-       comoving=True,
-       scale_factor=data_mask.metadata.a,
-       scale_exponent=1,
-   )
-
-   data_mask.constrain_spatial(region)
-   data = load(snapshot_filename, mask=data_mask)
-
-   # Use project_pixel_grid to generate projected images
-
-   common_arguments = dict(
-       data=data,
-       resolution=512,
-       parallel=True,
-       region=visualise_region,
-       periodic=False,  # disable periodic boundaries when using rotations
-   )
-
-   un_rotated = project_gas(**common_arguments)
-
-   rotation_center = cosmo_array(
-       [x, y, z], comoving=True, scale_factor=data_mask.metadata.a, scale_exponent=1
-   )
-   face_on = project_gas(
-       **common_arguments,
-       rotation_center=rotation_center,
-       rotation_matrix=face_on_rotation_matrix,
-   )
-
-   edge_on = project_gas(
-       **common_arguments,
-       rotation_center=rotation_center,
-       rotation_matrix=edge_on_rotation_matrix,
-   )
-
-Using this with the provided example data will just show blobs due to its low resolution
-nature. Using one of the EAGLE volumes (``examples/EAGLE_ICs``) will produce much nicer
-galaxies, but that data is too large to provide as an example in this tutorial.
-
-You can also provide an extra two values, the z min and max, as part of the
-``region`` parameter. This may have some slight performance impact, so it is
-generally advised that you do this on sub-loaded volumes only.
-
-
-Masking
--------
-
-Sometimes you want to render only a subset of a snapshot's data, for example
-just particles belonging to a given friends-of-friends group.
-To achieve this, you can provide a boolean mask to
-:func:`~swiftsimio.visualisation.projection.project_pixel_grid` or
-:func:`~swiftsimio.visualisation.projection.project_gas` to render only the
-particles which the mask specifies.
-
-.. code-block:: python
-
-   from swiftsimio import load, mask, cosmo_array
-   from swiftsimio.visualisation.projection import project_gas
-
-   snapshot_filename = "cosmo_volume_example.hdf5"
-   catalog_filename = "fof_output_example.hdf5"
-
-   # Which halo are we looking at?
-   halo = 0
-
-   fof_catalog = load(catalog_filename)
-
-   fof_id = fof_catalog.fof_groups.group_ids[halo]
-   fof_radius = fof_catalog.fof_groups.radii[halo]
-   fof_centre = fof_catalog.fof_groups.centres[halo]
-
-   # Add some buffer space around the edges
-   fof_radius *= 1.1
-
-   # Define a region around the fof group
-   region = cosmo_array(
-       [
-           [fof_centre[0] - fof_radius, fof_centre[0] + fof_radius],
-           [fof_centre[1] - fof_radius, fof_centre[1] + fof_radius],
-           [fof_centre[2] - fof_radius, fof_centre[2] + fof_radius],
-       ],
-       fof_centre.units,
-       comoving=True,
-       scale_factor=fof_catalog.metadata.a,
-       scale_exponent=1,
-   )
-
-   # Only load data in our region of interest
-   data_mask = mask(snapshot_filename)
-   data_mask.constrain_spatial(region)
-
-   data = load(snapshot_filename, mask=data_mask)
-
-   halo_map = project_gas(
-       data,
-       resolution=512,
-       parallel=True,
-       region=region.ravel(),
-       periodic=True,
-       mask=data.gas.fofgroup_id == fof_id, # Only render particles in the group
-   )
-
-
-Other particle types
---------------------
-
-Other particle types are able to be visualised through the use of the
-:func:`swiftsimio.visualisation.projection.project_pixel_grid` function.
-
-To use this feature for particle types that do not have smoothing lengths, you
-will need to generate them, as in the example below where we create a
-mass density map for dark matter. We provide a utility to do this through
-:func:`~swiftsimio.visualisation.smoothing_length.generate.generate_smoothing_lengths`.
-
-.. code-block:: python
-
-   from swiftsimio import load
-   from swiftsimio.visualisation.projection import project_pixel_grid
-   from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
-
-   data = load("cosmo_volume_example.hdf5")
-
-   # Generate smoothing lengths for the dark matter
-   data.dark_matter.smoothing_length = generate_smoothing_lengths(
-       data.dark_matter.coordinates,
-       data.metadata.boxsize,
-       kernel_gamma=1.8,
-       neighbours=57,
-       speedup_fac=2,
-       dimension=3,
-   )
-
-   # Project the dark matter mass
-   dm_mass = project_pixel_grid(
-       # Note here that we pass in the dark matter dataset not the whole
-       # data object, to specify what particle type we wish to visualise
-       data=data.dark_matter,
-       resolution=1024,
-       project="masses",
-       parallel=True,
-       region=None,
-       periodic=True,
-   )
-
-   from matplotlib.pyplot import imsave
-   from matplotlib.colors import LogNorm
-
-   # Everyone knows that dark matter is purple
-   imsave("dm_mass_map.png", LogNorm()(dm_mass), cmap="inferno")
-
-The output from this example, when used with the example data provided in the
-loading data section should look something like:
-
-.. image:: dm_mass_map.png
-
-
 Lower-level API
 ---------------
 
@@ -672,6 +672,7 @@ To use these functions, you will need:
 + The resolution you wish to make your square image at, ``res``.
 
 Optionally, you will also need:
+
 + the size of the simulation box in x and y, ``box_x`` and ``box_y``.
 
 The key here is that only particles in the domain [0, 1] in x, and [0, 1] in y

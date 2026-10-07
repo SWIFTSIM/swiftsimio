@@ -649,6 +649,7 @@ To use this function, you will need:
 + The resolution you wish to make your cube at, ``res``.
 
 Optionally, you will also need:
+
 + the size of the simulation box in x, y and z, ``box_x``, ``box_y`` and ``box_z``.
 
 The key here is that only particles in the domain [0, 1] in x, [0, 1] in y,
