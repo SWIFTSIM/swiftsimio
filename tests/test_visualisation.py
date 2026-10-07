@@ -699,7 +699,8 @@ class TestSlice:
 
         A particle with a kernel width of 0.9 pixels, sitting 0.1 pixels into its
         pixel, reaches the centre of the pixel below it. Its mirror image, sitting 0.9
-        pixels into its pixel, should reach the centre of the pixel above it.
+        pixels into its pixel, should reach the centre of the pixel above it. This is a
+        regression test for https://github.com/SWIFTSIM/swiftsimio/pull/348.
         """
         from swiftsimio.visualisation.slice_backends.sph import kernel_gamma
 
@@ -1033,7 +1034,8 @@ class TestVolumeRender:
         A particle with a kernel width of 0.9 cells, sitting 0.1 cells into its cell,
         reaches the centre of the cell below it. Its mirror image, sitting 0.9 cells
         into its cell, should reach the centre of the cell above it. This catches the
-        deposit loop skipping cells on one side of the particle.
+        deposit loop skipping cells on one side of the particle. This is a regression
+        test for https://github.com/SWIFTSIM/swiftsimio/pull/348.
         """
         from swiftsimio.visualisation.slice_backends.sph import kernel_gamma
 
