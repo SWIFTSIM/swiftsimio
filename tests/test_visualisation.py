@@ -132,7 +132,8 @@ class TestProjection:
 
         return
 
-    def test_scatter_parallel(self, save=False):
+    @pytest.mark.parametrize("backend", ["fast", "nested"])
+    def test_scatter_parallel(self, backend, save=False):
         """Check that parallel projection is equivalent to serial projection."""
         number_of_parts = 1000
         h_max = np.float32(0.05)
@@ -146,8 +147,8 @@ class TestProjection:
         hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
         masses = np.ones(number_of_parts, dtype=np.float32)
 
-        scatter = projection_backends["fast"]
-        scatter_parallel = projection_backends_parallel["fast"]
+        scatter = projection_backends[backend]
+        scatter_parallel = projection_backends_parallel[backend]
         image = scatter(
             x=coordinates[0],
             y=coordinates[1],
@@ -343,6 +344,12 @@ class TestProjection:
             frac=0.99,
             tol=0.01,
         )
+        # The nested backend assigns levels from h * res, and the tiled image has three
+        # times the resolution with the box mapped to a different normalised interval,
+        # so a particle right on a level threshold or pixel edge can be treated
+        # differently in the two images. This leaves a few pixels differing by up to a
+        # few percent (see also TestVolumeRender.test_equivalent_regions).
+        max_rel_diff = 0.05 if backend == "nested" else 0.02
         with np.testing.suppress_warnings() as sup:
             sup.filter(RuntimeWarning, "invalid value encountered in divide")
             assert (
@@ -352,7 +359,7 @@ class TestProjection:
                     ).to_physical_value(unyt.dimensionless)
                     - 1
                 )
-                < 0.02
+                < max_rel_diff
             )
         assert np.allclose(depth_img, neg_depth_img)
         assert np.allclose(depth_img, wrap_depth_img)
@@ -365,7 +372,7 @@ class TestProjection:
             # https://github.com/SWIFTSIM/swiftsimio/issues/229
             pytest.xfail("gpu backend currently broken")
 
-        pixel_resolution = 100
+        pixel_resolution = 128  # the nested backend needs a multiple of 2**nlevels
         boxsize = 1.0
 
         # set up a particle near the edge of the box that overlaps with the edge
@@ -405,6 +412,88 @@ class TestProjection:
                 raise ImportError("Optional loading of the CUDA module is broken")
             else:
                 pytest.skip("CUDA is not available")
+
+
+class TestNestedProjection:
+    """Tests specific to the nested multi-resolution projection backend."""
+
+    def test_agrees_with_fast_at_high_ntarget(self):
+        """
+        Test that the nested backend agrees with the fast backend when ntarget is large.
+
+        When ntarget is large every particle is assigned to level 0 (the finest
+        grid), so the nested backend should agree closely with the fast backend.
+        The two backends have independent kernel evaluation code so bitwise
+        equality is not expected.
+        """
+        number_of_parts = 500
+        resolution = 64
+
+        rng = np.random.default_rng(42)
+        coordinates = rng.random((2, number_of_parts)).astype(np.float64)
+        hsml = (rng.random(number_of_parts).astype(np.float32) * 0.03).clip(1e-4)
+        masses = np.ones(number_of_parts, dtype=np.float32)
+
+        kwargs = dict(
+            x=coordinates[0],
+            y=coordinates[1],
+            m=masses,
+            h=hsml,
+            res=resolution,
+            box_x=1.0,
+            box_y=1.0,
+        )
+        image_fast = projection_backends["fast"](**kwargs)
+        image_nested = projection_backends["nested"](**kwargs, ntarget=1000)
+
+        assert np.isclose(
+            image_fast.astype(np.float64).sum(),
+            image_nested.astype(np.float64).sum(),
+            rtol=0.05,
+        )
+        nonzero = image_fast > 0
+        ratios = np.abs(image_fast[nonzero] / image_nested[nonzero] - 1)
+        assert np.sum(ratios < 0.1) / ratios.size > 0.95
+
+    def test_mass_conservation(self):
+        """Total mass deposited by the nested backend should equal total input mass."""
+        number_of_parts = 1000
+        resolution = 64
+
+        rng = np.random.default_rng(7)
+        coordinates = rng.random((2, number_of_parts)).astype(np.float64)
+        hsml = (rng.random(number_of_parts).astype(np.float32) * 0.2).clip(1e-4)
+        masses = rng.random(number_of_parts).astype(np.float32)
+
+        image = projection_backends["nested"](
+            x=coordinates[0],
+            y=coordinates[1],
+            m=masses,
+            h=hsml,
+            res=resolution,
+            box_x=1.0,
+            box_y=1.0,
+        )
+
+        deposited_mass = float(image.sum()) / resolution**2
+        assert np.isclose(deposited_mass, float(masses.sum()), rtol=0.02)
+
+    def test_invalid_resolution(self):
+        """A resolution not divisible by 2**nlevels should raise a helpful error."""
+        with pytest.raises(ValueError, match="divisible by 2\\*\\*4=16"):
+            projection_backends["nested"](
+                x=np.array([0.5]),
+                y=np.array([0.5]),
+                m=np.array([1.0]),
+                h=np.array([0.1]),
+                res=100,
+            )
+
+    def test_kwargs_passed_to_backend(self, cosmological_volume_only_single_local):
+        """Extra keyword arguments to project_gas should reach the backend."""
+        data = load(cosmological_volume_only_single_local)
+        with pytest.raises(ValueError, match="divisible by 2\\*\\*6=64"):
+            project_gas(data, 32, backend="nested", nlevels=6)
 
 
 class TestSlice:
@@ -723,10 +812,11 @@ class TestSlice:
 class TestVolumeRender:
     """Tests for the volume render functions in the visualisation tools."""
 
-    def test_volume_render(self):
+    @pytest.mark.parametrize("backend", ["scatter", "nested"])
+    def test_volume_render(self, backend):
         """Just run a volume render and make sure we don't crash."""
         # render image
-        scatter = volume_render_backends["scatter"]
+        scatter = volume_render_backends[backend]
         scatter(
             x=np.array([0.0, 1.0, 1.0, -0.000_001]),
             y=np.array([0.0, 0.0, 1.0, 1.000_001]),
@@ -741,7 +831,8 @@ class TestVolumeRender:
 
         return
 
-    def test_volume_parallel(self):
+    @pytest.mark.parametrize("backend", ["scatter", "nested"])
+    def test_volume_parallel(self, backend):
         """Check that volume render in parallel matches serial volume render."""
         number_of_parts = 1000
         h_max = np.float32(0.05)
@@ -755,7 +846,7 @@ class TestVolumeRender:
         hsml = np.random.rand(number_of_parts).astype(np.float32) * h_max
         masses = np.ones(number_of_parts, dtype=np.float32)
 
-        scatter = volume_render_backends["scatter"]
+        scatter = volume_render_backends[backend]
         image = scatter(
             x=coordinates[0],
             y=coordinates[1],
@@ -767,7 +858,7 @@ class TestVolumeRender:
             box_y=1.0,
             box_z=1.0,
         )
-        scatter_parallel = volume_render_backends_parallel["scatter"]
+        scatter_parallel = volume_render_backends_parallel[backend]
         image_par = scatter_parallel(
             x=coordinates[0],
             y=coordinates[1],
@@ -831,8 +922,9 @@ class TestVolumeRender:
 
         assert deposition_1[100, 100, 100] * 8.0 == deposition_2[200, 200, 200]
 
+    @pytest.mark.parametrize("backend", ["scatter", "nested"])
     def test_volume_render_and_unfolded_deposit_with_units(
-        self, cosmological_volume_only_single_local
+        self, cosmological_volume_only_single_local, backend
     ):
         """Check that the density in the render matches the input density."""
         data = load(cosmological_volume_only_single_local)
@@ -845,7 +937,7 @@ class TestVolumeRender:
         ).to_physical()
 
         # Volume render the particles
-        volume = render_gas(data, npix, parallel=False).to_physical()
+        volume = render_gas(data, npix, parallel=False, backend=backend).to_physical()
 
         mean_density_deposit = (
             (np.sum(deposition) / npix**3)
@@ -867,9 +959,10 @@ class TestVolumeRender:
         assert np.isclose(mean_density_volume, mean_density_calculated, rtol=0.2)
         assert np.isclose(mean_density_deposit, mean_density_volume, rtol=0.2)
 
-    def test_periodic_boundary_wrapping(self):
+    @pytest.mark.parametrize("backend", ["scatter", "nested"])
+    def test_periodic_boundary_wrapping(self, backend):
         """Check that a single particle wraps properly around the periodic boundary."""
-        voxel_resolution = 10
+        voxel_resolution = 16  # the nested backend needs a multiple of 2**nlevels
         boxsize = 1.0
 
         # set up a particle near the edge of the box that overlaps with the edge
@@ -884,7 +977,7 @@ class TestVolumeRender:
         masses_non_periodic = np.array([1.0, 1.0])
 
         # test the volume rendering scatter function
-        scatter = volume_render_backends["scatter"]
+        scatter = volume_render_backends[backend]
         image1 = scatter(
             x=coordinates_periodic[:, 0],
             y=coordinates_periodic[:, 1],
@@ -910,7 +1003,8 @@ class TestVolumeRender:
 
         assert (image1 == image2).all()
 
-    def test_equivalent_regions(self, cosmological_volume_only_single_local):
+    @pytest.mark.parametrize("backend", ["scatter", "nested"])
+    def test_equivalent_regions(self, cosmological_volume_only_single_local, backend):
         """
         Test that volume renders of equivalent regions are (close enough to) equivalent.
 
@@ -943,6 +1037,7 @@ class TestVolumeRender:
             ),
             resolution=box_res,
             parallel=parallel,
+            backend=backend,
             periodic=True,
         )
         big_img = render_gas(
@@ -956,6 +1051,7 @@ class TestVolumeRender:
             ),
             resolution=box_res * 3,
             parallel=parallel,
+            backend=backend,
             periodic=True,
         )
         far_img = render_gas(
@@ -969,6 +1065,7 @@ class TestVolumeRender:
             ),
             resolution=box_res,
             parallel=parallel,
+            backend=backend,
             periodic=True,
         )
         straddled_img = render_gas(
@@ -982,6 +1079,7 @@ class TestVolumeRender:
             ),
             resolution=box_res,
             parallel=parallel,
+            backend=backend,
         )
         edge_img = render_gas(
             sd,
@@ -1001,6 +1099,7 @@ class TestVolumeRender:
             ),
             resolution=box_res,
             parallel=parallel,
+            backend=backend,
             periodic=False,
         )
         edge_mask = np.s_[
@@ -1015,7 +1114,12 @@ class TestVolumeRender:
         assert np.allclose(far_img, ref_img)
         slab = np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
         cube = np.concatenate([slab] * 3, axis=2)
-        assert fraction_within_tolerance(big_img, cube)
+        # The nested backend assigns levels based on h/cell_width; a particle near a
+        # voxel boundary may land in a different cell when the region origin shifts
+        # (tiling or straddling). ~97% of voxels agree within float32 rounding in
+        # both cases. The scatter backend is exact here so it uses frac=1.0.
+        frac = 0.97 if backend == "nested" else 1.0
+        assert fraction_within_tolerance(big_img, cube, frac=frac)
         assert fraction_within_tolerance(
             ref_img,
             np.concatenate(
@@ -1025,6 +1129,7 @@ class TestVolumeRender:
                 ),
                 axis=-1,
             ),
+            frac=frac,
         )
 
     def test_volume_mirror_symmetry(self):
@@ -1089,6 +1194,89 @@ class TestVolumeRender:
             box_z=boxsize,
         )
         assert np.isclose(volume.sum(), res**3)
+
+
+class TestNestedVolumeRender:
+    """Tests for the nested multi-resolution volume render backend."""
+
+    def test_agrees_with_scatter_at_high_ntarget(self):
+        """
+        Test that the nested backend agrees with the standard scatter backend when ntarget is large.
+
+        When ntarget is large (e.g. 20), every particle is assigned to level 0
+        (the finest grid), so the nested backend should agree closely with the
+        standard scatter backend. The two backends have independent kernel
+        evaluation code so bitwise equality is not expected, but the total
+        deposited mass and the voxel-by-voxel values should be very close.
+        """
+        number_of_parts = 500
+        h_max = np.float32(0.03)
+        resolution = 32
+
+        rng = np.random.default_rng(42)
+        coordinates = rng.random((3, number_of_parts)).astype(np.float64)
+        hsml = (rng.random(number_of_parts).astype(np.float32) * h_max).clip(1e-4)
+        masses = np.ones(number_of_parts, dtype=np.float32)
+
+        image_scatter = volume_render_backends["scatter"](
+            x=coordinates[0],
+            y=coordinates[1],
+            z=coordinates[2],
+            m=masses,
+            h=hsml,
+            res=resolution,
+            box_x=1.0,
+            box_y=1.0,
+            box_z=1.0,
+        )
+        image_nested = volume_render_backends["nested"](
+            x=coordinates[0],
+            y=coordinates[1],
+            z=coordinates[2],
+            m=masses,
+            h=hsml,
+            res=resolution,
+            box_x=1.0,
+            box_y=1.0,
+            box_z=1.0,
+            ntarget=20,
+        )
+
+        assert np.isclose(
+            image_scatter.astype(np.float64).sum(),
+            image_nested.astype(np.float64).sum(),
+            rtol=0.05,
+        )
+        nonzero = image_scatter > 0
+        ratios = np.abs(image_scatter[nonzero] / image_nested[nonzero] - 1)
+        assert np.sum(ratios < 0.1) / ratios.size > 0.95
+
+    def test_mass_conservation(self):
+        """Total mass deposited by the nested backend should equal total input mass."""
+        number_of_parts = 1000
+        resolution = 32
+
+        rng = np.random.default_rng(7)
+        coordinates = rng.random((3, number_of_parts)).astype(np.float64)
+        hsml = (rng.random(number_of_parts).astype(np.float32) * 0.05).clip(1e-4)
+        masses = rng.random(number_of_parts).astype(np.float32)
+
+        scatter = volume_render_backends["nested"]
+        image = scatter(
+            x=coordinates[0],
+            y=coordinates[1],
+            z=coordinates[2],
+            m=masses,
+            h=hsml,
+            res=resolution,
+            box_x=1.0,
+            box_y=1.0,
+            box_z=1.0,
+        )
+
+        cell_volume = (1.0 / resolution) ** 3
+        deposited_mass = float(image.sum()) * cell_volume
+        assert np.isclose(deposited_mass, float(masses.sum()), rtol=0.02)
 
 
 def test_selection_render(cosmological_volume_only_single_local):

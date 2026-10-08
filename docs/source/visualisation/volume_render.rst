@@ -380,6 +380,47 @@ Once you have this base image, you can always use your photo editor to tweak it 
 In particular, open the 'levels' panel and play around with the sliders!
 
 
+Backends
+--------
+
+Two scatter backends are available, selected via the ``backend`` argument to
+:func:`~swiftsimio.visualisation.volume_render.render_voxel_grid` and
+:func:`~swiftsimio.visualisation.volume_render.render_gas`:
+
+* ``"scatter"`` — the default, standard single-resolution backend.
+* ``"nested"`` — the nested multi-resolution backend, described in detail
+  in :doc:`nested_backend`. This is faster for simulations with a wide
+  range of smoothing lengths, such as zoom-in runs or boxes containing both
+  high-density gas and diffuse IGM.
+
+.. code-block:: python
+
+   from swiftsimio import load
+   from swiftsimio.visualisation.volume_render import render_gas
+
+   data = load("cosmo_volume_example.hdf5")
+
+   # Standard backend
+   mass_grid_standard = render_gas(
+       data,
+       resolution=256,
+       project="masses",
+       parallel=True,
+       backend="scatter",  # the default
+   )
+
+   # Nested backend — faster for wide smoothing-length distributions.
+   mass_grid_nested = render_gas(
+       data,
+       resolution=256,
+       project="masses",
+       parallel=True,
+       backend="nested",
+       ntarget=6,    # target voxels per kernel diameter at each level
+       nlevels=4,    # number of coarsening levels (requires res % 2**nlevels == 0)
+   )
+
+
 Lower-level API
 ---------------
 
@@ -391,8 +432,7 @@ This API is available through
 :obj:`swiftsimio.visualisation.volume_render_backends.backends` and
 :obj:`swiftsimio.visualisation.volume_render_backends.backends_parallel` for parallel
 implementations. The parallel versions use significantly more memory as they allocate
-a thread-local image array for each thread, summing them in the end. Here we
-will only describe the ``scatter`` variant (currently the only option).
+a thread-local image array for each thread, summing them in the end.
 
 To use this function, you will need:
 
@@ -405,6 +445,7 @@ To use this function, you will need:
 + The resolution you wish to make your cube at, ``res``.
 
 Optionally, you will also need:
+
 + the size of the simulation box in x, y and z, ``box_x``, ``box_y`` and ``box_z``.
 
 The key here is that only particles in the domain [0, 1] in x, [0, 1] in y,
@@ -417,11 +458,35 @@ raw numpy array (not :class:`~swiftsimio.objects.cosmo_array` or
 
 .. code-block:: python
 
-   from swiftsimio.visualisation.volume_render_backends import backends
+   from swiftsimio.visualisation.volume_render_backends import backends, backends_parallel
 
-   volume_render_scatter = backends["scatter"]
-   # Using the variable names from above
-   out = volume_render_scatter(x=x, y=y, z=z, h=h, m=m, res=res)
+   # Standard single-resolution scatter (serial).
+   out = backends["scatter"](x=x, y=y, z=z, h=h, m=m, res=res)
+
+   # Nested multi-resolution scatter (serial).
+   out = backends["nested"](
+       x=x,
+       y=y,
+       z=z,
+       h=h,
+       m=m,
+       res=res,
+       ntarget=6,
+       nlevels=4,
+   )
+
+   # Parallel variants — use the same keyword arguments.
+   out = backends_parallel["scatter"](x=x, y=y, z=z, h=h, m=m, res=res)
+   out = backends_parallel["nested"](
+       x=x,
+       y=y,
+       z=z,
+       h=h,
+       m=m,
+       res=res,
+       ntarget=6,
+       nlevels=4,
+   )
 
 ``out`` will be a 3D :class:`~numpy.ndarray` grid of shape ``[res, res, res]``. You will
 need to re-scale this back to your original dimensions to get it in the

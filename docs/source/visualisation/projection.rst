@@ -104,59 +104,6 @@ loading data section should look something like:
 
 .. image:: temp_map.png
 
-Backends
---------
-
-In certain cases, rather than just using this facility for visualisation, you
-will wish that the values that are returned to be as well converged as
-possible. For this, we provide several different backends. These are passed
-as ``backend="str"`` to all of the projection visualisation functions, and
-are available in the module
-:mod:`swiftsimio.visualisation.projection.projection_backends`. The available
-backends are as follows:
-
-+ ``fast``: The default backend - this is extremely fast, and provides very basic
-  smoothing, with a return type of single precision floating point numbers.
-+ ``histogram``: This backend provides zero smoothing, and acts in a similar way
-  to the :func:`~numpy.histogram2d` function but with the same arguments as ``scatter``.
-+ ``reference``: The same backend as ``fast`` but with two distinguishing features:
-  all calculations are performed in double precision, and it will return early
-  with a warning message if there are not enough pixels to fully resolve each kernel.
-  Intended for developer usage, regular users should not use this mode.
-+ ``renormalised``: The same as ``fast``, but each kernel is evaluated twice and
-  renormalised to ensure mass conservation within floating point precision. Returns
-  single precision arrays.
-+ ``subsampled``: This is the recommended mode for users who wish to have converged
-  results even at low resolution. Each kernel is evaluated at least 32 times, with
-  overlaps between pixels considered for every single particle. Returns in
-  double precision.
-+ ``subsampled_extreme``: The same as ``subsampled``, but provides 64 kernel
-  evaluations.
-+ ``gpu``: The same as ``fast`` but uses CUDA for faster computation on supported
-  GPUs. The parallel implementation is the same function as the non-parallel.
-
-Example:
-
-.. code-block:: python
-
-   from swiftsimio import load
-   from swiftsimio.visualisation.projection import project_gas
-
-   data = load("cosmo_volume_example.hdf5")
-
-   subsampled_array = project_gas(
-      data,
-      resolution=1024,
-      project="entropies",
-      parallel=True,
-      backend="subsampled",
-      periodic=True,
-   )
-
-This will likely look very similar to the image that you make with the default
-``backend="fast"``, but will have a well-converged distribution at any resolution
-level.
-
 Periodic boundaries
 -------------------
 
@@ -411,6 +358,69 @@ loading data section should look something like:
 .. image:: dm_mass_map.png
 
 
+Backends
+--------
+
+In certain cases, rather than just using this facility for visualisation, you
+will wish that the values that are returned to be as well converged as
+possible. For this, we provide several different backends. These are passed
+as ``backend="str"`` to all of the projection visualisation functions, and
+are available in the module
+:mod:`swiftsimio.visualisation.projection.projection_backends`. The available
+backends are as follows:
+
++ ``fast``: The default backend - this is extremely fast, and provides very basic
+  smoothing, with a return type of single precision floating point numbers.
++ ``histogram``: This backend provides zero smoothing, and acts in a similar way
+  to the :func:`~numpy.histogram2d` function but with the same arguments as ``scatter``.
++ ``reference``: The same backend as ``fast`` but with two distinguishing features:
+  all calculations are performed in double precision, and it will return early
+  with a warning message if there are not enough pixels to fully resolve each kernel.
+  Intended for developer usage, regular users should not use this mode.
++ ``renormalised``: The same as ``fast``, but each kernel is evaluated twice and
+  renormalised to ensure mass conservation within floating point precision. Returns
+  single precision arrays.
++ ``subsampled``: This is the recommended mode for users who wish to have converged
+  results even at low resolution. Each kernel is evaluated at least 32 times, with
+  overlaps between pixels considered for every single particle. Returns in
+  double precision.
++ ``subsampled_extreme``: The same as ``subsampled``, but provides 64 kernel
+  evaluations.
++ ``nested``: A nested multi-resolution backend that scatters particles with
+  large smoothing lengths onto coarser grids and bilinearly upsamples the result,
+  following the Sparse Multi-Scale Grid approach described in
+  `Benítez-Llambay (2025)`_. This bounds the cost per particle regardless of
+  smoothing length, so it is much faster than ``fast`` for simulations with a
+  wide range of smoothing lengths. Takes the optional ``ntarget`` and
+  ``nlevels`` arguments; ``resolution`` must be divisible by ``2**nlevels``.
+  See :doc:`nested_backend` for details.
++ ``gpu``: The same as ``fast`` but uses CUDA for faster computation on supported
+  GPUs. The parallel implementation is the same function as the non-parallel.
+
+Example:
+
+.. code-block:: python
+
+   from swiftsimio import load
+   from swiftsimio.visualisation.projection import project_gas
+
+   data = load("cosmo_volume_example.hdf5")
+
+   subsampled_array = project_gas(
+      data,
+      resolution=1024,
+      project="entropies",
+      parallel=True,
+      backend="subsampled",
+      periodic=True,
+   )
+
+This will likely look very similar to the image that you make with the default
+``backend="fast"``, but will have a well-converged distribution at any resolution
+level.
+
+.. _Benítez-Llambay (2025): https://iopscience.iop.org/article/10.3847/2515-5172/addab2
+
 Lower-level API
 ---------------
 
@@ -440,6 +450,7 @@ To use these functions, you will need:
 + The resolution you wish to make your square image at, ``res``.
 
 Optionally, you will also need:
+
 + the size of the simulation box in x and y, ``box_x`` and ``box_y``.
 
 The key here is that only particles in the domain [0, 1] in x, and [0, 1] in y
@@ -457,6 +468,17 @@ inputs are dimensionless). Then you may use the functions as follows:
    scatter = backends["fast"]
    # Using the variable names from above
    out = scatter(x=x, y=y, h=h, m=m, res=res)
+
+   # The nested backend accepts the same arguments, plus ntarget and nlevels.
+   out = backends["nested"](
+       x=x,
+       y=y,
+       h=h,
+       m=m,
+       res=res,
+       ntarget=6,
+       nlevels=4,
+   )
 
 ``out`` will be a 2D :class:`~numpy.ndarray` grid of shape ``[res, res]``. You will need
 to re-scale this back to your original dimensions to get it in the correct units,

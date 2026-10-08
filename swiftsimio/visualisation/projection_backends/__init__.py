@@ -42,6 +42,11 @@ from swiftsimio.visualisation.projection_backends.subsampled_extreme import (
     scatter_parallel as subsampled_extreme_parallel,
 )
 
+from swiftsimio.visualisation.projection_backends.nested import scatter as nested
+from swiftsimio.visualisation.projection_backends.nested import (
+    scatter_parallel as nested_parallel,
+)
+
 from swiftsimio.visualisation.projection_backends.gpu import scatter as gpu
 from swiftsimio.visualisation.projection_backends.gpu import (
     scatter_parallel as gpu_parallel,
@@ -54,6 +59,7 @@ backends = {
     "subsampled": subsampled,
     "subsampled_extreme": subsampled_extreme,
     "reference": reference,
+    "nested": nested,
     "gpu": gpu,
 }
 
@@ -64,5 +70,6 @@ backends_parallel = {
     "subsampled": subsampled_parallel,
     "subsampled_extreme": subsampled_extreme_parallel,
     "reference": reference_parallel,
+    "nested": nested_parallel,
     "gpu": gpu_parallel,
 }

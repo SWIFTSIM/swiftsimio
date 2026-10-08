@@ -4,7 +4,7 @@ Basic volume render for SPH data.
 This takes the 3D positions of the particles and projects them onto a grid.
 """
 
-from typing import Literal
+from typing import Any, Literal
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.accelerated import jit
@@ -32,6 +32,8 @@ def render_voxel_grid(
     region: cosmo_array | None = None,
     periodic: bool = True,
     mask: np.ndarray | None = None,
+    backend: str = "scatter",
+    **kwargs: dict[str, Any],
 ) -> cosmo_array:
     """
     Create a data-field weighted 3D render of a particle dataset as a voxel grid.
@@ -84,6 +86,17 @@ def render_voxel_grid(
         or if you only want to visualise e.g. star forming particles. This boolean
         mask is applied just before visualisation.
 
+    backend : str, optional
+        The scatter backend to use. Available backends are ``"scatter"``
+        (default, standard single-resolution) and ``"nested"`` (nested
+        multi-resolution, faster for simulations with wide smoothing-length
+        distributions).
+
+    **kwargs : dict[str, Any]
+        Additional keyword arguments passed through to the backend function,
+        for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
+        :doc:`nested_backend` and the backend documentation for details.
+
     Returns
     -------
     cosmo_array
@@ -117,7 +130,7 @@ def render_voxel_grid(
         normed_y %= region_info["periodic_box_y"]
         normed_z %= region_info["periodic_box_z"]
 
-    kwargs = dict(
+    backend_kwargs = dict(
         x=normed_x,
         y=normed_y,
         z=normed_z,
@@ -128,9 +141,12 @@ def render_voxel_grid(
         box_y=region_info["periodic_box_y"],
         box_z=region_info["periodic_box_z"],
     )
+
     norm = region_info["x_range"] * region_info["y_range"] * region_info["z_range"]
-    backend_func = (backends_parallel if parallel else backends)["scatter"]
-    image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
+    backend_func = (backends_parallel if parallel else backends)[backend]
+    image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(
+        **backend_kwargs, **kwargs
+    )
 
     return image
 
@@ -145,6 +161,8 @@ def render_gas(
     region: cosmo_array | None = None,
     periodic: bool = True,
     mask: np.ndarray | None = None,
+    backend: str = "scatter",
+    **kwargs: dict[str, Any],
 ) -> cosmo_array:
     """
     Create a data-field weighted 3D render of the gas in a SWIFT dataset as a voxel grid.
@@ -197,6 +215,17 @@ def render_gas(
         or if you only want to visualise e.g. star forming particles. This boolean
         mask is applied just before visualisation.
 
+    backend : str, optional
+        The scatter backend to use. Available backends are ``"scatter"``
+        (default, standard single-resolution) and ``"nested"`` (nested
+        multi-resolution, faster for simulations with wide smoothing-length
+        distributions).
+
+    **kwargs : dict[str, Any]
+        Additional keyword arguments passed through to the backend function,
+        for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
+        :doc:`nested_backend` and the backend documentation for details.
+
     Returns
     -------
     cosmo_array
@@ -221,6 +250,8 @@ def render_gas(
         region=region,
         periodic=periodic,
         mask=mask,
+        backend=backend,
+        **kwargs,
     )
 
 

@@ -1,5 +1,7 @@
 """Calls functions from `projection_backends`."""
 
+from typing import Any
+
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 
@@ -25,6 +27,7 @@ def project_pixel_grid(
     parallel: bool = False,
     backend: str = "fast",
     periodic: bool = True,
+    **kwargs: dict[str, Any],
 ) -> cosmo_array:
     r"""
     Create a 2D projection of a particle-carried field onto a 2D grid.
@@ -84,6 +87,11 @@ def project_pixel_grid(
         Account for periodic boundary conditions for the simulation box?
         Defaults to ``True``.
 
+    **kwargs : dict[str, Any]
+        Additional keyword arguments passed through to the backend function,
+        for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
+        :doc:`nested_backend` and the backend documentation for details.
+
     Returns
     -------
     cosmo_array
@@ -137,7 +145,7 @@ def project_pixel_grid(
         # place everything in the region inside [0, 1], the backend will tile as needed
         normed_x %= region_info["periodic_box_x"]
         normed_y %= region_info["periodic_box_y"]
-    kwargs = dict(
+    backend_kwargs = dict(
         x=normed_x,
         y=normed_y,
         m=m[mask],
@@ -148,7 +156,9 @@ def project_pixel_grid(
     )
     norm = region_info["x_range"] * region_info["y_range"]
     backend_func = (backends_parallel if parallel else backends)[backend]
-    image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
+    image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(
+        **backend_kwargs, **kwargs
+    )
 
     # determine the effective number of pixels for each dimension
     xres = int(
@@ -173,6 +183,7 @@ def project_gas(
     parallel: bool = False,
     backend: str = "fast",
     periodic: bool = True,
+    **kwargs: dict[str, Any],
 ) -> cosmo_array:
     r"""
     Create a 2D projection of a gas particle-carried field onto a 2D grid.
@@ -232,6 +243,11 @@ def project_gas(
         Account for periodic boundary conditions for the simulation box?
         Defaults to ``True``.
 
+    **kwargs : dict[str, Any]
+        Additional keyword arguments passed through to the backend function,
+        for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
+        :doc:`nested_backend` and the backend documentation for details.
+
     Returns
     -------
     cosmo_array
@@ -259,4 +275,5 @@ def project_gas(
         rotation_center=rotation_center,
         backend=backend,
         periodic=periodic,
+        **kwargs,
     )
