@@ -4,8 +4,7 @@ Basic volume render for SPH data.
 This takes the 3D positions of the particles and projects them onto a grid.
 """
 
-from typing import Literal
-from warnings import warn
+from typing import Any, Literal
 import numpy as np
 from swiftsimio import SWIFTDataset, cosmo_array
 from swiftsimio.accelerated import jit
@@ -34,8 +33,7 @@ def render_voxel_grid(
     periodic: bool = True,
     mask: np.ndarray | None = None,
     backend: str = "scatter",
-    ntarget: int | None = None,
-    nlevels: int | None = None,
+    **kwargs: dict[str, Any],
 ) -> cosmo_array:
     """
     Create a data-field weighted 3D render of a particle dataset as a voxel grid.
@@ -94,17 +92,10 @@ def render_voxel_grid(
         multi-resolution, faster for simulations with wide smoothing-length
         distributions).
 
-    ntarget : int, optional
-        Only used with ``backend="nested"``. Target number of voxels per
-        kernel compact-support diameter at each level of the nested grid
-        hierarchy. Default is ``6``. A ``UserWarning`` is raised if this is set
-        without ``backend="nested"``.
-
-    nlevels : int, optional
-        Only used with ``backend="nested"``. Number of coarsening levels in
-        the nested grid hierarchy. Default is ``4``. ``resolution`` must be
-        divisible by ``2**nlevels``. A ``UserWarning`` is raised if this is
-        set without ``backend="nested"``.
+    **kwargs : dict[str, Any]
+        Additional keyword arguments passed through to the backend function,
+        for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
+        :doc:`nested_backend` and the backend documentation for details.
 
     Returns
     -------
@@ -122,23 +113,6 @@ def render_voxel_grid(
     render_gas
         Convenience wrapper for volume rendering gas particles.
     """
-    if backend != "nested" and (ntarget is not None or nlevels is not None):
-        warn(
-            "ntarget and nlevels are only used with backend='nested'. "
-            "These parameters will be ignored.",
-            UserWarning,
-        )
-
-    ntarget = 6 if ntarget is None else int(ntarget)
-    nlevels = 4 if nlevels is None else int(nlevels)
-
-    available_backends = list((backends_parallel if parallel else backends).keys())
-    if backend not in available_backends:
-        raise ValueError(
-            f"Unknown backend '{backend}'. "
-            f"Available backends: {', '.join(available_backends)}."
-        )
-
     m = _get_projection_field(data, project)
     region_info = _get_region_info(data, region, require_cubic=True, periodic=periodic)
     hsml = backends_get_hsml["sph"](data)
@@ -156,7 +130,7 @@ def render_voxel_grid(
         normed_y %= region_info["periodic_box_y"]
         normed_z %= region_info["periodic_box_z"]
 
-    kwargs = dict(
+    backend_kwargs = dict(
         x=normed_x,
         y=normed_y,
         z=normed_z,
@@ -167,13 +141,12 @@ def render_voxel_grid(
         box_y=region_info["periodic_box_y"],
         box_z=region_info["periodic_box_z"],
     )
-    if backend == "nested":
-        kwargs["ntarget"] = ntarget
-        kwargs["nlevels"] = nlevels
 
     norm = region_info["x_range"] * region_info["y_range"] * region_info["z_range"]
     backend_func = (backends_parallel if parallel else backends)[backend]
-    image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(**kwargs)
+    image = backend_strip_and_restore_cosmo_and_units(backend_func, norm=norm)(
+        **backend_kwargs, **kwargs
+    )
 
     return image
 
@@ -189,8 +162,7 @@ def render_gas(
     periodic: bool = True,
     mask: np.ndarray | None = None,
     backend: str = "scatter",
-    ntarget: int | None = None,
-    nlevels: int | None = None,
+    **kwargs: dict[str, Any],
 ) -> cosmo_array:
     """
     Create a data-field weighted 3D render of the gas in a SWIFT dataset as a voxel grid.
@@ -249,17 +221,10 @@ def render_gas(
         multi-resolution, faster for simulations with wide smoothing-length
         distributions).
 
-    ntarget : int, optional
-        Only used with ``backend="nested"``. Target number of voxels per
-        kernel compact-support diameter at each level of the nested grid
-        hierarchy. Default is ``6``. A ``UserWarning`` is raised if this is set
-        without ``backend="nested"``.
-
-    nlevels : int, optional
-        Only used with ``backend="nested"``. Number of coarsening levels in
-        the nested grid hierarchy. Default is ``4``. ``resolution`` must be
-        divisible by ``2**nlevels``. A ``UserWarning`` is raised if this is
-        set without ``backend="nested"``.
+    **kwargs : dict[str, Any]
+        Additional keyword arguments passed through to the backend function,
+        for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
+        :doc:`nested_backend` and the backend documentation for details.
 
     Returns
     -------
@@ -286,8 +251,7 @@ def render_gas(
         periodic=periodic,
         mask=mask,
         backend=backend,
-        ntarget=ntarget,
-        nlevels=nlevels,
+        **kwargs,
     )
 
 

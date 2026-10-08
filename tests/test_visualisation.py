@@ -489,13 +489,11 @@ class TestNestedProjection:
                 res=100,
             )
 
-    def test_nested_parameters_warn_for_other_backends(
-        self, cosmological_volume_only_single_local
-    ):
-        """Setting ntarget or nlevels without backend='nested' should warn."""
+    def test_kwargs_passed_to_backend(self, cosmological_volume_only_single_local):
+        """Extra keyword arguments to project_gas should reach the backend."""
         data = load(cosmological_volume_only_single_local)
-        with pytest.warns(UserWarning, match="only used with backend='nested'"):
-            project_gas(data, 32, backend="fast", ntarget=6)
+        with pytest.raises(ValueError, match="divisible by 2\\*\\*6=64"):
+            project_gas(data, 32, backend="nested", nlevels=6)
 
 
 class TestSlice:
