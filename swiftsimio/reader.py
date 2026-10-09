@@ -779,6 +779,8 @@ class SWIFTDataset(HandleProvider):
             self.metadata = _metadata_discriminator(
                 self.filename, self.units, handle=self.handle
             )
+        # assign the scale factor helper to a convenient name
+        self.a = self.metadata.a
 
         return
 
