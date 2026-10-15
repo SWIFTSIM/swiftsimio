@@ -42,7 +42,7 @@ def assign_levels(
     res : int
         Finest-grid resolution along one axis.
     ntarget : int
-        Target cells per kernel side at the assigned level.
+        Target kernel support radius, in cells, at the assigned level.
     nlevels : int
         Maximum hierarchy depth.
     kernel_gamma : float
@@ -89,7 +89,7 @@ def validate_hierarchy(res: int, ntarget: int, nlevels: int) -> tuple:
     res : int-like
         Finest-grid resolution (cells per axis).
     ntarget : int-like
-        Target cells per kernel side.
+        Target kernel support radius, in cells.
     nlevels : int-like
         Maximum hierarchy depth.
 
@@ -98,7 +98,7 @@ def validate_hierarchy(res: int, ntarget: int, nlevels: int) -> tuple:
     res : int
         Validated finest-grid resolution.
     ntarget : int
-        Validated target cells per kernel side.
+        Validated target kernel support radius, in cells.
     nlevels : int
         Validated maximum hierarchy depth.
 

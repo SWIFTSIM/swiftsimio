@@ -90,7 +90,7 @@ def project_pixel_grid(
     **kwargs : dict[str, Any]
         Additional keyword arguments passed through to the backend function,
         for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
-        :doc:`nested_backend` and the backend documentation for details.
+        :doc:`/visualisation/nested_backend` and the backend documentation for details.
 
     Returns
     -------
@@ -246,7 +246,7 @@ def project_gas(
     **kwargs : dict[str, Any]
         Additional keyword arguments passed through to the backend function,
         for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
-        :doc:`nested_backend` and the backend documentation for details.
+        :doc:`/visualisation/nested_backend` and the backend documentation for details.
 
     Returns
     -------

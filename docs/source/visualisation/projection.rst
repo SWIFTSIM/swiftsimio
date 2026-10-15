@@ -387,13 +387,9 @@ backends are as follows:
 + ``subsampled_extreme``: The same as ``subsampled``, but provides 64 kernel
   evaluations.
 + ``nested``: A nested multi-resolution backend that scatters particles with
-  large smoothing lengths onto coarser grids and bilinearly upsamples the result,
-  following the Sparse Multi-Scale Grid approach described in
-  `Benítez-Llambay (2025)`_. This bounds the cost per particle regardless of
-  smoothing length, so it is much faster than ``fast`` for simulations with a
-  wide range of smoothing lengths. Takes the optional ``ntarget`` and
-  ``nlevels`` arguments; ``resolution`` must be divisible by ``2**nlevels``.
-  See :doc:`nested_backend` for details.
+  large smoothing lengths onto coarser grids, so it is much faster than ``fast``
+  for simulations with a wide range of smoothing lengths. See
+  :doc:`nested_backend` for details.
 + ``gpu``: The same as ``fast`` but uses CUDA for faster computation on supported
   GPUs. The parallel implementation is the same function as the non-parallel.
 
@@ -418,8 +414,6 @@ Example:
 This will likely look very similar to the image that you make with the default
 ``backend="fast"``, but will have a well-converged distribution at any resolution
 level.
-
-.. _Benítez-Llambay (2025): https://iopscience.iop.org/article/10.3847/2515-5172/addab2
 
 Lower-level API
 ---------------
@@ -468,17 +462,6 @@ inputs are dimensionless). Then you may use the functions as follows:
    scatter = backends["fast"]
    # Using the variable names from above
    out = scatter(x=x, y=y, h=h, m=m, res=res)
-
-   # The nested backend accepts the same arguments, plus ntarget and nlevels.
-   out = backends["nested"](
-       x=x,
-       y=y,
-       h=h,
-       m=m,
-       res=res,
-       ntarget=6,
-       nlevels=4,
-   )
 
 ``out`` will be a 2D :class:`~numpy.ndarray` grid of shape ``[res, res]``. You will need
 to re-scale this back to your original dimensions to get it in the correct units,

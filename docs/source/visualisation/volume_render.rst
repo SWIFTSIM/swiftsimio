@@ -409,18 +409,6 @@ Two scatter backends are available, selected via the ``backend`` argument to
        backend="scatter",  # the default
    )
 
-   # Nested backend — faster for wide smoothing-length distributions.
-   mass_grid_nested = render_gas(
-       data,
-       resolution=256,
-       project="masses",
-       parallel=True,
-       backend="nested",
-       ntarget=6,    # target voxels per kernel diameter at each level
-       nlevels=4,    # number of coarsening levels (requires res % 2**nlevels == 0)
-   )
-
-
 Lower-level API
 ---------------
 
@@ -463,30 +451,8 @@ raw numpy array (not :class:`~swiftsimio.objects.cosmo_array` or
    # Standard single-resolution scatter (serial).
    out = backends["scatter"](x=x, y=y, z=z, h=h, m=m, res=res)
 
-   # Nested multi-resolution scatter (serial).
-   out = backends["nested"](
-       x=x,
-       y=y,
-       z=z,
-       h=h,
-       m=m,
-       res=res,
-       ntarget=6,
-       nlevels=4,
-   )
-
-   # Parallel variants — use the same keyword arguments.
+   # Parallel variant — uses the same keyword arguments.
    out = backends_parallel["scatter"](x=x, y=y, z=z, h=h, m=m, res=res)
-   out = backends_parallel["nested"](
-       x=x,
-       y=y,
-       z=z,
-       h=h,
-       m=m,
-       res=res,
-       ntarget=6,
-       nlevels=4,
-   )
 
 ``out`` will be a 3D :class:`~numpy.ndarray` grid of shape ``[res, res, res]``. You will
 need to re-scale this back to your original dimensions to get it in the

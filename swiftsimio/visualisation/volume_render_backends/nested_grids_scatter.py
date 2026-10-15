@@ -21,8 +21,9 @@ Algorithm:
        L = clip(ceil(log2(support_cells / ntarget)), 0, nlevels)
 
    Level 0 is the finest grid (``res``); level ``L`` uses a grid of size
-   ``res // 2**L``.  At their assigned level every kernel spans roughly
-   ``ntarget`` cells, bounding the number of voxels visited per particle.
+   ``res // 2**L``.  At their assigned level every kernel has a support
+   radius of at most ``ntarget`` cells, bounding the number of voxels visited
+   per particle.
 
 3. Scatter each level's particles onto their coarse grid.
 
@@ -48,7 +49,7 @@ from numpy.typing import NDArray
 
 from numba import get_num_threads, njit, prange
 
-from swiftsimio.visualisation._nested_grids import (
+from swiftsimio.visualisation.nested_grids import (
     assign_levels,
     prepare_particle_arrays,
     validate_hierarchy,
@@ -212,22 +213,27 @@ def _deposit_particle_flat(
     radius_cells_2_64 = radius_cells_64 * radius_cells_64
     inverse_radius_cells = np.float32(1.0) / radius_cells_f32
 
-    # Single-cell fast path: evaluate the kernel once, no loop overhead.
+    # Single-cell fast path: evaluate the kernel once, no loop overhead. The
+    # bounding box only guarantees the cell centre is within the support along
+    # each axis separately, so check the full distance: outside the support the
+    # kernel is zero (the polynomial alone would turn positive again).
     if x_stop - x_start == 1 and y_stop - y_start == 1 and z_stop - z_start == 1:
         dx = np.float32(x_start) + np.float32(0.5) - scaled_x_f32
         dy = np.float32(y_start) + np.float32(0.5) - scaled_y_f32
         dz = np.float32(z_start) + np.float32(0.5) - scaled_z_f32
-        radius_2 = dx * dx + dy * dy + dz * dz
-        ratio = sqrt(radius_2) * inverse_radius_cells
-        one_minus_ratio = np.float32(1.0) - ratio
-        one_minus_ratio_2 = one_minus_ratio * one_minus_ratio
-        flat_cell = level_offset + (x_start * level_res + y_start) * level_res + z_start
-        destination[flat_cell] += (
-            weighted_prefactor
-            * one_minus_ratio_2
-            * one_minus_ratio_2
-            * (np.float32(1.0) + np.float32(4.0) * ratio)
-        )
+        ratio = sqrt(dx * dx + dy * dy + dz * dz) * inverse_radius_cells
+        if ratio < np.float32(1.0):
+            one_minus_ratio = np.float32(1.0) - ratio
+            one_minus_ratio_2 = one_minus_ratio * one_minus_ratio
+            flat_cell = (
+                level_offset + (x_start * level_res + y_start) * level_res + z_start
+            )
+            destination[flat_cell] += (
+                weighted_prefactor
+                * one_minus_ratio_2
+                * one_minus_ratio_2
+                * (np.float32(1.0) + np.float32(4.0) * ratio)
+            )
         return
 
     # General kernel loop in cell-space coordinates.
@@ -655,10 +661,10 @@ def _collapse_serial_flat(
 @njit(cache=True, fastmath=True, nogil=True)
 def _build_hierarchy_layout(res: int, nlevels: int) -> tuple:
     """
-    Build flattened hierarchy metadata and per-level constants.
+    Build flattened hierarchy metadata.
 
-    Computes the per-level resolution, flat-array offsets, cell widths, and
-    inverse cell volumes used by the scatter and collapse kernels.  Each level
+    Computes the per-level resolution and flat-array offsets used by the scatter
+    and collapse kernels.  Each level
     ``L`` has resolution ``res >> L``; level 0 is the finest grid.
 
     Parameters
@@ -674,35 +680,20 @@ def _build_hierarchy_layout(res: int, nlevels: int) -> tuple:
         Cumulative flat-array start index for each level.
     level_resolutions : np.ndarray[int32, shape=(nlevels+1,)]
         Cell count per axis at each level.
-    level_pixel_widths : np.ndarray[float32, shape=(nlevels+1,)]
-        Physical cell width (``1 / level_res``) at each level.
-    level_inverse_cell_volumes : np.ndarray[float32, shape=(nlevels+1,)]
-        ``level_res**3``; used to convert mass to density per voxel.
     total_cells : int
         Total number of cells across all levels.
     """
     level_resolutions = np.empty(nlevels + 1, dtype=np.int32)
     level_offsets = np.empty(nlevels + 1, dtype=np.int64)
-    level_pixel_widths = np.empty(nlevels + 1, dtype=np.float32)
-    level_inverse_cell_volumes = np.empty(nlevels + 1, dtype=np.float32)
     total_cells = 0
 
     for level in range(nlevels + 1):
         level_res = res >> level
-        float_res = np.float32(level_res)
         level_resolutions[level] = level_res
         level_offsets[level] = total_cells
-        level_pixel_widths[level] = np.float32(1.0) / float_res
-        level_inverse_cell_volumes[level] = float_res * float_res * float_res
         total_cells += level_res * level_res * level_res
 
-    return (
-        level_offsets,
-        level_resolutions,
-        level_pixel_widths,
-        level_inverse_cell_volumes,
-        total_cells,
-    )
+    return level_offsets, level_resolutions, total_cells
 
 
 # ---------------------------------------------------------------------------
@@ -755,7 +746,7 @@ def _scatter_serial_chunk(
     box_z : float64
         Periodic box size in z; 0.0 disables wrapping on that axis.
     ntarget : int
-        Target cells per kernel side at the assigned level.
+        Target kernel support radius, in cells, at the assigned level.
     nlevels : int
         Maximum hierarchy depth.
 
@@ -769,13 +760,9 @@ def _scatter_serial_chunk(
     )
     active_nlevels = np.int32(active_nlevels_val)
 
-    (
-        level_offsets,
-        level_resolutions,
-        level_pixel_widths,
-        level_inverse_cell_volumes,
-        total_cells,
-    ) = _build_hierarchy_layout(res, active_nlevels)
+    level_offsets, level_resolutions, total_cells = _build_hierarchy_layout(
+        res, active_nlevels
+    )
 
     finest_cells = np.int64(res) * np.int64(res) * np.int64(res)
     finest = np.zeros(finest_cells, dtype=np.float32)
@@ -870,7 +857,7 @@ def _scatter_parallel_impl(
     box_z : float64
         Periodic box size in z; 0.0 disables wrapping on that axis.
     ntarget : int
-        Target cells per kernel side.
+        Target kernel support radius, in cells.
     nlevels : int
         Maximum hierarchy depth.
 
@@ -940,7 +927,7 @@ def _prepare(
     res : int-like
         Finest-grid resolution (cells per axis).
     ntarget : int-like
-        Target cells per kernel side.
+        Target kernel support radius, in cells.
     nlevels : int-like
         Maximum hierarchy depth.
 
@@ -959,7 +946,7 @@ def _prepare(
     res : int
         Finest-grid resolution (cells per axis).
     ntarget : int
-        Target cells per kernel side.
+        Target kernel support radius, in cells.
     nlevels : int
         Maximum hierarchy depth.
     """
@@ -1026,7 +1013,7 @@ def scatter(
         Used for periodic wrapping. Set to 0.0 to disable wrapping in z.
 
     ntarget : int
-        Target number of voxels spanned by each kernel at its assigned level.
+        Target kernel support radius, in voxels, at its assigned level.
         Controls the accuracy/speed trade-off. Default is ``6``.
 
     nlevels : int
@@ -1112,7 +1099,7 @@ def scatter_parallel(
         Used for periodic wrapping. Set to 0.0 to disable wrapping in z.
 
     ntarget : int
-        Target number of voxels spanned by each kernel at its assigned level.
+        Target kernel support radius, in voxels, at its assigned level.
         Controls the accuracy/speed trade-off. Default is ``6``.
 
     nlevels : int

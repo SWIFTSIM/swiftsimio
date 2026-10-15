@@ -51,7 +51,7 @@ extra keyword arguments are forwarded to the backend:
        project="masses",
        parallel=True,
        backend="nested",
-       ntarget=6,  # target cells per kernel diameter at each level
+       ntarget=6,  # target kernel support radius, in cells, at each level
        nlevels=4,  # number of coarsening levels (requires resolution % 2**nlevels == 0)
    )
 
@@ -91,8 +91,9 @@ by the other backends). The particle is then assigned to hierarchy level
    L = \mathrm{clip}\!\left(\left\lceil \log_2 \frac{N_\mathrm{cells}}{n_\mathrm{target}} \right\rceil,\; 0,\; L_\mathrm{max}\right)
 
 Level 0 is the finest grid (resolution ``res``); level :math:`L` uses a grid
-of resolution :math:`r / 2^L`. At its assigned level every kernel spans
-approximately ``ntarget`` cells per axis. Particles with zero mass or a
+of resolution :math:`r / 2^L`. At its assigned level every kernel has a
+support radius of between ``ntarget / 2`` and ``ntarget`` cells (smaller on
+level 0, and possibly larger on the coarsest level). Particles with zero mass or a
 negative smoothing length are skipped.
 
 The hierarchy for ``res=1024``, ``nlevels=4`` (shown in 2D) looks like
@@ -114,11 +115,11 @@ kernel, the same kernel used by the standard backends. In 2D this is
    \qquad H = \gamma_k h.
 
 Kernels smaller than half a cell at their level deposit their whole weight
-into the cell that contains them. Periodic wrapping is handled as in the
-other backends: a particle is deposited once for each periodic image whose
-kernel overlaps ``[0, 1]``. Level-0 particles write directly into the output
-grid; coarser particles write into a single flat array that stores all coarse
-levels back-to-back.
+into the cell that contains them. Periodic wrapping is handled as in the other
+backends: a particle is deposited once for each periodic image whose kernel
+overlaps ``[0, 1]``. Level-0 particles write directly into the output grid;
+coarser particles write into a single flat array that stores all coarse levels
+back-to-back.
 
 **3. Collapse.**
 Once every particle has been deposited, the hierarchy is collapsed
@@ -190,8 +191,8 @@ with the number of threads, as for the other parallel backends.
 Performance
 -----------
 
-The speedup depends on how many particles have kernels much larger than
-``ntarget`` cells. For 200,000 particles with smoothing lengths spread
+The speedup depends on how many particles have kernel support radii much
+larger than ``ntarget`` cells. For 200,000 particles with smoothing lengths spread
 log-uniformly over nearly three decades, projected at ``resolution=1024``
 with 32 threads, ``nested`` took 0.12 s against 1.2 s for ``fast``. For data
 where all kernels are only a few cells across, every particle stays on level
@@ -218,7 +219,8 @@ Prefer a standard backend when:
 Choosing ``ntarget`` and ``nlevels``
 ------------------------------------
 
-``ntarget`` controls how many cells each kernel spans at its assigned level.
+``ntarget`` sets the target kernel support radius, in cells, at each
+particle's assigned level.
 Higher values keep particles on finer grids (less upsampling, higher
 accuracy) at the cost of more kernel evaluations per particle. The default of
 ``6`` is a good all-round choice; values of 4–10 cover the practical
@@ -238,3 +240,28 @@ distributions.
    # Maximum speed: deeper hierarchy, smaller ntarget.
    # Requires resolution divisible by 2**5 = 32.
    quick = render_gas(data, resolution=512, backend="nested", ntarget=4, nlevels=5)
+
+Lower-level API
+---------------
+
+The nested backends can also be called directly, in the same way as the other
+backends (see the lower-level API sections of :doc:`projection` and
+:doc:`volume_render`), with ``ntarget`` and ``nlevels`` as optional extra
+arguments:
+
+.. code-block:: python
+
+   from swiftsimio.visualisation.projection_backends import backends as backends_2d
+   from swiftsimio.visualisation.volume_render_backends import (
+       backends as backends_3d,
+       backends_parallel as backends_3d_parallel,
+   )
+
+   # 2D projection
+   image = backends_2d["nested"](x=x, y=y, h=h, m=m, res=res, ntarget=6, nlevels=4)
+
+   # 3D volume render, serial and parallel
+   grid = backends_3d["nested"](x=x, y=y, z=z, h=h, m=m, res=res, ntarget=6, nlevels=4)
+   grid = backends_3d_parallel["nested"](
+       x=x, y=y, z=z, h=h, m=m, res=res, ntarget=6, nlevels=4
+   )

@@ -24,8 +24,9 @@ Algorithm:
        L = clip(ceil(log2(support_cells / ntarget)), 0, nlevels)
 
    Level 0 is the finest grid (``res``); level ``L`` uses a grid of size
-   ``res // 2**L``.  At their assigned level every kernel spans roughly
-   ``ntarget`` cells, bounding the number of pixels visited per particle.
+   ``res // 2**L``.  At their assigned level every kernel has a support
+   radius of at most ``ntarget`` cells, bounding the number of pixels visited
+   per particle.
 
 3. Scatter each level's particles onto their coarse grid.
 
@@ -51,7 +52,7 @@ from numpy.typing import NDArray
 
 from numba import get_num_threads, njit, prange
 
-from swiftsimio.visualisation._nested_grids import (
+from swiftsimio.visualisation.nested_grids import (
     assign_levels,
     prepare_particle_arrays,
     validate_hierarchy,
@@ -184,19 +185,23 @@ def _deposit_particle_flat(
     radius_cells_2_64 = radius_cells_64 * radius_cells_64
     inverse_radius_cells = np.float32(1.0) / radius_cells_f32
 
-    # Single-cell fast path: evaluate the kernel once, no loop overhead.
+    # Single-cell fast path: evaluate the kernel once, no loop overhead. The
+    # bounding box only guarantees the cell centre is within the support along
+    # each axis separately, so check the full distance: outside the support the
+    # kernel is zero (the polynomial alone would turn positive again).
     if x_stop - x_start == 1 and y_stop - y_start == 1:
         dx = np.float32(np.float64(x_start) + 0.5 - scaled_x_64)
         dy = np.float32(y_start) + np.float32(0.5) - scaled_y_f32
         ratio = sqrt(dx * dx + dy * dy) * inverse_radius_cells
-        one_minus_ratio = np.float32(1.0) - ratio
-        one_minus_ratio_2 = one_minus_ratio * one_minus_ratio
-        destination[level_offset + x_start * level_res + y_start] += (
-            weighted_prefactor
-            * one_minus_ratio_2
-            * one_minus_ratio_2
-            * (np.float32(1.0) + np.float32(4.0) * ratio)
-        )
+        if ratio < np.float32(1.0):
+            one_minus_ratio = np.float32(1.0) - ratio
+            one_minus_ratio_2 = one_minus_ratio * one_minus_ratio
+            destination[level_offset + x_start * level_res + y_start] += (
+                weighted_prefactor
+                * one_minus_ratio_2
+                * one_minus_ratio_2
+                * (np.float32(1.0) + np.float32(4.0) * ratio)
+            )
         return
 
     # General kernel loop in cell-space coordinates.
@@ -605,7 +610,7 @@ def _scatter_serial_chunk(
     box_y : float64
         Periodic box size in y; 0.0 disables wrapping on that axis.
     ntarget : int
-        Target cells per kernel side at the assigned level.
+        Target kernel support radius, in cells, at the assigned level.
     nlevels : int
         Maximum hierarchy depth.
 
@@ -703,7 +708,7 @@ def _scatter_parallel_impl(
     box_y : float64
         Periodic box size in y; 0.0 disables wrapping on that axis.
     ntarget : int
-        Target cells per kernel side.
+        Target kernel support radius, in cells.
     nlevels : int
         Maximum hierarchy depth.
 
@@ -764,7 +769,7 @@ def _prepare(
     res : int-like
         Finest-grid resolution (cells per axis).
     ntarget : int-like
-        Target cells per kernel side.
+        Target kernel support radius, in cells.
     nlevels : int-like
         Maximum hierarchy depth.
 
@@ -781,7 +786,7 @@ def _prepare(
     res : int
         Finest-grid resolution (cells per axis).
     ntarget : int
-        Target cells per kernel side.
+        Target kernel support radius, in cells.
     nlevels : int
         Maximum hierarchy depth.
     """
@@ -839,7 +844,7 @@ def scatter(
         Used for periodic wrapping. Set to 0.0 to disable wrapping in y.
 
     ntarget : int
-        Target number of pixels spanned by each kernel at its assigned level.
+        Target kernel support radius, in pixels, at its assigned level.
         Controls the accuracy/speed trade-off. Default is ``6``.
 
     nlevels : int
@@ -904,7 +909,7 @@ def scatter_parallel(
         Used for periodic wrapping. Set to 0.0 to disable wrapping in y.
 
     ntarget : int
-        Target number of pixels spanned by each kernel at its assigned level.
+        Target kernel support radius, in pixels, at its assigned level.
         Controls the accuracy/speed trade-off. Default is ``6``.
 
     nlevels : int

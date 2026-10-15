@@ -489,6 +489,30 @@ class TestNestedProjection:
                 res=100,
             )
 
+    @pytest.mark.parametrize("parallel", [False, True])
+    def test_single_cell_kernel_outside_support(self, parallel):
+        """
+        No weight should be deposited at a cell centre outside the kernel support.
+
+        The particle sits 0.45 cells from the nearest cell centre along both
+        axes with a support radius of 0.52 cells, so only one cell centre is in
+        range along each axis, but that centre is outside the kernel support
+        (distance 0.64 cells). The kernel is zero there, but evaluating its
+        polynomial without checking the support radius gives a non-zero value.
+        """
+        from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
+
+        resolution = 16
+        position = np.array([(8 + 0.5 + 0.45) / resolution])
+        masses = np.ones(1, dtype=np.float32)
+        hsml = np.array([0.52 / resolution / kernel_gamma], dtype=np.float32)
+        kwargs = dict(x=position, y=position.copy(), m=masses, h=hsml, res=resolution)
+
+        backend_set = projection_backends_parallel if parallel else projection_backends
+        image = backend_set["nested"](**kwargs, ntarget=1000)
+
+        assert not image.any()
+
     def test_kwargs_passed_to_backend(self, cosmological_volume_only_single_local):
         """Extra keyword arguments to project_gas should reach the backend."""
         data = load(cosmological_volume_only_single_local)
@@ -1188,6 +1212,42 @@ class TestNestedVolumeRender:
         cell_volume = (1.0 / resolution) ** 3
         deposited_mass = float(image.sum()) * cell_volume
         assert np.isclose(deposited_mass, float(masses.sum()), rtol=0.02)
+
+    @pytest.mark.parametrize("parallel", [False, True])
+    def test_single_cell_kernel_outside_support(self, parallel):
+        """
+        No weight should be deposited at a cell centre outside the kernel support.
+
+        The particle sits 0.45 cells from the nearest cell centre along each
+        axis with a support radius of 0.52 cells, so only one cell centre is in
+        range along each axis, but that centre is outside the kernel support
+        (distance 0.78 cells). The kernel is zero there, but evaluating its
+        polynomial without checking the support radius gives a non-zero value.
+        """
+        from swiftsimio.visualisation.volume_render_backends.nested_grids_scatter import (  # noqa: E501
+            kernel_gamma,
+        )
+
+        resolution = 16
+        position = np.array([(8 + 0.5 + 0.45) / resolution])
+        masses = np.ones(1, dtype=np.float32)
+        hsml = np.array([0.52 / resolution / kernel_gamma], dtype=np.float32)
+        kwargs = dict(
+            x=position,
+            y=position.copy(),
+            z=position.copy(),
+            m=masses,
+            h=hsml,
+            res=resolution,
+        )
+
+        backend_set = (
+            volume_render_backends_parallel if parallel else volume_render_backends
+        )
+        image = backend_set["nested"](**kwargs, ntarget=1000)
+
+        assert not image.any()
+        assert np.array_equal(image, backend_set["scatter"](**kwargs))
 
 
 def test_selection_render(cosmological_volume_only_single_local):

@@ -95,7 +95,7 @@ def render_voxel_grid(
     **kwargs : dict[str, Any]
         Additional keyword arguments passed through to the backend function,
         for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
-        :doc:`nested_backend` and the backend documentation for details.
+        :doc:`/visualisation/nested_backend` and the backend documentation for details.
 
     Returns
     -------
@@ -224,7 +224,7 @@ def render_gas(
     **kwargs : dict[str, Any]
         Additional keyword arguments passed through to the backend function,
         for example ``ntarget`` and ``nlevels`` for ``backend="nested"``. See
-        :doc:`nested_backend` and the backend documentation for details.
+        :doc:`/visualisation/nested_backend` and the backend documentation for details.
 
     Returns
     -------
