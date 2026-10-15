@@ -1342,6 +1342,21 @@ def _read(
     handle: h5py.Dataset, ranges: np.ndarray, output: np.ndarray, columns: object
 ) -> np.ndarray | None:
     """Read the ranges into output; ``None`` if h5py should read them instead."""
+    if not handle.is_virtual:
+        # read through this handle: its file may not be on disk under its
+        # name (e.g. an in-memory file), so it is never reopened
+        pieces, position = [], 0
+        for lo, hi in ranges:
+            if hi > lo:
+                pieces.append((lo, hi, position))
+            position += max(hi - lo, 0)
+        try:
+            _copy_pieces(handle, pieces, output, columns)
+        except (OSError, KeyError) as error:
+            if isinstance(error, ChecksumError):
+                raise
+            return None
+        return output
     blocks = _sources(handle)
     if blocks is None:
         return None

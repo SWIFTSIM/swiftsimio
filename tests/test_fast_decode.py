@@ -1001,3 +1001,23 @@ def test_unallocated_chunks_read_chunk_by_chunk(tmp_path):
     ours = fast_read(tmp_path / "f.hdf5", "x", ranges)
     ref = reference(tmp_path / "f.hdf5", "x", ranges)
     assert ours is not None and ours.tobytes() == ref.tobytes()
+
+
+@pytest.mark.parametrize("compression", [None, "gzip"])
+def test_in_memory_file(compression):
+    """Check datasets in a file that is not on disk are read through their handle."""
+    data = np.random.default_rng(27).uniform(0, 1, (N, 2)).astype(np.float32)
+    with h5py.File("in_memory.hdf5", "w", driver="core", backing_store=False) as f:
+        d = f.create_dataset(
+            "x",
+            data=data,
+            chunks=(CHUNK, 2) if compression else None,
+            compression=compression,
+        )
+        out = read_ranges_from_file(
+            d, np.array(RANGES), (sum(hi - lo for lo, hi in RANGES), 2), d.dtype
+        )
+        assert (
+            out.tobytes()
+            == np.concatenate([data[lo:hi] for lo, hi in RANGES]).tobytes()
+        )
