@@ -76,11 +76,16 @@ def open_hdf5(filename: str | Path) -> h5py.File:
         The open file.
     """
     if _relax_integrity_checks is not None:
-        fapl = make_fapl(None)
-        if _relax_integrity_checks(fapl.id, _RELAX_UNUSED_NUMERIC_BITS) >= 0:
-            return h5py.File(
-                h5py.h5f.open(os.fsencode(filename), h5py.h5f.ACC_RDONLY, fapl)
-            )
+        try:
+            fapl = make_fapl(None)
+            with h5py._objects.phil:
+                relaxed = _relax_integrity_checks(fapl.id, _RELAX_UNUSED_NUMERIC_BITS)
+            if relaxed >= 0:
+                return h5py.File(
+                    h5py.h5f.open(os.fsencode(filename), h5py.h5f.ACC_RDONLY, fapl)
+                )
+        except Exception:
+            pass  # older libraries and unsupported property lists use normal h5py
     return h5py.File(filename, "r")
 
 

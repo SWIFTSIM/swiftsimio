@@ -25,22 +25,29 @@ a chunk was written are skipped here too, except a skipped lossy filter (that
 chunk is read with h5py). Everything else is read with h5py as before. Every
 chunk's Fletcher-32 checksum is verified, as HDF5 does. Virtual datasets are
 mapped onto their source files when each source supplies whole rows to one
-contiguous block, as in SWIFT's virtual snapshots; rows in missing source
-files, or mapped by no source, read as the fill value as in HDF5. Anything
-else is read with h5py.
+contiguous block, as in SWIFT's virtual snapshots; unmapped rows read as
+the fill value. Missing source files and unsupported mappings go to h5py,
+which can resolve sources through HDF5_VDS_PREFIX.
+
+Set ``NUMBA_CACHE_DIR`` to a writable directory and warm the kernel cache
+once before starting many concurrent processes, especially for read-only
+installations. Cache or compilation failures fall back to h5py.
 
 Set the environment variable ``SWIFTSIMIO_FAST_DECODE=0``, or
 ``swiftsimio._fast_decode.ENABLED = False``, to always read with h5py.
 """
 
+from collections import OrderedDict
+from collections.abc import Callable
 import itertools
 import os
 import zlib
+import warnings
 
 import h5py
 import numpy as np
 
-from .optional_packages import jit, NUMBA_AVAILABLE
+from .optional_packages import jit as _jit, NUMBA_AVAILABLE
 from ._handle_provider import open_hdf5
 
 try:  # libdeflate inflates about twice as fast as zlib
@@ -68,6 +75,30 @@ class ChecksumError(OSError):
 # ---------------------------------------------------------------------------
 # Kernels
 # ---------------------------------------------------------------------------
+
+
+def jit(**options: object) -> Callable:
+    """
+    Build a kernel without disk caching if numba cannot create its cache.
+
+    Parameters
+    ----------
+    **options : object
+        Options passed to numba's jit decorator.
+
+    Returns
+    -------
+    Callable
+        The decorator, retrying without caching if the cache is unavailable.
+    """
+
+    def decorate(function: Callable) -> Callable:
+        try:
+            return _jit(**options)(function)
+        except (OSError, RuntimeError):
+            return _jit(**dict(options, cache=False))(function)
+
+    return decorate
 
 
 @jit(nopython=True, cache=True)
@@ -851,7 +882,10 @@ def _sources(handle: h5py.Dataset) -> list | None:
                 return None
             if src.get_select_npoints() != source.vspace.get_select_npoints():
                 return None
-            if src.get_select_bounds()[0][0] != 0:
+            src_lo, src_hi = src.get_select_bounds()
+            if src_lo != (0,) * handle.ndim or src_hi != (rows - 1,) + tuple(
+                n - 1 for n in handle.shape[1:]
+            ):
                 return None
         # (a whole-source selection is checked against the source's shape
         # when the file is opened, in read_ranges)
@@ -913,6 +947,19 @@ def _decode_chunk(
             data = unshuffled
     kind = spec["kind"]
     if kind == "plain":
+        required = values * dtype.itemsize
+    elif kind.startswith("nbit"):
+        required = ((first + count) * spec["precision"] + 7) // 8
+    else:
+        if data.size < 21:
+            raise ValueError("truncated scale-offset header")
+        minbits, minval = scaleoffset_header(data)
+        if not 0 <= minbits <= dtype.itemsize * 8:
+            raise ValueError("invalid scale-offset precision")
+        required = 21 + ((first + count) * minbits + 7) // 8
+    if data.size < required:
+        raise ValueError("truncated decoded chunk")
+    if kind == "plain":
         out[:] = data[: values * dtype.itemsize].view(dtype)[first : first + count]
     elif kind == "nbit_shift":
         if spec["precision"] == 18 and spec["shift"] == 14 and dtype.itemsize == 4:
@@ -960,7 +1007,6 @@ def _decode_chunk(
         if dtype.itemsize != 8:
             out[:] = bits.astype(np.dtype(f"u{dtype.itemsize}")).view(dtype)
     else:
-        minbits, minval = scaleoffset_header(data)
         size = dtype.itemsize
         word = np.dtype(f"u{size}")
         minimum = np.array([int(minval) & ((1 << (8 * size)) - 1)], dtype=word).view(
@@ -1020,6 +1066,237 @@ _RUN_GAP = 1 << 20
 _RUN_BYTES = 64 << 20
 
 
+def _path_identity(path: str) -> tuple | None:
+    """Device, inode, modification time and size of a file, as _file_identity."""
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return None
+    return stat.st_dev, stat.st_ino, stat.st_mtime_ns, stat.st_size
+
+
+def _file_identity(file: h5py.File) -> tuple | None:
+    """
+    Identify an open file across reopenings, without looking up its path.
+
+    swiftsimio opens a snapshot again for every field, so caches keyed on the
+    open handle never hit. ``fstat`` on HDF5's own descriptor gives the file's
+    device, inode, modification time and size in one call (a path lookup
+    would cost a metadata request per directory on Lustre). ``None`` for
+    files without a descriptor (e.g. in memory) or open for writing.
+    """
+    if file.mode != "r" or file.driver != "sec2":
+        return None
+    stat = os.fstat(file.id.get_vfd_handle())
+    return stat.st_dev, stat.st_ino, stat.st_mtime_ns, stat.st_size
+
+
+#: Validated indexes of read-only datasets, bounded across reads.
+_INDEX_CACHE_SIZE = 256
+_index_cache = OrderedDict()
+
+
+def _pread(fd: int, size: int, offset: int, exact: bool = True) -> bytes:
+    """
+    Read ``size`` bytes at ``offset`` (``pread`` may return fewer at a time).
+
+    With ``exact=False`` fewer bytes are returned at the end of the file.
+    """
+    parts, done = [], 0
+    while done < size:
+        part = os.pread(fd, size - done, offset + done)
+        if not part:
+            if exact:
+                raise OSError("unexpected end of file")
+            break
+        parts.append(part)
+        done += len(part)
+    return parts[0] if len(parts) == 1 else b"".join(parts)
+
+
+def _read_regions(fd: int, regions: list) -> dict:
+    """
+    Read ``(offset, size)`` regions, merging nearby ones into single requests.
+
+    Returns each region's bytes (a ``memoryview``, shorter at the end of the
+    file) by its offset.
+    """
+    out = {}
+    regions = sorted(set(regions))
+    i = 0
+    while i < len(regions):
+        start, end, j = regions[i][0], regions[i][0] + regions[i][1], i + 1
+        while (
+            j < len(regions)
+            and regions[j][0] - end <= _RUN_GAP
+            and regions[j][0] + regions[j][1] - start <= _RUN_BYTES
+        ):
+            end = max(end, regions[j][0] + regions[j][1])
+            j += 1
+        data = memoryview(_pread(fd, end - start, start, exact=False))
+        for offset, size in regions[i:j]:
+            out[offset] = data[offset - start : offset - start + size]
+        i = j
+    return out
+
+
+def _layout_message(body: bytes) -> tuple | None:
+    """Return the B-tree address and dimensionality of a version 3 chunked layout."""
+    if len(body) < 11 or body[0] != 3 or body[1] != 2:
+        return None  # not version 3 chunked (e.g. version 4 chunk indexes)
+    return int.from_bytes(body[3:11], "little"), body[2]
+
+
+def _layout_btree(fd: int, base: int, header: int) -> tuple | None:
+    """
+    Find a chunked dataset's v1 B-tree from its object header.
+
+    Reads version 1 and version 2 (``OHDR``) object headers, following
+    continuation blocks, as laid out in the HDF5 file format specification.
+
+    Parameters
+    ----------
+    fd : int
+        The file, opened for reading.
+
+    base : int
+        The file's base address (its user block size).
+
+    header : int
+        Address of the dataset's object header.
+
+    Returns
+    -------
+    tuple or None
+        The B-tree's address and the layout's dimensionality (the dataset's
+        rank plus one), or ``None`` for any other header or layout.
+    """
+    prefix = _pread(fd, 64, base + header, exact=False)
+    if prefix[:4] == b"OHDR":
+        if prefix[4] != 2:
+            return None
+        flags = prefix[5]
+        position = 6 + (16 if flags & 0x20 else 0) + (4 if flags & 0x10 else 0)
+        width = 1 << (flags & 0x03)
+        size = int.from_bytes(prefix[position : position + width], "little")
+        blocks = [(header + position + width, size)]
+        creation_order = bool(flags & 0x04)
+        while blocks:
+            address, size = blocks.pop(0)
+            data = _pread(fd, size, base + address)
+            position = 0
+            if data[:4] == b"OCHK":
+                position = 4
+                size -= 4  # the block's checksum
+            step = 6 if creation_order else 4
+            while position + step <= size:
+                kind = data[position]
+                length = int.from_bytes(data[position + 1 : position + 3], "little")
+                body = data[position + step : position + step + length]
+                if kind == 0x10:
+                    blocks.append(
+                        (
+                            int.from_bytes(body[0:8], "little"),
+                            int.from_bytes(body[8:16], "little"),
+                        )
+                    )
+                elif kind == 0x08:
+                    return _layout_message(body)
+                position += step + length
+        return None
+    if prefix[0] != 1:
+        return None
+    messages = int.from_bytes(prefix[2:4], "little")
+    blocks = [(header + 16, int.from_bytes(prefix[8:12], "little"))]
+    seen = 0
+    while blocks and seen < messages:
+        address, size = blocks.pop(0)
+        data = _pread(fd, size, base + address)
+        position = 0
+        while position + 8 <= size and seen < messages:
+            kind = int.from_bytes(data[position : position + 2], "little")
+            length = int.from_bytes(data[position + 2 : position + 4], "little")
+            body = data[position + 8 : position + 8 + length]
+            seen += 1
+            if kind == 0x10:  # continuation: more messages elsewhere
+                blocks.append(
+                    (
+                        int.from_bytes(body[0:8], "little"),
+                        int.from_bytes(body[8:16], "little"),
+                    )
+                )
+            elif kind == 0x08:  # layout
+                return _layout_message(body)
+            position += 8 + length
+    return None
+
+
+def _chunk_index(dataset: h5py.Dataset, fd: int) -> dict | None:
+    """
+    Read every allocated chunk's location from a dataset's v1 B-tree.
+
+    HDF5 finds a chunk by searching this tree, one search per chunk; on a
+    busy file system each search costs small reads. Here the tree is read a
+    level at a time, each level's nodes merged into a few large reads.
+
+    Parameters
+    ----------
+    dataset : h5py.Dataset
+        A chunked dataset in a regular file.
+
+    fd : int
+        The dataset's file, opened for reading.
+
+    Returns
+    -------
+    dict or None
+        ``{chunk coordinates: (file offset, size, filter mask)}``, or
+        ``None`` if the dataset is not indexed this way (or anything looks
+        unexpected): look the chunks up one by one instead.
+    """
+    if dataset.file.id.get_create_plist().get_sizes() != (8, 8):
+        return None
+    base = dataset.file.userblock_size
+    found = _layout_btree(fd, base, h5py.h5o.get_info(dataset.id).addr)
+    if found is None:
+        return None
+    root, dimensionality = found
+    if dimensionality != dataset.ndim + 1:
+        return None
+    key = 8 + 8 * dimensionality  # chunk size, filter mask, offsets
+    largest = 24 + 129 * key + 128 * 8  # a node of 128 entries (HDF5's 2K = 64)
+    index, level, nodes = {}, None, [root]
+    while nodes:
+        regions = _read_regions(fd, [(base + n, largest) for n in nodes])
+        children = []
+        for node in nodes:
+            data = regions[base + node]
+            if len(data) < 24 or bytes(data[0:4]) != b"TREE" or data[4] != 1:
+                return None
+            if level is not None and data[5] != level:
+                return None
+            level, entries = data[5], int.from_bytes(data[6:8], "little")
+            if 24 + (entries + 1) * key + entries * 8 > len(data):
+                return None  # a node larger than expected
+            for i in range(entries):
+                k = 24 + i * (key + 8)
+                child = int.from_bytes(data[k + key : k + key + 8], "little")
+                if level > 0:
+                    children.append(child)
+                    continue
+                size = int.from_bytes(data[k : k + 4], "little")
+                mask = int.from_bytes(data[k + 4 : k + 8], "little")
+                coords = tuple(
+                    int.from_bytes(data[k + 8 + 8 * d : k + 16 + 8 * d], "little")
+                    for d in range(dataset.ndim)
+                )
+                index[coords] = (base + child, size, mask)
+        nodes = children
+        if children:
+            level -= 1
+    return index
+
+
 class _ChunkReader:
     """
     Raw chunks of one dataset, read in runs of adjacent chunks.
@@ -1046,16 +1323,19 @@ class _ChunkReader:
         self.where = {}  # chunk -> (run, start in run, size, filter mask)
         self.unallocated = set()  # chunks never written: the fill value
         self.runs = []  # [file offset, length, chunks left, bytes or None]
-        try:
-            infos = {c: source.id.get_chunk_info_by_coord(c) for c in coords}
-        except (AttributeError, KeyError, ValueError, RuntimeError, OSError):
+        if not coords:
             return
-        self.unallocated = {c for c, i in infos.items() if i.byte_offset is None}
-        infos = {c: i for c, i in infos.items() if i.byte_offset is not None}
-        if not infos:
+        self.cache_key = None
+        self.index = None
+        self.validated = False
+        if not hasattr(os, "pread") or source.file.driver != "sec2":
             return
-        for c in sorted(infos, key=lambda c: infos[c].byte_offset):
-            offset, size = infos[c].byte_offset, infos[c].size  # in the file
+        self.fd = source.file.id.get_vfd_handle()
+        infos = self._locate(coords)
+        self.unallocated = {c for c, i in infos.items() if i is None}
+        infos = {c: i for c, i in infos.items() if i is not None}
+        for c in sorted(infos, key=lambda c: infos[c][0]):
+            offset, size, filter_mask = infos[c]
             run = self.runs[-1] if self.runs else None
             if (
                 run is None
@@ -1067,23 +1347,62 @@ class _ChunkReader:
                 self.runs.append(run)
             run[1] = offset + size - run[0]
             run[2] += 1
-            self.where[c] = (
-                len(self.runs) - 1,
-                offset - run[0],
-                size,
-                infos[c].filter_mask,
-            )
+            self.where[c] = (len(self.runs) - 1, offset - run[0], size, filter_mask)
+        if not infos or self.validated:
+            return
         try:
-            self.fd = os.open(source.file.filename, os.O_RDONLY)
             first = next(iter(infos))
             mask, raw = self.read(first)
             if (mask, bytes(raw)) != tuple(source.id.read_direct_chunk(first)):
                 raise OSError("chunk offsets do not match the chunks")
             # (read() counted the first chunk as served; serve it again later)
             self.runs[self.where[first][0]][2] += 1
+            if self.cache_key is not None and self.index is not None:
+                _index_cache[self.cache_key] = self.index
+                _index_cache.move_to_end(self.cache_key)
+                while len(_index_cache) > _INDEX_CACHE_SIZE:
+                    _index_cache.popitem(last=False)
         except OSError:
             self.close()
-            self.where = {}
+            raise
+
+    def _locate(self, coords: list) -> dict:
+        """
+        Find the chunks in the file: ``{coords: (offset, size, mask) or None}``.
+
+        The dataset's chunk index is read directly where possible (a few large
+        reads); its first and last entries are checked against HDF5, and a
+        chunk missing from it is confirmed unallocated with HDF5. Otherwise
+        HDF5 is asked chunk by chunk.
+        """
+        source = self.source
+
+        def ask(c: tuple) -> tuple | None:
+            info = source.id.get_chunk_info_by_coord(c)
+            if info.byte_offset is None:
+                return None
+            return info.byte_offset, info.size, info.filter_mask
+
+        identity = _file_identity(source.file)
+        if identity is not None:
+            self.cache_key = identity + (source.name,)
+            if self.cache_key in _index_cache:
+                self.validated = True
+                self.index = _index_cache[self.cache_key]
+                _index_cache.move_to_end(self.cache_key)
+                return {c: self.index[c] if c in self.index else ask(c) for c in coords}
+        try:
+            index = _chunk_index(source, self.fd)
+            if index:
+                ordered = sorted(index)
+                if any(ask(c) != index[c] for c in {ordered[0], ordered[-1]}):
+                    index = None  # not what HDF5 finds: ask it chunk by chunk
+        except (OSError, ValueError, IndexError, AttributeError, RuntimeError):
+            index = None  # e.g. an index layout not parsed here
+        if not index:
+            return {c: ask(c) for c in coords}
+        self.index = index
+        return {c: index[c] if c in index else ask(c) for c in coords}
 
     def read(self, coord: tuple) -> tuple:
         """
@@ -1113,10 +1432,8 @@ class _ChunkReader:
         return filter_mask, raw
 
     def close(self) -> None:
-        """Close the file descriptor."""
-        if self.fd is not None:
-            os.close(self.fd)
-            self.fd = None
+        """Release the borrowed descriptor without closing HDF5's file."""
+        self.fd = None
 
 
 def _all_columns(columns: object) -> bool:
@@ -1252,7 +1569,10 @@ def _copy_pieces(
 #: decoded: the other columns (swiftsimio's named columns) are then copied
 #: from it instead of decoding every chunk again. Dropped once every column
 #: has been read, or when another field takes its place.
-_columns_cache = {"key": None, "data": None, "served": None}
+_columns_cache = {"key": None, "data": None, "served": None, "sources": ()}
+
+#: The source files (and their identities) the last virtual read used.
+_last_sources = ()
 
 #: Fields larger than this (bytes, all columns) are read a column at a time.
 COLUMNS_CACHE_BYTES = 2 << 30
@@ -1308,6 +1628,7 @@ def _read_columns(
     """Read some columns of the rows, decoding every column once for all of them."""
     rows = int((ranges[:, 1] - ranges[:, 0]).sum())
     width = handle.shape[1]
+    identity = _file_identity(handle.file)
     if rows * width * dtype.itemsize > COLUMNS_CACHE_BYTES:
         return _read(
             handle,
@@ -1315,30 +1636,40 @@ def _read_columns(
             np.empty((rows,) + np.empty((0, width))[:, columns].shape[1:], dtype),
             columns,
         )
-    stat = os.stat(handle.file.filename)
+    # the file (a virtual file's own identity: SWIFT's sub-files do not change
+    # under an unchanged virtual file), or this open handle for files in memory
     key = (
-        os.path.abspath(handle.file.filename),
-        stat.st_mtime_ns,
-        stat.st_size,
+        identity if identity is not None else ("open", handle.file.id.fileno),
         handle.name,
         dtype.str,
         ranges.tobytes(),
     )
     cache = _columns_cache
+    if cache["key"] == key and not all(
+        _path_identity(path) == identity for path, identity in cache["sources"]
+    ):
+        cache["key"] = None  # a virtual dataset's source file changed since
     if cache["key"] != key:
-        cache.update(key=None, data=None, served=None)  # free the old field first
+        cache.update(key=None, data=None, served=None, sources=())  # free it first
+        global _last_sources
+        _last_sources = ()
         data = _read(handle, ranges, np.empty((rows, width), dtype), np.s_[:])
         if data is None:
             return None
-        cache.update(key=key, data=data, served=np.zeros(width, dtype=bool))
+        cache.update(
+            key=key,
+            data=data,
+            served=np.zeros(width, dtype=bool),
+            sources=_last_sources if handle.is_virtual else (),
+        )
     result = np.ascontiguousarray(cache["data"][:, columns])
     cache["served"][columns] = True
     if cache["served"].all():
-        cache.update(key=None, data=None, served=None)
+        cache.update(key=None, data=None, served=None, sources=())
     return result
 
 
-def _read(
+def _read_unchecked(
     handle: h5py.Dataset, ranges: np.ndarray, output: np.ndarray, columns: object
 ) -> np.ndarray | None:
     """Read the ranges into output; ``None`` if h5py should read them instead."""
@@ -1350,12 +1681,7 @@ def _read(
             if hi > lo:
                 pieces.append((lo, hi, position))
             position += max(hi - lo, 0)
-        try:
-            _copy_pieces(handle, pieces, output, columns)
-        except (OSError, KeyError) as error:
-            if isinstance(error, ChecksumError):
-                raise
-            return None
+        _copy_pieces(handle, pieces, output, columns)
         return output
     blocks = _sources(handle)
     if blocks is None:
@@ -1378,19 +1704,24 @@ def _read(
             b for b in blocks if any(lo < b[1] and hi > b[0] for lo, hi in ranges)
         ]
     handles = {}
-    # a virtual dataset's missing source files read as its fill value, as in HDF5
-    missing = {
-        fname for _, _, fname, _ in blocks if fname is None or not os.path.exists(fname)
-    }
+    missing = {None}  # rows mapped by no source
     try:
         for start, stop, fname, dname in blocks:
             if fname in missing:
                 continue
             if fname not in handles:
-                handles[fname] = open_hdf5(fname)
+                try:
+                    handles[fname] = open_hdf5(fname)
+                except FileNotFoundError:
+                    # HDF5 may still find it (HDF5_VDS_PREFIX): leave it to h5py
+                    return None
             source = handles[fname][dname]
             if source.shape[0] < stop - start or source.shape[1:] != handle.shape[1:]:
                 return None  # the source is not the rows this block maps
+        global _last_sources
+        _last_sources = tuple(
+            (fname, _file_identity(h.file)) for fname, h in handles.items()
+        )
         # each block's pieces, in output order
         pieces = {block: [] for block in blocks}
         position = 0
@@ -1411,11 +1742,24 @@ def _read(
             if block_pieces:
                 start, stop, fname, dname = block
                 _copy_pieces(handles[fname][dname], block_pieces, output, columns)
-    except (OSError, KeyError) as error:
-        if isinstance(error, ChecksumError):
-            raise
-        return None  # e.g. an unreadable source: h5py decides what it reads as
     finally:
         for h in handles.values():
             h.close()
     return output
+
+
+def _read(
+    handle: h5py.Dataset, ranges: np.ndarray, output: np.ndarray, columns: object
+) -> np.ndarray | None:
+    """Read ranges, leaving unexpected failures to h5py except checksum errors."""
+    try:
+        return _read_unchecked(handle, ranges, output, columns)
+    except ChecksumError:
+        raise
+    except Exception as error:
+        warnings.warn(
+            f"Fast decode of {handle.name} failed: {error}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return None

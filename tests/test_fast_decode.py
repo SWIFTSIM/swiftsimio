@@ -844,8 +844,10 @@ def test_virtual_dataset_with_missing_source(tmp_path):
     ranges = [(0, 10), (1400, 1600), (3000, 4400)]
     ref = reference(tmp_path / "virtual.hdf5", "x", ranges)
     assert (ref[110:210] == -7.5).all()  # h5py: the fill value
-    ours = fast_read(tmp_path / "virtual.hdf5", "x", ranges)
-    assert ours is not None and ours.tobytes() == ref.tobytes()
+    assert fast_read(tmp_path / "virtual.hdf5", "x", ranges) is None
+    with h5file(tmp_path / "virtual.hdf5") as f:
+        through = read_ranges_from_file(f["x"], np.array(ranges), ref.shape, ref.dtype)
+    assert through.tobytes() == ref.tobytes()
 
 
 def test_virtual_dataset_with_unmapped_rows(tmp_path):
@@ -897,6 +899,7 @@ def test_named_columns_decode_once(tmp_path, monkeypatch):
     monkeypatch.setattr(
         fd, "_decode_chunk", lambda *a, **k: calls.append(1) or decode(*a, **k)
     )
+    # each column through a newly opened file, as swiftsimio's getters do
     for column in [2, 0, 3, 1]:
         ours = fast_read(tmp_path / "f.hdf5", "x", RANGES, columns=column)
         ref = reference(tmp_path / "f.hdf5", "x", RANGES, column)
@@ -941,12 +944,12 @@ def test_unsorted_and_repeated_ranges(tmp_path):
 # --- reading runs of chunks ----------------------------------------------------
 
 
-def _small_chunks(path, userblock=0):
-    """Write N rows of N-bit floats in chunks of 50 rows (87 chunks)."""
+def _small_chunks(path, userblock=0, rows=50, libver=None):
+    """Write N rows of N-bit floats in chunks of ``rows`` rows (87 of 50)."""
     data = sample(N, 2, np.random.default_rng(26), np.float32)
-    with h5py.File(path, "w", userblock_size=userblock) as f:
+    with h5py.File(path, "w", userblock_size=userblock, libver=libver) as f:
         dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
-        dcpl.set_chunk((50, 2))
+        dcpl.set_chunk((rows, 2))
         dcpl.set_filter(h5py.h5z.FILTER_NBIT, 0, ())
         dcpl.set_shuffle()
         dcpl.set_deflate(4)
@@ -974,7 +977,9 @@ def test_chunks_read_in_runs(tmp_path, monkeypatch, userblock):
     )
     assert_same(tmp_path / "f.hdf5", "x")
     assert_same(tmp_path / "f.hdf5", "x", columns=1)
-    assert 0 < len(preads) <= 4  # 87 chunks: one run per read here
+    # 87 chunks; per read: object header (2), B-tree levels (2) and one run
+    # of chunks, rather than a request per chunk
+    assert 0 < len(preads) <= 3 * 6
 
 
 def test_chunks_read_in_runs_when_runs_are_capped(tmp_path, monkeypatch):
@@ -1021,3 +1026,367 @@ def test_in_memory_file(compression):
             out.tobytes()
             == np.concatenate([data[lo:hi] for lo, hi in RANGES]).tobytes()
         )
+
+
+@pytest.mark.parametrize(
+    "libver, parsed",
+    [(None, True), (("v108", "v108"), True), ("latest", False)],
+)
+def test_chunk_index_read_directly(tmp_path, libver, parsed):
+    # version 1 object headers (h5py's default), version 2 with a v1 B-tree
+    # (as SWIFT writes), and the newest format, whose chunk indexes are left
+    # to HDF5; one-row chunks make a B-tree several levels deep
+    """Check the chunk index read from the file matches HDF5's for every chunk."""
+    _small_chunks(tmp_path / "f.hdf5", rows=1, libver=libver)
+    with h5py.File(tmp_path / "f.hdf5") as f:
+        d = f["x"]
+        handle = os.open(tmp_path / "f.hdf5", os.O_RDONLY)
+        try:
+            index = fd._chunk_index(d, handle)
+        finally:
+            os.close(handle)
+        if not parsed:
+            assert index is None
+        else:
+            assert len(index) == N
+            for coords, (offset, size, mask) in index.items():
+                info = d.id.get_chunk_info_by_coord(coords)
+                assert (offset, size, mask) == (
+                    info.byte_offset,
+                    info.size,
+                    info.filter_mask,
+                )
+    assert_same(tmp_path / "f.hdf5", "x", [(0, 3), (2000, 2100), (N - 5, N)])
+
+
+@pytest.mark.parametrize("columns", [np.s_[:], 1])
+def test_core_never_uses_pread(monkeypatch, columns):
+    """Read named columns from core files without treating a pointer as an fd."""
+
+    def unexpected(*args):
+        raise AssertionError("core files must not use pread or stat")
+
+    data = np.arange(600, dtype=np.float32).reshape(200, 3)
+    with h5py.File(
+        "/cosma/apps/durham/dc-jess1/.tmp/core.hdf5",
+        "w",
+        driver="core",
+        backing_store=False,
+    ) as f:
+        d = f.create_dataset("x", data=data, chunks=(20, 3), compression="gzip")
+        monkeypatch.setattr(fd.os, "pread", unexpected)
+        monkeypatch.setattr(fd.os, "stat", unexpected)
+        expected = np.ascontiguousarray(data[5:150, columns])
+        out = read_ranges_from_file(
+            d, np.array([[5, 150]]), expected.shape, expected.dtype, columns=columns
+        )
+        assert out.tobytes() == expected.tobytes()
+
+
+def test_no_pread(tmp_path, monkeypatch):
+    """Platforms without pread still decode via HDF5's chunk API."""
+    _small_chunks(tmp_path / "f.hdf5")
+    monkeypatch.delattr(fd.os, "pread")
+    assert_same(tmp_path / "f.hdf5", "x")
+
+
+def test_borrowed_descriptor_and_cached_index(tmp_path, monkeypatch):
+    """Validate an index once, reuse it across opens, and leave borrowed fds open."""
+    path = tmp_path / "f.hdf5"
+    _small_chunks(path)
+    fd._index_cache.clear()
+    calls = []
+    parse = fd._chunk_index
+
+    def counted(*args):
+        calls.append(1)
+        return parse(*args)
+
+    monkeypatch.setattr(fd, "_chunk_index", counted)
+    for repeat in range(2):
+        with h5py.File(path) as f:
+            d = f["x"]
+            reader = fd._ChunkReader(d, [(0, 0)])
+            assert reader.fd == f.id.get_vfd_handle()
+            assert reader.validated == bool(repeat)
+            reader.close()
+            os.fstat(f.id.get_vfd_handle())
+    assert len(calls) == 1
+    stat = path.stat()
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1))
+    with h5py.File(path) as f:
+        reader = fd._ChunkReader(f["x"], [(0, 0)])
+        assert not reader.validated
+    assert len(calls) == 2
+
+
+def test_index_cache_is_bounded(tmp_path, monkeypatch):
+    """Evict older validated dataset indexes."""
+    fd._index_cache.clear()
+    monkeypatch.setattr(fd, "_INDEX_CACHE_SIZE", 2)
+    for i in range(3):
+        path = tmp_path / f"{i}.hdf5"
+        _small_chunks(path)
+        fast_read(path, "x", [(0, 1)])
+    assert len(fd._index_cache) == 2
+    assert all(key[0] != str(tmp_path / "0.hdf5") for key in fd._index_cache)
+
+
+@pytest.mark.parametrize("virtual", [False, True])
+@pytest.mark.parametrize("error_type", [ValueError, TypeError, RuntimeError, OSError])
+def test_unexpected_decode_error_falls_back(tmp_path, monkeypatch, virtual, error_type):
+    """Every unexpected decode failure warns and lets the caller use h5py."""
+    path = tmp_path / "part.hdf5"
+    _small_chunks(path)
+    if virtual:
+        layout = h5py.VirtualLayout((N, 2), np.float32)
+        layout[:] = h5py.VirtualSource(str(path), "x", shape=(N, 2))
+        path = tmp_path / "virtual.hdf5"
+        with h5py.File(path, "w") as f:
+            f.create_virtual_dataset("x", layout)
+
+    def fail(*args, **kwargs):
+        raise error_type("test failure")
+
+    monkeypatch.setattr(fd, "_decode_chunk", fail)
+    with h5py.File(path) as f:
+        expected = f["x"][:10]
+        with pytest.warns(RuntimeWarning, match="/x.*test failure"):
+            assert (
+                fd.read_ranges(
+                    f["x"], np.array([[0, 10]]), expected.shape, expected.dtype
+                )
+                is None
+            )
+        with pytest.warns(RuntimeWarning, match="/x.*test failure"):
+            out = read_ranges_from_file(
+                f["x"], np.array([[0, 10]]), expected.shape, expected.dtype
+            )
+        assert out.tobytes() == expected.tobytes()
+
+
+def test_virtual_strided_source(tmp_path):
+    """A contiguous destination cannot disguise a strided source selection."""
+    path = tmp_path / "part.hdf5"
+    _small_chunks(path)
+    layout = h5py.VirtualLayout((100, 2), np.float32)
+    layout[:] = h5py.VirtualSource(str(path), "x", shape=(N, 2))[0:200:2, :]
+    with h5py.File(tmp_path / "virtual.hdf5", "w") as f:
+        f.create_virtual_dataset("x", layout)
+    assert_same(tmp_path / "virtual.hdf5", "x", [(0, 100)], fast=False)
+
+
+@pytest.mark.parametrize("kind", ["plain", "nbit_int", "nbit_shift", "scaleoffset_int"])
+def test_truncated_decoded_chunk(kind):
+    """Reject short decoded data before an unchecked numba load."""
+    spec = {"kind": kind, "dtype": np.dtype("i4"), "stages": [], "precision": 18}
+    raw = bytes(20) if kind.startswith("scaleoffset") else bytes(1)
+    with pytest.raises(ValueError, match="truncated"):
+        fd._decode_chunk(spec, raw, 10, 2, 3, np.empty(3, "i4"), np.empty(40, "u1"))
+
+
+def test_truncated_scaleoffset_payload():
+    """Require all packed values after the scale-offset header."""
+    spec = {"kind": "scaleoffset_int", "dtype": np.dtype("i4"), "stages": []}
+    with pytest.raises(ValueError, match="truncated"):
+        fd._decode_chunk(
+            spec,
+            bytes([8]) + bytes(20),
+            10,
+            2,
+            3,
+            np.empty(3, "i4"),
+            np.empty(40, "u1"),
+        )
+
+
+@pytest.mark.parametrize("failure", ["fapl", "ctypes", "negative"])
+def test_relaxed_open_failure(tmp_path, monkeypatch, failure):
+    """Relaxed-open failures use a normal h5py open; ctypes holds phil."""
+    from swiftsimio import _handle_provider as hp
+
+    path = tmp_path / "f.hdf5"
+    with h5py.File(path, "w") as f:
+        f["x"] = [1, 2]
+
+    def fail(*args):
+        raise RuntimeError("unavailable")
+
+    def relax(*args):
+        assert h5py._objects.phil._is_owned()
+        if failure == "ctypes":
+            raise RuntimeError("unavailable")
+        return -1
+
+    monkeypatch.setattr(hp, "_relax_integrity_checks", relax)
+    if failure == "fapl":
+        monkeypatch.setattr(hp, "make_fapl", fail)
+    with hp.open_hdf5(path) as f:
+        assert f["x"][:].tolist() == [1, 2]
+
+
+def test_float_to_integer_falls_back(tmp_path):
+    """Unsupported conversions retain HDF5's clipping and rounding behavior."""
+    path = tmp_path / "f.hdf5"
+    with h5py.File(path, "w") as f:
+        f.create_dataset("x", data=[-2.5, 1e20, 3.8], chunks=(3,), compression="gzip")
+    with h5py.File(path) as f:
+        expected = f["x"].astype("i4")[:]
+        with pytest.warns(RuntimeWarning, match="no conversion"):
+            assert fd.read_ranges(f["x"], np.array([[0, 3]]), (3,), np.int32) is None
+        with pytest.warns(RuntimeWarning, match="no conversion"):
+            out = read_ranges_from_file(f["x"], np.array([[0, 3]]), (3,), np.int32)
+        assert out.tobytes() == expected.tobytes()
+
+
+def test_numba_cache_unavailable(monkeypatch):
+    """A read-only cache cannot prevent kernel decoration or importing the module."""
+    calls = []
+
+    def compile(**options):
+        calls.append(options["cache"])
+        if options["cache"]:
+            raise RuntimeError("cannot cache function: no locator available")
+        return lambda function: function
+
+    monkeypatch.setattr(fd, "_jit", compile)
+    kernel = fd.jit(nopython=True, cache=True)(lambda: 42)
+    assert kernel() == 42
+    assert calls == [True, False]
+
+
+def test_cached_index_skips_cross_checks(tmp_path):
+    """A validated cached index avoids both metadata and raw-byte cross-checks."""
+    path = tmp_path / "f.hdf5"
+    _small_chunks(path)
+    fd._index_cache.clear()
+    with h5py.File(path) as f:
+        reader = fd._ChunkReader(f["x"], [(0, 0)])
+        reader.close()
+
+        class CheckedID:
+            def __getattr__(self, name):
+                raise AssertionError(f"unexpected HDF5 cross-check: {name}")
+
+        class Source:
+            file = f
+            name = "/x"
+            id = CheckedID()
+
+        reader = fd._ChunkReader(Source(), [(0, 0)])
+        assert reader.validated
+        assert reader.read((0, 0))[1] is not None
+        reader.close()
+
+
+def test_virtual_columns_do_not_cache_source_data(tmp_path):
+    # virtual columns are cached (one decode for all named columns), but a
+    # source file changed since is noticed and read again
+    """Check changing a virtual source does not reuse its earlier columns."""
+    source = tmp_path / "part.hdf5"
+    data = np.arange(600, dtype=np.float32).reshape(200, 3)
+    with h5py.File(source, "w") as f:
+        f.create_dataset("x", data=data, chunks=(20, 3), compression="gzip")
+    layout = h5py.VirtualLayout(data.shape, data.dtype)
+    layout[:] = h5py.VirtualSource(str(source), "x", shape=data.shape)
+    path = tmp_path / "virtual.hdf5"
+    with h5py.File(path, "w") as f:
+        f.create_virtual_dataset("x", layout)
+    assert fast_read(path, "x", [(0, 200)], columns=0).tobytes() == data[:, 0].tobytes()
+    with h5py.File(source, "r+") as f:
+        f["x"][:] = data + 100
+    expected = reference(path, "x", [(0, 200)], columns=1)
+    assert fast_read(path, "x", [(0, 200)], columns=1).tobytes() == expected.tobytes()
+
+
+@pytest.mark.parametrize("virtual", [False, True])
+def test_checksum_error_always_propagates(tmp_path, monkeypatch, virtual):
+    """The fallback guard never swallows a checksum error, including in VDS sources."""
+    source = tmp_path / "part.hdf5"
+    _small_chunks(source)
+    path = source
+    if virtual:
+        layout = h5py.VirtualLayout((N, 2), np.float32)
+        layout[:] = h5py.VirtualSource(str(source), "x", shape=(N, 2))
+        path = tmp_path / "virtual.hdf5"
+        with h5py.File(path, "w") as f:
+            f.create_virtual_dataset("x", layout)
+
+    def fail(*args):
+        raise fd.ChecksumError("bad checksum")
+
+    monkeypatch.setattr(fd, "_decode_chunk", fail)
+    with pytest.raises(fd.ChecksumError):
+        fast_read(path, "x", [(0, 10)])
+
+
+@pytest.mark.parametrize("mismatch", ["index", "bytes"])
+def test_index_validation_failure_falls_back(tmp_path, monkeypatch, mismatch):
+    # an index that disagrees with HDF5 is dropped and the chunks are looked
+    # up one by one (still decoded here); chunk bytes that disagree with
+    # read_direct_chunk send the read to h5py. Neither index is cached.
+    """Check an index failing either cross-check is never cached or trusted."""
+    path = tmp_path / "f.hdf5"
+    _small_chunks(path)
+    fd._index_cache.clear()
+    if mismatch == "index":
+        parse = fd._chunk_index
+
+        def wrong(*args):
+            index = parse(*args)
+            first = min(index)
+            offset, size, mask = index[first]
+            index[first] = (offset + 1, size, mask)
+            return index
+
+        monkeypatch.setattr(fd, "_chunk_index", wrong)
+        ours = fast_read(path, "x", [(0, 10)])
+        assert ours.tobytes() == reference(path, "x", [(0, 10)]).tobytes()
+    else:
+        read = fd._ChunkReader.read
+
+        def wrong(self, coord):
+            mask, raw = read(self, coord)
+            return mask, bytes(len(raw))
+
+        monkeypatch.setattr(fd._ChunkReader, "read", wrong)
+        with pytest.warns(RuntimeWarning, match="/x.*match"):
+            assert fast_read(path, "x", [(0, 10)]) is None
+    assert not fd._index_cache
+
+
+def test_virtual_named_columns_decode_once(tmp_path, monkeypatch):
+    """Check a virtual field's columns, each read through a reopened file, decode once."""
+    rng = np.random.default_rng(28)
+    pieces = [sample(n, 4, rng, np.float32) for n in (1500, 2821)]
+    layout = h5py.VirtualLayout(shape=(N, 4), dtype=np.float32)
+    start = 0
+    for i, p in enumerate(pieces):
+        write_nbit(
+            tmp_path / f"part.{i}.hdf5",
+            "x",
+            p,
+            nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127),
+        )
+        layout[start : start + len(p)] = h5py.VirtualSource(
+            f"part.{i}.hdf5", "x", shape=p.shape
+        )
+        start += len(p)
+    with h5file(tmp_path / "virtual.hdf5", "w") as f:
+        f.create_virtual_dataset("x", layout)
+    calls = []
+    decode = fd._decode_chunk
+    monkeypatch.setattr(
+        fd, "_decode_chunk", lambda *a, **k: calls.append(1) or decode(*a, **k)
+    )
+    for column in [1, 3, 0, 2]:
+        ours = fast_read(tmp_path / "virtual.hdf5", "x", RANGES, columns=column)
+        ref = reference(tmp_path / "virtual.hdf5", "x", RANGES, column)
+        assert ours.tobytes() == ref.tobytes()
+    first = len(calls)
+    assert first > 0
+    # a second pass is new reads, but the first pass decoded each chunk once:
+    # four columns cost no more than one
+    calls.clear()
+    fast_read(tmp_path / "virtual.hdf5", "x", RANGES, columns=0)
+    assert len(calls) == first
