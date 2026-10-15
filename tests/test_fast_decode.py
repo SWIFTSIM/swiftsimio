@@ -701,8 +701,23 @@ def test_output_type_is_converted(tmp_path):
     )
 
 
-def test_disabled_and_small_reads_use_h5py(tmp_path, monkeypatch):
-    """Check disabled and small reads use h5py."""
+def test_small_reads_of_large_datasets_are_decoded(tmp_path, monkeypatch):
+    """Check a few rows of a dataset over MINIMUM_ELEMENTS are decoded here."""
+    data = sample(N, 3, np.random.default_rng(25), np.float32)
+    write_nbit(
+        tmp_path / "f.hdf5", "x", data, nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127)
+    )
+    monkeypatch.setattr(fd, "MINIMUM_ELEMENTS", N * 3)
+    for columns in (np.s_[:], 1):
+        ours = fast_read(tmp_path / "f.hdf5", "x", [(5, 7), (2000, 2001)], columns)
+        ref = reference(tmp_path / "f.hdf5", "x", [(5, 7), (2000, 2001)], columns)
+        assert ours is not None and ours.tobytes() == ref.tobytes()
+    monkeypatch.setattr(fd, "MINIMUM_ELEMENTS", N * 3 + 1)
+    assert fast_read(tmp_path / "f.hdf5", "x", [(5, 7)]) is None
+
+
+def test_disabled_and_small_datasets_use_h5py(tmp_path, monkeypatch):
+    """Check disabled and small datasets use h5py."""
     data = sample(N, 1, np.random.default_rng(15), np.float32)
     write_nbit(
         tmp_path / "f.hdf5", "x", data, nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127)
@@ -921,3 +936,68 @@ def test_unsorted_and_repeated_ranges(tmp_path):
     ranges = [(3000, 3100), (10, 20), (3050, 4321), (0, 2500), (15, 16)]
     assert_same(tmp_path / "f.hdf5", "x", ranges)
     assert_same(tmp_path / "f.hdf5", "x", ranges, columns=1)
+
+
+# --- reading runs of chunks ----------------------------------------------------
+
+
+def _small_chunks(path, userblock=0):
+    """Write N rows of N-bit floats in chunks of 50 rows (87 chunks)."""
+    data = sample(N, 2, np.random.default_rng(26), np.float32)
+    with h5py.File(path, "w", userblock_size=userblock) as f:
+        dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
+        dcpl.set_chunk((50, 2))
+        dcpl.set_filter(h5py.h5z.FILTER_NBIT, 0, ())
+        dcpl.set_shuffle()
+        dcpl.set_deflate(4)
+        dcpl.set_fletcher32()
+        d = h5py.Dataset(
+            h5py.h5d.create(
+                f.id,
+                b"x",
+                nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127),
+                h5py.h5s.create_simple(data.shape),
+                dcpl,
+            )
+        )
+        d[...] = data
+
+
+@pytest.mark.parametrize("userblock", [0, 512])
+def test_chunks_read_in_runs(tmp_path, monkeypatch, userblock):
+    """Check adjacent chunks are read with a few large reads, not one per chunk."""
+    _small_chunks(tmp_path / "f.hdf5", userblock)
+    preads = []
+    pread = os.pread
+    monkeypatch.setattr(
+        fd.os, "pread", lambda *a: preads.append(a[1]) or pread(*a), raising=False
+    )
+    assert_same(tmp_path / "f.hdf5", "x")
+    assert_same(tmp_path / "f.hdf5", "x", columns=1)
+    assert 0 < len(preads) <= 4  # 87 chunks: one run per read here
+
+
+def test_chunks_read_in_runs_when_runs_are_capped(tmp_path, monkeypatch):
+    """Check runs split at _RUN_BYTES and _RUN_GAP still give the same bytes."""
+    _small_chunks(tmp_path / "f.hdf5")
+    monkeypatch.setattr(fd, "_RUN_BYTES", 1000)
+    monkeypatch.setattr(fd, "_RUN_GAP", 0)
+    assert_same(tmp_path / "f.hdf5", "x")
+
+
+def test_unallocated_chunks_read_chunk_by_chunk(tmp_path):
+    """Check a dataset with chunks never written reads its fill value as h5py does."""
+    with h5file(tmp_path / "f.hdf5", "w") as f:
+        d = f.create_dataset(
+            "x",
+            shape=(N,),
+            dtype=np.float32,
+            chunks=(CHUNK,),
+            compression="gzip",
+            fillvalue=2.5,
+        )
+        d[1000:2000] = np.arange(1000, dtype=np.float32)
+    ranges = [(990, 1010), (1500, 3500)]
+    ours = fast_read(tmp_path / "f.hdf5", "x", ranges)
+    ref = reference(tmp_path / "f.hdf5", "x", ranges)
+    assert ours is not None and ours.tobytes() == ref.tobytes()

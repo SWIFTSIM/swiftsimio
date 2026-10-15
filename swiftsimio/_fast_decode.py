@@ -53,7 +53,9 @@ __all__ = ["ENABLED", "MINIMUM_ELEMENTS", "ChecksumError", "read_ranges"]
 #: Decode chunks here rather than with HDF5 (needs numba to be fast).
 ENABLED = NUMBA_AVAILABLE and os.environ.get("SWIFTSIMIO_FAST_DECODE", "1") != "0"
 
-#: Reads of fewer elements than this go to h5py, which is fast enough there.
+#: Datasets of fewer elements than this go to h5py, which is fast enough
+#: there. (It is the dataset that counts, not the read: HDF5 decodes every
+#: chunk a read touches whole, so even a few rows cost it whole chunks.)
 MINIMUM_ELEMENTS = 1 << 16
 
 NBIT, SHUFFLE, DEFLATE, FLETCHER32, SCALEOFFSET = 5, 2, 1, 3, 6
@@ -1011,6 +1013,112 @@ def _convert(values: np.ndarray, dtype: np.dtype) -> np.ndarray:
     raise TypeError(f"no conversion from {values.dtype} to {dtype}")
 
 
+#: Chunks are read from the file in runs: adjacent chunks (SWIFT writes a
+#: dataset's chunks one after another) with gaps of at most _RUN_GAP bytes go
+#: in one read of at most _RUN_BYTES, instead of one request per chunk.
+_RUN_GAP = 1 << 20
+_RUN_BYTES = 64 << 20
+
+
+class _ChunkReader:
+    """
+    Raw chunks of one dataset, read in runs of adjacent chunks.
+
+    Each ``read_direct_chunk`` is a separate request to the file system: on a
+    busy Lustre that costs milliseconds each, which dominates for datasets of
+    many small chunks. Here the chunks' file offsets are looked up once and
+    each run of adjacent chunks is read with one ``pread``. The bytes are the
+    same as ``read_direct_chunk`` gives (checked on the first chunk); without
+    offsets (e.g. unallocated chunks) it reads chunk by chunk as before.
+
+    Parameters
+    ----------
+    source : h5py.Dataset
+        A dataset in a regular (non-virtual) file.
+
+    coords : list
+        The chunk coordinates that will be read, in any order.
+    """
+
+    def __init__(self, source: h5py.Dataset, coords: list) -> None:
+        self.source = source
+        self.fd = None
+        self.where = {}  # chunk -> (run, start in run, size, filter mask)
+        self.unallocated = set()  # chunks never written: the fill value
+        self.runs = []  # [file offset, length, chunks left, bytes or None]
+        try:
+            infos = {c: source.id.get_chunk_info_by_coord(c) for c in coords}
+        except (AttributeError, KeyError, ValueError, RuntimeError, OSError):
+            return
+        self.unallocated = {c for c, i in infos.items() if i.byte_offset is None}
+        infos = {c: i for c, i in infos.items() if i.byte_offset is not None}
+        if not infos:
+            return
+        for c in sorted(infos, key=lambda c: infos[c].byte_offset):
+            offset, size = infos[c].byte_offset, infos[c].size  # in the file
+            run = self.runs[-1] if self.runs else None
+            if (
+                run is None
+                or offset - (run[0] + run[1]) > _RUN_GAP
+                or offset - (run[0] + run[1]) < 0
+                or offset + size - run[0] > _RUN_BYTES
+            ):
+                run = [offset, 0, 0, None]
+                self.runs.append(run)
+            run[1] = offset + size - run[0]
+            run[2] += 1
+            self.where[c] = (
+                len(self.runs) - 1,
+                offset - run[0],
+                size,
+                infos[c].filter_mask,
+            )
+        try:
+            self.fd = os.open(source.file.filename, os.O_RDONLY)
+            first = next(iter(infos))
+            mask, raw = self.read(first)
+            if (mask, bytes(raw)) != tuple(source.id.read_direct_chunk(first)):
+                raise OSError("chunk offsets do not match the chunks")
+            # (read() counted the first chunk as served; serve it again later)
+            self.runs[self.where[first][0]][2] += 1
+        except OSError:
+            self.close()
+            self.where = {}
+
+    def read(self, coord: tuple) -> tuple:
+        """
+        Return ``(filter mask, raw bytes)`` of one chunk, like ``read_direct_chunk``.
+
+        The bytes are ``None`` for a chunk that was never written.
+        """
+        if coord in self.unallocated:
+            return 0, None
+        if coord not in self.where:
+            return self.source.id.read_direct_chunk(coord)
+        index, start, size, filter_mask = self.where[coord]
+        run = self.runs[index]
+        if run[3] is None:
+            parts, done = [], 0
+            while done < run[1]:  # pread may return less than asked
+                part = os.pread(self.fd, run[1] - done, run[0] + done)
+                if not part:
+                    raise OSError("unexpected end of file reading chunks")
+                parts.append(part)
+                done += len(part)
+            run[3] = parts[0] if len(parts) == 1 else b"".join(parts)
+        raw = memoryview(run[3])[start : start + size]  # no copy
+        run[2] -= 1
+        if run[2] == 0:
+            run[3] = None  # every chunk of the run served
+        return filter_mask, raw
+
+    def close(self) -> None:
+        """Close the file descriptor."""
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None
+
+
 def _all_columns(columns: object) -> bool:
     """Whether a column selection is every column (``[:]``)."""
     return isinstance(columns, slice) and columns == slice(None)
@@ -1082,49 +1190,62 @@ def _copy_pieces(
         for k in range(lo // chunk_rows, (hi - 1) // chunk_rows + 1):
             c0, c1 = max(lo, k * chunk_rows), min(hi, (k + 1) * chunk_rows)
             by_chunk.setdefault(k, []).append((c0, c1, at + c0 - lo))
+    reader = _ChunkReader(
+        source, [(k * chunk_rows,) + corner for k in by_chunk for corner in grid]
+    )
     span_buffer = None
-    for k in sorted(by_chunk):
-        parts = by_chunk[k]
-        s0 = min(c0 for c0, _, _ in parts)
-        s1 = max(c1 for _, c1, _ in parts)
-        rows = s1 - s0
-        if direct and len(parts) == 1:
-            block = output[parts[0][2] : parts[0][2] + rows]
-        else:
-            if span_buffer is None:
-                span_buffer = np.empty((chunk_rows,) + tail, dtype=native)
-            block = span_buffer[:rows]
-        for corner in grid:
-            inside = tuple(
-                slice(o, min(o + c, n)) for o, c, n in zip(corner, chunk_tail, tail)
-            )
-            filter_mask, raw = source.id.read_direct_chunk((k * chunk_rows,) + corner)
-            if lossy and filter_mask & 1:
-                # written without its lossy filter: let HDF5 convert it
-                block[(slice(None),) + inside] = source[(slice(s0, s1),) + inside]
+    try:
+        for k in sorted(by_chunk):
+            parts = by_chunk[k]
+            s0 = min(c0 for c0, _, _ in parts)
+            s1 = max(c1 for _, c1, _ in parts)
+            rows = s1 - s0
+            if direct and len(parts) == 1:
+                block = output[parts[0][2] : parts[0][2] + rows]
+            else:
+                if span_buffer is None:
+                    span_buffer = np.empty((chunk_rows,) + tail, dtype=native)
+                block = span_buffer[:rows]
+            for corner in grid:
+                inside = tuple(
+                    slice(o, min(o + c, n)) for o, c, n in zip(corner, chunk_tail, tail)
+                )
+                filter_mask, raw = reader.read((k * chunk_rows,) + corner)
+                if raw is None:  # never written: HDF5 reads its fill value
+                    block[(slice(None),) + inside] = np.array(source.fillvalue).astype(
+                        native
+                    )
+                    continue
+                if lossy and filter_mask & 1:
+                    # written without its lossy filter: let HDF5 convert it
+                    block[(slice(None),) + inside] = source[(slice(s0, s1),) + inside]
+                    continue
+                flat = block.reshape(-1) if whole_rows else decoded[: rows * row_values]
+                _decode_chunk(
+                    spec,
+                    raw,
+                    values,
+                    (s0 - k * chunk_rows) * row_values,
+                    rows * row_values,
+                    flat,
+                    scratch,
+                    filter_mask,
+                )
+                if not whole_rows:
+                    block[(slice(None),) + inside] = flat.reshape((rows,) + chunk_tail)[
+                        (slice(None),)
+                        + tuple(slice(0, q.stop - q.start) for q in inside)
+                    ]
+            if direct and len(parts) == 1:
                 continue
-            flat = block.reshape(-1) if whole_rows else decoded[: rows * row_values]
-            _decode_chunk(
-                spec,
-                raw,
-                values,
-                (s0 - k * chunk_rows) * row_values,
-                rows * row_values,
-                flat,
-                scratch,
-                filter_mask,
-            )
-            if not whole_rows:
-                block[(slice(None),) + inside] = flat.reshape((rows,) + chunk_tail)[
-                    (slice(None),) + tuple(slice(0, q.stop - q.start) for q in inside)
-                ]
-        if direct and len(parts) == 1:
-            continue
-        for c0, c1, at in parts:
-            piece = block[c0 - s0 : c1 - s0]
-            if source.ndim > 1:
-                piece = piece[(slice(None), columns)]
-            output[at : at + c1 - c0] = _convert(np.asarray(piece), output.dtype)
+            for c0, c1, at in parts:
+                piece = block[c0 - s0 : c1 - s0]
+                if source.ndim > 1:
+                    piece = piece[(slice(None), columns)]
+                output[at : at + c1 - c0] = _convert(np.asarray(piece), output.dtype)
+
+    finally:
+        reader.close()
 
 
 #: The last multi-column field read for one of its columns, all columns
@@ -1174,7 +1295,7 @@ def read_ranges(
         return None
     ranges = np.asarray(ranges, dtype=np.int64).reshape(-1, 2)
     dtype = np.dtype(output_type).newbyteorder("=")
-    if int(np.prod(output_shape)) < MINIMUM_ELEMENTS:
+    if handle.size < MINIMUM_ELEMENTS:
         return None
     if handle.ndim == 2 and not _all_columns(columns):
         return _read_columns(handle, ranges, dtype, columns)
