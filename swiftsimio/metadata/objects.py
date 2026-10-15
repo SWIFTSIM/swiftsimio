@@ -15,7 +15,7 @@ from unyt.array import _iterable
 from swiftsimio.conversions import swift_cosmology_to_astropy
 from swiftsimio import metadata
 from swiftsimio.objects import cosmo_array, cosmo_factor, cosmo_quantity
-from swiftsimio._handle_provider import HandleProvider
+from swiftsimio._handle_provider import HandleProvider, open_hdf5
 from abc import ABC, abstractmethod
 
 import re
@@ -865,7 +865,7 @@ def _metadata_discriminator(
     """
     # Old snapshots did not have OutputType, so we need to default to FullVolume
     if handle is None:
-        with h5py.File(filename, "r") as local_handle:
+        with open_hdf5(filename) as local_handle:
             file_type = local_handle["Header"].attrs.get("OutputType", "FullVolume")
     else:
         file_type = handle["Header"].attrs.get("OutputType", "FullVolume")
@@ -1385,7 +1385,7 @@ class SWIFTLineOfSightMetadata(SWIFTSnapshotMetadata):
         if self._handle:
             keys = self.handle.keys()
         else:
-            with h5py.File(self.filename, "r") as handle:
+            with open_hdf5(self.filename) as handle:
                 keys = list(handle.keys())
 
         return sorted([group for group in keys if group.startswith("LOS_")])

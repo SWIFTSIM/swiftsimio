@@ -5,12 +5,33 @@ Chunks decoded without HDF5 must give exactly the bytes h5py gives, for every
 filter pipeline SWIFT writes.
 """
 
+import os
+import zlib
+
 import h5py
 import numpy as np
 import pytest
 
+from h5py._hl.files import make_fapl
+
 from swiftsimio import _fast_decode as fd
+from swiftsimio._handle_provider import _relax_integrity_checks
 from swiftsimio.accelerated import read_ranges_from_file
+
+
+def h5file(path, mode="r"):
+    """Open a file as h5py.File does, accepting DMantissa9-like types (as swiftsimio)."""
+    fapl = make_fapl(None)
+    if _relax_integrity_checks is not None:
+        _relax_integrity_checks(fapl.id, 1)
+    name = os.fsencode(str(path))
+    if mode == "r":
+        fid = h5py.h5f.open(name, h5py.h5f.ACC_RDONLY, fapl)
+    elif mode == "w" or not os.path.exists(name):
+        fid = h5py.h5f.create(name, h5py.h5f.ACC_TRUNC, fapl=fapl)
+    else:
+        fid = h5py.h5f.open(name, h5py.h5f.ACC_RDWR, fapl)
+    return h5py.File(fid)
 
 
 @pytest.fixture(autouse=True)
@@ -18,6 +39,7 @@ def small_reads_too(monkeypatch):
     """Use the fast path even for the small test datasets."""
     monkeypatch.setattr(fd, "MINIMUM_ELEMENTS", 0)
     monkeypatch.setattr(fd, "ENABLED", True)
+    fd._columns_cache.update(key=None, data=None, served=None)
 
 
 CHUNK = 1000
@@ -28,7 +50,7 @@ RANGES = [(0, 1), (5, 999), (999, 1001), (1500, 1500), (1990, 3017), (4200, N)]
 def reference(path, name, ranges=None, columns=np.s_[:]):
     """Read the ranges (and columns) with h5py."""
     ranges = RANGES if ranges is None else ranges
-    with h5py.File(path) as f:
+    with h5file(path) as f:
         d = f[name]
         parts = [d[lo:hi] for lo, hi in ranges]
     data = np.concatenate(parts)
@@ -37,7 +59,7 @@ def reference(path, name, ranges=None, columns=np.s_[:]):
 
 def fast_read(path, name, ranges, columns=np.s_[:], output_type=None):
     """Read the ranges with the fast decoder (None if it declines)."""
-    with h5py.File(path) as f:
+    with h5file(path) as f:
         d = f[name]
         rows = int(sum(hi - lo for lo, hi in ranges))
         if d.ndim > 1:
@@ -55,11 +77,11 @@ def assert_same(path, name, ranges=None, fast=True, columns=np.s_[:]):
     """Assert the fast decoder and swiftsimio give exactly what h5py gives."""
     ranges = RANGES if ranges is None else ranges
     ref = reference(path, name, ranges, columns)
-    with h5py.File(path) as f:
+    with h5file(path) as f:
         d = f[name]
         blocks = fd._sources(d)
         decodable = blocks is not None and all(
-            fd.decoder_for(h5py.File(fname)[dname]) is not None
+            fd.decoder_for(h5file(fname)[dname]) is not None
             for _, _, fname, dname in blocks
         )
     assert decodable == fast
@@ -70,7 +92,7 @@ def assert_same(path, name, ranges=None, fast=True, columns=np.s_[:]):
         assert ours.dtype == ref.dtype.newbyteorder("=") and ours.shape == ref.shape
         assert ours.tobytes() == ref.astype(ref.dtype.newbyteorder("=")).tobytes()
     # and through swiftsimio's entry point, fast path or not
-    with h5py.File(path) as f:
+    with h5file(path) as f:
         d = f[name]
         through = read_ranges_from_file(
             d, np.array(ranges), ref.shape, d.dtype, columns
@@ -111,7 +133,7 @@ def nbit_type(base, mantissa, esize, ebias):
 
 def write_nbit(path, name, data, file_type, shuffle=True, checksum=True):
     """Write a dataset with the N-bit, shuffle, deflate and checksum filters."""
-    with h5py.File(path, "a") as f:
+    with h5file(path, "a") as f:
         if "/" in name:
             f.require_group(name.rsplit("/", 1)[0])
         dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
@@ -147,9 +169,9 @@ def test_nbit_float32(tmp_path, mantissa, cols):
     write_nbit(
         tmp_path / "f.hdf5", "x", data, nbit_type(h5py.h5t.IEEE_F32LE, mantissa, 8, 127)
     )
-    # a full 23-bit mantissa is plain float32: HDF5 marks it "need not
-    # compress" and the decoder leaves it to h5py
-    assert_same(tmp_path / "f.hdf5", "x", fast=mantissa < 23)
+    # (a full 23-bit mantissa is plain float32: HDF5 marks it "need not
+    # compress" and stores it unpacked)
+    assert_same(tmp_path / "f.hdf5", "x")
 
 
 @pytest.mark.parametrize("mantissa", [9, 21, 35, 52])
@@ -163,10 +185,7 @@ def test_nbit_float64(tmp_path, mantissa, cols):
         data,
         nbit_type(h5py.h5t.IEEE_F64LE, mantissa, 11, 1023),
     )
-    if 1 + 11 + mantissa > 57:  # beyond the decoder's 64-bit window: h5py
-        assert_same(tmp_path / "f.hdf5", "x", fast=False)
-    else:
-        assert_same(tmp_path / "f.hdf5", "x")
+    assert_same(tmp_path / "f.hdf5", "x")
 
 
 def test_nbit_special_values(tmp_path):
@@ -206,7 +225,7 @@ def test_nbit_pipeline_variants(tmp_path, shuffle, checksum):
 
 def write(path, name, data, **kwargs):
     """Write a chunked dataset with h5py's high-level options."""
-    with h5py.File(path, "a") as f:
+    with h5file(path, "a") as f:
         f.create_dataset(
             name,
             data=data,
@@ -223,7 +242,7 @@ def write_scaleoffset(path, name, data, digits, fill=None, file_dtype=None):
     h5py's high-level API refuses Fletcher-32 with scale-offset.
     """
     file_dtype = np.dtype(file_dtype or data.dtype)
-    with h5py.File(path, "a") as f:
+    with h5file(path, "a") as f:
         dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
         dcpl.set_chunk((CHUNK,) + data.shape[1:])
         if fill is not None:
@@ -303,11 +322,26 @@ def test_plain(tmp_path, dtype, shuffle):
 # --- everything else goes to h5py -------------------------------------------
 
 
-def test_big_endian_uses_h5py(tmp_path):
-    """Check big endian uses h5py."""
+def test_big_endian_lossy_uses_h5py(tmp_path):
+    """Check big-endian data with a lossy filter uses h5py."""
     data = np.random.default_rng(4).uniform(0, 1, N)
     write_scaleoffset(tmp_path / "f.hdf5", "x", data, 6, fill=0.0, file_dtype=">f8")
     assert_same(tmp_path / "f.hdf5", "x", fast=False)
+
+
+@pytest.mark.parametrize("dtype", [">f4", ">f8", ">i4", ">u8"])
+def test_big_endian_lossless(tmp_path, dtype):
+    """Check big-endian data with only lossless filters is decoded, in native order."""
+    data = np.random.default_rng(4).uniform(0, 1000, (N, 2)).astype(dtype)
+    write(
+        tmp_path / "f.hdf5",
+        "x",
+        data,
+        compression="gzip",
+        shuffle=True,
+        fletcher32=True,
+    )
+    assert_same(tmp_path / "f.hdf5", "x")
 
 
 def test_integer_nbit_with_an_offset(tmp_path):
@@ -326,19 +360,33 @@ def test_other_compressors_and_contiguous_use_h5py(tmp_path):
     """Check other compressors and contiguous use h5py."""
     data = np.random.default_rng(6).uniform(0, 1, N)
     write(tmp_path / "f.hdf5", "lzf", data, compression="lzf")
-    with h5py.File(tmp_path / "f.hdf5", "a") as f:
+    with h5file(tmp_path / "f.hdf5", "a") as f:
         f.create_dataset("contiguous", data=data)
     assert_same(tmp_path / "f.hdf5", "lzf", fast=False)
     assert_same(tmp_path / "f.hdf5", "contiguous", fast=False)
 
 
-def test_chunk_with_skipped_filter_uses_h5py(tmp_path):
-    # A chunk written with the deflate filter skipped (filter mask bit 2)
-    """Check chunk with skipped filter uses h5py."""
+def test_chunk_with_skipped_filter(tmp_path):
+    # A chunk written with the deflate filter skipped (filter mask bit 0)
+    """Check a chunk written with a filter skipped is decoded without it."""
     data = np.random.default_rng(8).uniform(0, 1, N).astype(np.float32)
     write(tmp_path / "f.hdf5", "x", data, compression="gzip", compression_opts=4)
     raw = data[:CHUNK].tobytes()
-    with h5py.File(tmp_path / "f.hdf5", "a") as f:
+    with h5file(tmp_path / "f.hdf5", "a") as f:
+        f["x"].id.write_direct_chunk((0,), raw, filter_mask=1)
+    assert_same(tmp_path / "f.hdf5", "x")
+
+
+def test_chunk_with_skipped_lossy_filter(tmp_path):
+    # A chunk written without the N-bit filter holds the file type unpacked:
+    # HDF5 converts it, so it is read with h5py; the other chunks are decoded
+    """Check a chunk written without its lossy filter."""
+    data = np.random.default_rng(8).integers(-(2**30), 2**30, N).astype(np.int64)
+    t = h5py.h5t.STD_I64LE.copy()
+    t.set_precision(36)
+    write_nbit(tmp_path / "f.hdf5", "x", data, t, shuffle=False, checksum=False)
+    raw = zlib.compress(data[:CHUNK].tobytes())
+    with h5file(tmp_path / "f.hdf5", "a") as f:
         f["x"].id.write_direct_chunk((0,), raw, filter_mask=1)
     assert_same(tmp_path / "f.hdf5", "x")
 
@@ -352,12 +400,12 @@ def test_corrupt_chunk_raises(tmp_path):
     write_nbit(
         tmp_path / "f.hdf5", "x", data, nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127)
     )
-    with h5py.File(tmp_path / "f.hdf5", "a") as f:
+    with h5file(tmp_path / "f.hdf5", "a") as f:
         mask, raw = f["x"].id.read_direct_chunk((CHUNK,))
         bad = bytearray(raw)
         bad[len(bad) // 2] ^= 0x10
         f["x"].id.write_direct_chunk((CHUNK,), bytes(bad), filter_mask=mask)
-    with h5py.File(tmp_path / "f.hdf5") as f, pytest.raises(OSError):
+    with h5file(tmp_path / "f.hdf5") as f, pytest.raises(OSError):
         f["x"][CHUNK : 2 * CHUNK]  # HDF5 itself rejects the chunk
     with pytest.raises(fd.ChecksumError):
         fast_read(tmp_path / "f.hdf5", "x", [(CHUNK, CHUNK + 10)])
@@ -418,7 +466,7 @@ def test_virtual_dataset_over_files(tmp_path):
             f"part.{i}.hdf5", "PartType0/x", shape=p.shape
         )
         start += len(p)
-    with h5py.File(tmp_path / "virtual.hdf5", "w") as f:
+    with h5file(tmp_path / "virtual.hdf5", "w") as f:
         f.create_virtual_dataset("PartType0/x", layout)
     ranges = [(0, 10), (1400, 1600), (1530, 1540), (2000, start)]
     assert_same(tmp_path / "virtual.hdf5", "PartType0/x", ranges)
@@ -463,7 +511,7 @@ def swift_float_type(base, e_size, m_size):
 
 def write_swift(path, name, data, file_type, order, lossy):
     """Write a dataset with filters in the given order, as SWIFT does."""
-    with h5py.File(path, "a") as f:
+    with h5file(path, "a") as f:
         dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
         dcpl.set_chunk((min(CHUNK, data.shape[0]),) + data.shape[1:])
         for step in order:
@@ -624,7 +672,7 @@ def test_virtual_dataset_with_another_type(tmp_path, source, declared):
             f"part.{i}.hdf5", "x", shape=p.shape
         )
         start += len(p)
-    with h5py.File(tmp_path / "virtual.hdf5", "w") as f:
+    with h5file(tmp_path / "virtual.hdf5", "w") as f:
         f.create_virtual_dataset("x", layout)
     assert_same(tmp_path / "virtual.hdf5", "x", [(0, 7), (1000, 1500), (1900, start)])
 
@@ -665,7 +713,7 @@ def test_disabled_and_small_reads_use_h5py(tmp_path, monkeypatch):
     monkeypatch.setattr(fd, "MINIMUM_ELEMENTS", 10**9)
     assert fast_read(tmp_path / "f.hdf5", "x", RANGES) is None
     ref = reference(tmp_path / "f.hdf5", "x")
-    with h5py.File(tmp_path / "f.hdf5") as f:  # swiftsimio still reads it, with h5py
+    with h5file(tmp_path / "f.hdf5") as f:  # swiftsimio still reads it, with h5py
         through = read_ranges_from_file(
             f["x"], np.array(RANGES), ref.shape, f["x"].dtype
         )
@@ -683,26 +731,131 @@ def test_unsupported_virtual_mapping_uses_h5py(tmp_path):
     source = h5py.VirtualSource("part.hdf5", "x", shape=(2000,))
     layout[0:2000:2] = source[0:1000]
     layout[1:2000:2] = source[1000:2000]
-    with h5py.File(tmp_path / "virtual.hdf5", "w") as f:
+    with h5file(tmp_path / "virtual.hdf5", "w") as f:
         f.create_virtual_dataset("x", layout)
     assert_same(tmp_path / "virtual.hdf5", "x", [(0, 2000)], fast=False)
 
 
-def test_chunks_not_holding_whole_rows_use_h5py(tmp_path):
-    # e.g. a (N, 3) dataset chunked one column at a time
-    """Check chunks not holding whole rows use h5py."""
-    data = np.random.default_rng(17).uniform(0, 1, (N, 3)).astype(np.float32)
-    with h5py.File(tmp_path / "f.hdf5", "w") as f:
+@pytest.mark.parametrize("chunks", [(CHUNK, 1), (CHUNK, 2), (700, 4)])
+@pytest.mark.parametrize("columns", [np.s_[:], 1, np.s_[1:3], [0, 4]])
+def test_chunks_not_holding_whole_rows(tmp_path, chunks, columns):
+    # e.g. a (N, 5) dataset chunked one column at a time, or with partial
+    # chunks at the edge of the columns too
+    """Check chunks holding part of each row."""
+    data = np.random.default_rng(17).uniform(0, 1, (N, 5)).astype(np.float32)
+    with h5file(tmp_path / "f.hdf5", "w") as f:
         f.create_dataset(
-            "x", data=data, chunks=(CHUNK, 1), compression="gzip", shuffle=True
+            "x", data=data, chunks=chunks, compression="gzip", shuffle=True
         )
-    assert_same(tmp_path / "f.hdf5", "x", fast=False)
-    assert_same(tmp_path / "f.hdf5", "x", fast=False, columns=1)
+    assert_same(tmp_path / "f.hdf5", "x", columns=columns)
+
+
+def test_lossy_chunks_not_holding_whole_rows(tmp_path):
+    """Check column-chunked N-bit floats."""
+    data = sample(N, 3, np.random.default_rng(18), np.float32)
+    with h5file(tmp_path / "f.hdf5", "w") as f:
+        dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
+        dcpl.set_chunk((CHUNK, 2))
+        dcpl.set_filter(h5py.h5z.FILTER_NBIT, 0, ())
+        dcpl.set_deflate(4)
+        d = h5py.Dataset(
+            h5py.h5d.create(
+                f.id,
+                b"x",
+                nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127),
+                h5py.h5s.create_simple(data.shape),
+                dcpl,
+            )
+        )
+        d[...] = data
+    assert_same(tmp_path / "f.hdf5", "x")
+    assert_same(tmp_path / "f.hdf5", "x", columns=2)
+
+
+@pytest.mark.parametrize("precision", [58, 60, 63, 64])
+@pytest.mark.parametrize("signed", [True, False])
+def test_nbit_integers_wider_than_57_bits(tmp_path, precision, signed):
+    """Check N-bit integers whose values can span nine bytes."""
+    rng = np.random.default_rng(precision)
+    if signed:
+        low = -(2 ** (precision - 1))
+        data = rng.integers(low, -low, N, dtype=np.int64)
+        t = h5py.h5t.STD_I64LE.copy()
+    else:
+        data = rng.integers(0, 2**precision - 1, N, dtype=np.uint64, endpoint=True)
+        t = h5py.h5t.STD_U64LE.copy()
+    t.set_precision(precision)
+    write_nbit(tmp_path / "f.hdf5", "x", data, t)
+    assert_same(tmp_path / "f.hdf5", "x")
+
+
+def test_unpack_bits_across_nine_bytes():
+    """Check unpack_bits against a slow reference for every bit alignment."""
+    rng = np.random.default_rng(19)
+    for precision in (57, 58, 61, 64):
+        values = rng.integers(0, 2**precision - 1, 64, dtype=np.uint64, endpoint=True)
+        bits = "".join(format(int(v), f"0{precision}b") for v in values)
+        bits += "0" * (-len(bits) % 8)
+        stream = np.array(
+            [int(bits[i : i + 8], 2) for i in range(0, len(bits), 8)], dtype=np.uint8
+        )
+        for first in range(8):
+            out = np.empty(64 - first, dtype=np.uint64)
+            fd.unpack_bits(stream, 0, precision, out, first, out.size)
+            assert np.array_equal(out, values[first:])
+
+
+def test_virtual_dataset_with_missing_source(tmp_path):
+    # HDF5 reads rows in a missing source file as the fill value
+    """Check a virtual dataset with a missing source file."""
+    rng = np.random.default_rng(20)
+    pieces = [sample(n, 2, rng, np.float32) for n in (1500, 2000, 900)]
+    layout = h5py.VirtualLayout(shape=(4400, 2), dtype=np.float32)
+    start = 0
+    for i, p in enumerate(pieces):
+        if i != 1:
+            write_nbit(
+                tmp_path / f"part.{i}.hdf5",
+                "x",
+                p,
+                nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127),
+            )
+        layout[start : start + len(p)] = h5py.VirtualSource(
+            f"part.{i}.hdf5", "x", shape=p.shape
+        )
+        start += len(p)
+    with h5file(tmp_path / "virtual.hdf5", "w") as f:
+        f.create_virtual_dataset("x", layout, fillvalue=-7.5)
+    ranges = [(0, 10), (1400, 1600), (3000, 4400)]
+    ref = reference(tmp_path / "virtual.hdf5", "x", ranges)
+    assert (ref[110:210] == -7.5).all()  # h5py: the fill value
+    ours = fast_read(tmp_path / "virtual.hdf5", "x", ranges)
+    assert ours is not None and ours.tobytes() == ref.tobytes()
+
+
+def test_virtual_dataset_with_unmapped_rows(tmp_path):
+    """Check rows no source maps read as the fill value, keeping later rows in place."""
+    rng = np.random.default_rng(21)
+    layout = h5py.VirtualLayout(shape=(5000,), dtype=np.float32)
+    for i, start in enumerate((1000, 3000)):
+        write_nbit(
+            tmp_path / f"part.{i}.hdf5",
+            "x",
+            sample(1000, 1, rng, np.float32),
+            nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127),
+        )
+        layout[start : start + 1000] = h5py.VirtualSource(
+            f"part.{i}.hdf5", "x", shape=(1000,)
+        )
+    with h5file(tmp_path / "virtual.hdf5", "w") as f:
+        f.create_virtual_dataset("x", layout, fillvalue=3.0)
+    ranges = [(0, 5000), (500, 1500), (1990, 3010)]
+    assert_same(tmp_path / "virtual.hdf5", "x", ranges)
 
 
 def test_empty_dataset(tmp_path):
     """Check empty dataset."""
-    with h5py.File(tmp_path / "f.hdf5", "w") as f:
+    with h5file(tmp_path / "f.hdf5", "w") as f:
         f.create_dataset(
             "x",
             shape=(0, 3),
@@ -713,3 +866,58 @@ def test_empty_dataset(tmp_path):
         )
         out = fd.read_ranges(f["x"], np.zeros((0, 2), np.int64), (0, 3), np.float32)
         assert out is None or (out.shape == (0, 3) and out.dtype == np.float32)
+
+
+# --- decoding each chunk once ------------------------------------------------
+
+
+def test_named_columns_decode_once(tmp_path, monkeypatch):
+    """Check reading a field's columns one at a time decodes its chunks once."""
+    data = sample(N, 4, np.random.default_rng(22), np.float32)
+    write_nbit(
+        tmp_path / "f.hdf5", "x", data, nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127)
+    )
+    calls = []
+    decode = fd._decode_chunk
+    monkeypatch.setattr(
+        fd, "_decode_chunk", lambda *a, **k: calls.append(1) or decode(*a, **k)
+    )
+    for column in [2, 0, 3, 1]:
+        ours = fast_read(tmp_path / "f.hdf5", "x", RANGES, columns=column)
+        ref = reference(tmp_path / "f.hdf5", "x", RANGES, column)
+        assert ours.tobytes() == ref.tobytes()
+    chunks = {
+        k
+        for lo, hi in RANGES
+        if hi > lo
+        for k in range(lo // CHUNK, (hi - 1) // CHUNK + 1)
+    }
+    assert len(calls) == len(chunks)  # each chunk decoded once for all four columns
+    assert fd._columns_cache["key"] is None  # every column served: dropped
+    # a column again, or other ranges, is a new read
+    assert fast_read(tmp_path / "f.hdf5", "x", RANGES[:2], columns=1).tobytes() == (
+        reference(tmp_path / "f.hdf5", "x", RANGES[:2], 1).tobytes()
+    )
+
+
+def test_named_columns_over_the_cache_size(tmp_path, monkeypatch):
+    """Check fields over COLUMNS_CACHE_BYTES are read a column at a time."""
+    monkeypatch.setattr(fd, "COLUMNS_CACHE_BYTES", 0)
+    data = sample(N, 3, np.random.default_rng(23), np.float32)
+    write_nbit(
+        tmp_path / "f.hdf5", "x", data, nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127)
+    )
+    for column in [0, 2, np.s_[0:2]]:
+        assert_same(tmp_path / "f.hdf5", "x", columns=column)
+    assert fd._columns_cache["key"] is None
+
+
+def test_unsorted_and_repeated_ranges(tmp_path):
+    """Check ranges in any order, overlapping or sharing chunks, keep their order."""
+    data = sample(N, 3, np.random.default_rng(24), np.float32)
+    write_nbit(
+        tmp_path / "f.hdf5", "x", data, nbit_type(h5py.h5t.IEEE_F32LE, 9, 8, 127)
+    )
+    ranges = [(3000, 3100), (10, 20), (3050, 4321), (0, 2500), (15, 16)]
+    assert_same(tmp_path / "f.hdf5", "x", ranges)
+    assert_same(tmp_path / "f.hdf5", "x", ranges, columns=1)

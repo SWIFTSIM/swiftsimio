@@ -7,8 +7,8 @@ element and bit by bit, at a few tens of MB/s. Here every chunk is read raw
 with ``read_direct_chunk`` and its filters are undone in numba instead, giving
 exactly the bytes h5py would return.
 
-Supported (little-endian, chunked datasets), covering everything SWIFT writes
-(``src/io_compression.c``, ``single_io.c``, ``distributed_io.c``,
+Supported (chunked numeric datasets, any chunk shape), covering everything
+SWIFT writes (``src/io_compression.c``, ``single_io.c``, ``distributed_io.c``,
 ``common_io_cells.c``):
 
 + an optional first filter:
@@ -20,16 +20,20 @@ Supported (little-endian, chunked datasets), covering everything SWIFT writes
 
 + then shuffle, deflate and Fletcher-32 in any order, each optional.
 
-Everything else, and any chunk whose filters were skipped when writing, is read
-with h5py as before. Every chunk's Fletcher-32 checksum is verified, as HDF5
-does. Virtual datasets are mapped onto their source files when each source
-supplies whole rows to one contiguous block, as in SWIFT's virtual snapshots;
-anything else is read with h5py.
+Big-endian data is decoded unless it has a lossy filter. Filters skipped when
+a chunk was written are skipped here too, except a skipped lossy filter (that
+chunk is read with h5py). Everything else is read with h5py as before. Every
+chunk's Fletcher-32 checksum is verified, as HDF5 does. Virtual datasets are
+mapped onto their source files when each source supplies whole rows to one
+contiguous block, as in SWIFT's virtual snapshots; rows in missing source
+files, or mapped by no source, read as the fill value as in HDF5. Anything
+else is read with h5py.
 
 Set the environment variable ``SWIFTSIMIO_FAST_DECODE=0``, or
 ``swiftsimio._fast_decode.ENABLED = False``, to always read with h5py.
 """
 
+import itertools
 import os
 import zlib
 
@@ -37,6 +41,7 @@ import h5py
 import numpy as np
 
 from .optional_packages import jit, NUMBA_AVAILABLE
+from ._handle_provider import open_hdf5
 
 try:  # libdeflate inflates about twice as fast as zlib
     import deflate as _libdeflate
@@ -88,10 +93,18 @@ def fletcher32(data: np.ndarray, n: int) -> np.uint32:
     while words > 0:
         tlen = 360 if words > 360 else words
         words -= tlen
-        for _ in range(tlen):
-            sum1 += (np.int64(data[i]) << 8) | np.int64(data[i + 1])
-            sum2 += sum1
-            i += 2
+        # sum2 gains sum1 after every word, i.e. tlen * sum1 plus each word
+        # weighted by how many sums it is in: the same integers as HDF5's
+        # word-by-word loop, without its serial dependency
+        block = np.int64(0)
+        weighted = np.int64(0)
+        for j in range(tlen):
+            w = (np.int64(data[i + 2 * j]) << 8) | np.int64(data[i + 2 * j + 1])
+            block += w
+            weighted += (tlen - j) * w
+        sum2 += tlen * sum1 + weighted
+        sum1 += block
+        i += 2 * tlen
         sum1 = (sum1 & 0xFFFF) + (sum1 >> 16)
         sum2 = (sum2 & 0xFFFF) + (sum2 >> 16)
     if n % 2:
@@ -223,6 +236,127 @@ def unpack_nbit18(stream: np.ndarray, out: np.ndarray, first: int, count: int) -
         i += 1
 
 
+@jit(nopython=True, cache=True, inline="always")
+def load_be64(stream: np.ndarray, b: np.uint64) -> np.uint64:
+    """
+    Eight bytes from ``stream[b]`` as a big-endian word.
+
+    Indexed with unsigned integers: numba then skips its negative-index
+    wraparound, which otherwise makes these loads several times slower.
+
+    Parameters
+    ----------
+    stream : np.ndarray
+        Bytes (uint8).
+
+    b : np.uint64
+        First byte.
+
+    Returns
+    -------
+    np.uint64
+        The word.
+    """
+    return (
+        (np.uint64(stream[b]) << np.uint64(56))
+        | (np.uint64(stream[b + np.uint64(1)]) << np.uint64(48))
+        | (np.uint64(stream[b + np.uint64(2)]) << np.uint64(40))
+        | (np.uint64(stream[b + np.uint64(3)]) << np.uint64(32))
+        | (np.uint64(stream[b + np.uint64(4)]) << np.uint64(24))
+        | (np.uint64(stream[b + np.uint64(5)]) << np.uint64(16))
+        | (np.uint64(stream[b + np.uint64(6)]) << np.uint64(8))
+        | np.uint64(stream[b + np.uint64(7)])
+    )
+
+
+@jit(nopython=True, cache=True)
+def word_loads(
+    size: int, start_byte: int, precision: int, first: int, count: int
+) -> int:
+    """
+    How many of the values can be read with one 8-byte load each.
+
+    That is every value of at most 57 bits whose 8 bytes lie inside the
+    stream: all but the last few.
+
+    Parameters
+    ----------
+    size : int
+        Bytes in the stream.
+
+    start_byte : int
+        Byte at which the packed values start.
+
+    precision : int
+        Bits per value.
+
+    first : int
+        Index of the first value.
+
+    count : int
+        Number of values.
+
+    Returns
+    -------
+    int
+        The number of leading values to read with ``load_be64``.
+    """
+    if precision > 57 or size - 8 - start_byte < 0:
+        return 0
+    last_index = ((size - 8 - start_byte) * 8 + 7) // precision  # last that fits
+    return max(0, min(count, last_index - first + 1))
+
+
+@jit(nopython=True, cache=True)
+def bits_at(
+    stream: np.ndarray, start_byte: int, precision: int, index: int
+) -> np.uint64:
+    """
+    Value ``index`` of ``precision``-bit values (at most 64), byte by byte.
+
+    For the values ``word_loads`` leaves: near the end of the stream, or
+    spanning 9 bytes (precision above 57).
+
+    Parameters
+    ----------
+    stream : np.ndarray
+        Big-endian bit stream (uint8).
+
+    start_byte : int
+        Byte at which the packed values start.
+
+    precision : int
+        Bits per value.
+
+    index : int
+        Which value.
+
+    Returns
+    -------
+    np.uint64
+        The value.
+    """
+    bit = index * precision
+    b = start_byte + (bit >> 3)
+    end = (bit & 7) + precision  # bits from the start of byte b
+    top = np.uint64(0)
+    if end > 64:  # keep the first byte apart
+        top = np.uint64(stream[b])
+        b += 1
+        end -= 8
+    nbytes = (end + 7) >> 3
+    w = np.uint64(0)
+    for k in range(nbytes):
+        w = w << np.uint64(8)
+        if b + k < stream.size:
+            w |= np.uint64(stream[b + k])
+    right = np.uint64(nbytes * 8 - end)
+    value = w >> right
+    if top:
+        value |= top << np.uint64(64 - right)
+    return value & (np.uint64(0xFFFFFFFFFFFFFFFF) >> np.uint64(64 - precision))
+
+
 @jit(nopython=True, cache=True)
 def unpack_bits(
     stream: np.ndarray,
@@ -233,7 +367,7 @@ def unpack_bits(
     count: int,
 ) -> None:
     """
-    Unpack ``precision``-bit values (at most 57) from a big-endian bit stream.
+    Unpack ``precision``-bit values (at most 64) from a big-endian bit stream.
 
     Parameters
     ----------
@@ -255,18 +389,76 @@ def unpack_bits(
     count : int
         Number of values.
     """
-    mask = (np.uint64(1) << np.uint64(precision)) - np.uint64(1)
+    fast = word_loads(stream.size, start_byte, precision, first, count)
+    p = np.uint64(precision)
+    right = np.uint64(64 - precision)
+    base = np.uint64(start_byte)
+    bit = np.uint64(first) * p
+    for i in range(fast):
+        w = load_be64(stream, base + (bit >> np.uint64(3)))
+        out[i] = (w << (bit & np.uint64(7))) >> right
+        bit += p
+    for i in range(fast, count):
+        out[i] = bits_at(stream, start_byte, precision, first + i)
+
+
+@jit(nopython=True, cache=True)
+def unpack_shifted_floats(
+    stream: np.ndarray,
+    precision: int,
+    shift: int,
+    exponent_mask: np.uint64,
+    mantissa_mask: np.uint64,
+    out: np.ndarray,
+    first: int,
+    count: int,
+) -> None:
+    """
+    Unpack truncated-mantissa IEEE floats straight into their bit patterns.
+
+    The same as ``unpack_bits``, shifting left by ``shift`` and
+    ``canonical_nans`` in one pass.
+
+    Parameters
+    ----------
+    stream : np.ndarray
+        Bit stream (uint8).
+
+    precision : int
+        Bits per value.
+
+    shift : int
+        Mantissa bits dropped when the values were written.
+
+    exponent_mask, mantissa_mask : np.uint64
+        Masks of the IEEE exponent and mantissa bits.
+
+    out : np.ndarray
+        IEEE bit patterns (uint32 or uint64).
+
+    first : int
+        Index of the first value to unpack.
+
+    count : int
+        Number of values.
+    """
+    fast = word_loads(stream.size, 0, precision, first, count)
+    p = np.uint64(precision)
+    right = np.uint64(64 - precision)
+    left = np.uint64(shift)
+    bit = np.uint64(first) * p
     for i in range(count):
-        bit = (first + i) * precision
-        b = start_byte + (bit >> 3)
-        skip = bit & 7
-        nbytes = (skip + precision + 7) >> 3
-        w = np.uint64(0)
-        for k in range(nbytes):
-            w = w << np.uint64(8)
-            if b + k < stream.size:
-                w |= np.uint64(stream[b + k])
-        out[i] = (w >> np.uint64(nbytes * 8 - skip - precision)) & mask
+        if i < fast:
+            v = (
+                load_be64(stream, bit >> np.uint64(3)) << (bit & np.uint64(7))
+            ) >> right
+        else:
+            v = bits_at(stream, 0, precision, first + i)
+        bit += p
+        w = v << left
+        if (w & exponent_mask) == exponent_mask and (w & mantissa_mask) != 0:
+            w |= mantissa_mask
+        out[i] = w
 
 
 @jit(nopython=True, cache=True)
@@ -466,11 +658,18 @@ def scaleoffset_float(
         for i in range(count):
             out[i] = minimum
         return
-    values = np.empty(count, dtype=np.uint64)
-    unpack_bits(stream, 21, minbits, values, first, count)
-    sentinel = (np.uint64(1) << np.uint64(minbits)) - np.uint64(1)
+    sentinel = np.uint64(0xFFFFFFFFFFFFFFFF) >> np.uint64(64 - minbits)
+    fast = word_loads(stream.size, 21, minbits, first, count)
+    p = np.uint64(minbits)
+    right = np.uint64(64 - minbits)
+    bit = np.uint64(first) * p
     for i in range(count):
-        v = values[i]
+        if i < fast:
+            b = np.uint64(21) + (bit >> np.uint64(3))
+            v = (load_be64(stream, b) << (bit & np.uint64(7))) >> right
+        else:
+            v = bits_at(stream, 21, minbits, first + i)
+        bit += p
         if fill_available and v == sentinel:
             out[i] = fill
         elif out.itemsize == 4:
@@ -507,38 +706,48 @@ def decoder_for(dataset: h5py.Dataset) -> dict | None:
     dict or None
         The decoding plan, or ``None`` to read the dataset with h5py.
     """
-    if (
-        dataset.chunks is None
-        or dataset.dtype.byteorder == ">"
-        or dataset.dtype.kind not in "fiu"
-    ):
+    if dataset.chunks is None or dataset.dtype.kind not in "fiu":
         return None
-    if tuple(dataset.chunks[1:]) != tuple(dataset.shape[1:]):
-        return None  # chunks must hold whole rows (SWIFT's always do)
     filters = _pipeline(dataset)
     ids = [f[0] for f in filters]
+    lossy = bool(ids) and ids[0] in (NBIT, SCALEOFFSET)
+    if dataset.dtype.byteorder == ">" and lossy:
+        return None  # the lossy filters' big-endian layouts are not decoded here
     dtype = dataset.dtype
+    # each stage keeps its index in the pipeline: a chunk's filter mask has
+    # that bit set if the stage was skipped when the chunk was written
     spec = dict(dtype=dtype, stages=[])
-    rest = filters[1:] if ids and ids[0] in (NBIT, SCALEOFFSET) else filters
-    for code, flags, values in rest:
+    for index, (code, flags, values) in enumerate(filters):
+        if lossy and index == 0:
+            continue
         if code == SHUFFLE:
-            spec["stages"].append(("shuffle", values[0]))
+            spec["stages"].append(("shuffle", values[0], index))
         elif code == DEFLATE:
-            spec["stages"].append(("deflate", None))
+            spec["stages"].append(("deflate", None, index))
         elif code == FLETCHER32:
-            spec["stages"].append(("fletcher32", None))
+            spec["stages"].append(("fletcher32", None, index))
         else:
             return None
-    if not ids or ids[0] not in (NBIT, SCALEOFFSET):
+    if not lossy:
         spec["kind"] = "plain"
         return spec
     cd = filters[0][2]
+    if ids[0] == NBIT and len(cd) == 8 and cd[1] == 1:
+        # the type uses every bit, so HDF5 stored the values unpacked
+        ftype = dataset.id.get_type()
+        ieee = dtype.kind in "iu" or ftype.get_fields() == (
+            (31, 23, 8, 0, 23) if dtype.itemsize == 4 else (63, 52, 11, 0, 52)
+        )
+        if not ieee or ftype.get_offset() != 0:
+            return None
+        spec["kind"] = "plain"
+        return spec
     if ids[0] == NBIT:
         if len(cd) != 8 or cd[1] != 0 or cd[3] != 1 or cd[5] != 0:
             return None  # only atomic, compressed, little-endian data
         ftype = dataset.id.get_type()
         precision, offset = ftype.get_precision(), ftype.get_offset()
-        if cd[6] != precision or cd[7] != offset or precision > 57:
+        if cd[6] != precision or cd[7] != offset or precision + offset > 64:
             return None
         spec.update(precision=precision, offset=offset)
         if dtype.kind in "iu":
@@ -673,11 +882,14 @@ def _decode_chunk(
     count: int,
     out: np.ndarray,
     scratch: np.ndarray,
+    filter_mask: int = 0,
 ) -> None:
     """Decode values first..first+count of one raw chunk into out (flat)."""
     dtype = spec["dtype"]
     data = np.frombuffer(raw, dtype=np.uint8)
-    for stage, parameter in reversed(spec["stages"]):
+    for stage, parameter, index in reversed(spec["stages"]):
+        if filter_mask >> index & 1:  # skipped when this chunk was written
+            continue
         if stage == "fletcher32":
             stored = int.from_bytes(data[-4:].tobytes(), "little")
             computed = int(fletcher32(data, data.size - 4))
@@ -701,22 +913,32 @@ def _decode_chunk(
     if kind == "plain":
         out[:] = data[: values * dtype.itemsize].view(dtype)[first : first + count]
     elif kind == "nbit_shift":
-        word = np.uint32 if dtype.itemsize == 4 else np.uint64
         if spec["precision"] == 18 and spec["shift"] == 14 and dtype.itemsize == 4:
             unpack_nbit18(data, out.view(np.uint32), first, count)
-        else:
-            bits = np.empty(count, dtype=np.uint64)
-            unpack_bits(data, 0, spec["precision"], bits, first, count)
-            out.view(word)[:] = (bits << np.uint64(spec["shift"])).astype(word)
-        if dtype.itemsize == 4:
             canonical_nans(
                 out.view(np.uint32), np.uint32(0x7F800000), np.uint32(0x007FFFFF)
             )
+        elif dtype.itemsize == 4:
+            unpack_shifted_floats(
+                data,
+                spec["precision"],
+                spec["shift"],
+                np.uint64(0x7F800000),
+                np.uint64(0x007FFFFF),
+                out.view(np.uint32),
+                first,
+                count,
+            )
         else:
-            canonical_nans(
-                out.view(np.uint64),
+            unpack_shifted_floats(
+                data,
+                spec["precision"],
+                spec["shift"],
                 np.uint64(0x7FF0000000000000),
                 np.uint64(0x000FFFFFFFFFFFFF),
+                out.view(np.uint64),
+                first,
+                count,
             )
     elif kind == "nbit_float":
         bits = np.empty(count, dtype=np.uint64)
@@ -726,13 +948,15 @@ def _decode_chunk(
         word = np.uint32 if dtype.itemsize == 4 else np.uint64
         out.view(word)[:] = wide.astype(word)
     elif kind == "nbit_int":
-        bits = np.empty(count, dtype=np.uint64)
+        # 8-byte integers are unpacked (and sign-extended) in place
+        bits = (
+            out.view(np.uint64) if dtype.itemsize == 8 else np.empty(count, np.uint64)
+        )
         unpack_bits(data, 0, spec["precision"], bits, first, count)
         if spec["signed"]:
-            extended = np.empty(count, dtype=np.uint64)
-            sign_extend(bits, spec["precision"], extended)
-            bits = extended
-        out[:] = bits.astype(np.dtype(f"u{dtype.itemsize}")).view(dtype)
+            sign_extend(bits, spec["precision"], bits)
+        if dtype.itemsize != 8:
+            out[:] = bits.astype(np.dtype(f"u{dtype.itemsize}")).view(dtype)
     else:
         minbits, minval = scaleoffset_header(data)
         size = dtype.itemsize
@@ -787,51 +1011,130 @@ def _convert(values: np.ndarray, dtype: np.dtype) -> np.ndarray:
     raise TypeError(f"no conversion from {values.dtype} to {dtype}")
 
 
-def _copy_rows(
-    source: h5py.Dataset, lo: int, hi: int, out: np.ndarray, columns: object
+def _all_columns(columns: object) -> bool:
+    """Whether a column selection is every column (``[:]``)."""
+    return isinstance(columns, slice) and columns == slice(None)
+
+
+def _copy_pieces(
+    source: h5py.Dataset, pieces: list, output: np.ndarray, columns: object
 ) -> None:
-    """Rows lo..hi of a regular dataset, with columns selected, into out (rows first)."""
+    """
+    Copy row pieces of a regular dataset, with columns selected, into output.
+
+    Each chunk is read and decoded once, however many pieces it holds.
+
+    Parameters
+    ----------
+    source : h5py.Dataset
+        A dataset in a regular (non-virtual) file.
+
+    pieces : list
+        ``(first row, end row, output row)`` triples.
+
+    output : np.ndarray
+        The output array (rows first).
+
+    columns : object
+        Column selection, used only if the dataset is multidimensional.
+    """
     spec = decoder_for(source)
     if spec is None:
-        rows = source[lo:hi]
-        out[:] = _convert(
-            np.ascontiguousarray(
-                rows[(slice(None), columns)] if source.ndim > 1 else rows
-            ),
-            out.dtype,
-        )
+        for lo, hi, at in pieces:
+            rows = source[lo:hi]
+            output[at : at + hi - lo] = _convert(
+                np.ascontiguousarray(
+                    rows[(slice(None), columns)] if source.ndim > 1 else rows
+                ),
+                output.dtype,
+            )
         return
-    chunk_rows = source.chunks[0]
-    row_values = int(np.prod(source.shape[1:])) if source.ndim > 1 else 1
+    chunk_rows, chunk_tail = source.chunks[0], tuple(source.chunks[1:])
+    tail = tuple(source.shape[1:])
+    whole_rows = chunk_tail == tail  # SWIFT's layout: one chunk per block of rows
+    row_values = int(np.prod(chunk_tail)) if source.ndim > 1 else 1
     values = chunk_rows * row_values
     native = source.dtype.newbyteorder("=")
     scratch = np.empty(values * source.dtype.itemsize + 64, dtype=np.uint8)
     decoded = np.empty(values, dtype=native)
-    position = 0
-    for k in range(lo // chunk_rows, (hi - 1) // chunk_rows + 1):
-        c0, c1 = max(lo, k * chunk_rows), min(hi, (k + 1) * chunk_rows)
-        rows = c1 - c0
-        filter_mask, raw = source.id.read_direct_chunk(
-            (k * chunk_rows,) + (0,) * (source.ndim - 1)
+    # chunks across the other dimensions, without those no selected column needs
+    wanted = np.zeros(tail[0] if tail else 1, dtype=bool)
+    if tail:
+        wanted[columns] = True
+    else:
+        wanted[:] = True
+    grid = [
+        corner
+        for corner in itertools.product(
+            *(range(0, n, c) for n, c in zip(tail, chunk_tail))
         )
-        if filter_mask != 0:  # a filter was skipped for this chunk: let HDF5 decode it
-            block = source[c0:c1]
+        if whole_rows or wanted[corner[0] : corner[0] + chunk_tail[0]].any()
+    ]
+    lossy = spec["kind"] != "plain"  # the lossy filter is the pipeline's first
+    # decode straight into the output when it is exactly the decoded rows
+    direct = (
+        whole_rows
+        and output.dtype == native
+        and (source.ndim == 1 or _all_columns(columns))
+    )
+    by_chunk = {}
+    for lo, hi, at in pieces:
+        for k in range(lo // chunk_rows, (hi - 1) // chunk_rows + 1):
+            c0, c1 = max(lo, k * chunk_rows), min(hi, (k + 1) * chunk_rows)
+            by_chunk.setdefault(k, []).append((c0, c1, at + c0 - lo))
+    span_buffer = None
+    for k in sorted(by_chunk):
+        parts = by_chunk[k]
+        s0 = min(c0 for c0, _, _ in parts)
+        s1 = max(c1 for _, c1, _ in parts)
+        rows = s1 - s0
+        if direct and len(parts) == 1:
+            block = output[parts[0][2] : parts[0][2] + rows]
         else:
-            flat = decoded[: rows * row_values]
+            if span_buffer is None:
+                span_buffer = np.empty((chunk_rows,) + tail, dtype=native)
+            block = span_buffer[:rows]
+        for corner in grid:
+            inside = tuple(
+                slice(o, min(o + c, n)) for o, c, n in zip(corner, chunk_tail, tail)
+            )
+            filter_mask, raw = source.id.read_direct_chunk((k * chunk_rows,) + corner)
+            if lossy and filter_mask & 1:
+                # written without its lossy filter: let HDF5 convert it
+                block[(slice(None),) + inside] = source[(slice(s0, s1),) + inside]
+                continue
+            flat = block.reshape(-1) if whole_rows else decoded[: rows * row_values]
             _decode_chunk(
                 spec,
                 raw,
                 values,
-                (c0 - k * chunk_rows) * row_values,
+                (s0 - k * chunk_rows) * row_values,
                 rows * row_values,
                 flat,
                 scratch,
+                filter_mask,
             )
-            block = flat.reshape((rows,) + source.shape[1:])
-        if source.ndim > 1:
-            block = block[(slice(None), columns)]
-        out[position : position + rows] = _convert(np.asarray(block), out.dtype)
-        position += rows
+            if not whole_rows:
+                block[(slice(None),) + inside] = flat.reshape((rows,) + chunk_tail)[
+                    (slice(None),) + tuple(slice(0, q.stop - q.start) for q in inside)
+                ]
+        if direct and len(parts) == 1:
+            continue
+        for c0, c1, at in parts:
+            piece = block[c0 - s0 : c1 - s0]
+            if source.ndim > 1:
+                piece = piece[(slice(None), columns)]
+            output[at : at + c1 - c0] = _convert(np.asarray(piece), output.dtype)
+
+
+#: The last multi-column field read for one of its columns, all columns
+#: decoded: the other columns (swiftsimio's named columns) are then copied
+#: from it instead of decoding every chunk again. Dropped once every column
+#: has been read, or when another field takes its place.
+_columns_cache = {"key": None, "data": None, "served": None}
+
+#: Fields larger than this (bytes, all columns) are read a column at a time.
+COLUMNS_CACHE_BYTES = 2 << 30
 
 
 def read_ranges(
@@ -870,42 +1173,112 @@ def read_ranges(
     if not ENABLED or handle.ndim == 0 or handle.dtype.kind not in "fiu":
         return None
     ranges = np.asarray(ranges, dtype=np.int64).reshape(-1, 2)
-    output = np.empty(output_shape, dtype=np.dtype(output_type).newbyteorder("="))
-    if output.size < MINIMUM_ELEMENTS:
+    dtype = np.dtype(output_type).newbyteorder("=")
+    if int(np.prod(output_shape)) < MINIMUM_ELEMENTS:
         return None
+    if handle.ndim == 2 and not _all_columns(columns):
+        return _read_columns(handle, ranges, dtype, columns)
+    return _read(handle, ranges, np.empty(output_shape, dtype=dtype), columns)
+
+
+def _read_columns(
+    handle: h5py.Dataset, ranges: np.ndarray, dtype: np.dtype, columns: object
+) -> np.ndarray | None:
+    """Read some columns of the rows, decoding every column once for all of them."""
+    rows = int((ranges[:, 1] - ranges[:, 0]).sum())
+    width = handle.shape[1]
+    if rows * width * dtype.itemsize > COLUMNS_CACHE_BYTES:
+        return _read(
+            handle,
+            ranges,
+            np.empty((rows,) + np.empty((0, width))[:, columns].shape[1:], dtype),
+            columns,
+        )
+    stat = os.stat(handle.file.filename)
+    key = (
+        os.path.abspath(handle.file.filename),
+        stat.st_mtime_ns,
+        stat.st_size,
+        handle.name,
+        dtype.str,
+        ranges.tobytes(),
+    )
+    cache = _columns_cache
+    if cache["key"] != key:
+        cache.update(key=None, data=None, served=None)  # free the old field first
+        data = _read(handle, ranges, np.empty((rows, width), dtype), np.s_[:])
+        if data is None:
+            return None
+        cache.update(key=key, data=data, served=np.zeros(width, dtype=bool))
+    result = np.ascontiguousarray(cache["data"][:, columns])
+    cache["served"][columns] = True
+    if cache["served"].all():
+        cache.update(key=None, data=None, served=None)
+    return result
+
+
+def _read(
+    handle: h5py.Dataset, ranges: np.ndarray, output: np.ndarray, columns: object
+) -> np.ndarray | None:
+    """Read the ranges into output; ``None`` if h5py should read them instead."""
     blocks = _sources(handle)
     if blocks is None:
         return None
+    # rows no source maps read as the fill value too (file None); sources
+    # mapping the same rows are left to h5py
+    blocks.sort()
+    covered, gaps = 0, []
+    for start, stop, _, _ in blocks:
+        if start < covered:
+            return None
+        if start > covered:
+            gaps.append((covered, start, None, None))
+        covered = stop
+    if covered < handle.shape[0]:
+        gaps.append((covered, handle.shape[0], None, None))
+    blocks = sorted(blocks + gaps, key=lambda block: block[0])
     if len(ranges):  # only the files the ranges touch
         blocks = [
             b for b in blocks if any(lo < b[1] and hi > b[0] for lo, hi in ranges)
         ]
     handles = {}
+    # a virtual dataset's missing source files read as its fill value, as in HDF5
+    missing = {
+        fname for _, _, fname, _ in blocks if fname is None or not os.path.exists(fname)
+    }
     try:
         for start, stop, fname, dname in blocks:
+            if fname in missing:
+                continue
             if fname not in handles:
-                handles[fname] = h5py.File(fname, "r")
+                handles[fname] = open_hdf5(fname)
             source = handles[fname][dname]
             if source.shape[0] < stop - start or source.shape[1:] != handle.shape[1:]:
                 return None  # the source is not the rows this block maps
+        # each block's pieces, in output order
+        pieces = {block: [] for block in blocks}
         position = 0
         for lo, hi in ranges:
-            for start, stop, fname, dname in blocks:
+            for block in blocks:
+                start, stop, fname, _ = block
                 a, b = max(lo, start), min(hi, stop)
                 if a >= b:
                     continue
-                _copy_rows(
-                    handles[fname][dname],
-                    a - start,
-                    b - start,
-                    output[position : position + b - a],
-                    columns,
-                )
+                if fname in missing:
+                    output[position : position + b - a] = np.array(
+                        handle.fillvalue
+                    ).astype(output.dtype)
+                else:
+                    pieces[block].append((a - start, b - start, position))
                 position += b - a
+        for block, block_pieces in pieces.items():
+            if block_pieces:
+                start, stop, fname, dname = block
+                _copy_pieces(handles[fname][dname], block_pieces, output, columns)
     except (OSError, KeyError) as error:
         if isinstance(error, ChecksumError):
             raise
-        return None  # e.g. a missing source file: h5py applies the fill value
+        return None  # e.g. an unreadable source: h5py decides what it reads as
     finally:
         for h in handles.values():
             h.close()
