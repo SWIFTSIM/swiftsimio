@@ -1,5 +1,5 @@
 """
-Tests for swiftsimio._fast_decode.
+Tests for swiftsimio.fast_decode.
 
 Chunks decoded without HDF5 must give exactly the bytes h5py gives, for every
 filter pipeline SWIFT writes.
@@ -14,13 +14,28 @@ import pytest
 
 from h5py._hl.files import make_fapl
 
-from swiftsimio import _fast_decode as fd
+from swiftsimio import fast_decode as fd
 from swiftsimio._handle_provider import _relax_integrity_checks
 from swiftsimio.accelerated import read_ranges_from_file
 
 
 def h5file(path, mode="r"):
-    """Open a file as h5py.File does, accepting DMantissa9-like types (as swiftsimio)."""
+    """
+    Open a file as swiftsimio does, accepting types like ``DMantissa9``.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    mode : str, optional
+        ``"r"`` to read, ``"w"`` to create or ``"a"`` to append. Default is
+        ``"r"``.
+
+    Returns
+    -------
+    h5py.File
+        The open file.
+    """
     fapl = make_fapl(None)
     if _relax_integrity_checks is not None:
         _relax_integrity_checks(fapl.id, 1)
@@ -36,7 +51,14 @@ def h5file(path, mode="r"):
 
 @pytest.fixture(autouse=True)
 def small_reads_too(monkeypatch):
-    """Use the fast path even for the small test datasets."""
+    """
+    Use the fast path even for the small test datasets.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        The pytest fixture.
+    """
     monkeypatch.setattr(fd, "MINIMUM_ELEMENTS", 0)
     monkeypatch.setattr(fd, "ENABLED", True)
     fd._columns_cache.update(key=None, data=None, served=None)
@@ -48,7 +70,25 @@ RANGES = [(0, 1), (5, 999), (999, 1001), (1500, 1500), (1990, 3017), (4200, N)]
 
 
 def reference(path, name, ranges=None, columns=np.s_[:]):
-    """Read the ranges (and columns) with h5py."""
+    """
+    Read the ranges (and columns) with h5py.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    name : str
+        The dataset.
+    ranges : list, optional
+        ``(start, stop)`` of each range of rows. Default is ``RANGES``.
+    columns : object, optional
+        Column selection. Default is every column.
+
+    Returns
+    -------
+    np.ndarray
+        The rows.
+    """
     ranges = RANGES if ranges is None else ranges
     with h5file(path) as f:
         d = f[name]
@@ -58,7 +98,27 @@ def reference(path, name, ranges=None, columns=np.s_[:]):
 
 
 def fast_read(path, name, ranges, columns=np.s_[:], output_type=None):
-    """Read the ranges with the fast decoder (None if it declines)."""
+    """
+    Read the ranges with the fast decoder.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    name : str
+        The dataset.
+    ranges : list
+        ``(start, stop)`` of each range of rows.
+    columns : object, optional
+        Column selection. Default is every column.
+    output_type : np.dtype, optional
+        Type of the result. Default is the dataset's type.
+
+    Returns
+    -------
+    np.ndarray or None
+        The rows, or ``None`` if the fast decoder declines.
+    """
     with h5file(path) as f:
         d = f[name]
         rows = int(sum(hi - lo for lo, hi in ranges))
@@ -74,7 +134,23 @@ def fast_read(path, name, ranges, columns=np.s_[:], output_type=None):
 
 
 def assert_same(path, name, ranges=None, fast=True, columns=np.s_[:]):
-    """Assert the fast decoder and swiftsimio give exactly what h5py gives."""
+    """
+    Assert that the fast decoder and swiftsimio give exactly what h5py gives.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    name : str
+        The dataset.
+    ranges : list, optional
+        ``(start, stop)`` of each range of rows. Default is ``RANGES``.
+    fast : bool, optional
+        Whether the fast decoder is expected to read the dataset. Default is
+        ``True``.
+    columns : object, optional
+        Column selection. Default is every column.
+    """
     ranges = RANGES if ranges is None else ranges
     ref = reference(path, name, ranges, columns)
     with h5file(path) as f:
@@ -106,6 +182,22 @@ def sample(n, cols, rng, dtype):
 
     They span many orders of magnitude, with both signs, exact zeros, and
     values at the top and bottom of each type's range.
+
+    Parameters
+    ----------
+    n : int
+        Number of rows.
+    cols : int
+        Number of columns (1 for a one-dimensional array).
+    rng : np.random.Generator
+        Random number generator.
+    dtype : np.dtype
+        Type of the values.
+
+    Returns
+    -------
+    np.ndarray
+        The values.
     """
     shape = (n, cols) if cols > 1 else (n,)
     x = rng.standard_normal(shape) * 10.0 ** rng.integers(-30, 30, shape)
@@ -120,7 +212,25 @@ def sample(n, cols, rng, dtype):
 
 
 def nbit_type(base, mantissa, esize, ebias):
-    """Make a custom float type with the given exponent and mantissa."""
+    """
+    Make a custom float type with the given exponent and mantissa.
+
+    Parameters
+    ----------
+    base : h5py.h5t.TypeFloatID
+        The IEEE type to start from.
+    mantissa : int
+        Number of mantissa bits.
+    esize : int
+        Number of exponent bits.
+    ebias : int
+        Exponent bias.
+
+    Returns
+    -------
+    h5py.h5t.TypeFloatID
+        The custom type.
+    """
     t = base.copy()
     t.set_fields(
         esize + mantissa, mantissa, esize, 0, mantissa
@@ -132,7 +242,24 @@ def nbit_type(base, mantissa, esize, ebias):
 
 
 def write_nbit(path, name, data, file_type, shuffle=True, checksum=True):
-    """Write a dataset with the N-bit, shuffle, deflate and checksum filters."""
+    """
+    Write a dataset with the N-bit, shuffle, deflate and checksum filters.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    name : str
+        The dataset.
+    data : np.ndarray
+        The values.
+    file_type : h5py.h5t.TypeID
+        Type of the values in the file.
+    shuffle : bool, optional
+        Whether to shuffle. Default is ``True``.
+    checksum : bool, optional
+        Whether to add a Fletcher-32 checksum. Default is ``True``.
+    """
     with h5file(path, "a") as f:
         if "/" in name:
             f.require_group(name.rsplit("/", 1)[0])
@@ -224,7 +351,20 @@ def test_nbit_pipeline_variants(tmp_path, shuffle, checksum):
 
 
 def write(path, name, data, **kwargs):
-    """Write a chunked dataset with h5py's high-level options."""
+    """
+    Write a chunked dataset with h5py's high-level options.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    name : str
+        The dataset.
+    data : np.ndarray
+        The values.
+    **kwargs : dict
+        Options passed to ``create_dataset``.
+    """
     with h5file(path, "a") as f:
         f.create_dataset(
             name,
@@ -240,6 +380,21 @@ def write_scaleoffset(path, name, data, digits, fill=None, file_dtype=None):
 
     The filters are scale-offset, shuffle, deflate (level 4) and Fletcher-32;
     h5py's high-level API refuses Fletcher-32 with scale-offset.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    name : str
+        The dataset.
+    data : np.ndarray
+        The values.
+    digits : int
+        Number of decimal digits kept (SWIFT's ``DScale`` factor).
+    fill : float, optional
+        The fill value. Default is no fill value.
+    file_dtype : np.dtype, optional
+        Type of the values in the file. Default is the type of ``data``.
     """
     file_dtype = np.dtype(file_dtype or data.dtype)
     with h5file(path, "a") as f:
@@ -497,7 +652,23 @@ ORDERS = {
 
 
 def swift_float_type(base, e_size, m_size):
-    """Make a float type as SWIFT's io_compression.c does."""
+    """
+    Make a float type as SWIFT's ``io_compression.c`` does.
+
+    Parameters
+    ----------
+    base : h5py.h5t.TypeFloatID
+        The IEEE type to start from.
+    e_size : int
+        Number of exponent bits.
+    m_size : int
+        Number of mantissa bits.
+
+    Returns
+    -------
+    h5py.h5t.TypeFloatID
+        The custom type.
+    """
     t = base.copy()
     e_pos, m_pos = m_size, 0
     s_pos = e_pos + e_size
@@ -510,7 +681,24 @@ def swift_float_type(base, e_size, m_size):
 
 
 def write_swift(path, name, data, file_type, order, lossy):
-    """Write a dataset with filters in the given order, as SWIFT does."""
+    """
+    Write a dataset with filters in the given order, as SWIFT does.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    name : str
+        The dataset.
+    data : np.ndarray
+        The values.
+    file_type : h5py.h5t.TypeID
+        Type of the values in the file.
+    order : list
+        The filters, by name, in the order to apply them.
+    lossy : Callable
+        Adds the lossy filter to a dataset creation property list.
+    """
     with h5file(path, "a") as f:
         dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
         dcpl.set_chunk((min(CHUNK, data.shape[0]),) + data.shape[1:])
@@ -538,7 +726,14 @@ def write_swift(path, name, data, file_type, order, lossy):
 
 
 def nbit(dcpl):
-    """Add the N-bit filter."""
+    """
+    Add the N-bit filter.
+
+    Parameters
+    ----------
+    dcpl : h5py.h5p.PropDCID
+        The dataset creation property list.
+    """
     dcpl.set_filter(h5py.h5z.FILTER_NBIT, 0, ())
 
 
@@ -945,7 +1140,20 @@ def test_unsorted_and_repeated_ranges(tmp_path):
 
 
 def _small_chunks(path, userblock=0, rows=50, libver=None):
-    """Write N rows of N-bit floats in chunks of ``rows`` rows (87 of 50)."""
+    """
+    Write ``N`` rows of N-bit floats in chunks of ``rows`` rows.
+
+    Parameters
+    ----------
+    path : str or Path
+        The file.
+    userblock : int, optional
+        Size of the file's user block. Default is ``0``.
+    rows : int, optional
+        Rows per chunk. Default is ``50`` (87 chunks).
+    libver : str or tuple, optional
+        HDF5 library version bounds. Default is h5py's.
+    """
     data = sample(N, 2, np.random.default_rng(26), np.float32)
     with h5py.File(path, "w", userblock_size=userblock, libver=libver) as f:
         dcpl = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
@@ -983,10 +1191,10 @@ def test_chunks_read_in_runs(tmp_path, monkeypatch, userblock):
 
 
 def test_chunks_read_in_runs_when_runs_are_capped(tmp_path, monkeypatch):
-    """Check runs split at _RUN_BYTES and _RUN_GAP still give the same bytes."""
+    """Check runs split at RUN_BYTES and RUN_GAP still give the same bytes."""
     _small_chunks(tmp_path / "f.hdf5")
-    monkeypatch.setattr(fd, "_RUN_BYTES", 1000)
-    monkeypatch.setattr(fd, "_RUN_GAP", 0)
+    monkeypatch.setattr(fd, "RUN_BYTES", 1000)
+    monkeypatch.setattr(fd, "RUN_GAP", 0)
     assert_same(tmp_path / "f.hdf5", "x")
 
 
@@ -1142,7 +1350,7 @@ def test_borrowed_descriptor_and_cached_index(tmp_path, monkeypatch):
 def test_index_cache_is_bounded(tmp_path, monkeypatch):
     """Evict older validated dataset indexes."""
     fd._index_cache.clear()
-    monkeypatch.setattr(fd, "_INDEX_CACHE_SIZE", 2)
+    monkeypatch.setattr(fd, "INDEX_CACHE_SIZE", 2)
     for i in range(3):
         path = tmp_path / f"{i}.hdf5"
         _small_chunks(path)
@@ -1198,18 +1406,18 @@ def test_virtual_strided_source(tmp_path):
 @pytest.mark.parametrize("kind", ["plain", "nbit_int", "nbit_shift", "scaleoffset_int"])
 def test_truncated_decoded_chunk(kind):
     """Reject short decoded data before an unchecked numba load."""
-    spec = {"kind": kind, "dtype": np.dtype("i4"), "stages": [], "precision": 18}
+    plan = fd.DecodePlan(dtype=np.dtype("i4"), kind=kind, precision=18)
     raw = bytes(20) if kind.startswith("scaleoffset") else bytes(1)
     with pytest.raises(ValueError, match="truncated"):
-        fd._decode_chunk(spec, raw, 10, 2, 3, np.empty(3, "i4"), np.empty(40, "u1"))
+        fd._decode_chunk(plan, raw, 10, 2, 3, np.empty(3, "i4"), np.empty(40, "u1"))
 
 
 def test_truncated_scaleoffset_payload():
     """Require all packed values after the scale-offset header."""
-    spec = {"kind": "scaleoffset_int", "dtype": np.dtype("i4"), "stages": []}
+    plan = fd.DecodePlan(dtype=np.dtype("i4"), kind="scaleoffset_int")
     with pytest.raises(ValueError, match="truncated"):
         fd._decode_chunk(
-            spec,
+            plan,
             bytes([8]) + bytes(20),
             10,
             2,

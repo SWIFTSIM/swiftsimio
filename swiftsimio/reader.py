@@ -14,7 +14,7 @@ These include:
 """
 
 from swiftsimio.accelerated import read_ranges_from_file
-from swiftsimio import _fast_decode
+from swiftsimio import fast_decode
 
 from swiftsimio.objects import cosmo_array, cosmo_quantity
 from swiftsimio.masks import SWIFTMask
@@ -67,7 +67,7 @@ def _read_whole_field(dataset: h5py.Dataset, columns: object) -> np.ndarray:
         output_shape = (dataset.shape[0],) + shape[1:]
     else:
         output_shape = (dataset.shape[0],)
-    output = _fast_decode.read_ranges(
+    output = fast_decode.read_ranges(
         dataset, [(0, dataset.shape[0])], output_shape, dataset.dtype, columns
     )
     if output is not None:

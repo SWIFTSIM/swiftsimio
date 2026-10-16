@@ -10,7 +10,7 @@ from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
 from ._ordered_slices import OrderedSlices
-from . import _fast_decode
+from . import fast_decode
 
 __all__ = [
     "jit",
@@ -526,7 +526,7 @@ def read_ranges_from_file(
     if not hasattr(handle, "request_slices"):
         # Decode the chunks directly where possible (much faster for SWIFT's
         # lossy-compressed fields); None means read with h5py as below.
-        output = _fast_decode.read_ranges(
+        output = fast_decode.read_ranges(
             handle, ranges, output_shape, output_type, columns
         )
         if output is not None:
