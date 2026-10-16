@@ -71,6 +71,7 @@ except (ImportError, ModuleNotFoundError):
     MATPLOTLIB_AVAILABLE = False
 
 # numba
+NUMBA_AVAILABLE = True
 try:
     from numba import jit, prange
     from numba.core.config import NUMBA_NUM_THREADS as NUM_THREADS
@@ -79,6 +80,7 @@ except (ImportError, ModuleNotFoundError):
         from numba import jit, prange
         from numba.config import NUMBA_NUM_THREADS as NUM_THREADS
     except (ImportError, ModuleNotFoundError):
+        NUMBA_AVAILABLE = False
         print(
             "You do not have numba installed. Please consider installing "
             "if you are going to be doing visualisation or indexing large arrays "

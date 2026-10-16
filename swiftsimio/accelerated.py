@@ -10,6 +10,7 @@ from h5py._hl.dataset import Dataset
 
 from .optional_packages import jit, prange, NUM_THREADS
 from ._ordered_slices import OrderedSlices
+from . import fast_decode
 
 __all__ = [
     "jit",
@@ -522,6 +523,15 @@ def read_ranges_from_file(
     read_ranges_from_file_unchunked
         Reads data ranges for unchunked hdf5 file.
     """
+    if not hasattr(handle, "request_slices"):
+        # Decode the chunks directly where possible (much faster for SWIFT's
+        # lossy-compressed fields); None means read with h5py as below.
+        output = fast_decode.read_ranges(
+            handle, ranges, output_shape, output_type, columns
+        )
+        if output is not None:
+            return output
+
     # It was found that the range size for which read_ranges_from_file_chunked was
     # faster than unchunked was approximately 5e5. For ranges larger than this the
     # overheads associated with read_ranges_from_file_chunked caused slightly worse

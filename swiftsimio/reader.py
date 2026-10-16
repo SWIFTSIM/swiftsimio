@@ -14,6 +14,8 @@ These include:
 """
 
 from swiftsimio.accelerated import read_ranges_from_file
+from swiftsimio import fast_decode
+
 from swiftsimio.objects import cosmo_array, cosmo_quantity
 from swiftsimio.masks import SWIFTMask
 from swiftsimio.metadata.objects import (
@@ -37,6 +39,40 @@ import numpy as np
 
 from typing import Callable
 from pathlib import Path
+
+
+def _read_whole_field(dataset: h5py.Dataset, columns: object) -> np.ndarray:
+    """
+    Read every row of a dataset (selected columns only, if multidimensional).
+
+    Decodes the chunks directly where possible, as ``read_ranges_from_file``.
+
+    Parameters
+    ----------
+    dataset : h5py.Dataset
+        The dataset to read.
+
+    columns : object
+        Column selection, used only if the dataset is multidimensional.
+
+    Returns
+    -------
+    np.ndarray
+        The data, as ``dataset[:, columns]`` (or ``dataset[:]``) would give.
+    """
+    if dataset.ndim == 0 or dataset.shape[0] == 0:
+        return dataset[:, columns] if dataset.ndim > 1 else dataset[()]
+    if dataset.ndim > 1:
+        shape = np.empty((1,) + dataset.shape[1:])[(slice(None), columns)].shape
+        output_shape = (dataset.shape[0],) + shape[1:]
+    else:
+        output_shape = (dataset.shape[0],)
+    output = fast_decode.read_ranges(
+        dataset, [(0, dataset.shape[0])], output_shape, dataset.dtype, columns
+    )
+    if output is not None:
+        return output
+    return dataset[:, columns] if dataset.ndim > 1 else dataset[:]
 
 
 def _generate_getter(
@@ -167,11 +203,7 @@ def _generate_getter(
                             cosmo_array(
                                 # Only use column data if array is multidimensional,
                                 # otherwise we will crash here
-                                (
-                                    handle[field][:, columns]
-                                    if handle[field].ndim > 1
-                                    else handle[field][:]
-                                ),
+                                _read_whole_field(handle[field], columns),
                                 unit,
                                 cosmo_factor=cf,
                                 name=f"{description} [Column {column_index}, {name}]",
