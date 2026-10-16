@@ -39,7 +39,9 @@ Set the environment variable ``SWIFTSIMIO_FAST_DECODE=0``, or
 
 from collections import OrderedDict
 from collections.abc import Callable
+import functools
 import itertools
+import math
 import os
 import zlib
 import warnings
@@ -1231,13 +1233,124 @@ def _layout_btree(fd: int, base: int, header: int) -> tuple | None:
     return None
 
 
-def _chunk_index(dataset: h5py.Dataset, fd: int) -> dict | None:
+class _ChunkIndex:
+    """
+    Chunk locations of one dataset, as sorted arrays.
+
+    A dict of every chunk costs microseconds of Python per chunk to build,
+    seconds for a snapshot whose datasets hold hundreds of thousands of
+    chunks between them, though a masked read needs only a few. Here each
+    chunk is a number (its position in the chunk grid, row-major, so in
+    coordinate order) and lookups are one ``searchsorted`` per read.
+
+    Parameters
+    ----------
+    chunks : tuple
+        The dataset's chunk shape.
+
+    coords : np.ndarray
+        Each chunk's coordinates (``(n, ndim)``, multiples of ``chunks``).
+
+    offsets, sizes, masks : np.ndarray
+        Each chunk's file offset, stored size and filter mask.
+    """
+
+    def __init__(
+        self,
+        chunks: tuple,
+        coords: np.ndarray,
+        offsets: np.ndarray,
+        sizes: np.ndarray,
+        masks: np.ndarray,
+    ) -> None:
+        self.chunks = np.asarray(chunks, dtype=np.int64)
+        if (coords % self.chunks).any():
+            raise ValueError("chunk coordinates off the chunk grid")
+        grid = coords // self.chunks
+        extent = (grid.max(axis=0) + 1).tolist() if len(grid) else [1] * len(chunks)
+        if math.prod(extent) >= 2**62:
+            raise ValueError("chunk grid too large to number")
+        strides = [math.prod(extent[d + 1 :]) for d in range(len(extent))]
+        self.extent = np.array(extent, dtype=np.int64)
+        self.strides = np.array(strides, dtype=np.int64)
+        self.numbers = grid @ self.strides
+        self.offsets, self.sizes, self.masks = offsets, sizes, masks
+        if (np.diff(self.numbers) <= 0).any():  # a B-tree lists them in order
+            order = np.argsort(self.numbers, kind="stable")
+            self.numbers = self.numbers[order]
+            if (np.diff(self.numbers) == 0).any():
+                raise ValueError("a chunk listed twice")
+            self.offsets = offsets[order]
+            self.sizes = sizes[order]
+            self.masks = masks[order]
+
+    def __len__(self) -> int:
+        return len(self.numbers)
+
+    def coords(self, i: int) -> tuple:
+        """Return the coordinates of the ``i``-th chunk in coordinate order."""
+        grid, number = [], int(self.numbers[i])
+        for stride in self.strides.tolist():
+            grid.append(number // stride)
+            number %= stride
+        return tuple(int(g) * int(c) for g, c in zip(grid, self.chunks))
+
+    def get_many(self, coords: list) -> list:
+        """``(file offset, size, filter mask)`` of each chunk, ``None`` if absent."""
+        if not len(self.numbers):
+            return [None] * len(coords)
+        grid = np.asarray(coords, dtype=np.int64).reshape(len(coords), -1)
+        aligned = (grid % self.chunks == 0).all(axis=1)
+        grid //= self.chunks
+        inside = aligned & ((grid >= 0) & (grid < self.extent)).all(axis=1)
+        numbers = np.where(inside, grid @ self.strides, -1)
+        at = np.minimum(np.searchsorted(self.numbers, numbers), len(self.numbers) - 1)
+        found = inside & (self.numbers[at] == numbers)
+        offsets = self.offsets[at].tolist()
+        sizes = self.sizes[at].tolist()
+        masks = self.masks[at].tolist()
+        return [
+            (offsets[i], sizes[i], masks[i]) if hit else None
+            for i, hit in enumerate(found.tolist())
+        ]
+
+    def items(self) -> list:
+        """Every ``(coords, (offset, size, mask))``, in coordinate order."""
+        return [
+            (self.coords(i), info)
+            for i, info in enumerate(
+                zip(self.offsets.tolist(), self.sizes.tolist(), self.masks.tolist())
+            )
+        ]
+
+
+@functools.lru_cache
+def _btree_entry(ndim: int) -> np.dtype:
+    """
+    One entry of a v1 B-tree node of chunks, as a NumPy type.
+
+    Its key (the chunk's stored size, filter mask and offsets, the last
+    offset being the element offset, always 0) then its child's address.
+    """
+    key = 16 + 8 * ndim
+    return np.dtype(
+        {
+            "names": ["size", "mask", "coords", "child"],
+            "formats": ["<u4", "<u4", ("<u8", (ndim,)), "<u8"],
+            "offsets": [0, 4, 8, key],
+            "itemsize": key + 8,
+        }
+    )
+
+
+def _chunk_index(dataset: h5py.Dataset, fd: int) -> _ChunkIndex | None:
     """
     Read every allocated chunk's location from a dataset's v1 B-tree.
 
     HDF5 finds a chunk by searching this tree, one search per chunk; on a
     busy file system each search costs small reads. Here the tree is read a
-    level at a time, each level's nodes merged into a few large reads.
+    level at a time, each level's nodes merged into a few large reads, and
+    each node's entries are read as one NumPy array.
 
     Parameters
     ----------
@@ -1249,23 +1362,26 @@ def _chunk_index(dataset: h5py.Dataset, fd: int) -> dict | None:
 
     Returns
     -------
-    dict or None
-        ``{chunk coordinates: (file offset, size, filter mask)}``, or
-        ``None`` if the dataset is not indexed this way (or anything looks
-        unexpected): look the chunks up one by one instead.
+    _ChunkIndex or None
+        Every chunk's file offset, size and filter mask, or ``None`` if the
+        dataset is not indexed this way (or anything looks unexpected): look
+        the chunks up one by one instead.
     """
-    if dataset.file.id.get_create_plist().get_sizes() != (8, 8):
+    file, ndim = dataset.file, dataset.ndim
+    plist = file.id.get_create_plist()
+    if plist.get_sizes() != (8, 8):
         return None
-    base = dataset.file.userblock_size
+    base = plist.get_userblock()
     found = _layout_btree(fd, base, h5py.h5o.get_info(dataset.id).addr)
     if found is None:
         return None
     root, dimensionality = found
-    if dimensionality != dataset.ndim + 1:
+    if dimensionality != ndim + 1:
         return None
     key = 8 + 8 * dimensionality  # chunk size, filter mask, offsets
+    entry = _btree_entry(ndim)
     largest = 24 + 129 * key + 128 * 8  # a node of 128 entries (HDF5's 2K = 64)
-    index, level, nodes = {}, None, [root]
+    leaves, level, nodes = [], None, [root]
     while nodes:
         regions = _read_regions(fd, [(base + n, largest) for n in nodes])
         children = []
@@ -1278,23 +1394,24 @@ def _chunk_index(dataset: h5py.Dataset, fd: int) -> dict | None:
             level, entries = data[5], int.from_bytes(data[6:8], "little")
             if 24 + (entries + 1) * key + entries * 8 > len(data):
                 return None  # a node larger than expected
-            for i in range(entries):
-                k = 24 + i * (key + 8)
-                child = int.from_bytes(data[k + key : k + key + 8], "little")
-                if level > 0:
-                    children.append(child)
-                    continue
-                size = int.from_bytes(data[k : k + 4], "little")
-                mask = int.from_bytes(data[k + 4 : k + 8], "little")
-                coords = tuple(
-                    int.from_bytes(data[k + 8 + 8 * d : k + 16 + 8 * d], "little")
-                    for d in range(dataset.ndim)
-                )
-                index[coords] = (base + child, size, mask)
+            table = np.frombuffer(data, dtype=entry, count=entries, offset=24)
+            if level > 0:
+                children.extend(table["child"].tolist())
+            else:
+                leaves.append(table)
         nodes = children
         if children:
             level -= 1
-    return index
+    table = np.concatenate(leaves) if leaves else np.empty(0, dtype=entry)
+    if (table["coords"] >= 2**63).any():
+        return None
+    return _ChunkIndex(
+        dataset.chunks,
+        table["coords"].astype(np.int64).reshape(len(table), ndim),
+        table["child"].astype(np.int64) + base,
+        table["size"].astype(np.int64),
+        table["mask"].astype(np.int64),
+    )
 
 
 class _ChunkReader:
@@ -1390,19 +1507,27 @@ class _ChunkReader:
                 self.validated = True
                 self.index = _index_cache[self.cache_key]
                 _index_cache.move_to_end(self.cache_key)
-                return {c: self.index[c] if c in self.index else ask(c) for c in coords}
+                return self._lookup(coords, ask)
         try:
             index = _chunk_index(source, self.fd)
             if index:
-                ordered = sorted(index)
-                if any(ask(c) != index[c] for c in {ordered[0], ordered[-1]}):
+                ends = [index.coords(0), index.coords(len(index) - 1)]
+                if any(ask(c) != i for c, i in zip(ends, index.get_many(ends))):
                     index = None  # not what HDF5 finds: ask it chunk by chunk
         except (OSError, ValueError, IndexError, AttributeError, RuntimeError):
             index = None  # e.g. an index layout not parsed here
         if not index:
             return {c: ask(c) for c in coords}
         self.index = index
-        return {c: index[c] if c in index else ask(c) for c in coords}
+        return self._lookup(coords, ask)
+
+    def _lookup(self, coords: list, ask: Callable) -> dict:
+        """Chunks from the index; any missing from it confirmed with HDF5."""
+        coords = list(coords)
+        return {
+            c: ask(c) if info is None else info
+            for c, info in zip(coords, self.index.get_many(coords))
+        }
 
     def read(self, coord: tuple) -> tuple:
         """

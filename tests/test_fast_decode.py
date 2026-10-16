@@ -1059,6 +1059,25 @@ def test_chunk_index_read_directly(tmp_path, libver, parsed):
     assert_same(tmp_path / "f.hdf5", "x", [(0, 3), (2000, 2100), (N - 5, N)])
 
 
+def test_chunk_index_lookups():
+    """Look up chunks absent, beyond the grid, off the grid, and listed out of order."""
+    coords = np.array([[20, 0], [0, 0], [10, 3]])
+    index = fd._ChunkIndex(
+        (10, 3), coords, np.array([7, 5, 6]), np.array([1, 2, 3]), np.array([0, 1, 0])
+    )
+    assert [c for c, _ in index.items()] == [(0, 0), (10, 3), (20, 0)]
+    assert index.get_many([(10, 3), (0, 0), (10, 0), (30, 0), (5, 0), (20, 0)]) == [
+        (6, 3, 0),
+        (5, 2, 1),
+        None,
+        None,
+        None,
+        (7, 1, 0),
+    ]
+    with pytest.raises(ValueError):
+        fd._ChunkIndex((10,), np.array([[0], [0]]), *[np.zeros(2, np.int64)] * 3)
+
+
 @pytest.mark.parametrize("columns", [np.s_[:], 1])
 def test_core_never_uses_pread(monkeypatch, columns):
     """Read named columns from core files without treating a pointer as an fd."""
@@ -1334,9 +1353,7 @@ def test_index_validation_failure_falls_back(tmp_path, monkeypatch, mismatch):
 
         def wrong(*args):
             index = parse(*args)
-            first = min(index)
-            offset, size, mask = index[first]
-            index[first] = (offset + 1, size, mask)
+            index.offsets[0] += 1  # the first chunk, which is cross-checked
             return index
 
         monkeypatch.setattr(fd, "_chunk_index", wrong)
