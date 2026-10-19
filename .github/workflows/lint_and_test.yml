@@ -50,6 +50,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        sudo apt-get update
+        sudo apt-get install -y libhdf5-dev
+        python -m pip install h5py --no-binary=h5py
         pip install -e ".[dev,hdfstream]"
     - name: Preload test data files
       run: |
