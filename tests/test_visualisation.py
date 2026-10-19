@@ -41,6 +41,8 @@ except ImportError:
     pass
 
 
+@pytest.mark.filterwarnings("ignore:divide by zero encountered:RuntimeWarning")
+@pytest.mark.filterwarnings("ignore:invalid value encountered:RuntimeWarning")
 def fraction_within_tolerance(
     a: np.ndarray, b: np.ndarray, frac: float = 1.0, tol: float = 1e-3
 ) -> bool:
@@ -72,10 +74,7 @@ def fraction_within_tolerance(
     """
     assert a.shape == b.shape
 
-    with np.testing.suppress_warnings() as sup:
-        sup.filter(RuntimeWarning, "divide by zero encountered in divide")
-        sup.filter(RuntimeWarning, "invalid value encountered in divide")
-        ratios = np.abs((a / b).to_value(unyt.dimensionless) - 1)
+    ratios = np.abs((a / b).to_value(unyt.dimensionless) - 1)
     ratios[np.isnan(ratios)] = 0  # 0 == 0 is a match
     return np.sum(ratios < tol) / a.size >= frac
 
@@ -174,6 +173,9 @@ class TestProjection:
 
         return
 
+    @pytest.mark.filterwarnings(
+        "ignore:invalid value encountered in divide:RuntimeWarning"
+    )
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_equivalent_regions(self, backend, cosmological_volume_only_single_local):
         """
@@ -343,17 +345,15 @@ class TestProjection:
             frac=0.99,
             tol=0.01,
         )
-        with np.testing.suppress_warnings() as sup:
-            sup.filter(RuntimeWarning, "invalid value encountered in divide")
-            assert (
-                np.nanmax(
-                    np.abs(
-                        big_img / np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
-                    ).to_physical_value(unyt.dimensionless)
-                    - 1
-                )
-                < 0.02
+        assert (
+            np.nanmax(
+                np.abs(
+                    big_img / np.concatenate([np.hstack([ref_img] * 3)] * 3, axis=1)
+                ).to_physical_value(unyt.dimensionless)
+                - 1
             )
+            < 0.02
+        )
         assert np.allclose(depth_img, neg_depth_img)
         assert np.allclose(depth_img, wrap_depth_img)
         assert np.allclose(ref_img, straddled_depth_img)

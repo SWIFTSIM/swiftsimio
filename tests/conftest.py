@@ -1,6 +1,7 @@
 """Test fixtures."""
 
 import os
+import warnings
 import subprocess
 import itertools
 import pytest
@@ -223,7 +224,9 @@ def cosmological_volume(request: pytest.FixtureRequest) -> Generator[str, None, 
         The file name, after downloading if required.
     """
     filename, access_method = request.param
-    yield access_method(filename, request)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        yield access_method(filename, request)
 
 
 @pytest.fixture(params=access_methods)
@@ -359,7 +362,9 @@ def los_example(request: pytest.FixtureRequest) -> Generator[str, None, None]:
     Generator[str, None, None]
         The file name, after downloading if required.
     """
-    yield request.param("ColibreLOS.hdf5", request)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        yield request.param("ColibreLOS.hdf5", request)
 
 
 @pytest.fixture(
