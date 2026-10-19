@@ -409,3 +409,18 @@ def test_aliases():
     assert 10 * a.physical == 10 * a.p
     assert 10 * a.comoving != 10 * a.p
     assert 10 * a.physical != 10 * a.c
+
+
+def test_valid_transform_correctly_initialized():
+    """Check that we assume valid_transform=True if it's not provided."""
+    a = _AHelper(scale_factor=0.5)
+    x = cosmo_quantity(
+        10,
+        u.Mpc,
+        comoving=False,
+        valid_transform=False,
+        scale_factor=0.5,
+        scale_exponent=1.0,
+    )
+    assert ([10 * u.Mpc, 10 * u.Mpc] * a.physical).valid_transform
+    assert ([x, x] * a.physical).valid_transform is False
