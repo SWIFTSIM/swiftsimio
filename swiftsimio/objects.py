@@ -3125,6 +3125,8 @@ class _AHelper:
             ret.convert_to(ret.units, comoving=self._comoving)
         else:
             ret.comoving = self._comoving
+            # we assume the iterable wasn't over cosmo-aware items, therefore:
+            ret.valid_transform = True
         ret.units = ret.units * self.units
         if ret.cosmo_factor == NULL_CF:
             ret.cosmo_factor = cosmo_factor.create(
