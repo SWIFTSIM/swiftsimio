@@ -203,6 +203,11 @@ class __SWIFTWriterParticleDataset(object):
             particle_group.create_dataset(
                 output_handle, data=getattr(self, name), compression=compression
             )
+            if output_handle in metadata.required_fields.links.keys():
+                for link_name in metadata.required_fields.links[output_handle]:
+                    particle_group[link_name] = h5py.SoftLink(
+                        f"/{self.particle_type}/{output_handle}"
+                    )
 
         return
 

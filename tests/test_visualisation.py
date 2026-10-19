@@ -806,6 +806,32 @@ class TestSlice:
         assert np.allclose(neg_img, ref_img)
         assert np.allclose(wrap_img, ref_img)
 
+    def test_slice_mirror_symmetry(self):
+        """
+        Check that mirroring a particle's position mirrors its sliced image.
+
+        A particle with a kernel width of 0.9 pixels, sitting 0.1 pixels into its
+        pixel, reaches the centre of the pixel below it. Its mirror image, sitting 0.9
+        pixels into its pixel, should reach the centre of the pixel above it. This is a
+        regression test for https://github.com/SWIFTSIM/swiftsimio/pull/348.
+        """
+        from swiftsimio.visualisation.slice_backends.sph import kernel_gamma
+
+        res = 8
+        pixel_width = 1.0 / res
+        x_low = np.array([2.1 * pixel_width])
+        x_high = 1.0 - x_low
+        y = z = np.array([4.5 * pixel_width])
+        m = np.array([1.0])
+        h = np.array([0.9 * pixel_width]) / kernel_gamma
+
+        scatter = slice_backends["sph"]
+        kwargs = dict(y=y, z=z, m=m, h=h, z_slice=z[0], xres=res, yres=res)
+        image_low = scatter(x=x_low, **kwargs)
+        image_high = scatter(x=x_high, **kwargs)
+
+        assert np.allclose(image_high, image_low[::-1, :])
+
 
 class TestVolumeRender:
     """Tests for the volume render functions in the visualisation tools."""
@@ -1129,6 +1155,69 @@ class TestVolumeRender:
             ),
             frac=frac,
         )
+
+    def test_volume_mirror_symmetry(self):
+        """
+        Check that mirroring a particle's position mirrors its deposited grid.
+
+        A particle with a kernel width of 0.9 cells, sitting 0.1 cells into its cell,
+        reaches the centre of the cell below it. Its mirror image, sitting 0.9 cells
+        into its cell, should reach the centre of the cell above it. This catches the
+        deposit loop skipping cells on one side of the particle. This is a regression
+        test for https://github.com/SWIFTSIM/swiftsimio/pull/348.
+        """
+        from swiftsimio.visualisation.slice_backends.sph import kernel_gamma
+
+        res = 8
+        pixel_width = 1.0 / res
+        x_low = np.array([2.1 * pixel_width])
+        x_high = 1.0 - x_low
+        y = z = np.array([4.5 * pixel_width])
+        m = np.array([1.0])
+        h = np.array([0.9 * pixel_width]) / kernel_gamma
+
+        scatter = volume_render_backends["scatter"]
+        density_low = scatter(x=x_low, y=y, z=z, m=m, h=h, res=res)
+        density_high = scatter(x=x_high, y=y, z=z, m=m, h=h, res=res)
+
+        assert np.allclose(density_high, density_low[::-1, :, :])
+
+    def test_drop_to_single_cell(self):
+        """
+        Check that particles can't drop between the cracks between cells.
+
+        We place a particle on the intersection between 8 cells and give it a smoothing
+        length such that its ``kernel_width`` is too short to reach any cell centres
+        (just over ``0.25``). This is a regression test for
+        https://github.com/SWIFTSIM/swiftsimio/pull/292. Previously it was assumed that
+        ``0.5 * kernel_length`` was enough to check for touching nearby cells, but along
+        the cube diagonal we actually need ``0.5 * np.sqrt(3)``. If no cell centres are
+        touched we should fall back to cloud in cell and still deposit some mass.
+        """
+        from swiftsimio.visualisation.slice_backends.sph import kernel_gamma
+
+        x = np.array([0.50001])
+        y = np.array([0.50001])
+        z = np.array([0.50001])
+        m = np.array([1.0])
+        h = np.array([0.250001]) / kernel_gamma
+
+        res = 2
+        boxsize = 1.0
+
+        # Need to norm coords and box for the volume render (but we're using 1.0 anyway)
+        volume = volume_render_backends["scatter"](
+            x=x / boxsize,
+            y=y / boxsize,
+            z=z / boxsize,
+            m=m,
+            h=h / boxsize,
+            res=res,
+            box_x=boxsize,
+            box_y=boxsize,
+            box_z=boxsize,
+        )
+        assert np.isclose(volume.sum(), res**3)
 
 
 class TestNestedVolumeRender:

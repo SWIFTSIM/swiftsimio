@@ -34,3 +34,10 @@ black_holes = {**_shared}
 neutrinos = {**_shared}
 
 sidm = {**_shared}
+
+# HDF5 soft links to create for required fields to be consistent
+# with SWIFT's output. Goes from handle -> list of new handle(s).
+links = {
+    "SmoothingLengths": ["SmoothingLength"],
+    "InternalEnergy": ["InternalEnergies"],
+}
