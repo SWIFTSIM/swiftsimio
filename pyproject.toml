@@ -22,13 +22,13 @@ packages = [
 
 [project]
 name = "swiftsimio"
-version="12.1.4"
+version="12.2.0"
 authors = [
     { name="Josh Borrow", email="josh@joshborrow.com" },
 ]
 description="SWIFTsim (swiftsim.com) i/o routines for python."
 readme = "README.rst"
-requires-python = ">3.10.0"
+requires-python = ">3.11.0"
 classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -41,7 +41,7 @@ dependencies = [
     "astropy>=6.0",
     "numpy>=2.1.0",
     "h5py",
-    "unyt>=3.1.0",
+    "unyt>=3.2.0",
     "numba>=0.50.0",
 ]
 
@@ -88,6 +88,9 @@ ignore = []
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN"]

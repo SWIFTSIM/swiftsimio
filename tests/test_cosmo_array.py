@@ -283,7 +283,8 @@ class TestCosmoArrayInit:
         assert hasattr(arr, "comoving")
         assert isinstance(arr, cosmo_array)
 
-    def test_init_from_list_of_cosmo_arrays(self):
+    @pytest.mark.parametrize("vt", [True, False])
+    def test_init_from_list_of_cosmo_arrays(self, vt):
         """
         Check initializing from a list of cosmo_array's.
 
@@ -293,7 +294,12 @@ class TestCosmoArrayInit:
         arr = cosmo_array(
             [
                 cosmo_array(
-                    [1], units=u.Mpc, comoving=False, scale_factor=1.0, scale_exponent=1
+                    [1],
+                    units=u.Mpc,
+                    comoving=False,
+                    scale_factor=1.0,
+                    scale_exponent=1,
+                    valid_transform=vt,
                 )
                 for _ in range(5)
             ]
@@ -303,6 +309,7 @@ class TestCosmoArrayInit:
             a**1, 1
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
+        assert hasattr(arr, "valid_transform") and arr.valid_transform is vt
         # also with a cosmo_factor argument instead of scale_factor & scale_exponent
         arr = cosmo_array(
             [
@@ -311,6 +318,7 @@ class TestCosmoArrayInit:
                     units=u.Mpc,
                     comoving=False,
                     cosmo_factor=cosmo_factor(a**1, 1.0),
+                    valid_transform=vt,
                 )
                 for _ in range(5)
             ]
@@ -320,6 +328,7 @@ class TestCosmoArrayInit:
             a**1, 1
         )
         assert hasattr(arr, "comoving") and arr.comoving is False
+        assert hasattr(arr, "valid_transform") and arr.valid_transform is vt
 
     def test_expected_init_failures(self):
         """Test desired failure modes for initialising cosmo_array & cosmo_quantity."""
@@ -382,6 +391,48 @@ class TestCosmoArrayInit:
             cosmo_array(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
         # make sure inheriting class doesn't do anything silly:
         cosmo_quantity(0, u.Mpc, comoving=True, scale_factor=1.0, scale_exponent=1)
+
+    def test_conflicting_valid_transform_rejected(self):
+        """
+        Check that conflicting values for valid_transform in constructor rejected.
+
+        The default ``valid_transform=True`` value makes this tricky. We use
+        ``comoving == None`` as a proxy for ``valid_transform`` not being passed
+        explicitly. If it was passed explicitly and conflicts with the attributes of the
+        input array, we should raise.
+        """
+        with pytest.raises(ValueError, match="Input cosmo_array has valid_transform"):
+            cosmo_array(
+                [
+                    cosmo_array(
+                        [1],
+                        u.Mpc,
+                        comoving=False,
+                        scale_factor=1.0,
+                        scale_exponent=1,
+                        valid_transform=False,
+                    )
+                ],
+                valid_transform=True,
+                comoving=True,
+            )
+        assert (
+            cosmo_array(
+                [
+                    cosmo_array(
+                        [1],
+                        u.Mpc,
+                        comoving=False,
+                        scale_factor=1.0,
+                        scale_exponent=1,
+                        valid_transform=True,
+                    )
+                ],
+                valid_transform=False,  # this will be ignored, we'll honor value from input
+                comoving=None,  # with this we assume user didn't pass valid_transform
+            ).valid_transform
+            is True
+        )
 
 
 class TestNumpyFunctions:

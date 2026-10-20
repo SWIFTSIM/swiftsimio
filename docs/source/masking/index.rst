@@ -242,6 +242,7 @@ particles within a chosen density window.
 
    # This creates and sets up the masking object.
    mask = sw.mask("cosmological_volume.hdf5")
+   a = mask.metadata.a
 
    # This creates a 1x1x1 Mpc spatial mask based on the cell metadata.
    mask.constrain_spatial(
@@ -262,20 +263,8 @@ particles within a chosen density window.
    mask.constrain_mask(
        "gas",
        "density",
-       cosmo_quantity(
-           0.4,
-           u.g / u.cm ** 3,
-           comoving=True,
-           scale_factor=mask.metadata.scale_factor,
-           scale_exponent=-3
-       ),
-       cosmo_quantity(
-           0.8,
-           u.g / u.cm ** 3,
-           comoving=True,
-           scale_factor=mask.metadata.scale_factor,
-           scale_exponent=-3
-       ),
+       0.4 * u.g / u.cm**3 * a.comoving**-3,
+       0.8 * u.g / u.cm**3 * a.comoving**-3,
    )
 
    # Now we can grab the actual data object. This includes the mask as a parameter.
@@ -344,10 +333,10 @@ as follows
     import unyt
 
     mask = sw.mask("eagle_snapshot.hdf5")
-    scale_factor = mask.metadata.scale_factor
+    a = mask.metadata.a
     mask.constrain_spatial(
         [
-            cosmo_array([100, 200], u.kpc, comoving=True, scale_factor=scale_factor, scale_exponent=1),
+            [100, 200] * u.kpc * a.comoving,
             None,
             None,
         ]
