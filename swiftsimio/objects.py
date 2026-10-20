@@ -1331,20 +1331,17 @@ class cosmo_array(unyt_array):
             # valid_transform has a non-None default, so we have to decide to always
             # respect it, unless comoving is None
             if helper_result["comoving"] is not None:
-                if comoving is not None:
+                if comoving is None:
+                    valid_transform = helper_result["valid_transform"]
+                else:
                     if helper_result["valid_transform"] != valid_transform:
                         raise ValueError(
                             "Input cosmo_array has valid_transform="
                             f"{helper_result['valid_transform']}, but valid_transform"
                             f" kwarg set to {valid_transform}."
                         )
-                else:
-                    valid_transform = helper_result["valid_transform"]
-            else:
-                if comoving is not None:
-                    valid_transform = valid_transform
-                else:
-                    valid_transform = False
+            elif comoving is None:
+                valid_transform = False
             # default to comoving, cosmo_factor and compression given as kwargs
             comoving = helper_result["comoving"] if comoving is None else comoving
             cosmo_factor = _parse_cosmo_factor_args(
