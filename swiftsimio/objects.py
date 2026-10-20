@@ -17,10 +17,7 @@ from unyt import unyt_array, unyt_quantity, Unit
 from unyt.array import multiple_output_operators, _iterable, POWER_MAPPING
 from typing import Iterable, Callable, Any
 
-try:
-    from typing import Self
-except ImportError:
-    from typing_extensions import Self  # in python 3.10
+from typing import Self
 from collections.abc import Collection
 from functools import singledispatchmethod
 
@@ -2987,78 +2984,7 @@ class _AHelper:
         return NotImplemented
 
     @__mul__.register
-    def _(self, other: int) -> cosmo_quantity:
-        """
-        Multiply with a number.
-
-        Parameters
-        ----------
-        other : int
-            The quantity to multiply with.
-
-        Returns
-        -------
-        ~swiftsimio.objects.cosmo_quantity
-            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
-            helper and the ``other`` number.
-        """
-        return self._mul_numeric_type(other)
-
-    @__mul__.register
-    def _(self, other: float) -> cosmo_quantity:
-        """
-        Multiply with a number.
-
-        Parameters
-        ----------
-        other : float
-            The quantity to multiply with.
-
-        Returns
-        -------
-        ~swiftsimio.objects.cosmo_quantity
-            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
-            helper and the ``other`` number.
-        """
-        return self._mul_numeric_type(other)
-
-    @__mul__.register
-    def _(self, other: np.number) -> cosmo_quantity:
-        """
-        Multiply with a number.
-
-        Parameters
-        ----------
-        other : np.number
-            The quantity to multiply with.
-
-        Returns
-        -------
-        ~swiftsimio.objects.cosmo_quantity
-            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
-            helper and the ``other`` number.
-        """
-        return self._mul_numeric_type(other)
-
-    @__mul__.register
-    def _(self, other: complex) -> cosmo_quantity:
-        """
-        Multiply with a number.
-
-        Parameters
-        ----------
-        other : complex
-            The quantity to multiply with.
-
-        Returns
-        -------
-        ~swiftsimio.objects.cosmo_quantity
-            A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
-            helper and the ``other`` number.
-        """
-        return self._mul_numeric_type(other)
-
-    def _mul_numeric_type(self, other: numeric_type) -> cosmo_quantity:
+    def _(self, other: numeric_type) -> cosmo_quantity:
         """
         Multiply with a number.
 
@@ -3073,9 +2999,6 @@ class _AHelper:
             A :class:`~swiftsimio.objects.cosmo_quantity` based on the content of this
             helper and the ``other`` number.
         """
-        # the four registered functions calling this can be merged into one with
-        # type hint `other: numeric_type` once python3.10 support is
-        # dropped
         return cosmo_quantity(
             other,
             units=self.units,
