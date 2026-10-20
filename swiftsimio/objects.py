@@ -166,7 +166,7 @@ def _verify_valid_transform_validity(obj: "cosmo_array") -> None:
     elif obj.valid_transform is False and obj.comoving is True:
         raise InvalidConversionError(
             "Cosmo arrays without a valid transform to comoving units must be physical,"
-            " and comoving cosmo_arrays must be able to be transformed to physcial."
+            " and comoving cosmo_arrays must be able to be transformed to physical."
         )
 
 
@@ -1269,7 +1269,7 @@ class cosmo_array(unyt_array):
 
             # let's trust what the input_array tells us about valid_transform.
             # copy explicitly in case unyt is creating an object for us.
-            obj.valid_transform = input_array.valid_transform
+            valid_transform = input_array.valid_transform
 
             # do cosmo_factor first since it can be used in comoving/physical conversion:
             cosmo_factor = (
@@ -1320,7 +1320,6 @@ class cosmo_array(unyt_array):
         elif _iterable(input_array):
             # if _prepare_array_func_args finds cosmo_array input it will convert to:
             default_cm = comoving if comoving is not None else True
-            default_vt = comoving is not None
 
             # coerce any cosmo_array inputs to consistency:
             helper_result = _prepare_array_func_args(
@@ -1329,6 +1328,23 @@ class cosmo_array(unyt_array):
 
             input_array = helper_result["args"]
 
+            # valid_transform has a non-None default, so we have to decide to always
+            # respect it, unless comoving is None
+            if helper_result["comoving"] is not None:
+                if comoving is not None:
+                    if helper_result["valid_transform"] != valid_transform:
+                        raise ValueError(
+                            "Input cosmo_array has valid_transform="
+                            f"{helper_result['valid_transform']}, but valid_transform"
+                            f" kwarg set to {valid_transform}."
+                        )
+                else:
+                    valid_transform = helper_result["valid_transform"]
+            else:
+                if comoving is not None:
+                    valid_transform = valid_transform
+                else:
+                    valid_transform = False
             # default to comoving, cosmo_factor and compression given as kwargs
             comoving = helper_result["comoving"] if comoving is None else comoving
             cosmo_factor = _parse_cosmo_factor_args(
@@ -1344,9 +1360,6 @@ class cosmo_array(unyt_array):
             compression = (
                 helper_result["compression"] if compression is None else compression
             )
-            # valid_transform has a non-None default, so we have to decide to always
-            # respect it, unless comoving is None
-            valid_transform = valid_transform if comoving is not None else default_vt
         else:
             # if the input isn't even iterable, this is an error
             raise ValueError(
@@ -1375,7 +1388,6 @@ class cosmo_array(unyt_array):
         obj.compression = compression
         obj.valid_transform = valid_transform
         _verify_valid_transform_validity(obj)
-
         return obj
 
     def __array_finalize__(self, obj: "cosmo_array") -> None:
