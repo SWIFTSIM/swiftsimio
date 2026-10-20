@@ -116,11 +116,11 @@ kernel, the same kernel used by the standard backends. In 2D this is
 
 Kernels with a support radius smaller than half a cell (in 2D) or half a cell
 diagonal, :math:`\sqrt{3}/2` cells (in 3D, matching the ``scatter`` backend),
-at their level deposit their whole weight into the cell that contains them. Periodic wrapping is handled as in the other
-backends: a particle is deposited once for each periodic image whose kernel
-overlaps ``[0, 1]``. Level-0 particles write directly into the output grid;
-coarser particles write into a single flat array that stores all coarse levels
-back-to-back.
+at their level deposit their whole weight into the cell that contains them. Periodic
+wrapping is handled as in the other backends: a particle is deposited once for each
+periodic image whose kernel overlaps ``[0, 1]``. Level-0 particles write directly into the
+output grid; coarser particles write into a single flat array that stores all coarse
+levels back-to-back.
 
 **3. Collapse.**
 Once every particle has been deposited, the hierarchy is collapsed
