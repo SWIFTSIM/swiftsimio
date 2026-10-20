@@ -30,6 +30,7 @@ additional functionality.
    projection
    slice
    volume_render
+   nested_backend
    power_spectra
    tools
 
