@@ -135,9 +135,10 @@ def _deposit_particle_flat(
     radius_cells_f32 = np.float32(radius_cells_64)
     maximal_index = level_res - 1
 
-    # Sub-pixel fast path: kernel spans less than one cell half-width.
-    # Deposit the full particle weight into the containing cell to preserve mass.
-    if radius_cells_f32 < np.float32(0.5):
+    # Sub-pixel fast path: kernel radius below half a cell diagonal (sqrt(3)/2),
+    # matching the scatter backend. Deposit the full particle weight into the
+    # containing cell to preserve mass.
+    if radius_cells_f32 < np.float32(0.8660254037844386):
         px = np.int32(floor(scaled_x_64))
         py = np.int32(floor(scaled_y_64))
         pz = np.int32(floor(scaled_z_64))

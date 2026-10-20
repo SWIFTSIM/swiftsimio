@@ -114,8 +114,9 @@ kernel, the same kernel used by the standard backends. In 2D this is
    W(r, H) = \frac{7}{\pi H^2} \left(1 - \frac{r}{H}\right)^4 \left(1 + \frac{4r}{H}\right),
    \qquad H = \gamma_k h.
 
-Kernels smaller than half a cell at their level deposit their whole weight
-into the cell that contains them. Periodic wrapping is handled as in the other
+Kernels with a support radius smaller than half a cell (in 2D) or half a cell
+diagonal, :math:`\sqrt{3}/2` cells (in 3D, matching the ``scatter`` backend),
+at their level deposit their whole weight into the cell that contains them. Periodic wrapping is handled as in the other
 backends: a particle is deposited once for each periodic image whose kernel
 overlaps ``[0, 1]``. Level-0 particles write directly into the output grid;
 coarser particles write into a single flat array that stores all coarse levels

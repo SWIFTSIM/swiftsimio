@@ -1303,15 +1303,14 @@ class TestNestedVolumeRender:
         assert np.isclose(deposited_mass, float(masses.sum()), rtol=0.02)
 
     @pytest.mark.parametrize("parallel", [False, True])
-    def test_single_cell_kernel_outside_support(self, parallel):
+    def test_sub_cell_kernel_matches_scatter(self, parallel):
         """
-        No weight should be deposited at a cell centre outside the kernel support.
+        A kernel smaller than half a cell diagonal deposits its whole mass.
 
         The particle sits 0.45 cells from the nearest cell centre along each
-        axis with a support radius of 0.52 cells, so only one cell centre is in
-        range along each axis, but that centre is outside the kernel support
-        (distance 0.78 cells). The kernel is zero there, but evaluating its
-        polynomial without checking the support radius gives a non-zero value.
+        axis with a support radius of 0.52 cells, so no cell centre lies inside
+        the kernel support. Like the scatter backend, the nested backend should
+        put the whole mass into the containing cell rather than dropping it.
         """
         from swiftsimio.visualisation.volume_render_backends.nested_grids_scatter import (  # noqa: E501
             kernel_gamma,
@@ -1335,8 +1334,10 @@ class TestNestedVolumeRender:
         )
         image = backend_set["nested"](**kwargs, ntarget=1000)
 
-        assert not image.any()
-        assert np.array_equal(image, backend_set["scatter"](**kwargs))
+        expected = np.zeros_like(image)
+        expected[8, 8, 8] = resolution**3
+        np.testing.assert_allclose(image, expected)
+        np.testing.assert_allclose(image, backend_set["scatter"](**kwargs))
 
 
 def test_selection_render(cosmological_volume_only_single_local):
