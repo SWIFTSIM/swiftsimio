@@ -2969,7 +2969,7 @@ class _AHelper:
     @singledispatchmethod
     def __mul__(self, other: object) -> "cosmo_array | _AHelper":
         """
-        Default implementation for invalid multiplications.
+        Return NotImplemented for unsupported multiplications.
 
         Parameters
         ----------
