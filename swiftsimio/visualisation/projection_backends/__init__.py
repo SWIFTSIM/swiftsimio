@@ -52,6 +52,8 @@ from swiftsimio.visualisation.projection_backends.gpu import (
     scatter_parallel as gpu_parallel,
 )
 
+from swiftsimio.visualisation.projection_backends.pygfx import scatter as pygfx
+
 backends = {
     "histogram": histogram,
     "fast": fast,
@@ -61,6 +63,7 @@ backends = {
     "reference": reference,
     "nested": nested,
     "gpu": gpu,
+    "pygfx": pygfx,
 }
 
 backends_parallel = {
@@ -72,4 +75,5 @@ backends_parallel = {
     "reference": reference_parallel,
     "nested": nested_parallel,
     "gpu": gpu_parallel,
+    "pygfx": pygfx,
 }

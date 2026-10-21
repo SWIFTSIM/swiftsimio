@@ -26,7 +26,6 @@ from swiftsimio.visualisation.power_spectrum import (
     folded_depositions_to_power_spectrum,
 )
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
-from swiftsimio.optional_packages import CudaSupportError, CUDA_AVAILABLE
 
 from swiftsimio.objects import cosmo_array, cosmo_quantity, a
 from unyt.array import unyt_array
@@ -79,30 +78,22 @@ def fraction_within_tolerance(
     return np.sum(ratios < tol) / a.size >= frac
 
 
+@pytest.mark.usefixtures("optional_projection_backend")
 class TestProjection:
     """Tests for the projection functions in the visualisation tools."""
 
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_scatter(self, backend, save=False):
         """Tests the scatter functions from all projection backends."""
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
-        try:
-            image = projection_backends[backend](
-                x=np.array([0.0, 1.0, 1.0, -0.000_001]),
-                y=np.array([0.0, 0.0, 1.0, 1.000_001]),
-                m=np.array([1.0, 1.0, 1.0, 1.0]),
-                h=np.array([0.2, 0.2, 0.2, 0.000_002]),
-                res=256,
-                box_x=1.0,
-                box_y=1.0,
-            )
-        except CudaSupportError:
-            if CUDA_AVAILABLE:
-                raise ImportError("Optional loading of the CUDA module is broken")
-            else:
-                pytest.skip("CUDA is not available")
+        image = projection_backends[backend](
+            x=np.array([0.0, 1.0, 1.0, -0.000_001]),
+            y=np.array([0.0, 0.0, 1.0, 1.000_001]),
+            m=np.array([1.0, 1.0, 1.0, 1.0]),
+            h=np.array([0.2, 0.2, 0.2, 0.000_002]),
+            res=256,
+            box_x=1.0,
+            box_y=1.0,
+        )
 
         if save:
             imsave("test_image_creation.png", image)
@@ -387,31 +378,25 @@ class TestProjection:
         masses_non_periodic = np.array([1.0, 1.0])
 
         # test the projection backends scatter functions
-        try:
-            image1 = projection_backends[backend](
-                x=coordinates_periodic[:, 0],
-                y=coordinates_periodic[:, 1],
-                m=masses_periodic,
-                h=hsml_periodic,
-                res=pixel_resolution,
-                box_x=boxsize,
-                box_y=boxsize,
-            )
-            image2 = projection_backends[backend](
-                x=coordinates_non_periodic[:, 0],
-                y=coordinates_non_periodic[:, 1],
-                m=masses_non_periodic,
-                h=hsml_non_periodic,
-                res=pixel_resolution,
-                box_x=0.0,
-                box_y=0.0,
-            )
-            assert (image1 == image2).all()
-        except CudaSupportError:
-            if CUDA_AVAILABLE:
-                raise ImportError("Optional loading of the CUDA module is broken")
-            else:
-                pytest.skip("CUDA is not available")
+        image1 = projection_backends[backend](
+            x=coordinates_periodic[:, 0],
+            y=coordinates_periodic[:, 1],
+            m=masses_periodic,
+            h=hsml_periodic,
+            res=pixel_resolution,
+            box_x=boxsize,
+            box_y=boxsize,
+        )
+        image2 = projection_backends[backend](
+            x=coordinates_non_periodic[:, 0],
+            y=coordinates_non_periodic[:, 1],
+            m=masses_non_periodic,
+            h=hsml_non_periodic,
+            res=pixel_resolution,
+            box_x=0.0,
+            box_y=0.0,
+        )
+        assert (image1 == image2).all()
 
 
 class TestNestedProjection:

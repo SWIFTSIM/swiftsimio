@@ -56,6 +56,10 @@ dependencies = [
 swiftsnap = "swiftsimio.swiftsnap:swiftsnap"
 
 [project.optional-dependencies]
+pygfx = [
+    "pygfx>=0.17.0,<0.18",
+    "wgpu>=0.31,<0.33",
+]
 dev = [
     "pytest",
     "ruff",
@@ -75,7 +79,7 @@ hdfstream = [
     "hdfstream >= 0.0.23",
 ]
 all = [
-    "swiftsimio[dev,docs,hdfstream]"
+    "swiftsimio[dev,docs,hdfstream,pygfx]"
 ]
 
 [tool.ruff]

@@ -359,6 +359,9 @@ backends are as follows:
 
 + ``fast``: The default backend - this is extremely fast, and provides very basic
   smoothing, with a return type of single precision floating point numbers.
++ ``pygfx``: WebGPU rasterization of Wendland-C2 splats, with float32 additive
+  accumulation. Requires the optional pygfx dependency and is not designed to provide
+  science-accurate results.
 + ``histogram``: This backend provides zero smoothing, and acts in a similar way
   to the :func:`~numpy.histogram2d` function but with the same arguments as ``scatter``.
 + ``reference``: The same backend as ``fast`` but with two distinguishing features:
@@ -378,8 +381,6 @@ backends are as follows:
   large smoothing lengths onto coarser grids, so it is much faster than ``fast``
   for simulations with a wide range of smoothing lengths. See
   :doc:`nested_backend` for details.
-+ ``gpu``: The same as ``fast`` but uses CUDA for faster computation on supported
-  GPUs. The parallel implementation is the same function as the non-parallel.
 
 Example:
 
