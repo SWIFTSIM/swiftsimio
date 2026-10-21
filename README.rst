@@ -95,6 +95,8 @@ or any other packaging manager that you wish to use:
 
    pip install swiftsimio
 
+There are a number of optional pip variants, including ``wgpu`` and ``hdfstream``.
+
 .. INSTALL_END_LABEL
 
 Usage example
