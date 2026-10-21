@@ -540,7 +540,14 @@ def write_extra_part_type():
 
 @pytest.fixture(scope="session")
 def pygfx_device():
-    """Provide a float32-blendable device, skipping unavailable optional hardware."""
+    """
+    Provide a float32-blendable device, skipping unavailable optional hardware.
+
+    Returns
+    -------
+    wgpu.GPUDevice
+        Shared WebGPU device with float32 blending enabled.
+    """
     pytest.importorskip("pygfx")
     wgpu = pytest.importorskip("wgpu")
     try:
@@ -556,7 +563,14 @@ def pygfx_device():
 
 @pytest.fixture
 def optional_projection_backend(request):
-    """Check optional GPU support for parametrized projection tests."""
+    """
+    Check optional GPU support for parametrized projection tests.
+
+    Parameters
+    ----------
+    request : pytest.FixtureRequest
+        Fixture request containing the selected projection backend.
+    """
     if getattr(request.node, "callspec", None) is not None and (
         request.node.callspec.params.get("backend") == "pygfx"
     ):

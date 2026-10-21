@@ -12,7 +12,7 @@ from swiftsimio.visualisation.projection_backends.pygfx import scatter
 
 
 def test_lazy_device():
-    """Importing projection backends must not request a GPU device."""
+    """Check that importing projection backends does not request a GPU device."""
     subprocess.run(
         [
             sys.executable,
@@ -35,7 +35,14 @@ import swiftsimio.visualisation.projection_backends
 
 @pytest.mark.parametrize("package", ["pygfx", "wgpu"])
 def test_missing_optional_package(package):
-    """Central availability handling keeps swiftsimio usable without GPU packages."""
+    """
+    Check that missing GPU packages are handled by the optional package imports.
+
+    Parameters
+    ----------
+    package : str
+        Name of the optional package to make unavailable during the test.
+    """
     subprocess.run(
         [
             sys.executable,
@@ -62,7 +69,7 @@ else:
 
 
 def test_registration_and_empty():
-    """Both interfaces use one implementation, with a float32 empty result."""
+    """Check backend registration and the shape and dtype of an empty result."""
     assert backends["pygfx"] is backends_parallel["pygfx"] is scatter
     result = scatter([], [], [], [], 17)
     assert result.shape == (17, 17)
@@ -83,7 +90,14 @@ def test_registration_and_empty():
     ],
 )
 def test_invalid_input(kwargs):
-    """Reject invalid inputs before creating any GPU resources."""
+    """
+    Check that invalid inputs are rejected before creating GPU resources.
+
+    Parameters
+    ----------
+    kwargs : dict
+        Invalid arguments to override in an otherwise valid projection call.
+    """
     args = dict(x=[0.5], y=[0.5], m=[1], h=[0.1], res=32)
     args.update(kwargs)
     with pytest.raises(ValueError):
@@ -93,7 +107,14 @@ def test_invalid_input(kwargs):
 @pytest.mark.usefixtures("pygfx_device")
 @pytest.mark.parametrize("box", [(0.0, 0.0), (1.0, 1.0), (0.4, 0.7), (0.0, 0.6)])
 def test_matches_kernel(box):
-    """Compare splats to analytic kernels, including tiling and axis orientation."""
+    """
+    Compare splats to analytic kernels, including tiling and axis orientation.
+
+    Parameters
+    ----------
+    box : tuple[float, float]
+        Periodic box sizes along the x and y axes. Zero disables wrapping.
+    """
     res = 65  # Also exercise readback with unaligned row lengths.
     x = np.array([0.03, 0.72, 1.04])
     y = np.array([0.63, 0.22, 0.81])
@@ -117,7 +138,7 @@ def test_matches_kernel(box):
 
 @pytest.mark.usefixtures("pygfx_device")
 def test_unresolved_and_repeat():
-    """Tiny kernels stay visible, conserve analytic weight and clear each call."""
+    """Check unresolved kernel weights and clear the output between calls."""
     for res in (32, 65):
         image = scatter([0.3], [0.7], [3.0], [0.0], res)
         assert np.isfinite(image).all()
@@ -130,7 +151,16 @@ def test_unresolved_and_repeat():
 @pytest.mark.usefixtures("pygfx_device")
 @pytest.mark.parametrize("parallel", [False, True])
 def test_project_gas(tmp_path, parallel):
-    """Exercise units, cosmology, masks and rectangular cropping through the API."""
+    """
+    Check units, cosmology, masks and rectangular cropping through the API.
+
+    Parameters
+    ----------
+    tmp_path : pathlib.Path
+        Temporary directory provided by pytest for the test snapshot.
+    parallel : bool
+        Whether to select the parallel projection backend.
+    """
     from swiftsimio import load
     from swiftsimio.visualisation.projection import project_gas
     from .helper import create_minimal_writer

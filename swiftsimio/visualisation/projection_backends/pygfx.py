@@ -51,7 +51,14 @@ fn fs_main(in: Vertex) -> @location(0) vec4<f32> {
 
 @lru_cache(maxsize=1)
 def _get_pipeline() -> tuple:
-    """Lazily create the shared device and additive splat pipeline."""
+    """
+    Create the shared device and additive splat pipeline on first use.
+
+    Returns
+    -------
+    tuple[wgpu.GPUDevice, wgpu.GPURenderPipeline]
+        Shared WebGPU device and the pipeline for additive kernel deposition.
+    """
     if not PYGFX_AVAILABLE:
         raise ImportError("The pygfx projection backend requires swiftsimio[pygfx].")
 
@@ -93,7 +100,7 @@ def scatter(
     box_y: float = 0.0,
 ) -> np.ndarray:
     """
-    Project particles with additive GPU splats, as in ``live_vis_retry``.
+    Project particles with additive GPU splats.
 
     Parameters
     ----------
@@ -118,12 +125,13 @@ def scatter(
     -----
     Requires the optional ``swiftsimio[pygfx]`` dependencies and a WebGPU device
     supporting ``float32-blendable``. Availability is checked in
-    ``optional_packages``; the device is created only on first use. No canvas, window or event loop is needed. The scalar image is
-    read back to the CPU; units and rotations are handled by the projection API.
+    ``optional_packages``; the device is created only on first use. No canvas,
+    window or event loop is needed. The scalar image is read back to the CPU;
+    units and rotations are handled by the projection API.
 
-    Uses the 2D Wendland-C2 kernel with support radius ``1.897367*h``. This
-    backend supports smaller than two pixels are broadened to two pixels with an
-    amplitude correction preserving the analytic integral. Pixel-centre
+    Uses the 2D Wendland-C2 kernel with support radius ``1.897367*h``. Support
+    radii smaller than two pixels are broadened to two pixels, with an amplitude
+    correction preserving the analytic integral. Pixel-centre
     sampling does not guarantee discrete mass conservation. There is no colour
     mapping or weighted-mean division. ``parallel=True`` uses the same GPU
     implementation.
