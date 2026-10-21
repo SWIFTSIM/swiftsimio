@@ -11,18 +11,51 @@ from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
 from swiftsimio.visualisation.projection_backends.pygfx import scatter
 
 
-def test_lazy_import():
-    """Importing projection backends must not import optional GPU packages."""
+def test_lazy_device():
+    """Importing projection backends must not request a GPU device."""
+    subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            """
+try:
+    import wgpu
+except ImportError:
+    pass
+else:
+    def fail(*args, **kwargs):
+        raise AssertionError('Import requested a GPU adapter')
+    wgpu.gpu.request_adapter_sync = fail
+import swiftsimio.visualisation.projection_backends
+""",
+        ],
+        check=True,
+    )
+
+
+@pytest.mark.parametrize("package", ["pygfx", "wgpu"])
+def test_missing_optional_package(package):
+    """Central availability handling keeps swiftsimio usable without GPU packages."""
     subprocess.run(
         [
             sys.executable,
             "-c",
             """
 import sys
-import swiftsimio.visualisation.projection_backends
-assert 'pygfx' not in sys.modules
-assert 'wgpu' not in sys.modules
+sys.modules[sys.argv[1]] = None
+from swiftsimio.optional_packages import PYGFX_AVAILABLE, pygfx_get_shared, wgpu
+assert not PYGFX_AVAILABLE
+assert pygfx_get_shared is None
+assert wgpu is None
+from swiftsimio.visualisation.projection_backends.pygfx import scatter
+try:
+    scatter([0.5], [0.5], [1.0], [0.1], 16)
+except ImportError as error:
+    assert 'swiftsimio[pygfx]' in str(error)
+else:
+    raise AssertionError('Missing dependency did not raise ImportError')
 """,
+            package,
         ],
         check=True,
     )

@@ -4,6 +4,7 @@ from functools import lru_cache
 
 import numpy as np
 
+from swiftsimio.optional_packages import PYGFX_AVAILABLE, pygfx_get_shared, wgpu
 from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
 
 
@@ -51,13 +52,8 @@ fn fs_main(in: Vertex) -> @location(0) vec4<f32> {
 @lru_cache(maxsize=1)
 def _get_pipeline() -> tuple:
     """Lazily create the shared device and additive splat pipeline."""
-    try:
-        import wgpu
-        from pygfx.renderers.wgpu.engine.shared import get_shared
-    except ImportError as error:
-        raise ImportError(
-            "The pygfx projection backend requires swiftsimio[pygfx]."
-        ) from error
+    if not PYGFX_AVAILABLE:
+        raise ImportError("The pygfx projection backend requires swiftsimio[pygfx].")
 
     try:
         wgpu.preconfigure_default_device(
@@ -65,7 +61,7 @@ def _get_pipeline() -> tuple:
         )
     except RuntimeError:
         pass  # An embedding application may have already created the device.
-    device = get_shared().device
+    device = pygfx_get_shared().device
     if "float32-blendable" not in device.features:
         raise RuntimeError(
             "The pygfx projection backend requires float32-blendable. "
@@ -121,8 +117,8 @@ def scatter(
     Notes
     -----
     Requires the optional ``swiftsimio[pygfx]`` dependencies and a WebGPU device
-    supporting ``float32-blendable``. Dependencies and device are loaded only on
-    first use. No canvas, window or event loop is needed. The scalar image is
+    supporting ``float32-blendable``. Availability is checked in
+    ``optional_packages``; the device is created only on first use. No canvas, window or event loop is needed. The scalar image is
     read back to the CPU; units and rotations are handled by the projection API.
 
     Uses the 2D Wendland-C2 kernel with support radius ``1.897367*h``. This
@@ -153,8 +149,6 @@ def scatter(
         return image
 
     device, pipeline = _get_pipeline()
-    import wgpu
-
     radius = np.maximum(kernel_gamma * h, 2.0 / res)
     coefficients = m / radius**2
     scale = np.max(np.abs(coefficients))
