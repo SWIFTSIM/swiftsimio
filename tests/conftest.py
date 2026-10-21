@@ -539,16 +539,15 @@ def write_extra_part_type():
 
 
 @pytest.fixture(scope="session")
-def pygfx_device():
+def wgpu_device():
     """
     Provide a float32-blendable device, skipping unavailable optional hardware.
 
     Returns
     -------
     wgpu.GPUDevice
-        Shared WebGPU device with float32 blending enabled.
+        WebGPU device with float32 blending enabled.
     """
-    pytest.importorskip("pygfx")
     wgpu = pytest.importorskip("wgpu")
     try:
         adapter = wgpu.gpu.request_adapter_sync()
@@ -556,7 +555,7 @@ def pygfx_device():
         pytest.skip(f"WebGPU adapter unavailable: {error}")
     if "float32-blendable" not in adapter.features:
         pytest.skip("WebGPU adapter does not support float32-blendable")
-    from swiftsimio.visualisation.projection_backends.pygfx import _get_pipeline
+    from swiftsimio.visualisation.projection_backends.wgpu import _get_pipeline
 
     return _get_pipeline()[0]
 
@@ -572,6 +571,6 @@ def optional_projection_backend(request):
         Fixture request containing the selected projection backend.
     """
     if getattr(request.node, "callspec", None) is not None and (
-        request.node.callspec.params.get("backend") == "pygfx"
+        request.node.callspec.params.get("backend") == "wgpu"
     ):
-        request.getfixturevalue("pygfx_device")
+        request.getfixturevalue("wgpu_device")

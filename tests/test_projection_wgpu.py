@@ -8,7 +8,7 @@ import pytest
 
 from swiftsimio.visualisation.projection_backends import backends, backends_parallel
 from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
-from swiftsimio.visualisation.projection_backends.pygfx import scatter
+from swiftsimio.visualisation.projection_backends.wgpu import scatter
 
 
 def test_lazy_device():
@@ -33,36 +33,26 @@ import swiftsimio.visualisation.projection_backends
     )
 
 
-@pytest.mark.parametrize("package", ["pygfx", "wgpu"])
-def test_missing_optional_package(package):
-    """
-    Check that missing GPU packages are handled by the optional package imports.
-
-    Parameters
-    ----------
-    package : str
-        Name of the optional package to make unavailable during the test.
-    """
+def test_missing_optional_package():
+    """Check that a missing wgpu package is handled by optional package imports."""
     subprocess.run(
         [
             sys.executable,
             "-c",
             """
 import sys
-sys.modules[sys.argv[1]] = None
-from swiftsimio.optional_packages import PYGFX_AVAILABLE, pygfx_get_shared, wgpu
-assert not PYGFX_AVAILABLE
-assert pygfx_get_shared is None
+sys.modules["wgpu"] = None
+from swiftsimio.optional_packages import WGPU_AVAILABLE, wgpu
+assert not WGPU_AVAILABLE
 assert wgpu is None
-from swiftsimio.visualisation.projection_backends.pygfx import scatter
+from swiftsimio.visualisation.projection_backends.wgpu import scatter
 try:
     scatter([0.5], [0.5], [1.0], [0.1], 16)
 except ImportError as error:
-    assert 'swiftsimio[pygfx]' in str(error)
+    assert 'swiftsimio[wgpu]' in str(error)
 else:
     raise AssertionError('Missing dependency did not raise ImportError')
 """,
-            package,
         ],
         check=True,
     )
@@ -70,7 +60,7 @@ else:
 
 def test_registration_and_empty():
     """Check backend registration and the shape and dtype of an empty result."""
-    assert backends["pygfx"] is backends_parallel["pygfx"] is scatter
+    assert backends["wgpu"] is backends_parallel["wgpu"] is scatter
     result = scatter([], [], [], [], 17)
     assert result.shape == (17, 17)
     assert result.dtype == np.float32
@@ -104,7 +94,7 @@ def test_invalid_input(kwargs):
         scatter(**args)
 
 
-@pytest.mark.usefixtures("pygfx_device")
+@pytest.mark.usefixtures("wgpu_device")
 @pytest.mark.parametrize("box", [(0.0, 0.0), (1.0, 1.0), (0.4, 0.7), (0.0, 0.6)])
 def test_matches_kernel(box):
     """
@@ -136,7 +126,7 @@ def test_matches_kernel(box):
     np.testing.assert_allclose(actual, expected, rtol=3e-4, atol=2e-4)
 
 
-@pytest.mark.usefixtures("pygfx_device")
+@pytest.mark.usefixtures("wgpu_device")
 def test_unresolved_and_repeat():
     """Check unresolved kernel weights and clear the output between calls."""
     for res in (32, 65):
@@ -148,7 +138,7 @@ def test_unresolved_and_repeat():
         )
 
 
-@pytest.mark.usefixtures("pygfx_device")
+@pytest.mark.usefixtures("wgpu_device")
 @pytest.mark.parametrize("parallel", [False, True])
 def test_project_gas(tmp_path, parallel):
     """
@@ -177,7 +167,7 @@ def test_project_gas(tmp_path, parallel):
         mask=np.arange(8) % 2 == 0,
         periodic=False,
     )
-    actual = project_gas(data, backend="pygfx", parallel=parallel, **kwargs)
+    actual = project_gas(data, backend="wgpu", parallel=parallel, **kwargs)
     expected = project_gas(data, backend="fast", **kwargs)
     assert actual.shape == (65, 39)
     assert actual.units == expected.units
@@ -186,3 +176,24 @@ def test_project_gas(tmp_path, parallel):
     np.testing.assert_allclose(
         actual.value, expected.value, rtol=3e-4, atol=expected.max().value * 1e-6
     )
+
+
+@pytest.mark.parametrize("scientific_first", [False, True])
+def test_scientific_import_compatibility(scientific_first):
+    """
+    Check that wgpu and scientific dependencies can be imported in either order.
+
+    Parameters
+    ----------
+    scientific_first : bool
+        Whether to import Astropy and h5py before wgpu.
+    """
+    pytest.importorskip("wgpu")
+    imports = ["import wgpu", "from astropy.table import Table; import h5py"]
+    if scientific_first:
+        imports.reverse()
+    code = "import sys\nsys.modules['pygfx'] = None\nsys.modules['uharfbuzz'] = None\n"
+    code += "\n".join(imports)
+    code += "\nfrom swiftsimio.optional_packages import WGPU_AVAILABLE\n"
+    code += "assert WGPU_AVAILABLE\n"
+    subprocess.run([sys.executable, "-c", code], check=True)

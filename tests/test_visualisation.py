@@ -192,9 +192,6 @@ class TestProjection:
         ref_img for each one. Could use a fixture.
         """
         sd = load(cosmological_volume_only_single_local)
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
         parallel = True
         lbox = sd.metadata.boxsize[0].to_comoving().to_value(unyt.Mpc)
         box_res = 256
@@ -359,10 +356,6 @@ class TestProjection:
     @pytest.mark.parametrize("backend", projection_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
         """Test that a single particle wraps properly around the periodic boundary."""
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
-
         pixel_resolution = 128  # the nested backend needs a multiple of 2**nlevels
         boxsize = 1.0
 
@@ -583,10 +576,6 @@ class TestSlice:
     @pytest.mark.parametrize("backend", slice_backends.keys())
     def test_periodic_boundary_wrapping(self, backend):
         """Check that a single particle wraps properly around the periodic boundary."""
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
-
         pixel_resolution = 100
         boxsize = 1.0
 
@@ -1709,15 +1698,11 @@ class TestProjectionBackends:
             "subsampled_extreme",
             "fast",
             "renormalised",
-            "gpu",
             "histogram",
         ),
     )
     def test_subsampled_no_overlap(self, backend, res=8, save=False):
         """Check a particle fully contained in a pixel."""
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
         if save:
             import matplotlib.pyplot as plt
         # very small kernel centred in a pixel
@@ -1744,12 +1729,9 @@ class TestProjectionBackends:
         )
         assert (one_px_img > 0).sum() == 1
 
-    @pytest.mark.parametrize("backend", ("subsampled", "subsampled_extreme", "gpu"))
+    @pytest.mark.parametrize("backend", ("subsampled", "subsampled_extreme"))
     def test_subsampled_bisected_unresolved(self, backend, res=8, save=False):
         """Check a particle bisected twice into 4 pixels but smaller than the pixels."""
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
         if save:
             import matplotlib.pyplot as plt
         # kernel bisected in both directions, smaller than pixel
@@ -1782,13 +1764,10 @@ class TestProjectionBackends:
         assert (four_px_img > 0).sum() == 4
 
     @pytest.mark.parametrize(
-        "backend", ("subsampled", "subsampled_extreme", "fast", "renormalised", "gpu")
+        "backend", ("subsampled", "subsampled_extreme", "fast", "renormalised")
     )
     def test_subsampled_bisected_resolved(self, backend, res=8, save=False):
         """Check a particle bisected twice and resolved by many pixels."""
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
         if save:
             import matplotlib.pyplot as plt
         # kernel bisected in both directions, touches edge of box
@@ -1814,12 +1793,9 @@ class TestProjectionBackends:
         }[backend]
         assert np.isclose(smooth_img.sum(), 1.0, atol=1e-2)
 
-    @pytest.mark.parametrize("backend", ("subsampled", "subsampled_extreme", "gpu"))
+    @pytest.mark.parametrize("backend", ("subsampled", "subsampled_extreme"))
     def test_subsampled_corner_pixels(self, backend, res=8, save=False):
         """Check a particle that "touches" pixels in all 4 corners."""
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
         if save:
             import matplotlib.pyplot as plt
         # kernel in upper right corner, wraps to all 4 corners
@@ -1844,7 +1820,7 @@ class TestProjectionBackends:
         assert (corner_img > 0).sum() == 4
 
     @pytest.mark.parametrize(
-        "backend", ("subsampled", "subsampled_extreme", "fast", "renormalised", "gpu")
+        "backend", ("subsampled", "subsampled_extreme", "fast", "renormalised")
     )
     def test_subsampled_tiled_box(self, backend, res=8, save=True):
         """
@@ -1856,9 +1832,6 @@ class TestProjectionBackends:
         unintentionally writing to negative image offsets (img[-1, -1]) that can arise
         when multiple box lengths are covered in the region.
         """
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
         if save:
             import matplotlib.pyplot as plt
         # image repeats in each quadrant with periodic wrapping
@@ -1889,9 +1862,6 @@ class TestProjectionBackends:
         repeating_img = scatter(**kwargs)
         # first quadrant image tiled should match explicitly tiled image
         diff = repeating_img - np.block([[ref_img, ref_img], [ref_img, ref_img]])
-        if backend == "gpu":
-            # https://github.com/SWIFTSIM/swiftsimio/issues/229
-            pytest.xfail("gpu backend currently broken")
         if save:
             plt.imsave("test_image_creation.png", repeating_img.T, origin="lower")
             plt.imsave(

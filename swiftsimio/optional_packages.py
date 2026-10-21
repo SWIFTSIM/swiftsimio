@@ -7,7 +7,7 @@ This includes:
 + scipy.spatial: KDTrees
 + numba: acceleration
 + hdfstream: remote data access
-+ pygfx and wgpu: GPU projection
++ wgpu: GPU projection
 """
 
 from typing import Iterable, Callable, Any
@@ -119,13 +119,11 @@ except (ImportError, ModuleNotFoundError):
     HDFSTREAM_AVAILABLE = False
 
 
-# pygfx / WebGPU
+# WebGPU
 try:
     import wgpu
-    from pygfx.renderers.wgpu.engine.shared import get_shared as pygfx_get_shared
 
-    PYGFX_AVAILABLE = True
+    WGPU_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
     wgpu = None
-    pygfx_get_shared = None
-    PYGFX_AVAILABLE = False
+    WGPU_AVAILABLE = False

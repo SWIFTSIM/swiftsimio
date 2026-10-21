@@ -1,10 +1,10 @@
-"""Project Wendland-C2 splats using pygfx's shared WebGPU device."""
+"""Project Wendland-C2 splats using WebGPU."""
 
 from functools import lru_cache
 
 import numpy as np
 
-from swiftsimio.optional_packages import PYGFX_AVAILABLE, pygfx_get_shared, wgpu
+from swiftsimio.optional_packages import WGPU_AVAILABLE, wgpu
 from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
 
 
@@ -52,29 +52,22 @@ fn fs_main(in: Vertex) -> @location(0) vec4<f32> {
 @lru_cache(maxsize=1)
 def _get_pipeline() -> tuple:
     """
-    Create the shared device and additive splat pipeline on first use.
+    Create the device and additive splat pipeline on first use.
 
     Returns
     -------
     tuple[wgpu.GPUDevice, wgpu.GPURenderPipeline]
-        Shared WebGPU device and the pipeline for additive kernel deposition.
+        WebGPU device and the pipeline for additive kernel deposition.
     """
-    if not PYGFX_AVAILABLE:
-        raise ImportError("The pygfx projection backend requires swiftsimio[pygfx].")
+    if not WGPU_AVAILABLE:
+        raise ImportError("The wgpu projection backend requires swiftsimio[wgpu].")
 
-    try:
-        wgpu.preconfigure_default_device(
-            "swiftsimio projection", preferred_features={"float32-blendable"}
-        )
-    except RuntimeError:
-        pass  # An embedding application may have already created the device.
-    device = pygfx_get_shared().device
-    if "float32-blendable" not in device.features:
+    adapter = wgpu.gpu.request_adapter_sync()
+    if "float32-blendable" not in adapter.features:
         raise RuntimeError(
-            "The pygfx projection backend requires float32-blendable. "
-            "Use a supported GPU and call this backend before creating a pygfx "
-            "renderer, or enable float32-blendable on the application's device."
+            "The wgpu projection backend requires a GPU supporting float32-blendable."
         )
+    device = adapter.request_device_sync(required_features=["float32-blendable"])
     module = device.create_shader_module(code=_SPLAT_WGSL)
     blend = dict(operation="add", src_factor="one", dst_factor="one")
     pipeline = device.create_render_pipeline(
@@ -123,7 +116,7 @@ def scatter(
 
     Notes
     -----
-    Requires the optional ``swiftsimio[pygfx]`` dependencies and a WebGPU device
+    Requires the optional ``swiftsimio[wgpu]`` dependency and a WebGPU device
     supporting ``float32-blendable``. Availability is checked in
     ``optional_packages``; the device is created only on first use. No canvas,
     window or event loop is needed. The scalar image is read back to the CPU;
