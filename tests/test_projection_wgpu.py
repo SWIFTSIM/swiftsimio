@@ -111,6 +111,8 @@ def test_matches_kernel(box):
     m = np.array([2.0, -0.7, 1.1])
     h = np.array([0.08, 0.045, 0.09])
     actual = scatter(x, y, m, h, res, *box)
+    assert actual.shape == (res, res)
+    assert actual.dtype == np.float32
     xx, yy = np.meshgrid(
         (np.arange(res) + 0.5) / res, (np.arange(res) + 0.5) / res, indexing="ij"
     )

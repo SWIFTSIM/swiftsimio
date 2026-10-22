@@ -37,14 +37,14 @@ fn vs_main(@builtin(vertex_index) vertex: u32,
     return out;
 }
 @fragment
-fn fs_main(in: Vertex) -> @location(0) vec4<f32> {
+fn fs_main(in: Vertex) -> @location(0) f32 {
     // Evaluate from pixel centres to avoid rasterizer vertex/interpolation rounding.
     let coord = (in.position.xy / f32(p.counts.z) - in.particle.xy) / in.particle.z;
     let r = length(coord);
     if (r >= 1.0) { discard; }
     let t = 1.0-r;
     let kernel = 2.22817109 * t*t*t*t * (1.0+4.0*r);
-    return vec4<f32>(in.particle.w * kernel, 0.0, 0.0, 0.0);
+    return in.particle.w * kernel;
 }
 """
 
@@ -77,7 +77,7 @@ def _get_pipeline() -> tuple:
         fragment=dict(
             module=module,
             entry_point="fs_main",
-            targets=[dict(format="rgba32float", blend=dict(color=blend, alpha=blend))],
+            targets=[dict(format="r32float", blend=dict(color=blend, alpha=blend))],
         ),
     )
     return device, pipeline
@@ -119,7 +119,8 @@ def scatter(
     Requires the optional ``swiftsimio[wgpu]`` dependency and a WebGPU device
     supporting ``float32-blendable``. Availability is checked in
     ``optional_packages``; the device is created only on first use. No canvas,
-    window or event loop is needed. The scalar image is read back to the CPU;
+    window or event loop is needed. Deposition uses a single-channel float32
+    texture, which is read back to the CPU;
     units and rotations are handled by the projection API.
 
     Uses the 2D Wendland-C2 kernel with support radius ``1.897367*h``. Support
@@ -167,7 +168,7 @@ def scatter(
     )
     texture = device.create_texture(
         size=(res, res, 1),
-        format="rgba32float",
+        format="r32float",
         usage=wgpu.TextureUsage.RENDER_ATTACHMENT | wgpu.TextureUsage.COPY_SRC,
     )
     try:
@@ -196,12 +197,10 @@ def scatter(
         render.end()
         device.queue.submit([encoder.finish()])
         pixels = device.queue.read_texture(
-            dict(texture=texture), dict(bytes_per_row=res * 16), (res, res, 1)
+            dict(texture=texture), dict(bytes_per_row=res * 4), (res, res, 1)
         )
-        # WebGPU returns (y, x, rgba); the projection API expects (x, y).
-        image[:] = (
-            np.frombuffer(pixels, np.float32).reshape(res, res, 4)[:, :, 0].T * scale
-        )
+        # WebGPU returns (y, x); the projection API expects (x, y).
+        image[:] = np.frombuffer(pixels, np.float32).reshape(res, res).T * scale
     finally:
         texture.destroy()
         uniform.destroy()
