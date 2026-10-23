@@ -41,3 +41,10 @@ Docstrings
 ----------
 
 Ruff currently has limited support for [numpydoc](https://numpydoc.readthedocs.io)-style docstrings. To run additional checks on docstrings use `numpydoc lint **/*.py` in the same directory as the `pyproject.toml` file. As more style rules become supported by `ruff` this will hopefully be phased out.
+
+Policy on Automated Contributions
+---------------------------------
+
+### Policy on Autonomous Contributions
+
+Automated Agents: Though we welcome contributions, fully autonomous contributions to this repository are not allowed unless previously approved by the project maintainers. All pull requests must be submitted by a human operator with a full understanding of the underlying content.
