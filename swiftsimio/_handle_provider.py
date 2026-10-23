@@ -5,6 +5,39 @@ from typing import ContextManager
 from pathlib import Path
 import h5py
 
+#: HDF5 chunk-cache size (bytes) for snapshot files opened by swiftsimio.
+#:
+#: SWIFT writes particle datasets in chunks of 2**20 rows: 4 MiB for a float32
+#: scalar and 24 MiB for a float64 3-vector. HDF5's default cache is 1 MiB,
+#: so no chunk would ever be kept, and every read smaller than a chunk would
+#: decompress the whole chunk again. The cache is per open dataset and only
+#: holds chunks that are actually read, so this is a ceiling, not an allocation.
+#: For a virtual (multi-file) snapshot HDF5 applies it to every source file too.
+CHUNK_CACHE_BYTES = 256 * 1024**2
+
+#: Hash-table slots for the chunk cache; prime and well above the number of
+#: chunks in any dataset, so chunks do not collide and evict each other.
+CHUNK_CACHE_SLOTS = 100_003
+
+
+def _open_snapshot_file(filename: Path) -> h5py.File:
+    """
+    Open a snapshot file read-only with a chunk cache sized for SWIFT output.
+
+    Parameters
+    ----------
+    filename : Path
+        The file to open.
+
+    Returns
+    -------
+    h5py.File
+        The open file.
+    """
+    return h5py.File(
+        filename, "r", rdcc_nbytes=CHUNK_CACHE_BYTES, rdcc_nslots=CHUNK_CACHE_SLOTS
+    )
+
 
 class HandleProvider:
     """
@@ -53,7 +86,7 @@ class HandleProvider:
                 raise RuntimeError(
                     f"File handle is managed externally but is {self._handle}."
                 )
-            self._handle = h5py.File(self.filename, "r")
+            self._handle = _open_snapshot_file(self.filename)
         return self._handle
 
     def _close_handle_if_manager(self) -> None:
@@ -78,5 +111,5 @@ class HandleProvider:
         if self._handle:
             yield self._handle
         else:
-            with h5py.File(self.filename, "r") as handle:
+            with _open_snapshot_file(self.filename) as handle:
                 yield handle

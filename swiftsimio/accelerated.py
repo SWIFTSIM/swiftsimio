@@ -16,6 +16,7 @@ __all__ = [
     "prange",
     "NUM_THREADS",
     "ranges_from_array",
+    "ranges_from_cells",
     "read_ranges_from_file_unchunked",
     "index_dataset",
     "get_chunk_ranges",
@@ -99,6 +100,39 @@ def ranges_from_array(array: np.array) -> np.ndarray:
     output.append([start, stop + 1])
 
     return np.array(output, dtype=np.dtype("int"))
+
+
+def ranges_from_cells(offsets: np.ndarray, counts: np.ndarray) -> np.ndarray:
+    """
+    Convert selected cells into read ranges, merging cells that are adjacent on disk.
+
+    SWIFT stores the particles of consecutive cells contiguously, so a spatial
+    mask usually selects runs of cells that are back-to-back in the file. One
+    range per cell turns each run into many separate reads (and, for a chunked
+    dataset, many decompressions of the same chunk); merging makes it one.
+
+    Parameters
+    ----------
+    offsets : np.ndarray
+        Offset of each selected cell in the file, sorted in increasing order.
+    counts : np.ndarray
+        Number of particles in each selected cell.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape ``(n_ranges, 2)`` of ``[start, stop)`` ranges.
+    """
+    offsets = np.asarray(offsets, dtype=np.int64)
+    counts = np.asarray(counts, dtype=np.int64)
+    if offsets.size == 0:
+        return np.empty((0, 2), dtype=np.int64)
+    ends = offsets + counts
+    starts_new_range = np.ones(offsets.size, dtype=bool)
+    starts_new_range[1:] = offsets[1:] != ends[:-1]
+    first = np.flatnonzero(starts_new_range)
+    last = np.append(first[1:] - 1, offsets.size - 1)
+    return np.column_stack((offsets[first], ends[last]))
 
 
 def read_ranges_from_file_unchunked(
@@ -338,7 +372,20 @@ def extract_ranges_from_chunks(
     offset = chunks[chunk_array_index[-1]][0] - running_sum
     adjusted_ranges[-1] = ranges[-1] - offset
 
-    return array[expand_ranges(adjusted_ranges)]
+    # Copy each range out as a contiguous slice. Indexing with
+    # expand_ranges(adjusted_ranges) would first build an int64 index with one
+    # entry per particle and then gather element by element.
+    total = 0
+    for i in range(n_ranges):
+        total += adjusted_ranges[i][1] - adjusted_ranges[i][0]
+    output = np.empty((total,) + array.shape[1:], dtype=array.dtype)
+    written = 0
+    for i in range(n_ranges):
+        lower = adjusted_ranges[i][0]
+        upper = adjusted_ranges[i][1]
+        output[written : written + upper - lower] = array[lower:upper]
+        written += upper - lower
+    return output
 
 
 def read_ranges_from_file_chunked(
