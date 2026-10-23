@@ -202,7 +202,8 @@ Code contributions are very welcome! A good place to start is the `contributing 
 .. _GPL-3.0: https://github.com/SWIFTSIM/swiftgalaxy/tree/main?tab=GPL-3.0-1-ov-file
 .. _code of conduct: https://github.com/SWIFTSIM/swiftsimio/tree/main?tab=coc-ov-file
 
-### Policy on Autonomous Contributions
+Policy on Autonomous Contributions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Automated Agents: Though we welcome contributions, fully autonomous contributions to this repository are not
 allowed unless previously approved by the project maintainers. All pull requests must be submitted by a human
