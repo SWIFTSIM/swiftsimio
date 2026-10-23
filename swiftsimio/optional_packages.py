@@ -5,8 +5,9 @@ This includes:
 
 + tqdm: progress bars
 + scipy.spatial: KDTrees
-+ numba/cuda: visualisation
++ numba: acceleration
 + hdfstream: remote data access
++ wgpu: GPU projection
 """
 
 from typing import Iterable, Callable, Any
@@ -107,64 +108,6 @@ except (ImportError, ModuleNotFoundError):
         prange = range
         NUM_THREADS = 1
 
-# Numba/CUDA
-try:
-    from numba.cuda.cudadrv.error import CudaSupportError
-
-    try:
-        import numba.cuda.cudadrv.driver as drv
-        from numba import cuda
-        from numba.cuda import jit as cuda_jit
-
-        try:
-            CUDA_AVAILABLE = cuda.is_available()
-        except AttributeError:
-            # Backwards compatibility with older versions
-            # Check for the driver
-
-            d = drv.Driver()
-            d.initialize()
-
-            CUDA_AVAILABLE = True
-
-    except CudaSupportError:
-        CUDA_AVAILABLE = False
-
-except (ImportError, ModuleNotFoundError):
-    # Mock the CudaSupportError so that we can raise it in cases
-    # where we don't have numba installed.
-
-    class CudaSupportError(Exception):
-        """
-        Mock the CudaSupportError class for use if it's unavailable.
-
-        Parameters
-        ----------
-        message : str
-            The error message.
-        """
-
-        def __init__(self, message: str) -> None:
-            self.message = message
-
-    CUDA_AVAILABLE = False
-
-
-if not CUDA_AVAILABLE:
-    # Mock cuda-jit to prevent crashes
-    def cuda_jit(*args, **kwargs):  # NOQA
-        """
-        Mock the cuda_jit function for use if it's unavailable.
-
-        Returns
-        -------
-        out : Callable
-            The wrapper function (a trivial wrapper).
-        """
-        return lambda func: func
-
-    # For additional CUDA API access
-    cuda = None
 
 # hdfstream
 try:
@@ -174,3 +117,13 @@ try:
 except (ImportError, ModuleNotFoundError):
     hdfstream = None
     HDFSTREAM_AVAILABLE = False
+
+
+# WebGPU
+try:
+    import wgpu
+
+    WGPU_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    wgpu = None
+    WGPU_AVAILABLE = False

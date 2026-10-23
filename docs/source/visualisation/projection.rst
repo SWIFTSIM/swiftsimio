@@ -359,6 +359,10 @@ backends are as follows:
 
 + ``fast``: The default backend - this is extremely fast, and provides very basic
   smoothing, with a return type of single precision floating point numbers.
++ ``wgpu``: WebGPU rasterization of Wendland-C2 splats, with float32 additive
+  accumulation. Install with ``pip install 'swiftsimio[wgpu]'`` and select
+  ``backend="wgpu"``. Requires a GPU supporting ``float32-blendable`` and is not
+  designed to provide science-accurate results.
 + ``histogram``: This backend provides zero smoothing, and acts in a similar way
   to the :func:`~numpy.histogram2d` function but with the same arguments as ``scatter``.
 + ``reference``: The same backend as ``fast`` but with two distinguishing features:
@@ -378,8 +382,6 @@ backends are as follows:
   large smoothing lengths onto coarser grids, so it is much faster than ``fast``
   for simulations with a wide range of smoothing lengths. See
   :doc:`nested_backend` for details.
-+ ``gpu``: The same as ``fast`` but uses CUDA for faster computation on supported
-  GPUs. The parallel implementation is the same function as the non-parallel.
 
 Example:
 
@@ -418,7 +420,7 @@ a thread-local image array for each thread, summing them in the end. Here we
 will only describe the ``fast`` variant, but they behave in the exact same way.
 
 The default backend used by :mod:`swiftsimio` is ``fast``. To use the others (e.g.
-``histogram``, ``subsampled``, ``gpu``, etc.), you can select them
+``histogram``, ``subsampled``, ``wgpu``, etc.), you can select them
 manually from the module, or by using the ``backends`` and ``backends_parallel``
 dictionaries in :mod:`swiftsimio.visualisation.projection_backends`.
 
