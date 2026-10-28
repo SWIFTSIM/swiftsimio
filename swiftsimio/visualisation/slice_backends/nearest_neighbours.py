@@ -2,7 +2,10 @@
 
 import numpy as np
 
+from numba import config, get_num_threads, set_num_threads
+
 from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
+from swiftsimio.visualisation.kdtree import nearest_particles
 
 
 def build_tree(
@@ -125,8 +128,8 @@ def slice_scatter(
         Used for periodic wrapping (if not 0).
 
     workers : int
-        The number of workers to use for the nearest-neighbour calculations.
-        Set to -1 to use all available cpus.
+        The number of threads to use for the nearest-neighbour calculations.
+        Set to -1 to use all of ``numba``'s threads.
 
     Returns
     -------
@@ -158,10 +161,22 @@ def slice_scatter(
         axis=1,
     )
 
-    tree = build_tree(x, y, z, box_x, box_y, box_z)
-    _, i = tree.query(pixel_coordinates, workers=workers)
-
     values = m / h**3
+    if values.size == 0:
+        return np.zeros((xres, yres), dtype=values.dtype)
+
+    # In the periodic case the particles and pixels are wrapped into the box (a
+    # box size of 0 leaves that axis non-periodic)
+    threads = get_num_threads()
+    try:
+        if workers > 0:
+            set_num_threads(min(workers, config.NUMBA_NUM_THREADS))
+        i = nearest_particles(
+            np.stack((x, y, z), axis=1), pixel_coordinates, [box_x, box_y, box_z]
+        )
+    finally:
+        set_num_threads(threads)
+
     return values[i].reshape(xres, yres)
 
 

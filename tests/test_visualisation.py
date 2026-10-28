@@ -832,6 +832,67 @@ class TestSlice:
 
         assert np.allclose(image_high, image_low[::-1, :])
 
+    @pytest.mark.parametrize("box", [1.0, 0.0])
+    def test_nearest_neighbours_matches_scipy(self, box):
+        """Check the slice backend against the scipy query it replaced."""
+        spatial = pytest.importorskip("scipy.spatial")
+        rng = np.random.default_rng(4)
+        positions = rng.random((5000, 3))
+        masses = rng.random(5000).astype(np.float32)
+        hsml = (0.01 + 0.01 * rng.random(5000)).astype(np.float32)
+        kwargs = dict(
+            x=positions[:, 0],
+            y=positions[:, 1],
+            z=positions[:, 2],
+            m=masses,
+            h=hsml,
+            z_slice=0.3,
+            xres=80,
+            yres=60,
+            box_x=box,
+            box_y=box,
+            box_z=box,
+        )
+        image = slice_backends["nearest_neighbours"](**kwargs)
+        image_parallel = slice_backends_parallel["nearest_neighbours"](**kwargs)
+
+        res = max(kwargs["xres"], kwargs["yres"])
+        grids = np.meshgrid(
+            (np.arange(kwargs["xres"]) + 0.5) / res,
+            (np.arange(kwargs["yres"]) + 0.5) / res,
+            [kwargs["z_slice"]],
+            indexing="ij",
+        )
+        pixels = np.stack([grid.ravel() for grid in grids], axis=1)
+        tree = spatial.cKDTree(positions, boxsize=[box] * 3 if box else None)
+        _, nearest = tree.query(pixels)
+        expected = (masses / hsml**3)[nearest].reshape(kwargs["xres"], kwargs["yres"])
+
+        assert image.dtype == expected.dtype
+        np.testing.assert_array_equal(image, expected)
+        np.testing.assert_array_equal(image_parallel, expected)
+
+    @pytest.mark.parametrize("backend", slice_backends.keys())
+    def test_slice_no_particles(self, backend):
+        """Check that a slice of no particles is empty."""
+        empty = np.zeros(0)
+        for backend_funcs in (slice_backends, slice_backends_parallel):
+            image = backend_funcs[backend](
+                x=empty,
+                y=empty,
+                z=empty,
+                m=empty.astype(np.float32),
+                h=empty.astype(np.float32),
+                z_slice=0.5,
+                xres=8,
+                yres=4,
+                box_x=1.0,
+                box_y=1.0,
+                box_z=1.0,
+            )
+            assert image.shape == (8, 4)
+            assert not image.any()
+
 
 class TestVolumeRender:
     """Tests for the volume render functions in the visualisation tools."""

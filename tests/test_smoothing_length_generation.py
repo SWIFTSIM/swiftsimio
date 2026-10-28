@@ -1,6 +1,7 @@
 """Test the smoothing length generation code."""
 
 import numpy as np
+import pytest
 import unyt as u
 from swiftsimio import load, cosmo_array
 from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
@@ -94,3 +95,38 @@ def test_generate_smoothing_length_return_type():
     assert isinstance(from_ua_input, u.unyt_array) and not isinstance(
         from_ua_input, cosmo_array
     )
+
+
+@pytest.mark.parametrize("speedup_fac", [1, 2, 4])
+@pytest.mark.parametrize("dimension", [2, 3])
+def test_generate_smoothing_lengths_match_scipy(speedup_fac, dimension):
+    """Check generate_smoothing_lengths against the scipy search it replaced."""
+    spatial = pytest.importorskip("scipy.spatial")
+    rng = np.random.default_rng(6)
+    # A dense clump in a uniform field
+    positions = (
+        np.concatenate([rng.normal(10.0, 0.5, (3000, 3)), rng.random((2000, 3)) * 20.0])
+        % 20.0
+    )
+    coordinates = cosmo_array(
+        positions, u.Mpc, comoving=True, scale_factor=0.5, scale_exponent=1
+    )
+    boxsize = cosmo_array(
+        [20.0] * 3, u.Mpc, comoving=True, scale_factor=0.5, scale_exponent=1
+    )
+    kernel_gamma = 1.936492
+    neighbours = 48
+    smoothing_lengths = generate_smoothing_lengths(
+        coordinates,
+        boxsize,
+        kernel_gamma,
+        neighbours=neighbours,
+        speedup_fac=speedup_fac,
+        dimension=dimension,
+    )
+    tree = spatial.cKDTree(positions, boxsize=20.0)
+    expected = tree.query(positions, k=[neighbours // speedup_fac])[0][:, 0]
+    expected *= speedup_fac ** (1 / dimension) / kernel_gamma
+    assert smoothing_lengths.dtype == np.float32
+    assert smoothing_lengths.units == u.Mpc
+    np.testing.assert_allclose(smoothing_lengths.value, expected, rtol=1e-6)

@@ -7,8 +7,8 @@ that do not usually carry a smoothing length field (e.g. dark matter).
 
 import numpy as np
 from swiftsimio import cosmo_array
-from swiftsimio.optional_packages import KDTree, TREE_AVAILABLE
 from swiftsimio._array_functions import _propagate_cosmo_array_attributes_to_result
+from swiftsimio.visualisation.kdtree import k_nearest_distances
 
 
 @_propagate_cosmo_array_attributes_to_result  # copies attrs of first arg to result
@@ -53,62 +53,26 @@ def generate_smoothing_lengths(
     -------
     cosmo_array
         A cosmo_array of smoothing lengths.
+
+    Notes
+    -----
+    The neighbours are found with a parallel k-d tree compiled with ``numba``
+    (running on ``numba.get_num_threads()`` threads), which gives the same
+    distances as :class:`scipy.spatial.cKDTree`. The box is periodic along every
+    axis with a positive ``boxsize``.
     """
-    if not TREE_AVAILABLE:
-        raise ImportError(
-            "The scipy.spatial.cKDTree class is required to search for smoothing lengths."
-        )
-
-    number_of_parts = coordinates.shape[0]
-
-    tree = KDTree(
-        coordinates.to_value(coordinates.units),
-        boxsize=boxsize.to_value(coordinates.units),
-    )
-
-    smoothing_lengths = np.empty(number_of_parts, dtype=np.float32)
-    smoothing_lengths[-1] = -0.1
-
     # Include speedup_fac stuff here:
     neighbours_search = neighbours // speedup_fac
     hsml_correction_fac_speedup = (speedup_fac) ** (1 / dimension)
 
-    # We create a lot of data doing this, so we want to do it in small chunks
-    # such that we keep the memory from filling up - this seems to be a reasonable
-    # chunk size based on previous performance testing. This may change in the
-    # future, or may be computer dependent (cache sizes?).
-    block_size = 65536
-    number_of_blocks = 1 + number_of_parts // block_size
-
-    for block in range(number_of_blocks):
-        starting_index = block * block_size
-        ending_index = (block + 1) * (block_size)
-
-        if ending_index > number_of_parts:
-            ending_index = number_of_parts + 1
-
-        if starting_index >= ending_index:
-            break
-
-        # Get the distances to _all_ neighbours out of the tree - this is
-        # why we need to process in blocks (this is 32x+ the size of coordinates)
-
-        try:
-            d, _ = tree.query(
-                coordinates[starting_index:ending_index].to_value(coordinates.units),
-                k=neighbours_search,
-                workers=-1,
-            )
-        except TypeError:
-            # Backwards compatibility with older versions of
-            # scipy.
-            d, _ = tree.query(
-                coordinates[starting_index:ending_index].to_value(coordinates.units),
-                k=neighbours_search,
-                n_jobs=-1,
-            )
-
-        smoothing_lengths[starting_index:ending_index] = d[:, -1]
+    # Distance to the neighbours_search-th nearest neighbour (the particle itself
+    # included), with a parallel numba k-d tree: the same distances as
+    # scipy.spatial.cKDTree.query
+    smoothing_lengths = k_nearest_distances(
+        coordinates.to_value(coordinates.units),
+        neighbours_search,
+        boxsize=boxsize.to_value(coordinates.units),
+    ).astype(np.float32)
 
     return type(coordinates)(
         smoothing_lengths
