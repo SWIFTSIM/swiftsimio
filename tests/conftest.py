@@ -5,7 +5,10 @@ import warnings
 import subprocess
 import itertools
 import pytest
+from pytest import TempPathFactory
+from pathlib import Path
 from collections.abc import Generator
+from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 import unyt
 import h5py
@@ -55,9 +58,51 @@ def pytest_addoption(parser):
     )
 
 
+def _download(filename: str) -> bool:
+    """
+    Download a test data file if it's missing.
+
+    The file is downloaded to a temporary name and moved into place once
+    complete.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to download.
+
+    Returns
+    -------
+    bool
+        ``True`` if the file is present after the call, ``False`` otherwise.
+    """
+    os.makedirs(test_data_location, exist_ok=True)
+
+    file_location = os.path.join(test_data_location, filename)
+
+    if os.path.exists(file_location):
+        return True
+
+    partial_location = f"{file_location}.part"
+    ret = subprocess.call(
+        ["wget", f"{webstorage_location}{filename}", "-O", partial_location]
+    )
+
+    if ret != 0:
+        # It may have written an empty or partial file, kill it.
+        if os.path.exists(partial_location):
+            os.remove(partial_location)
+        return False
+
+    os.replace(partial_location, file_location)
+    return True
+
+
 def _requires(filename: str) -> str:
     """
-    Make sure a file is present by downloading it if it's missing.
+    Make sure a file is present, and skip the test if it's missing.
+
+    Files are downloaded once at the start of the test session by
+    :func:`preload_test_data`, missing files mean the download failed.
 
     Parameters
     ----------
@@ -76,37 +121,30 @@ def _requires(filename: str) -> str:
         _requires("eagle_0025.0.hdf5")
         _requires("eagle_0025.1.hdf5")
 
-    # First check if the test data directory exists
-    if not os.path.exists(test_data_location):
-        os.mkdir(test_data_location)
-
     file_location = os.path.join(test_data_location, filename)
 
-    if os.path.exists(file_location):
-        ret = 0
-    else:
-        # Download it!
-        ret = subprocess.call(
-            ["wget", f"{webstorage_location}{filename}", "-O", file_location]
-        )
+    if not os.path.exists(file_location):
+        pytest.skip(f"Test data file {filename} unavailable")
 
-    if ret != 0:
-        pytest.skip(f"Unable to download file at {filename}")
-        # It wrote an empty file, kill it.
-        subprocess.call(["rm", file_location])
-
-    else:
-        return file_location
+    return file_location
 
 
-def preload_test_data():
+def preload_test_data(max_workers: int = 1):
     """
-    Download all test data in advance for remote file tests.
+    Download all test data in advance.
+
+    This runs at the start of the test session (see :func:`pytest_sessionstart`)
+    so that test workers running in parallel don't compete to download files.
 
     Tests using the hdfstream service are implemented by running a local
     copy of the server in a container when run through github actions.
     In that case we need to ensure that all files are present before the
-    server is started.
+    server is started, so this is also called directly.
+
+    Parameters
+    ----------
+    max_workers : int, optional
+        The number of files to download concurrently.
     """
     all_filenames = [
         "EagleDistributed.hdf5",
@@ -119,8 +157,30 @@ def preload_test_data():
         "ColibreSingle.hdf5",
         "ColibreLOS.hdf5",
     ]
-    for name in all_filenames:
-        _requires(name)
+    if max_workers > 1:
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            list(pool.map(_download, all_filenames))
+    else:
+        for name in all_filenames:
+            _download(name)
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_sessionstart(session: pytest.Session):
+    """
+    Download test data before any tests run.
+
+    With ``pytest-xdist`` this runs only in the controller process, before the
+    workers are started. Files are downloaded concurrently.
+
+    Parameters
+    ----------
+    session : pytest.Session
+        The pytest session.
+    """
+    if not hasattr(session.config, "workerinput"):
+        n = session.config.getoption("numprocesses", default=None) or 1
+        preload_test_data(max_workers=n)
 
 
 def open_local_with_filename(filename: str, request: pytest.FixtureRequest) -> str:
@@ -423,16 +483,25 @@ def two_type_writer() -> Generator[Writer, None, None]:
 
 
 @pytest.fixture(scope="function")
-def simple_snapshot_data() -> Generator[tuple[Writer, str], None, None]:
+def simple_snapshot_data(
+    tmp_path_factory: TempPathFactory,
+) -> Generator[tuple[Writer, Path], None, None]:
     """
     Provide a simple IC-like snapshot for testing.
 
+    Parameters
+    ----------
+    tmp_path_factory : TempPathFactory
+        Pytest fixture to create temporary directories.
+
     Yields
     ------
-    Generator[tuple[Writer, str], None, None]
+    Generator[tuple[Writer, Path], None, None]
         The Writer object and the name of the file it wrote.
     """
-    test_filename = "test_write_output_units.hdf5"
+    test_filename = (
+        tmp_path_factory.mktemp("simple_snapshot") / "test_write_output_units.hdf5"
+    )
     w = create_minimal_writer()
 
     w.write(test_filename)
@@ -481,11 +550,23 @@ def extra_part_type():
 
 
 @pytest.fixture(scope="function")
-def write_extra_part_type():
+def write_extra_part_type(
+    tmp_path_factory: TempPathFactory,
+) -> Generator[Path, None, None]:
     """
     Write a dataset with extra particle type so that we can test reading it in.
 
     Make sure we reliably clean up global variables and written file.
+
+    Parameters
+    ----------
+    tmp_path_factory : TempPathFactory
+        Pytest fixture to create temporary directories.
+
+    Yields
+    ------
+    Generator[Path, None, None]
+        The name of the file written.
     """
     _setup_extra_part_type()
     unit_system = unyt.UnitSystem(
@@ -532,7 +613,8 @@ def write_extra_part_type():
         scale_factor=x.scale_factor,
         scale_exponent=1,
     )
-    x.write("extra_test.hdf5")
-    yield
-    os.remove("extra_test.hdf5")
+    testfile = tmp_path_factory.mktemp("extra_part_type") / "extra_test.hdf5"
+    x.write(testfile)
+    yield testfile
+    os.remove(testfile)
     _teardown_extra_part_type()

@@ -270,7 +270,7 @@ def test_reading_select_region_metadata(cosmological_volume, range_mask):
     return
 
 
-def test_reading_empty_dataset(cosmological_volume):
+def test_reading_empty_dataset(cosmological_volume, tmp_path_factory):
     """
     Test that we can read in a zero-particle dataset.
 
@@ -278,7 +278,7 @@ def test_reading_empty_dataset(cosmological_volume):
     snapshot file with Type1 present but empty.
     """
     # unmasked case
-    output_filename = "zero_particle.hdf5"
+    output_filename = tmp_path_factory.mktemp("data") / "zero_particle.hdf5"
     create_n_particle_dataset(cosmological_volume, output_filename, num_parts=0)
     data = load(output_filename)
     assert data.gas.masses.shape == (0,)

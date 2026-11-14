@@ -10,10 +10,10 @@ from numpy import array_equal
 from os import remove
 
 
-def test_project(cosmological_volume_only_single):
+def test_project(cosmological_volume_only_single, tmp_path_factory):
     """Check that projection is invariant under rotations around a single particle."""
     # Start from the beginning, open the file
-    output_filename = "single_particle.hdf5"
+    output_filename = tmp_path_factory.mktemp("rotate") / "single_particle.hdf5"
     create_n_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
 
@@ -40,10 +40,10 @@ def test_project(cosmological_volume_only_single):
     remove(output_filename)
 
 
-def test_slice(cosmological_volume_only_single):
+def test_slice(cosmological_volume_only_single, tmp_path_factory):
     """Check that slicing is invariant under rotations around a single particle."""
     # Start from the beginning, open the file
-    output_filename = "single_particle.hdf5"
+    output_filename = tmp_path_factory.mktemp("rotate") / "single_particle.hdf5"
     create_n_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
 
@@ -80,10 +80,10 @@ def test_slice(cosmological_volume_only_single):
     remove(output_filename)
 
 
-def test_render(cosmological_volume_only_single):
+def test_render(cosmological_volume_only_single, tmp_path_factory):
     """Check that volume render is invariant under rotations around a single particle."""
     # Start from the beginning, open the file
-    output_filename = "single_particle.hdf5"
+    output_filename = tmp_path_factory.mktemp("rotate") / "single_particle.hdf5"
     create_n_particle_dataset(cosmological_volume_only_single, output_filename)
     data = load(output_filename)
 

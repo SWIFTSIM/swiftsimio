@@ -6,7 +6,7 @@ import numpy as np
 import os
 
 
-def test_write(extra_part_type):
+def test_write(extra_part_type, tmp_path_factory):
     """
     Tests whether swiftsimio can handle a new particle type.
 
@@ -57,7 +57,7 @@ def test_write(extra_part_type):
         scale_factor=x.scale_factor,
         scale_exponent=1,
     )
-    testfile = "extra_test.hdf5"
+    testfile = tmp_path_factory.mktemp("extra_part_type") / "extra_test.hdf5"
     try:
         x.write(testfile)
     finally:
@@ -71,7 +71,7 @@ def test_read(write_extra_part_type):
 
     Has a few asserts to check the data is read in correctly.
     """
-    data = load("extra_test.hdf5")
+    data = load(write_extra_part_type)
     for i in range(0, 10):
         assert data.extratype.coordinates.to_physical_value(
             data.extratype.coordinates.units
