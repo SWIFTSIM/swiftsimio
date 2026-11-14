@@ -56,7 +56,7 @@ jobs:
         pip install -e ".[dev,hdfstream]"
     - name: Preload test data files
       run: |
-        python -c "from tests.conftest import preload_test_data; preload_test_data()"
+        python -c "from tests.conftest import preload_test_data; preload_test_data(max_workers=2)"
     - name: Start hdfstream service
       uses: ./.github/actions/start-hdfstream
       with:
@@ -65,7 +65,7 @@ jobs:
         image: ghcr.io/jchelly/hdfstream-api:0.0.6
     - name: Test with pytest
       run: |
-        pytest --hdfstream-server=http://localhost:8080/hdfstream
+        pytest -n 2 --hdfstream-server=http://localhost:8080/hdfstream
       env:
         NUMBA_BOUNDSCHECK: 1
     - name: Stop hdfstream service

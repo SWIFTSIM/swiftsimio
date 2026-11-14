@@ -25,9 +25,9 @@ def test_load(simple_snapshot_data):
     dat.gas.coordinates
 
 
-def test_scale_factor_written(simple_snapshot_data):
+def test_scale_factor_written(simple_snapshot_data, tmp_path_factory):
     """Check that the scale factor gets written in the output."""
-    testfile = "scale_factor_written.hdf5"
+    testfile = tmp_path_factory.mktemp("writer") / "scale_factor_written.hdf5"
     w = create_minimal_writer(a=0.5)
     w.write(testfile)
     dat = load(testfile)
@@ -35,7 +35,7 @@ def test_scale_factor_written(simple_snapshot_data):
     assert dat.metadata.scale_factor == w.scale_factor
 
 
-def test_write_non_required_field(simple_writer):
+def test_write_non_required_field(simple_writer, tmp_path_factory):
     """
     Try to write a non-required field with the writer.
 
@@ -44,7 +44,7 @@ def test_write_non_required_field(simple_writer):
 
     May be desirable to change this behaviour in the future, perhaps using TypedDict.
     """
-    testfile = "write_non_required_field.hdf5"
+    testfile = tmp_path_factory.mktemp("writer") / "write_non_required_field.hdf5"
     simple_writer.gas.metallicity = cosmo_array(
         np.ones(simple_writer.gas.masses.size),
         u.dimensionless,
@@ -64,13 +64,13 @@ def test_write_non_required_field(simple_writer):
             os.remove(testfile)
 
 
-def test_write_missing_required(simple_writer):
+def test_write_missing_required(simple_writer, tmp_path_factory):
     """
     Try to write with a required field missing.
 
     Expectation is to raise with a helpful message.
     """
-    testfile = "write_missing_required.hdf5"
+    testfile = tmp_path_factory.mktemp("writer") / "write_missing_required.hdf5"
     del simple_writer.gas.coordinates
     try:
         with pytest.raises(
@@ -119,7 +119,7 @@ class TestSetterInputs:
             input_values / w.gas.coordinates.cosmo_factor.a_factor,
         )
 
-    def test_setter_invalid_shape_input(self, simple_writer):
+    def test_setter_invalid_shape_input(self, simple_writer, tmp_path_factory):
         """
         Try to set a dataset with a transposed coordinate array.
 
@@ -136,7 +136,10 @@ class TestSetterInputs:
             scale_factor=simple_writer.scale_factor,
             scale_exponent=1.0,
         )
-        testfile = "setter_invalid_coordinate_shape_input.hdf5"
+        testfile = (
+            tmp_path_factory.mktemp("writer")
+            / "setter_invalid_coordinate_shape_input.hdf5"
+        )
         try:
             with pytest.raises(
                 AssertionError,
@@ -148,7 +151,7 @@ class TestSetterInputs:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
-    def test_setter_invalid_dimensions_input(self):
+    def test_setter_invalid_dimensions_input(self, tmp_path_factory):
         """Make sure setter refuses input with invalid units."""
         a = 0.5
         w = Writer(
@@ -157,7 +160,9 @@ class TestSetterInputs:
             ),
             scale_factor=a,
         )
-        testfile = "setter_invalid_dimensions_input.hdf5"
+        testfile = (
+            tmp_path_factory.mktemp("writer") / "setter_invalid_dimensions_input.hdf5"
+        )
         try:
             with pytest.raises(
                 u.exceptions.InvalidUnitEquivalence, match="The unit equivalence"
@@ -174,7 +179,7 @@ class TestSetterInputs:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
-    def test_setter_invalid_scale_factor_input(self):
+    def test_setter_invalid_scale_factor_input(self, tmp_path_factory):
         """Make sure setter refuses input with mismatched scale factor."""
         a = 0.5
         w = Writer(
@@ -183,7 +188,9 @@ class TestSetterInputs:
             ),
             scale_factor=a,
         )
-        testfile = "setter_invalid_scale_factor_input.hdf5"
+        testfile = (
+            tmp_path_factory.mktemp("writer") / "setter_invalid_scale_factor_input.hdf5"
+        )
         a_input = a + 0.1
         assert a_input != a
         try:
@@ -200,7 +207,7 @@ class TestSetterInputs:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
-    def test_setter_unyt_array_input(self):
+    def test_setter_unyt_array_input(self, tmp_path_factory):
         """Make sure setter refuses unyt_array (not cosmo_array) input."""
         a = 0.5
         w = Writer(
@@ -209,7 +216,7 @@ class TestSetterInputs:
             ),
             scale_factor=a,
         )
-        testfile = "setter_unyt_array_input.hdf5"
+        testfile = tmp_path_factory.mktemp("writer") / "setter_unyt_array_input.hdf5"
         try:
             with pytest.raises(
                 TypeError, match="Provide masses as swiftsimio.cosmo_array."
@@ -219,7 +226,7 @@ class TestSetterInputs:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
-    def test_setter_ndarray_input(self):
+    def test_setter_ndarray_input(self, tmp_path_factory):
         """Make sure setter refuses numpy array (not cosmo_array) input."""
         a = 0.5
         w = Writer(
@@ -228,7 +235,7 @@ class TestSetterInputs:
             ),
             scale_factor=a,
         )
-        testfile = "setter_ndarray_input.hdf5"
+        testfile = tmp_path_factory.mktemp("writer") / "setter_ndarray_input.hdf5"
         try:
             with pytest.raises(
                 TypeError, match="Provide masses as swiftsimio.cosmo_array."
@@ -252,13 +259,15 @@ class TestSetterInputs:
             ),
         ),
     )
-    def test_setter_dimensionless_input(self, simple_writer, input_data_generator):
+    def test_setter_dimensionless_input(
+        self, simple_writer, input_data_generator, tmp_path_factory
+    ):
         """Check that fields with expected dimensionless input are accepted."""
         n_p = simple_writer.gas.masses.size
         input_data = input_data_generator(n_p)
         if hasattr(input_data, "cosmo_factor"):
             assert input_data.cosmo_factor.scale_factor == simple_writer.scale_factor
-        testfile = "setter_dimensionless_input.hdf5"
+        testfile = tmp_path_factory.mktemp("writer") / "setter_dimensionless_input.hdf5"
         assert simple_writer.gas._particle_ids is None
         try:
             simple_writer.gas.particle_ids = input_data
@@ -287,14 +296,14 @@ class TestSetterInputs:
         ),
     ),
 )
-def test_explicit_particle_ids(input_data_generator, simple_writer):
+def test_explicit_particle_ids(input_data_generator, simple_writer, tmp_path_factory):
     """
     Check that particle IDs can be set directly (i.e. not auto-generated).
 
     The IDs used in this test are offset by 1000 to make sure we didn't use auto-generated
     IDs instead of the ones explicitly provided.
     """
-    testfile = "explicit_particle_ids.hdf5"
+    testfile = tmp_path_factory.mktemp("writer") / "explicit_particle_ids.hdf5"
     assert simple_writer.gas._particle_ids is None
     n_p = simple_writer.gas.masses.size
     input_data = input_data_generator(n_p)
@@ -325,9 +334,11 @@ def test_duplicate_ids_invalid(simple_writer):
         simple_writer.gas.particle_ids = np.ones(simple_writer.gas.masses.size)
 
 
-def test_duplicate_ids_across_types_invalid(two_type_writer):
+def test_duplicate_ids_across_types_invalid(two_type_writer, tmp_path_factory):
     """Check that duplicate particle IDs in different particle types are rejected."""
-    testfile = "duplicate_ids_across_types_invalid.hdf5"
+    testfile = (
+        tmp_path_factory.mktemp("writer") / "duplicate_ids_across_types_invalid.hdf5"
+    )
     assert two_type_writer.gas._particle_ids is None
     assert two_type_writer.dark_matter._particle_ids is None
     two_type_writer.gas.particle_ids = np.arange(1, two_type_writer.gas.masses.size + 1)
@@ -358,9 +369,9 @@ def test_invalid_ids(invalid_id, simple_writer):
 class TestGeneratedParticleIDs:
     """Test automatically generated particle IDs."""
 
-    def test_generated_particle_ids(self, simple_writer):
+    def test_generated_particle_ids(self, simple_writer, tmp_path_factory):
         """Check that particle ID generation produces sensible IDs."""
-        testfile = "generated_particle_ids.hdf5"
+        testfile = tmp_path_factory.mktemp("writer") / "generated_particle_ids.hdf5"
         assert simple_writer.gas._particle_ids is None
         assert simple_writer.gas.check_consistent()
         assert simple_writer.gas.requires_particle_ids_before_write
@@ -373,9 +384,14 @@ class TestGeneratedParticleIDs:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
-    def test_generated_particle_ids_multiple_types(self, two_type_writer):
+    def test_generated_particle_ids_multiple_types(
+        self, two_type_writer, tmp_path_factory
+    ):
         """Check that all IDs are unique for multiple types."""
-        testfile = "generated_particle_ids_multiple_types.hdf5"
+        testfile = (
+            tmp_path_factory.mktemp("writer")
+            / "generated_particle_ids_multiple_types.hdf5"
+        )
         assert two_type_writer.gas._particle_ids is None
         assert two_type_writer.dark_matter._particle_ids is None
         try:
@@ -391,7 +407,7 @@ class TestGeneratedParticleIDs:
             if os.path.exists(testfile):
                 os.remove(testfile)
 
-    def test_overwrite_particle_ids(self, two_type_writer):
+    def test_overwrite_particle_ids(self, two_type_writer, tmp_path_factory):
         """
         Check that we overwrite particle_ids when they are not present for all types.
 
@@ -400,7 +416,7 @@ class TestGeneratedParticleIDs:
         overwrite everything. However, if we overwrite any user-provided IDs, we should
         warn.
         """
-        testfile = "overwrite_particle_ids.hdf5"
+        testfile = tmp_path_factory.mktemp("writer") / "overwrite_particle_ids.hdf5"
         two_type_writer.gas.particle_ids = np.arange(
             1, two_type_writer.gas.masses.size + 1
         )
@@ -413,9 +429,9 @@ class TestGeneratedParticleIDs:
                 os.remove(testfile)
 
 
-def test_explicit_smoothing_lengths(simple_writer):
+def test_explicit_smoothing_lengths(simple_writer, tmp_path_factory):
     """Check that smoothing lengths can be explicitly passed in."""
-    testfile = "explicit_smoothing_lengths.hdf5"
+    testfile = tmp_path_factory.mktemp("writer") / "explicit_smoothing_lengths.hdf5"
     simple_writer.gas._smoothing_lengths = None  # ensure they are blank
     simple_writer.gas.smoothing_lengths = cosmo_array(
         np.ones(simple_writer.gas.masses.size),
@@ -435,13 +451,13 @@ def test_explicit_smoothing_lengths(simple_writer):
             os.remove(testfile)
 
 
-def test_generated_smoothing_lengths(two_type_writer):
+def test_generated_smoothing_lengths(two_type_writer, tmp_path_factory):
     """
     Check that we can automatically generate smoothing lengths.
 
     This should only work for types where smoothing lengths are a required field.
     """
-    testfile = "generated_smoothing_lengths.hdf5"
+    testfile = tmp_path_factory.mktemp("writer") / "generated_smoothing_lengths.hdf5"
     two_type_writer.gas._smoothing_lengths = None  # ensure they are blank
     n_gas = two_type_writer.gas.coordinates.shape[0]
     assert (np.diff(two_type_writer.boxsize) == 0).all()
@@ -466,9 +482,9 @@ def test_generated_smoothing_lengths(two_type_writer):
             os.remove(testfile)
 
 
-def test_created_links(two_type_writer):
+def test_created_links(two_type_writer, tmp_path_factory):
     """Check that we create links for particle types that have them."""
-    testfile = "created_links.hdf5"
+    testfile = tmp_path_factory.mktemp("created_links") / "created_links.hdf5"
     two_type_writer.gas._smoothing_lengths = None  # ensure they are blank
     n_gas = two_type_writer.gas.coordinates.shape[0]
     assert (np.diff(two_type_writer.boxsize) == 0).all()

@@ -58,6 +58,7 @@ swiftsnap = "swiftsimio.swiftsnap:swiftsnap"
 [project.optional-dependencies]
 dev = [
     "pytest",
+    "pytest-xdist",
     "ruff",
     "numpydoc",
     "matplotlib",

@@ -7,7 +7,6 @@ from swiftsimio.subset_writer import write_subset
 from swiftsimio import load, SWIFTDataset
 from .helper import _mask_without_warning as mask
 import os
-import os.path
 from pathlib import Path
 
 
@@ -70,7 +69,7 @@ def compare_data_contents(A: SWIFTDataset, B: SWIFTDataset) -> None:
     assert not test_was_trivial
 
 
-def test_subset_writer(snapshot_or_soap):
+def test_subset_writer(snapshot_or_soap, tmp_path_factory):
     """
     Test to make sure subset writing works as intended.
 
@@ -84,7 +83,9 @@ def test_subset_writer(snapshot_or_soap):
         filename = snapshot_or_soap.filename
 
     # Specify output filepath
-    outfile = os.path.basename(filename).replace(".hdf5", "_subset.hdf5")
+    outfile = tmp_path_factory.mktemp("subset_write") / Path(filename).name.replace(
+        ".hdf5", "_subset.hdf5"
+    )
 
     # Create a mask
     full_mask = mask(snapshot_or_soap)
@@ -116,7 +117,7 @@ def test_subset_writer(snapshot_or_soap):
 
 
 @pytest.mark.parametrize("range_mask", (True, False))
-def test_subset_writer_constrained_indices(soap_example, range_mask):
+def test_subset_writer_constrained_indices(soap_example, range_mask, tmp_path_factory):
     """Test that a subset written with constrain_indices has valid metadata."""
     filename = (
         str(soap_example)
@@ -128,7 +129,9 @@ def test_subset_writer_constrained_indices(soap_example, range_mask):
         m.convert_masks_to_bool()
     region = np.vstack([m.metadata.boxsize * 0, m.metadata.boxsize * 0.5]).T
     m.constrain_indices([1, 2, 3])
-    outfile = os.path.basename(filename).replace(".hdf5", "_subset.hdf5")
+    outfile = tmp_path_factory.mktemp("subset_write") / Path(filename).name.replace(
+        ".hdf5", "_subset.hdf5"
+    )
     write_subset(outfile, m)
     # try loading with a spatial mask to make sure cell metadata is ok:
     sub_mask = mask(outfile)
@@ -139,7 +142,7 @@ def test_subset_writer_constrained_indices(soap_example, range_mask):
     os.remove(outfile)
 
 
-def test_masking_subset(snapshot_or_soap):
+def test_masking_subset(snapshot_or_soap, tmp_path_factory):
     """
     Test that we can select a sub-region of a subset written to file.
 
@@ -157,7 +160,9 @@ def test_masking_subset(snapshot_or_soap):
     boxsize = octant_mask.metadata.boxsize
     octant_region = np.vstack([boxsize * 0.5, boxsize]).T
     octant_mask.constrain_spatial(octant_region)
-    outfile = os.path.basename(filename).replace(".hdf5", "_octant.hdf5")
+    outfile = tmp_path_factory.mktemp("subset_write") / Path(filename).name.replace(
+        ".hdf5", "_octant.hdf5"
+    )
     write_subset(outfile, octant_mask)
     # have to be a bit careful to pick a region with at least a subhalo in it for soap,
     # otherwise it's a trivial comparison and the test fails:
@@ -173,9 +178,9 @@ def test_masking_subset(snapshot_or_soap):
     os.remove(outfile)
 
 
-def test_snap_subset_header(cosmological_volume_only_single_local):
+def test_snap_subset_header(cosmological_volume_only_single_local, tmp_path_factory):
     """Check the header metadata fields on a snapshot subset."""
-    outfile = "header_test_snap_subset.hdf5"
+    outfile = tmp_path_factory.mktemp("subset_write") / "header_test_snap_subset.hdf5"
     m = mask(cosmological_volume_only_single_local)
     region = np.vstack((m.metadata.boxsize * 0, m.metadata.boxsize * 0.1)).T
     m.constrain_spatial(region)
@@ -230,9 +235,9 @@ def test_snap_subset_header(cosmological_volume_only_single_local):
     os.remove(outfile)
 
 
-def test_soap_subset_header(soap_only_local):
+def test_soap_subset_header(soap_only_local, tmp_path_factory):
     """Check the header metadata fields on a soap subset."""
-    outfile = "header_test_soap_subset.hdf5"
+    outfile = tmp_path_factory.mktemp("subset_write") / "header_test_soap_subset.hdf5"
     m = mask(soap_only_local)
     region = np.vstack((m.metadata.boxsize * 0, m.metadata.boxsize * 0.3)).T
     m.constrain_spatial(region)

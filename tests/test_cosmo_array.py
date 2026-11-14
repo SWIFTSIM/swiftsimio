@@ -21,8 +21,6 @@ from packaging.version import Version
 
 NUMPY_VERSION = Version(version("numpy"))
 
-savetxt_file = "saved_array.txt"
-
 
 def getfunc(fname: str) -> Callable:
     """
@@ -438,7 +436,7 @@ class TestCosmoArrayInit:
 class TestNumpyFunctions:
     """Check that numpy functions recognize and handle our cosmo classes."""
 
-    def test_explicitly_handled_funcs(self):
+    def test_explicitly_handled_funcs(self, tmp_path_factory):
         """
         Test consistency with unyt for functions that we handle explicitly.
 
@@ -467,6 +465,7 @@ class TestNumpyFunctions:
         from unyt._array_functions import _HANDLED_FUNCTIONS
         from unyt.tests.test_array_functions import NOOP_FUNCTIONS
 
+        savetxt_file = tmp_path_factory.mktemp("cosmo_array") / "saved_array.txt"
         functions_to_check = {
             # FUNCTIONS UNYT HANDLES EXPLICITLY:
             "array2string": (ca(np.arange(3)),),
@@ -1304,7 +1303,7 @@ class TestMultiplicationByUnyt:
 class TestPickle:
     """Test that the cosmo_array attributes survive being pickled and unpickled."""
 
-    def test_pickle(self):
+    def test_pickle(self, tmp_path_factory):
         """Test that the cosmo_array attributes survive pickle/unpickle."""
         attrs = {
             "comoving": False,
@@ -1313,14 +1312,15 @@ class TestPickle:
             "valid_transform": True,
         }
         ca = cosmo_array([123, 456], u.Mpc, **attrs)
+        pickle_file = tmp_path_factory.mktemp("cosmo_array") / "ca.pkl"
         try:
-            with open("ca.pkl", "wb") as pickle_handle:
+            with open(pickle_file, "wb") as pickle_handle:
                 pickle.dump(ca, pickle_handle)
-            with open("ca.pkl", "rb") as pickle_handle:
+            with open(pickle_file, "rb") as pickle_handle:
                 unpickled_ca = pickle.load(pickle_handle)
         finally:
-            if os.path.isfile("ca.pkl"):
-                os.remove("ca.pkl")
+            if os.path.isfile(pickle_file):
+                os.remove(pickle_file)
         for attr_name, attr_value in attrs.items():
             assert getattr(unpickled_ca, attr_name) == attr_value
 
@@ -1608,7 +1608,7 @@ class TestArrayCreation:
         assert cosmo_out.valid_transform == cosmo_in.valid_transform
         assert cosmo_out.compression == cosmo_in.compression
 
-    def test_loadtxt(self):
+    def test_loadtxt(self, tmp_path_factory):
         """
         Test the loadtxt function.
 
@@ -1623,7 +1623,7 @@ class TestArrayCreation:
             valid_transform=False,
             compression="testing",
         )
-        fname = "np_arr.txt"
+        fname = tmp_path_factory.mktemp("cosmo_array") / "np_arr.txt"
         try:
             np.savetxt(fname, [1, 2])
             cosmo_out = np.loadtxt(fname, like=cosmo_in)
@@ -1638,7 +1638,7 @@ class TestArrayCreation:
         assert cosmo_out.valid_transform == cosmo_in.valid_transform
         assert cosmo_out.compression == cosmo_in.compression
 
-    def test_fromfile(self):
+    def test_fromfile(self, tmp_path_factory):
         """
         Test the fromfile function.
 
@@ -1653,7 +1653,7 @@ class TestArrayCreation:
             valid_transform=False,
             compression="testing",
         )
-        fname = "np_arr"
+        fname = tmp_path_factory.mktemp("cosmo_array") / "np_arr"
         try:
             np.array([1, 2], dtype=int).tofile(fname)
             cosmo_out = np.fromfile(fname, dtype=int, like=cosmo_in)
